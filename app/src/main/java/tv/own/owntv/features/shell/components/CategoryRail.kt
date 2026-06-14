@@ -80,9 +80,6 @@ fun CategoryRail(
     // index, so selection highlighting and onSelect still map correctly. Reset when the rail loses
     // focus, so it's fresh every time you open it.
     var query by remember { mutableStateOf("") }
-    // True while the search box itself holds focus — used to suppress the selected-category highlight so
-    // focus reads in one place (search) on entry, instead of search + the lit-up current category.
-    var searchFocused by remember { mutableStateOf(false) }
     val visible = remember(categories, query) {
         val q = query.trim()
         if (q.isEmpty()) categories.indices.toList()
@@ -124,7 +121,7 @@ fun CategoryRail(
                     // rejected (the focus transaction is still in progress).
                     val entered = it.hasFocus && !hasFocus
                     hasFocus = it.hasFocus
-                    if (it.hasFocus) onFocused() else { query = ""; searchFocused = false } // reset on leaving
+                    if (it.hasFocus) onFocused() else query = "" // reset the search on leaving
                     // Entering the rail lands on the search box (scrolled to the top) so you can filter
                     // categories straight away; Down drops into the list.
                     if (entered) scope.launch {
@@ -147,7 +144,6 @@ fun CategoryRail(
                         placeholder = "Search categories…",
                         modifier = Modifier
                             .focusRequester(searchFocus)
-                            .onFocusChanged { searchFocused = it.hasFocus }
                             .fillMaxWidth()
                             .padding(bottom = 4.dp),
                     )
@@ -157,10 +153,9 @@ fun CategoryRail(
                 val index = visible[i]
                 RailPill(
                     category = categories[index],
-                    // Highlight the current category only while the rail is the focused panel (and not
-                    // while the search box has focus) — so the highlight follows focus instead of always
-                    // lighting up when you're on the sidebar/content. The header still shows the category.
-                    selected = index == selectedIndex && hasFocus && !searchFocused,
+                    // RailPill only lights the green "active" fill when this pill is BOTH the current
+                    // category AND focused — so the highlight always follows focus and nothing is auto-lit.
+                    selected = index == selectedIndex,
                     expanded = hasFocus,
                     onClick = { onSelect(index) },
                     modifier = if (index == selectedIndex) Modifier.focusRequester(selectedFocus) else Modifier,
@@ -191,12 +186,16 @@ private fun RailPill(
     val colors = OwnTVTheme.colors
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    // Only ever highlight the FOCUSED pill. The current category shows the green "selected" fill *when
+    // it's the one you're on*; otherwise a focused pill gets the focus outline, and a selected-but-not-
+    // focused pill shows nothing — so the highlight always reads as "where the remote is".
+    val activeSelected = selected && focused
 
-    // M3 tonal states: selected uses the primary *container* (soft tonal fill), focus uses a
-    // surface-container fill with a primary outline.
+    // M3 tonal states: the active+focused category uses the primary *container* (soft tonal fill), a
+    // plain focused pill uses a surface-container fill with a primary outline.
     val bg by animateColorAsState(
         targetValue = when {
-            selected -> colors.primaryContainer
+            activeSelected -> colors.primaryContainer
             focused -> colors.card
             else -> Color.Transparent
         },
@@ -204,7 +203,7 @@ private fun RailPill(
     )
     val fg by animateColorAsState(
         targetValue = when {
-            selected -> colors.onPrimaryContainer
+            activeSelected -> colors.onPrimaryContainer
             focused -> colors.accent
             else -> colors.textSecondary
         },
@@ -238,7 +237,7 @@ private fun RailPill(
             contentAlignment = Alignment.Center,
         ) {
             if (category.icon != null) {
-                OwnTVIcon(icon = category.icon, tint = fg, filled = selected, modifier = Modifier.size(if (expanded) 20.dp else Dimens.RailPillSize / 2))
+                OwnTVIcon(icon = category.icon, tint = fg, filled = activeSelected, modifier = Modifier.size(if (expanded) 20.dp else Dimens.RailPillSize / 2))
             } else {
                 Text(
                     text = category.abbr,
@@ -254,7 +253,7 @@ private fun RailPill(
                 text = category.fullName,
                 color = fg,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = if (focused) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

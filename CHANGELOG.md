@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.2.2 — 2026-06-14
+
+- **Category rail highlight follows your focus** — the rail no longer keeps your current category lit
+  up when you're not on it (while you're on the sidebar, on the new category-search box, or arrowing
+  past other categories). Now only the pill you're focused on is highlighted, and your active category
+  turns green the moment you land on it — so there's always exactly one highlight, right where the
+  remote is.
+
 ## v2.2.1 — 2026-06-14
 
 - **Search your categories** — the category rail (Live TV / Movies / Series) now has a **search box**
