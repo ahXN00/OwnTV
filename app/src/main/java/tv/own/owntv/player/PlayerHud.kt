@@ -116,12 +116,10 @@ fun PlayerHud(
         modifier = modifier.fillMaxSize().onPreviewKeyEvent { e ->
             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when {
-                // Dedicated channel keys always zap; D-pad up/down zaps only while the HUD is hidden
-                // (when it's shown, up/down navigate the controls as usual).
+                // Channel surfing is on the dedicated CH+/CH- keys only. The D-pad is strictly for UI
+                // navigation: Up/Down move through the HUD controls (or reveal a hidden HUD), never zap.
                 canZap && e.key == Key.ChannelUp -> { zap(-1); true }
                 canZap && e.key == Key.ChannelDown -> { zap(1); true }
-                canZap && !controlsVisible && e.key == Key.DirectionUp -> { zap(-1); true }
-                canZap && !controlsVisible && e.key == Key.DirectionDown -> { zap(1); true }
                 controlsVisible -> { wakeTick++; false }
                 else -> false
             }
@@ -293,11 +291,10 @@ private fun BottomBar(
                 CtrlButton(OwnTVIcon.AUDIO, badge = audioCount.takeIf { it > 1 }) { onOpenDialog(HudDialog.AUDIO) }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                // Direct render mode: the decoder owns the surface, GL zoom modes can't apply (the
-                // view letterboxes to the correct aspect automatically) — hide the button.
-                val direct by player.directRender.collectAsStateWithLifecycle()
-                if (!direct) CtrlButton(OwnTVIcon.ASPECT, active = zoomMode != ZoomMode.FIT) { onOpenDialog(HudDialog.ZOOM) }
-                if (onPip != null && !isLive) CtrlButton(OwnTVIcon.PIP) { onPip() }
+                // Aspect/zoom works in every mode now — direct mode resizes the surface view itself
+                // (see MpvVideoSurface), GL mode scales internally.
+                CtrlButton(OwnTVIcon.ASPECT, active = zoomMode != ZoomMode.FIT) { onOpenDialog(HudDialog.ZOOM) }
+                if (onPip != null) CtrlButton(OwnTVIcon.PIP) { onPip() }
                 CtrlButton(OwnTVIcon.FULLSCREEN_EXIT) { onBack() }
             }
         }
@@ -438,13 +435,14 @@ private fun SpeedDialog(current: Double, onSelect: (Double) -> Unit, onDismiss: 
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     BackHandler { onDismiss() }
+    val selectedIndex = SPEEDS.indexOfFirst { kotlin.math.abs(it - current) < 0.01 }.coerceAtLeast(0)
     DialogScaffold(title = "Playback Speed", onDismiss = onDismiss) {
         items(SPEEDS.size) { index ->
             val speed = SPEEDS[index]
             OptionRow(
                 label = if (speed == 1.0) "1.0x (Normal)" else "${speed}x",
                 selected = kotlin.math.abs(speed - current) < 0.01,
-                modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,
+                modifier = if (index == selectedIndex) Modifier.focusRequester(focus) else Modifier,
                 onClick = { onSelect(speed) },
             )
         }
@@ -456,10 +454,12 @@ private fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismis
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     BackHandler { onDismiss() }
+    // Land focus on the current mode (not always the first row) so re-opening starts on your selection.
+    val selectedIndex = ZoomMode.entries.indexOf(current).coerceAtLeast(0)
     DialogScaffold(title = "Player Zoom", onDismiss = onDismiss) {
         items(ZoomMode.entries.size) { index ->
             val mode = ZoomMode.entries[index]
-            OptionRow(label = mode.label, selected = mode == current, modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier, onClick = { onSelect(mode) })
+            OptionRow(label = mode.label, selected = mode == current, modifier = if (index == selectedIndex) Modifier.focusRequester(focus) else Modifier, onClick = { onSelect(mode) })
         }
     }
 }

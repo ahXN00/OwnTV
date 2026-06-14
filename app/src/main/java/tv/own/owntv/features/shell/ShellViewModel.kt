@@ -39,9 +39,15 @@ class ShellViewModel(
     private val sourceRepository: SourceRepository,
     private val profileDao: tv.own.owntv.core.database.dao.ProfileDao,
     connectivity: ConnectivityObserver,
+    private val epgMigration: tv.own.owntv.core.epg.EpgMigration,
 ) : ViewModel() {
 
     private var refreshedThisSession = false
+
+    init {
+        // One-time: move any existing playlist EPG into the new standalone EPG sources (v2.2.0).
+        viewModelScope.launch { runCatching { epgMigration.run() } }
+    }
 
     /** Whether the device currently has internet (drives the offline banner). */
     val isOnline: StateFlow<Boolean> = connectivity.isOnline

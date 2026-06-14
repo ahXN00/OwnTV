@@ -29,26 +29,29 @@ class BackupManager(
     private val settings: SettingsRepository,
     private val customize: CustomizationStore,
     private val userData: UserDataResolver,
+    private val epgSources: tv.own.owntv.core.epg.EpgSourceStore,
 ) {
     /** What a backup can contain; the user multi-selects these for export and restore. */
     enum class Section(val label: String, val desc: String) {
-        SOURCES("Profiles & sources", "Viewers, PINs, playlists and credentials"),
-        CUSTOMIZE("Customizations", "Hidden/renamed/reordered categories & channels"),
+        SOURCES("Profiles & sources", "Viewers, PINs, playlists, EPG feeds and credentials"),
+        CUSTOMIZE("Customizations", "Hidden/renamed/reordered categories, channels & EPG matches"),
         FAVORITES("Favorites", "Starred channels, movies and series"),
         HISTORY("Watch history", "Recently watched lists"),
         RESUME("Resume positions", "Where you stopped in movies & episodes"),
+        SETTINGS("App settings", "Theme, accent, player & layout preferences"),
     }
 
     /** Writes the chosen [sections] into [folder] as owntv-backup.json; returns the file path. */
     suspend fun export(folder: File, sections: Set<Section> = Section.entries.toSet()): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val root = JSONObject().apply {
-                put("version", 4)
+                put("version", 5)
                 put("sections", JSONArray().apply { sections.forEach { put(it.name) } })
                 if (Section.SOURCES in sections) {
                     put("profiles", JSONArray().apply { profileDao.getAllOnce().forEach { put(profileJson(it)) } })
                     put("sources", JSONArray().apply { sourceDao.getAllOnce().forEach { put(sourceJson(it)) } })
                     put("links", JSONArray().apply { sourceDao.allLinks().forEach { put(JSONObject().put("profileId", it.profileId).put("sourceId", it.sourceId)) } })
+                    put("epgSources", epgSources.exportJson()) // standalone EPG feeds ride with sources
                 }
                 if (Section.CUSTOMIZE in sections) {
                     put("customizations", JSONObject().apply { customize.exportAll().forEach { (k, v) -> put(k, v) } })
@@ -56,6 +59,7 @@ class BackupManager(
                 // Favorites / history / resume positions, exported with stable keys (see UserDataResolver).
                 val kinds = kindsFor(sections)
                 if (kinds.isNotEmpty()) put("userData", userData.exportAll(kinds))
+                if (Section.SETTINGS in sections) put("settings", settings.exportSettings())
             }
             if (!folder.exists()) folder.mkdirs()
             val out = File(folder, "owntv-backup.json")
@@ -71,6 +75,7 @@ class BackupManager(
             val out = mutableSetOf<Section>()
             if (root.has("profiles") || root.has("sources")) out += Section.SOURCES
             if (root.optJSONObject("customizations")?.keys()?.hasNext() == true) out += Section.CUSTOMIZE
+            if (root.optJSONObject("settings")?.keys()?.hasNext() == true) out += Section.SETTINGS
             root.optJSONArray("userData")?.let { arr ->
                 for (i in 0 until arr.length()) {
                     when (arr.getJSONObject(i).optString("kind")) {
@@ -105,6 +110,7 @@ class BackupManager(
                     val l = links.getJSONObject(i)
                     sourceDao.link(ProfileSourceCrossRef(profileId = l.getLong("profileId"), sourceId = l.getLong("sourceId")))
                 }
+                epgSources.importJson(root.optString("epgSources").takeIf { it.isNotBlank() })
                 profileDao.getAllOnce().firstOrNull()?.let { settings.setActiveProfile(it.id) }
                 count += profiles.length() + sources.length()
             }
@@ -131,6 +137,10 @@ class BackupManager(
                     userData.importAll(filtered)
                     count += filtered.length()
                 }
+            }
+
+            if (Section.SETTINGS in sections) {
+                root.optJSONObject("settings")?.let { settings.importSettings(it); count += it.length() }
             }
             count
         }

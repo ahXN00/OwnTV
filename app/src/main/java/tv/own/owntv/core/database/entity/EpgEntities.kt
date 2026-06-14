@@ -1,7 +1,6 @@
 package tv.own.owntv.core.database.entity
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -9,11 +8,11 @@ import androidx.room.PrimaryKey
  * EPG channel descriptor (XMLTV `<channel>` or an Xtream epg id). Channels link to it via their
  * `epgChannelId`.
  */
+// NOTE: no foreign key to sources. EPG also comes from standalone EPG sources (stored in DataStore
+// with negative ids that don't exist in the sources table), so a sourceId FK would reject them.
+// EPG rows are cleared explicitly when a source/EPG-source is removed.
 @Entity(
     tableName = "epg_channels",
-    foreignKeys = [
-        ForeignKey(entity = SourceEntity::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.CASCADE),
-    ],
     indices = [
         Index("sourceId"),
         Index(value = ["sourceId", "epgChannelId"], unique = true),
@@ -32,9 +31,6 @@ data class EpgChannelEntity(
  */
 @Entity(
     tableName = "epg_programmes",
-    foreignKeys = [
-        ForeignKey(entity = SourceEntity::class, parentColumns = ["id"], childColumns = ["sourceId"], onDelete = ForeignKey.CASCADE),
-    ],
     indices = [
         Index(value = ["epgChannelId", "startMs"]),
         Index("sourceId"),

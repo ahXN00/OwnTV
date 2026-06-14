@@ -58,6 +58,42 @@ class UserDataResolver(
         return out
     }
 
+    /**
+     * Heals favorites/history/resume across a source re-sync. Content rows are clear-then-insert, so
+     * their ids change every refresh and the user-data rows (keyed on the old ids) orphan — the count
+     * badge still showed them, but the join returned nothing. Capture [exportAll] BEFORE the sync (ids
+     * still valid → stable keys), then call this AFTER it: re-resolve each record to the new ids, purge
+     * the now-orphaned rows so counts and lists agree, and keep anything still unresolvable (e.g.
+     * not-yet-loaded episodes) pending for a later sync / show-open.
+     */
+    suspend fun relinkAfterSync(snapshot: JSONArray) {
+        val unresolved = JSONArray()
+        for (i in 0 until snapshot.length()) {
+            val e = snapshot.getJSONObject(i)
+            val ok = runCatching { resolveAndInsert(e) }.getOrDefault(false)
+            if (!ok) unresolved.put(e)
+        }
+        favoriteDao.purgeOrphans()
+        historyDao.purgeOrphans()
+        progressDao.purgeOrphans()
+        if (unresolved.length() > 0) addPending(unresolved)
+        resolvePending() // also retries any in-flight backup restore
+    }
+
+    /** Appends records to the pending set (de-duplicated by content), so they heal on a later resolve. */
+    private suspend fun addPending(extra: JSONArray) {
+        context.pendingStore.edit { prefs ->
+            val existing = prefs[PENDING_KEY]?.let { runCatching { JSONArray(it) }.getOrNull() } ?: JSONArray()
+            val seen = HashSet<String>()
+            for (i in 0 until existing.length()) seen.add(existing.getJSONObject(i).toString())
+            for (i in 0 until extra.length()) {
+                val s = extra.getJSONObject(i).toString()
+                if (seen.add(s)) existing.put(extra.getJSONObject(i))
+            }
+            prefs[PENDING_KEY] = existing.toString()
+        }
+    }
+
     /** Replaces the pending set with a backup's records (empty/absent clears), then tries resolving. */
     suspend fun importAll(entries: JSONArray?) {
         context.pendingStore.edit { prefs ->

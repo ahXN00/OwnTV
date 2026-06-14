@@ -98,9 +98,9 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 CenterStatus {
                     Text("Re-sync complete", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
                     Spacer(Modifier.height(8.dp))
-                    Text("${s.itemCount} items", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                    Text(s.summary, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
-                LaunchedEffect(Unit) { kotlinx.coroutines.delay(1000); resyncing = false; vm.resetImport() }
+                LaunchedEffect(Unit) { kotlinx.coroutines.delay(1600); resyncing = false; vm.resetImport() }
             }
             is SettingsViewModel.ImportState.Failed -> CenterStatus {
                 Text("Re-sync failed", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
@@ -185,12 +185,12 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 items(sources, key = { it.id }) { source ->
                     // The default is the explicitly-chosen source, or the first one when none is set.
                     val isDefault = source.id == defaultId || (defaultId < 0 && source.id == sources.first().id)
-                    val epgCount by vm.epgCount(source.id).collectAsStateWithLifecycle(0)
+                    val counts by remember(source.id) { vm.contentCounts(source.id) }.collectAsStateWithLifecycle(null)
                     SourceRow(
                         source = source,
                         refreshOnStart = source.id in refreshIds,
                         isDefault = isDefault,
-                        epgCount = epgCount,
+                        countsLabel = counts?.breakdown,
                         showMakeDefault = sources.size > 1,
                         onMakeDefault = { vm.setDefaultSource(source.id) },
                         onEdit = { editingSource = source },
@@ -217,7 +217,7 @@ private fun SourceRow(
     source: SourceEntity,
     refreshOnStart: Boolean,
     isDefault: Boolean,
-    epgCount: Int,
+    countsLabel: String?,
     showMakeDefault: Boolean,
     onMakeDefault: () -> Unit,
     onEdit: () -> Unit,
@@ -246,12 +246,7 @@ private fun SourceRow(
                 buildString {
                     append(when (source.type) { SourceType.XTREAM -> "Xtream • ${source.url}"; SourceType.M3U -> "M3U • ${source.url}"; SourceType.LOCAL_BACKUP -> "Backup" })
                     if (refreshOnStart) append("  •  ⟳ on startup")
-                    // EPG status: ✓ + count once a guide downloaded; otherwise a hint that it hasn't.
-                    val hasEpgFeed = source.type == SourceType.XTREAM || !source.epgUrl.isNullOrBlank()
-                    when {
-                        epgCount > 0 -> append("  •  EPG ✓ ${tv.own.owntv.ui.components.formatCount(epgCount)}")
-                        hasEpgFeed -> append("  •  EPG: not downloaded (Guide → Refresh)")
-                    }
+                    if (!countsLabel.isNullOrBlank()) append("  •  $countsLabel")
                 },
                 style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1,
             )

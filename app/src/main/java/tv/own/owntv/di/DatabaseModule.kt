@@ -17,7 +17,8 @@ val databaseModule = module {
     single {
         Room.databaseBuilder(androidContext(), OwnTVDatabase::class.java, OwnTVDatabase.NAME)
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            .addMigrations(OwnTVDatabase.MIGRATION_1_2) // EPG-tables-only recreate; preserves all else
+            .fallbackToDestructiveMigration(dropAllTables = true) // safety net for unforeseen jumps
             .build()
     }
 

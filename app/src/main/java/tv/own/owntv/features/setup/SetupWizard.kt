@@ -102,7 +102,7 @@ fun Onboarding(firstRun: Boolean, onDone: () -> Unit, onCancel: () -> Unit, modi
                 state = importState,
                 stageLabel = progress?.label ?: "content",
                 processed = progress?.processed ?: 0,
-                onContinue = { vm.finish(); onDone() },
+                onContinue = { vm.finish(); onDone() }, // playlist + its EPG synced (auto)
                 onRetry = { vm.reset(); step = importOrigin },
             )
             Step.EXISTING -> ExistingSourcesScreen(
@@ -315,7 +315,7 @@ private fun ImportProgressScreen(
             is SetupViewModel.ImportState.Success -> {
                 Text("All set!", style = MaterialTheme.typography.headlineLarge, color = colors.onSurface)
                 Spacer(Modifier.height(10.dp))
-                Text("Imported ${formatCount(state.itemCount)} items.", style = MaterialTheme.typography.titleMedium, color = colors.onSurfaceVariant)
+                Text(state.summary, style = MaterialTheme.typography.titleMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 560.dp))
                 Spacer(Modifier.height(28.dp))
                 OwnTVButton("Continue", onClick = onContinue, icon = OwnTVIcon.PLAY, modifier = Modifier.focusRequester(fr))
             }

@@ -90,7 +90,6 @@ fun VideoPlayerSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier)
     val audioLang by vm.preferredAudioLang.collectAsStateWithLifecycle()
     val subLang by vm.preferredSubLang.collectAsStateWithLifecycle()
     val resumeMode by vm.resumeMode.collectAsStateWithLifecycle()
-    val renderMode by vm.renderMode.collectAsStateWithLifecycle()
 
     var dialog by remember { mutableStateOf(Dialog.NONE) }
     val firstFocus = remember { FocusRequester() }
@@ -143,13 +142,6 @@ fun VideoPlayerSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier)
             chip = if (hw) "On" else "Off", primaryChip = hw,
             modifier = Modifier.focusRequester(firstFocus),
             onClick = { vm.setHwDecoding(!hw) },
-        )
-        Row2(
-            icon = OwnTVIcon.VIDEO, title = "Renderer",
-            desc = "Smooth = best for TVs; Auto = pick per device; Quality = full mpv GL renderer, heavier.",
-            chip = renderMode.label, chevron = true,
-            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.RENDERER)),
-            onClick = { dialog = Dialog.RENDERER },
         )
         Row2(
             icon = OwnTVIcon.ASPECT, title = "Default zoom",
@@ -209,13 +201,6 @@ fun VideoPlayerSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier)
             onSelect = { vm.setDefaultZoom(it); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },
         )
-        Dialog.RENDERER -> PickerDialog(
-            title = "Renderer",
-            options = tv.own.owntv.features.settings.data.SettingsRepository.RenderMode.entries.map { it.name to "${it.label}  (${it.hint})" },
-            selected = renderMode.name,
-            onSelect = { vm.setRenderMode(it); dialog = Dialog.NONE },
-            onDismiss = { dialog = Dialog.NONE },
-        )
         Dialog.RESUME -> PickerDialog(
             title = "Resume playback",
             options = tv.own.owntv.features.settings.data.SettingsRepository.ResumeMode.entries.map { it.name to it.label },
@@ -256,7 +241,7 @@ fun VideoPlayerSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-private enum class Dialog { NONE, ZOOM, SUB_SIZE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, RENDERER }
+private enum class Dialog { NONE, ZOOM, SUB_SIZE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME }
 
 // --- Shared building blocks (kept local to the settings sub-screens) ---
 

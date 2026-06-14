@@ -27,4 +27,13 @@ interface HistoryDao {
     /** Everything, for Backup & Restore. */
     @Query("SELECT * FROM watch_history")
     suspend fun getAllOnce(): List<WatchHistoryEntity>
+
+    /** Drops history rows orphaned by a re-sync (see FavoriteDao.purgeOrphans); episodes excluded. */
+    @Query(
+        "DELETE FROM watch_history WHERE " +
+            "(mediaType = 'LIVE'   AND itemId NOT IN (SELECT id FROM channels)) OR " +
+            "(mediaType = 'MOVIE'  AND itemId NOT IN (SELECT id FROM movies))   OR " +
+            "(mediaType = 'SERIES' AND itemId NOT IN (SELECT id FROM series))",
+    )
+    suspend fun purgeOrphans()
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,6 +51,7 @@ import tv.own.owntv.ui.components.FocusableSurface
 import tv.own.owntv.ui.components.OwnTVButton
 import tv.own.owntv.ui.components.OwnTVButtonStyle
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.ui.components.OwnTVSpinner
 import tv.own.owntv.ui.components.SearchBar
 import tv.own.owntv.ui.components.SortChip
 import tv.own.owntv.ui.components.TextInputDialog
@@ -98,6 +100,7 @@ fun LiveScreen(
     val selFocus = remember { FocusRequester() }
     val firstItemFocus = remember { FocusRequester() }
     var renaming by remember { mutableStateOf<ChannelEntity?>(null) }
+    var matchingEpg by remember { mutableStateOf<ChannelEntity?>(null) }
     // Returning from fullscreen: scroll to and focus the channel you were watching (waits for the list to load).
     LaunchedEffect(restoreFocus, channels.itemCount) {
         if (!restoreFocus || channels.itemCount == 0) return@LaunchedEffect
@@ -123,7 +126,10 @@ fun LiveScreen(
             categories = railItems.map { RailCategory(it.abbr, it.title, it.icon) },
             selectedIndex = selectedIndex,
             onSelect = { idx -> railItems.getOrNull(idx)?.let { vm.select(it.key) } },
-            onFocused = { vm.stopPreview() }, // focus on a folder (ALL/FAV/…) → stop the channel preview
+            // Focusing a folder stops the in-pane preview — but only when a preview is actually running.
+            // When the player is docked (live PiP) or fullscreen, previewEnabled is false and stopPreview
+            // would kill that stream (e.g. while navigating left to leave Live), so we skip it.
+            onFocused = { if (previewEnabled) vm.stopPreview() },
         )
 
         // Layer 3 — header + channel list
@@ -159,7 +165,7 @@ fun LiveScreen(
                     query = searchQuery,
                     onQueryChange = vm::setSearchQuery,
                     placeholder = "Search ${selectedItem?.title ?: "channels"}…",
-                    modifier = Modifier.weight(1f).onFocusChanged { if (it.hasFocus) vm.stopPreview() },
+                    modifier = Modifier.weight(1f).onFocusChanged { if (it.hasFocus && previewEnabled) vm.stopPreview() },
                 )
                 Spacer(Modifier.size(10.dp))
                 SortChip(mode = sortMode, onToggle = vm::toggleSort)
@@ -210,6 +216,7 @@ fun LiveScreen(
                 onToggleFavorite = { previewChannel?.let { vm.toggleFavorite(it) } },
                 onRename = { renaming = previewChannel },
                 onHide = { previewChannel?.let { vm.hideChannel(it) } },
+                onMatchEpg = { matchingEpg = previewChannel },
             )
         }
     }
@@ -221,6 +228,17 @@ fun LiveScreen(
             hint = "Only for this profile. Leave blank to restore the original name.",
             onConfirm = { vm.renameChannel(ch, it.takeIf { t -> t.isNotBlank() }); renaming = null },
             onDismiss = { renaming = null },
+        )
+    }
+
+    matchingEpg?.let { ch ->
+        EpgMatchDialog(
+            channelName = ch.name,
+            currentMatch = vm.currentEpgMatch(ch),
+            loadChannels = { q -> vm.availableEpgChannels(q) },
+            onPick = { epgId -> vm.setEpgMatch(ch, epgId); matchingEpg = null },
+            onClear = { vm.setEpgMatch(ch, null); matchingEpg = null },
+            onDismiss = { matchingEpg = null },
         )
     }
 }
@@ -280,6 +298,7 @@ private fun LivePreviewPane(
     onToggleFavorite: () -> Unit,
     onRename: () -> Unit,
     onHide: () -> Unit,
+    onMatchEpg: () -> Unit,
 ) {
     val colors = OwnTVTheme.colors
     if (channel == null) {
@@ -319,6 +338,8 @@ private fun LivePreviewPane(
             OwnTVButton(label = "Rename", onClick = onRename, style = OwnTVButtonStyle.SECONDARY)
             OwnTVButton(label = "Hide", onClick = onHide, style = OwnTVButtonStyle.SECONDARY)
         }
+        Spacer(Modifier.height(10.dp))
+        OwnTVButton(label = "Match EPG", onClick = onMatchEpg, style = OwnTVButtonStyle.SECONDARY, icon = OwnTVIcon.EPG)
         Spacer(Modifier.height(8.dp))
         Text("Press OK to watch fullscreen", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
     }
@@ -372,3 +393,80 @@ private fun EpgSection(nowNext: EpgNowNext?) {
 
 private val clockFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
 private fun formatClock(ms: Long): String = clockFormat.format(java.util.Date(ms))
+
+/** Manual EPG matching: pick which guide channel this channel uses (search across all EPG feeds). */
+@Composable
+private fun EpgMatchDialog(
+    channelName: String,
+    currentMatch: String?,
+    loadChannels: suspend (String) -> List<tv.own.owntv.core.database.entity.EpgChannelEntity>,
+    onPick: (String) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = OwnTVTheme.colors
+    var query by remember { mutableStateOf("") }
+    val results by androidx.compose.runtime.produceState<List<tv.own.owntv.core.database.entity.EpgChannelEntity>?>(initialValue = null, query) {
+        kotlinx.coroutines.delay(250)
+        value = runCatching { loadChannels(query) }.getOrDefault(emptyList())
+    }
+    androidx.activity.compose.BackHandler { onDismiss() }
+
+    // Pull focus into the dialog once the list first arrives (first result, else the search bar).
+    // One-shot, so later search-driven reloads don't steal focus from the field while typing.
+    val firstItemFocus = remember { FocusRequester() }
+    val searchFocus = remember { FocusRequester() }
+    var didInitialFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(results) {
+        if (didInitialFocus || results == null) return@LaunchedEffect
+        didInitialFocus = true
+        kotlinx.coroutines.delay(60)
+        if (results!!.isNotEmpty()) runCatching { firstItemFocus.requestFocus() }
+        else runCatching { searchFocus.requestFocus() }
+    }
+
+    androidx.compose.foundation.layout.Box(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.7f)).focusGroup(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(Modifier.width(580.dp).clip(RoundedCornerShape(20.dp)).background(colors.surfaceContainerHigh).padding(24.dp)) {
+            Text("Match EPG", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "Pick the guide channel for “$channelName”." + (currentMatch?.let { "  Current: $it" } ?: ""),
+                style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            SearchBar(query = query, onQueryChange = { query = it }, placeholder = "Search guide channels…", modifier = Modifier.fillMaxWidth().focusRequester(searchFocus))
+            Spacer(Modifier.height(12.dp))
+            val list = results
+            when {
+                list == null -> androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) { OwnTVSpinner(sizeDp = 28) }
+                list.isEmpty() -> Text(
+                    if (query.isBlank()) "No EPG data yet — add an EPG source in Settings." else "No guide channels match “$query”.",
+                    style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant,
+                )
+                else -> LazyColumn(Modifier.fillMaxWidth().height(300.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(list, key = { it.id }) { epg ->
+                        FocusableSurface(
+                            onClick = { onPick(epg.epgChannelId) },
+                            modifier = if (epg == list.first()) Modifier.fillMaxWidth().focusRequester(firstItemFocus) else Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            contentAlignment = Alignment.CenterStart,
+                        ) { _ ->
+                            Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                Text(epg.displayName ?: epg.epgChannelId, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(epg.epgChannelId, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OwnTVButton("Close", onClick = onDismiss, style = OwnTVButtonStyle.SECONDARY)
+                if (currentMatch != null) OwnTVButton("Clear match", onClick = onClear, style = OwnTVButtonStyle.SECONDARY)
+            }
+        }
+    }
+}

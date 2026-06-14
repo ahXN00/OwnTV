@@ -37,10 +37,12 @@ data class SectionCustomizations(
     val itemNames: Map<String, String> = emptyMap(),
     /** Explicit category order (keys, first = top). Categories not listed follow in natural order. */
     val categoryOrder: List<String> = emptyList(),
+    /** Manual EPG match: item key → the EPG channel id to use (overrides the channel's own epg id). */
+    val epgMatches: Map<String, String> = emptyMap(),
 ) {
     val isEmpty: Boolean
         get() = hiddenCategories.isEmpty() && hiddenItems.isEmpty() && categoryNames.isEmpty() &&
-            itemNames.isEmpty() && categoryOrder.isEmpty()
+            itemNames.isEmpty() && categoryOrder.isEmpty() && epgMatches.isEmpty()
 }
 
 /**
@@ -91,6 +93,13 @@ class CustomizationStore(private val context: Context) {
     suspend fun setCategoryOrder(profileId: Long, type: MediaType, orderedKeys: List<String>) =
         update(profileId, type) { it.copy(categoryOrder = orderedKeys) }
 
+    /** Manually map an item to an EPG channel id (null/blank clears the override → auto-match). */
+    suspend fun setEpgMatch(profileId: Long, type: MediaType, itemKey: String, epgChannelId: String?) =
+        update(profileId, type) {
+            val key = epgChannelId?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+            it.copy(epgMatches = if (key == null) it.epgMatches - itemKey else it.epgMatches + (itemKey to key))
+        }
+
     // --- backup & restore (profile/source ids are preserved by BackupManager, so keys stay valid) ---
 
     /** All raw customization entries (preference key → JSON) for embedding into a backup file. */
@@ -119,6 +128,7 @@ class CustomizationStore(private val context: Context) {
                 categoryNames = o.optJSONObject("catNames").toStringMap(),
                 itemNames = o.optJSONObject("itemNames").toStringMap(),
                 categoryOrder = o.optJSONArray("catOrder").toStringList(),
+                epgMatches = o.optJSONObject("epgMatch").toStringMap(),
             )
         }.getOrDefault(SectionCustomizations())
     }
@@ -129,6 +139,7 @@ class CustomizationStore(private val context: Context) {
         put("catNames", JSONObject(c.categoryNames as Map<*, *>))
         put("itemNames", JSONObject(c.itemNames as Map<*, *>))
         put("catOrder", JSONArray(c.categoryOrder))
+        put("epgMatch", JSONObject(c.epgMatches as Map<*, *>))
     }.toString()
 
     private fun JSONArray?.toStringList(): List<String> =

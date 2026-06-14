@@ -35,12 +35,14 @@ class SetupViewModel(
     private val backup: BackupManager,
     private val settings: SettingsRepository,
     private val connectivity: ConnectivityObserver,
+    private val importFinalizer: tv.own.owntv.core.sync.ImportFinalizer,
 ) : ViewModel() {
 
     sealed interface ImportState {
         data object Idle : ImportState
         data object Running : ImportState
-        data class Success(val itemCount: Int) : ImportState
+        /** Per-type breakdown (incl. EPG) shown on the onboarding "All set" screen. */
+        data class Success(val summary: String) : ImportState
         data class Failed(val message: String) : ImportState
     }
 
@@ -100,7 +102,11 @@ class SetupViewModel(
                 val source = addSource(profileId)
                 settings.setSourceRefresh(source.id, refreshOnStart)
                 when (val result = sourceRepository.sync(source) { _progress.value = it }) {
-                    SyncResult.Success -> _state.value = ImportState.Success(_progress.value?.processed ?: 0)
+                    SyncResult.Success -> {
+                        // Onboarding: also auto-sync the playlist's EPG and show the full breakdown.
+                        val counts = importFinalizer.finalize(source)
+                        _state.value = ImportState.Success(counts.summary(includeEpg = true))
+                    }
                     is SyncResult.Failed -> _state.value = ImportState.Failed(friendlySyncError(result.message, connectivity.isOnlineNow()))
                     SyncResult.Cancelled -> _state.value = ImportState.Idle
                 }
@@ -136,16 +142,19 @@ class SetupViewModel(
                 val pid = createdProfileId.takeIf { it > 0 } ?: ensureFallbackProfile()
                 sourceIds.forEach { sourceDao.link(ProfileSourceCrossRef(profileId = pid, sourceId = it)) }
                 val sources = sourceDao.getAllOnce().filter { it.id in sourceIds }
-                var processed = 0
+                var total = tv.own.owntv.core.sync.SyncCounts(0, 0, 0, 0)
                 var failure: String? = null
                 for (source in sources) {
                     when (val result = sourceRepository.sync(source) { _progress.value = it }) {
-                        SyncResult.Success -> processed += _progress.value?.processed ?: 0
+                        SyncResult.Success -> {
+                            val c = importFinalizer.finalize(source)
+                            total = tv.own.owntv.core.sync.SyncCounts(total.channels + c.channels, total.movies + c.movies, total.series + c.series, total.epg + c.epg)
+                        }
                         is SyncResult.Failed -> failure = result.message
                         SyncResult.Cancelled -> {}
                     }
                 }
-                _state.value = failure?.let { ImportState.Failed(friendlySyncError(it, connectivity.isOnlineNow())) } ?: ImportState.Success(processed)
+                _state.value = failure?.let { ImportState.Failed(friendlySyncError(it, connectivity.isOnlineNow())) } ?: ImportState.Success(total.summary(includeEpg = true))
             } catch (c: CancellationException) {
                 throw c
             } catch (e: Exception) {
@@ -159,7 +168,7 @@ class SetupViewModel(
         viewModelScope.launch {
             _state.value = ImportState.Running
             backup.import(file).fold(
-                onSuccess = { _state.value = ImportState.Success(it); onDone() },
+                onSuccess = { _state.value = ImportState.Success("Restored $it items. Re-sync your sources to load content."); onDone() },
                 onFailure = { _state.value = ImportState.Failed(it.message ?: "Restore failed") },
             )
         }

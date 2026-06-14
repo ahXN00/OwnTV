@@ -74,6 +74,16 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channels WHERE sourceId IN (:sourceIds)")
     fun countAll(sourceIds: List<Long>): Flow<Int>
 
+    /** "All Channels" count with hidden categories excluded (matches the filtered ALL list). */
+    @Query(
+        "SELECT COUNT(*) FROM channels WHERE sourceId IN (:sourceIds) " +
+            "AND (categoryId IS NULL OR categoryId NOT IN (:excludedCategoryIds))",
+    )
+    fun countAllExcluding(sourceIds: List<Long>, excludedCategoryIds: List<Long>): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM channels WHERE sourceId = :sourceId")
+    suspend fun countForSourceOnce(sourceId: Long): Int
+
     // --- Search (FTS4) ---
     @Query(
         "SELECT * FROM channels WHERE sourceId IN (:sourceIds) " +
@@ -112,7 +122,12 @@ interface ChannelDao {
     )
     fun pagingFavorites(profileId: Long): PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT COUNT(*) FROM favorites WHERE profileId = :profileId AND mediaType = 'LIVE'")
+    // Counts via the same join the list uses, so the badge can't show favorites whose channel id went
+    // stale on a re-sync (the old "(2) but the folder is empty" bug) before the relink purges them.
+    @Query(
+        "SELECT COUNT(*) FROM favorites f INNER JOIN channels c ON c.id = f.itemId " +
+            "WHERE f.profileId = :profileId AND f.mediaType = 'LIVE'",
+    )
     fun countFavorites(profileId: Long): Flow<Int>
 
     @Query(

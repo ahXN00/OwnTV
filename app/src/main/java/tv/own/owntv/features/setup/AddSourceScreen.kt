@@ -111,15 +111,8 @@ fun AddSourceScreen(
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
-            OwnTVTextField(
-                epgUrl, { epgUrl = it },
-                label = "EPG URL (optional, XMLTV)",
-                placeholder = if (kind == SourceKind.XTREAM) "blank uses the server's xmltv.php" else "blank uses the playlist's url-tvg",
-                keyboardType = KeyboardType.Uri,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
+            // EPG is managed separately now (Settings → EPG Sources), so no EPG field here. For an
+            // Xtream server the guide URL is still derived automatically; M3U EPG can be added there.
             Spacer(Modifier.height(14.dp))
             OwnTVTextField(userAgent, { userAgent = it }, label = "User-Agent (optional)", placeholder = "e.g. VLC/3.0.20 LibVLC/3.0.20", modifier = Modifier.fillMaxWidth())
 

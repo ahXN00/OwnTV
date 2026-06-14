@@ -57,6 +57,26 @@ class OwnTVPlayer(
         const val MAX_AUTO_RETRIES = 3 // silent retries (backoff) before showing the error UI
     }
 
+    // The app renders with mpv's direct decoder-to-surface output (vo=mediacodec_embed) — the same
+    // zero-copy pipeline YouTube/Netflix use, and the right one for TV hardware. mpv's GL renderer is
+    // kept ONLY as the automatic software-decode rescue (hwdec=no): the direct surface can't display
+    // software-decoded frames, so those go through vo=gpu. The Android emulator's *translated* GL is
+    // broken and hard-crashes the process, so on emulators we never attempt the GL rescue — we show a
+    // clean "can't decode" error instead. Real TVs (incl. Fire TV) run the GL rescue fine.
+    private val glUnsupported: Boolean by lazy { isProbablyEmulator() }
+    private fun isProbablyEmulator(): Boolean {
+        val fp = android.os.Build.FINGERPRINT
+        val model = android.os.Build.MODEL
+        return fp.startsWith("generic") || fp.startsWith("unknown") ||
+            fp.contains("emulator", true) || fp.contains("/sdk_") ||
+            model.contains("google_sdk") || model.contains("Emulator") ||
+            model.contains("Android SDK built for") ||
+            android.os.Build.MANUFACTURER.contains("Genymotion") ||
+            android.os.Build.HARDWARE.contains("goldfish") || android.os.Build.HARDWARE.contains("ranchu") ||
+            android.os.Build.PRODUCT.contains("sdk") || android.os.Build.PRODUCT.contains("emulator") ||
+            android.os.Build.PRODUCT.contains("simulator")
+    }
+
     private var mpv: MPVLib? = null
     private var initialized = false
     private var pendingSeekMs = 0L
@@ -80,42 +100,36 @@ class OwnTVPlayer(
     @Volatile private var decodeGuardTripped = false
 
     // --- Render path -------------------------------------------------------------------------
-    // TV-class devices use mpv's direct decoder-to-surface output (vo=mediacodec_embed +
-    // hwdec=mediacodec): zero CPU copies, no GL shader work, the panel's own silicon renders HDR —
-    // the same pipeline YouTube/Netflix use, and the only one weak TV SoCs play 4K smoothly on.
-    // mpv's GL renderer (vo=gpu, copy-mode hwdec) remains for: strong devices, the QUALITY setting,
-    // software decoding (direct output can't display software frames), and as automatic fallback.
-    private var renderMode = SettingsRepository.RenderMode.SMOOTH
-    // Direct failed on the LAST load → try GL for this one. Unlike before this is NOT sticky for the
-    // whole session: it's cleared on each new load so a transient cold-boot decoder-busy (which our
-    // auto-retry usually heals first) can't permanently demote the user to the heavy renderer.
-    @Volatile private var directFailedLastLoad = false
+    // Always direct (vo=mediacodec_embed + hwdec=mediacodec): zero CPU copies, no GL shader work, the
+    // panel's own silicon renders HDR — the same pipeline YouTube/Netflix use, and the only one weak TV
+    // SoCs play 4K smoothly on. The GL renderer (vo=gpu) is used ONLY when hardware decoding is off (the
+    // user setting) or the per-item software rescue kicks in — the direct surface can't show SW frames.
     // Silent auto-retry budget for a load that fails to start (transient: cold-boot decoder-busy,
     // a provider 5xx, the surface-timing race). Reset per genuinely-new item; counts up across
     // retries with backoff, then the error UI + manual Retry takes over.
     @Volatile private var autoRetries = 0
+    // A stream the hardware decoder can't start (weak TV decoders — e.g. a Fire TV Stick 3rd gen reject
+    // some otherwise-fine channels/VOD with "unsupported format") is retried ONCE in pure software,
+    // per item, before the error shows — so the user no longer has to flip the global hardware-decoding
+    // setting off. Per-item only; never changes the user's setting. Reset on each genuinely-new item.
+    @Volatile private var forceSoftwareThisLoad = false
     private val _directRender = MutableStateFlow(false)
     /** True while the direct (decoder-to-surface) output is in use — HUD hides zoom, app draws subs. */
     val directRender: StateFlow<Boolean> = _directRender.asStateFlow()
 
-    /**
-     * Pick the render path. SMOOTH = always direct (any device, never demote); AUTO = direct on
-     * TV-class hardware, GL elsewhere, GL fallback after a failure; QUALITY = always GL.
-     * Software decoding (hwDecoding off) always uses GL — the direct surface can't show SW frames.
-     */
-    private fun useDirect(): Boolean {
-        if (!hwDecoding) return false
-        return when (renderMode) {
-            SettingsRepository.RenderMode.QUALITY -> false
-            SettingsRepository.RenderMode.SMOOTH -> true
-            SettingsRepository.RenderMode.AUTO -> playerBudget?.lowSpec == true && !directFailedLastLoad
-        }
-    }
+    /** Hardware decoding effectively in use right now — the global setting, minus a per-item override
+     *  forced on after the hardware decoder failed to start a stream. */
+    private fun hwDecodingActive(): Boolean = hwDecoding && !forceSoftwareThisLoad
 
-    /** Apply vo/hwdec for the current render path (also safe live — mpv reinits decoder/output). */
+    /** Direct decoder-to-surface output. The only non-direct case is software decoding (hwdec off or
+     *  the per-item rescue), which the direct surface can't display, so it uses the GL renderer. */
+    private fun useDirect(): Boolean = hwDecodingActive()
+
+    /** Apply vo/hwdec for the current render path (also safe live — mpv reinits decoder/output).
+     *  Direct → hardware decode to surface; otherwise software decode through the GL renderer. */
     private fun MPVLib.applyRenderConfig() {
         val direct = useDirect()
-        setPropertyString("hwdec", if (!hwDecoding) "no" else if (direct) "mediacodec" else "mediacodec,mediacodec-copy")
+        setPropertyString("hwdec", if (direct) "mediacodec" else "no")
         if (surfaceAttached) setPropertyString("vo", if (direct) "mediacodec_embed" else "gpu")
         _directRender.value = direct
     }
@@ -154,10 +168,6 @@ class OwnTVPlayer(
         }.launchIn(scope)
         settings.hwDecoding.onEach { on ->
             hwDecoding = on
-            if (initialized) mpvAsync { applyRenderConfig() }
-        }.launchIn(scope)
-        settings.renderMode.onEach { mode ->
-            renderMode = mode
             if (initialized) mpvAsync { applyRenderConfig() }
         }.launchIn(scope)
         settings.subtitleScale.onEach { s ->
@@ -221,9 +231,13 @@ class OwnTVPlayer(
     private val _videoRes = MutableStateFlow<String?>(null)
     val videoRes: StateFlow<String?> = _videoRes.asStateFlow()
 
-    /** Video aspect ratio (w/h) — the surface view letterboxes itself with this in direct mode. */
+    /** Video aspect ratio (w/h) — the surface view sizes itself with this in direct mode. */
     private val _videoAspect = MutableStateFlow<Float?>(null)
     val videoAspect: StateFlow<Float?> = _videoAspect.asStateFlow()
+
+    /** Native video pixel size (w, h) — the surface view uses it for the Original (1:1) zoom mode. */
+    private val _videoSize = MutableStateFlow<Pair<Int, Int>?>(null)
+    val videoSize: StateFlow<Pair<Int, Int>?> = _videoSize.asStateFlow()
 
     /** Current subtitle line(s) for the Compose overlay (direct mode only; null = nothing showing). */
     private val _subText = MutableStateFlow<String?>(null)
@@ -247,7 +261,7 @@ class OwnTVPlayer(
         mpv = MPVLib.create(context)?.apply {
             setOptionString("vo", if (useDirect()) "mediacodec_embed" else "gpu")
             setOptionString("gpu-context", "android")
-            setOptionString("hwdec", if (!hwDecoding) "no" else if (useDirect()) "mediacodec" else "mediacodec,mediacodec-copy")
+            setOptionString("hwdec", if (useDirect()) "mediacodec" else "no")
             setOptionString("ao", "audiotrack")
             setOptionString("force-window", "no")
             setOptionString("idle", "yes")
@@ -380,11 +394,16 @@ class OwnTVPlayer(
         _videoRes.value = null
         expectingPlayback = true
         pendingSeekMs = startPositionMs
-        // A genuinely new item resets the failure budget and re-arms the direct path; an auto-retry
-        // / GL-demote reload of the SAME item passes resetRetries=false to keep that state.
+        // A genuinely new item resets the failure budget; an auto-retry / software-fallback reload of
+        // the SAME item passes resetRetries=false to keep that state.
         if (resetRetries) {
             autoRetries = 0
-            directFailedLastLoad = false
+            // A new item re-arms hardware decoding (the software override is per-item) — restore the
+            // direct render path so one bad stream doesn't keep the rest in software.
+            if (forceSoftwareThisLoad) {
+                forceSoftwareThisLoad = false
+                mpvAsync { applyRenderConfig() }
+            }
         }
         // Reset the decode watchdog + per-file video state.
         currentHwdec = null
@@ -392,6 +411,7 @@ class OwnTVPlayer(
         currentWidthPx = 0
         decodeGuardTripped = false
         _videoAspect.value = null
+        _videoSize.value = null
         _subText.value = null
         // Mute is a global mpv property, so set it now (applies whenever the file actually loads). The
         // live preview mutes; everything else plays with sound.
@@ -451,8 +471,9 @@ class OwnTVPlayer(
     // --- Zoom / aspect ---
     fun setZoomMode(mode: ZoomMode) {
         _zoomMode.value = mode
-        // Direct mode: the decoder owns the surface, GL scaling properties don't apply — the view
-        // itself letterboxes to the video aspect (see MpvVideoSurface), so FIT is always correct.
+        // Direct mode: the decoder owns the surface, so mpv's GL scaling properties don't apply — the
+        // surface VIEW resizes/crops itself per mode instead (see MpvVideoSurface, which observes
+        // zoomMode). Nothing to do on mpv here. GL mode (software rescue) still uses the props below.
         if (_directRender.value) return
         mpvAsync {
             // Reset, then apply the chosen mode's overrides.
@@ -622,6 +643,7 @@ class OwnTVPlayer(
         val w = currentWidthPx
         val h = currentHeightPx
         _videoAspect.value = if (w > 0 && h > 0) w.toFloat() / h.toFloat() else null
+        _videoSize.value = if (w > 0 && h > 0) w to h else null
     }
 
     /**
@@ -724,28 +746,28 @@ class OwnTVPlayer(
                     mpvAsync {
                         val hw = getPropertyString("hwdec-current") ?: ""
                         val h = getPropertyInt("height") ?: 0
-                        android.util.Log.i(TAG, "decode check: hwdec-current='$hw' height=${h}px direct=${_directRender.value} mode=$renderMode")
-                        // Direct output can only display hardware frames. If the direct decoder didn't
-                        // engage (cold-boot decoder-busy, etc.), recover per render mode:
-                        //  - AUTO: demote THIS reload to the GL renderer (non-sticky — the next item
-                        //    re-arms direct), so the user keeps watching even if slower.
-                        //  - SMOOTH: never demote to the heavy path — retry direct (the decoder usually
-                        //    frees within seconds); fall through to the error UI only if it never does.
+                        android.util.Log.i(TAG, "decode check: hwdec-current='$hw' height=${h}px direct=${_directRender.value}")
+                        // The direct surface can only display hardware frames. If the direct decoder
+                        // didn't engage (cold-boot decoder-busy, etc.), retry direct a few times (it
+                        // usually frees within seconds), then fall back to software decode, then error.
                         if (_directRender.value && (hw.isEmpty() || hw == "no")) {
                             val pos = if (isLiveContent) 0L else _position.value
-                            if (renderMode == SettingsRepository.RenderMode.AUTO) {
-                                android.util.Log.w(TAG, "direct failed — AUTO falling back to GL for this item")
-                                directFailedLastLoad = true
-                                applyRenderConfig()
-                                scope.launch { loadUrl(currentUrl ?: return@launch, MediaMeta(currentTitle, currentSubtitle, currentYear, currentLogoUrl), isLiveContent, pos, resetRetries = false) }
-                            } else if (autoRetries < MAX_AUTO_RETRIES) {
+                            if (autoRetries < MAX_AUTO_RETRIES) {
                                 autoRetries++
-                                android.util.Log.w(TAG, "direct failed — SMOOTH retry $autoRetries/$MAX_AUTO_RETRIES")
+                                android.util.Log.w(TAG, "direct failed — retry $autoRetries/$MAX_AUTO_RETRIES")
                                 _buffering.value = true
                                 scope.launch {
                                     delay(800L * autoRetries)
                                     if (gen == loadGeneration) loadUrl(currentUrl ?: return@launch, MediaMeta(currentTitle, currentSubtitle, currentYear, currentLogoUrl), isLiveContent, pos, resetRetries = false)
                                 }
+                            } else if (hwDecodingActive() && !glUnsupported) {
+                                // Direct decoder never engaged after retries — fall back to software decode
+                                // (GL) for this item (weak decoders that mangle the stream) before erroring.
+                                // Skipped on emulators, where the translated GL would crash.
+                                android.util.Log.w(TAG, "direct failed — falling back to software decode for this item")
+                                forceSoftwareThisLoad = true
+                                applyRenderConfig()
+                                scope.launch { loadUrl(currentUrl ?: return@launch, MediaMeta(currentTitle, currentSubtitle, currentYear, currentLogoUrl), isLiveContent, pos, resetRetries = false) }
                             } else {
                                 android.util.Log.w(TAG, "direct failed — retries exhausted, showing error")
                                 scope.launch { _buffering.value = false; _error.value = "This TV's video decoder is busy. Try again in a moment." }
@@ -775,6 +797,21 @@ class OwnTVPlayer(
                             android.util.Log.w(TAG, "playback didn't start — auto-retry $autoRetries/$MAX_AUTO_RETRIES")
                             _buffering.value = true
                             delay(700L * autoRetries)
+                            if (gen == loadGeneration && currentUrl != null) {
+                                loadUrl(
+                                    currentUrl!!, MediaMeta(currentTitle, currentSubtitle, currentYear, currentLogoUrl),
+                                    isLiveContent, if (isLiveContent) 0L else _position.value, resetRetries = false,
+                                )
+                            }
+                        } else if (hwDecodingActive() && !glUnsupported && currentUrl != null) {
+                            // Hardware decoding never got it going — some weak TV decoders reject streams
+                            // that software decoding plays fine. Try once in pure software before erroring.
+                            // Skipped on emulators, where the translated GL would crash.
+                            android.util.Log.w(TAG, "playback didn't start on hardware — falling back to software decode")
+                            forceSoftwareThisLoad = true
+                            _buffering.value = true
+                            mpvAsync { applyRenderConfig() }
+                            delay(200)
                             if (gen == loadGeneration && currentUrl != null) {
                                 loadUrl(
                                     currentUrl!!, MediaMeta(currentTitle, currentSubtitle, currentYear, currentLogoUrl),

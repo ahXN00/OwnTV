@@ -1,6 +1,60 @@
 # Changelog
 
-## v2.1.0 — Unreleased
+## v2.2.0 — 2026-06-14
+
+- **Multiple EPG sources** — EPG is now its own thing: **Settings → EPG Sources** lets you add any
+  number of XMLTV guide feeds (with **Edit · Delete · Re-sync**), and they merge into the TV Guide.
+  Adding a playlist **auto-syncs its EPG** (Xtream `xmltv.php` / M3U `url-tvg`), and the new-source
+  message now breaks down what was imported — e.g. *"40K channels · 100K movies · 30K series · 30K
+  EPG synced"*. The Guide's manual download button is gone (EPG syncs on add); when there's no EPG it
+  shows an **Add EPG** shortcut.
+- **Match a channel to a guide manually** — when a channel doesn't auto-match the EPG, open it in the
+  Live preview and press **Match EPG** to pick its guide channel (searchable). Saved per profile,
+  survives re-syncs; the Guide grid and the now/next card both honor it.
+- **"What's New" before updating** — the startup update card now opens the **full changelog** when you
+  press *What's New*, matching the manual check — so both paths show what changed before you update.
+- **Back up your settings too** — Backup & Restore gained an **App settings** section (theme, accent,
+  UI zoom, all Video Player settings, HDR, live-preview, sort orders…), and your **EPG sources** are
+  now included with the profiles & sources backup.
+- **Aspect-ratio button in the player** — the player's zoom control now works in every mode (live,
+  movies and series): **Fit · Fill/Crop · Stretch · Original · Force 16:9 · Force 4:3**. It resizes the
+  video surface directly, so it works with the fast direct renderer too. (Fixes #4.)
+- **D-pad is now strictly for navigation while watching live** — **D-pad Up/Down** move through the
+  player controls (like Left/Right) instead of changing channels. Channel surfing stays on the
+  dedicated **CH+ / CH−** keys. (No CH keys on your remote? Go back to the list to pick a channel.)
+- **Picture-in-Picture for live TV** — the **PiP** button now works while watching a channel: dock it
+  to a corner and keep browsing the app while it streams. **Selecting another channel updates the
+  docked window in place**, and its expand button maximizes it again. (Fixes #6.)
+- **Playlists show what's in them** — each row in **Settings → Playlists** now lists its **channel /
+  movie / series counts** (e.g. *"40K channels · 100K movies · 30K series"*) instead of the old, stale
+  "EPG not downloaded" note (EPG lives on its own screen now).
+
+### 🛠️ Fixes
+
+- **Favorites & history survive a re-sync** — content ids change every refresh, which used to orphan
+  your data: the Favorites folder showed a count (e.g. *"(2)"*) but listed nothing. Favorites, watch
+  history and resume positions now **re-attach to the refreshed content automatically** (and stale
+  leftovers are cleaned up), so your starred channels/movies/series and recently-watched stay put —
+  including across the refresh-on-startup.
+- **Hiding a group now hides its channels everywhere** — hidden categories only dropped the rail
+  folder before, so their channels still showed under **All Channels**, in search and in
+  recently-watched (hiding the adult groups didn't actually hide the channels). Hidden groups' channels
+  now drop out of those lists and counts too.
+- **Plays more streams on weak boxes** — when a device's hardware decoder can't start a stream (some
+  Fire TV Sticks reject otherwise-fine channels/VOD with *"playback error… unsupported format"*), the
+  player now **retries that stream in software automatically** before showing an error — so you no
+  longer have to turn off hardware decoding to watch those channels.
+- **Movie backdrop no longer looks clipped** — the artwork in a movie's details pane now fills its
+  banner cleanly instead of showing letterbox bars (or a thin sliver when only a poster was available).
+  (Fixes #5.)
+- **Simpler, crash-proof video** — the renderer picker (Smooth/Auto/**Quality**) is gone. The app now
+  always uses the direct, *YouTube-style* decoder-to-surface path — the best quality (full native 4K,
+  HDR handled by the panel) **and** the lightest on TV hardware. mpv's heavyweight GL renderer, which
+  could hard-crash the whole app on some GPUs (e.g. an emulator's translated GL), is no longer a user
+  option — it's kept only as the **automatic software-decode rescue**, and is skipped entirely on
+  emulators (a clean "can't decode on this device" message shows instead).
+
+## v2.1.0 — 2026-06-13
 
 - **Channel up/down with the remote** — while watching a channel fullscreen, press **D-pad up/down**
   (or the **CH +/−** keys) to zap to the next/previous channel in the list you opened, with a brief

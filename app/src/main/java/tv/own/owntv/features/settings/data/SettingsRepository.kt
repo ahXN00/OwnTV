@@ -12,6 +12,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import tv.own.owntv.ui.theme.AccentColor
 import tv.own.owntv.ui.theme.ThemeMode
@@ -51,29 +52,6 @@ class SettingsRepository(private val context: Context) {
         val SORT_SERIES = stringPreferencesKey("sort_series")
         val RESUME_MODE = stringPreferencesKey("resume_mode")
         val UPDATE_CHECK_ON_START = booleanPreferencesKey("update_check_on_start")
-        val RENDER_MODE = stringPreferencesKey("render_mode")
-    }
-
-    /**
-     * Video renderer:
-     *  - SMOOTH  — zero-copy direct decoder-to-surface everywhere it can run (the smooth path that
-     *    budget 4K TVs need); never silently demotes to the heavy renderer. App-drawn text subtitles.
-     *  - AUTO    — direct on TV-class hardware, mpv's GL renderer on capable devices; falls back to
-     *    GL if direct can't run.
-     *  - QUALITY — always mpv's GL renderer: full ASS/PGS subtitle styling + zoom, heavy on weak TVs.
-     */
-    enum class RenderMode(val label: String, val hint: String) {
-        SMOOTH("Smooth", "Best for TVs — fastest, native HDR"),
-        AUTO("Auto", "Picks per device"),
-        QUALITY("Quality", "Full mpv GL renderer — heavier"),
-    }
-
-    val renderMode: Flow<RenderMode> = context.dataStore.data.map { prefs ->
-        prefs[Keys.RENDER_MODE]?.let { runCatching { RenderMode.valueOf(it) }.getOrNull() } ?: RenderMode.SMOOTH
-    }
-
-    suspend fun setRenderMode(mode: RenderMode) {
-        context.dataStore.edit { it[Keys.RENDER_MODE] = mode.name }
     }
 
     /** Automatically check GitHub Releases for a newer version shortly after launch. */
@@ -263,5 +241,37 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setActiveProfile(id: Long) {
         context.dataStore.edit { it[Keys.ACTIVE_PROFILE] = id }
+    }
+
+    // --- Backup / restore of pure UI/player preferences (device-agnostic) ---
+    // Deliberately EXCLUDES the download folder (a device-specific path) and the profile/source-coupled
+    // keys (active profile, default source, refresh-on-startup) — those ride with the sources backup.
+
+    private val backupStringKeys = listOf(
+        Keys.THEME_MODE, Keys.ACCENT, Keys.ACCENT_CUSTOM, Keys.DEFAULT_ZOOM,
+        Keys.PREF_AUDIO_LANG, Keys.PREF_SUB_LANG, Keys.SORT_LIVE, Keys.SORT_MOVIES,
+        Keys.SORT_SERIES, Keys.RESUME_MODE,
+    )
+    private val backupIntKeys = listOf(Keys.UI_ZOOM_PCT, Keys.AUDIO_DELAY_MS)
+    private val backupBoolKeys = listOf(Keys.LIVE_PREVIEW, Keys.LIVE_PREVIEW_AUDIO, Keys.HDR_ENABLED, Keys.HW_DECODING, Keys.UPDATE_CHECK_ON_START)
+    private val backupFloatKeys = listOf(Keys.SUB_SCALE)
+
+    suspend fun exportSettings(): org.json.JSONObject {
+        val p = context.dataStore.data.first()
+        return org.json.JSONObject().apply {
+            backupStringKeys.forEach { k -> p[k]?.let { put(k.name, it) } }
+            backupIntKeys.forEach { k -> p[k]?.let { put(k.name, it) } }
+            backupBoolKeys.forEach { k -> p[k]?.let { put(k.name, it) } }
+            backupFloatKeys.forEach { k -> p[k]?.let { put(k.name, it.toDouble()) } }
+        }
+    }
+
+    suspend fun importSettings(o: org.json.JSONObject) {
+        context.dataStore.edit { prefs ->
+            backupStringKeys.forEach { k -> if (o.has(k.name)) prefs[k] = o.getString(k.name) }
+            backupIntKeys.forEach { k -> if (o.has(k.name)) prefs[k] = o.getInt(k.name) }
+            backupBoolKeys.forEach { k -> if (o.has(k.name)) prefs[k] = o.getBoolean(k.name) }
+            backupFloatKeys.forEach { k -> if (o.has(k.name)) prefs[k] = o.getDouble(k.name).toFloat() }
+        }
     }
 }

@@ -248,7 +248,14 @@ private fun MovieDetailsPane(
         ) {
             val art = movie.backdropUrl ?: movie.posterUrl
             if (!art.isNullOrBlank()) {
-                AsyncImage(model = art, contentDescription = null, modifier = Modifier.fillMaxSize())
+                // Crop to fill the banner box — the default (Fit) letterboxes wide backdrops and shows
+                // the portrait-poster fallback as a thin clipped strip (issue #5).
+                AsyncImage(
+                    model = art,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
             } else {
                 OwnTVIcon(OwnTVIcon.MOVIES, tint = colors.onSurfaceVariant, modifier = Modifier.height(48.dp))
             }

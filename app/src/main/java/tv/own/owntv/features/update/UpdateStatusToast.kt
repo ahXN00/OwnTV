@@ -40,7 +40,7 @@ import tv.own.owntv.ui.theme.OwnTVTheme
  * Only the Available state takes D-pad focus; the transient states never interrupt browsing.
  */
 @Composable
-fun UpdateStatusToast(onDone: () -> Unit, modifier: Modifier = Modifier) {
+fun UpdateStatusToast(onDone: () -> Unit, onViewChangelog: () -> Unit, modifier: Modifier = Modifier) {
     val manager: UpdateManager = koinInject()
     val state by manager.state.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
@@ -90,7 +90,9 @@ fun UpdateStatusToast(onDone: () -> Unit, modifier: Modifier = Modifier) {
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OwnTVButton("Update now", onClick = { manager.downloadAndInstall() }, modifier = Modifier.focusRequester(focus))
+                    // "What's New" opens the full changelog dialog (same view the manual check uses);
+                    // both update paths show the changelog before downloading.
+                    OwnTVButton("What's New", onClick = onViewChangelog, modifier = Modifier.focusRequester(focus))
                     OwnTVButton("Later", onClick = onDone, style = OwnTVButtonStyle.SECONDARY)
                 }
             }

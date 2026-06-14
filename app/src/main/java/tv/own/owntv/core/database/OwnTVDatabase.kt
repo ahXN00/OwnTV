@@ -61,7 +61,7 @@ import tv.own.owntv.core.database.entity.WatchHistoryEntity
         SeriesFtsEntity::class,
         EpisodeFtsEntity::class,
     ],
-    version = 1,
+    version = 2, // v2 (v2.2.0): EPG tables lost their sources FK so standalone EPG sources can insert
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -80,5 +80,24 @@ abstract class OwnTVDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "owntv.db"
+
+        /**
+         * v1 → v2: drop the foreign key on the EPG tables (standalone EPG sources use ids that
+         * aren't in `sources`). EPG data is transient and re-synced, so the tables are recreated
+         * empty — everything else (profiles, sources, content, favorites, history) is preserved.
+         */
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `epg_programmes`")
+                db.execSQL("DROP TABLE IF EXISTS `epg_channels`")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `epg_channels` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceId` INTEGER NOT NULL, `epgChannelId` TEXT NOT NULL, `displayName` TEXT)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_epg_channels_sourceId` ON `epg_channels` (`sourceId`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_epg_channels_sourceId_epgChannelId` ON `epg_channels` (`sourceId`, `epgChannelId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `epg_programmes` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceId` INTEGER NOT NULL, `epgChannelId` TEXT NOT NULL, `startMs` INTEGER NOT NULL, `stopMs` INTEGER NOT NULL, `title` TEXT NOT NULL, `description` TEXT)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_epg_programmes_epgChannelId_startMs` ON `epg_programmes` (`epgChannelId`, `startMs`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_epg_programmes_sourceId` ON `epg_programmes` (`sourceId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_epg_programmes_stopMs` ON `epg_programmes` (`stopMs`)")
+            }
+        }
     }
 }

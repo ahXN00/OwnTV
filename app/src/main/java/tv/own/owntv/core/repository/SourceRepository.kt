@@ -48,10 +48,14 @@ class SourceRepository(
     suspend fun updateSource(source: SourceEntity) = sourceDao.update(source)
 
     suspend fun sync(source: SourceEntity, onProgress: (ImportStage) -> Unit): SyncResult {
+        // Snapshot favorites/history/resume with stable keys BEFORE the sync clears content (their ids
+        // change on every refresh, so they'd otherwise orphan — count badge set, list empty).
+        val snapshot = runCatching { userData.exportAll() }.getOrNull()
         val result = syncManager.sync(source, onProgress)
         if (result == SyncResult.Success) {
-            // Content rows just regenerated — attach any restored favorites/history/progress to them.
-            runCatching { userData.resolvePending() }
+            // Content rows just regenerated — re-attach the snapshot (and any restored backup data) to
+            // the new ids, and drop rows the provider removed.
+            runCatching { userData.relinkAfterSync(snapshot ?: org.json.JSONArray()) }
         }
         return result
     }

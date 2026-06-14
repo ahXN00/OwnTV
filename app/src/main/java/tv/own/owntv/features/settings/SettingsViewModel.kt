@@ -34,15 +34,21 @@ class SettingsViewModel(
     private val settings: SettingsRepository,
     private val connectivity: ConnectivityObserver,
     private val epgDao: tv.own.owntv.core.database.dao.EpgDao,
+    private val importFinalizer: tv.own.owntv.core.sync.ImportFinalizer,
 ) : ViewModel() {
 
     /** Stored EPG programme count for a source — the row shows it as the EPG status. */
     fun epgCount(sourceId: Long): kotlinx.coroutines.flow.Flow<Int> = epgDao.countForSource(sourceId)
 
+    /** Content counts (channels/movies/series) for a source — shown on each Playlists row. */
+    fun contentCounts(sourceId: Long): kotlinx.coroutines.flow.Flow<tv.own.owntv.core.sync.SyncCounts> =
+        kotlinx.coroutines.flow.flow { emit(importFinalizer.contentCounts(sourceId)) }
+
     sealed interface ImportState {
         data object Idle : ImportState
         data object Running : ImportState
-        data class Success(val itemCount: Int) : ImportState
+        /** [summary] is the per-type breakdown, e.g. "40K channels · 100K movies · 30K series synced". */
+        data class Success(val summary: String) : ImportState
         data class Failed(val message: String) : ImportState
     }
 
@@ -90,14 +96,6 @@ class SettingsViewModel(
     // --- Video Player Settings ---
     val hwDecoding: StateFlow<Boolean> = settings.hwDecoding.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     fun setHwDecoding(enabled: Boolean) { viewModelScope.launch { settings.setHwDecoding(enabled) } }
-
-    val renderMode: StateFlow<SettingsRepository.RenderMode> =
-        settings.renderMode.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.RenderMode.SMOOTH)
-    fun setRenderMode(name: String) {
-        viewModelScope.launch {
-            settings.setRenderMode(runCatching { SettingsRepository.RenderMode.valueOf(name) }.getOrDefault(SettingsRepository.RenderMode.SMOOTH))
-        }
-    }
 
     val updateCheckOnStart: StateFlow<Boolean> =
         settings.updateCheckOnStart.stateIn(viewModelScope, SharingStarted.Eagerly, true)
@@ -197,7 +195,12 @@ class SettingsViewModel(
                 val source = addSource(pid)
                 settings.setSourceRefresh(source.id, refreshOnStart)
                 when (val r = sourceRepository.sync(source) { _progress.value = it }) {
-                    SyncResult.Success -> _importState.value = ImportState.Success(_progress.value?.processed ?: 0)
+                    SyncResult.Success -> {
+                        // Settings playlist add: content breakdown only (EPG syncs silently and is
+                        // shown on the EPG Sources screen, per the separated-EPG design).
+                        val counts = importFinalizer.finalize(source)
+                        _importState.value = ImportState.Success(counts.summary(includeEpg = false))
+                    }
                     is SyncResult.Failed -> _importState.value = ImportState.Failed(friendlySyncError(r.message, connectivity.isOnlineNow()))
                     SyncResult.Cancelled -> _importState.value = ImportState.Idle
                 }
@@ -215,7 +218,10 @@ class SettingsViewModel(
             _importState.value = ImportState.Running
             _progress.value = null
             when (val r = sourceRepository.sync(source) { _progress.value = it }) {
-                SyncResult.Success -> _importState.value = ImportState.Success(_progress.value?.processed ?: 0)
+                SyncResult.Success -> {
+                    val counts = importFinalizer.finalize(source)
+                    _importState.value = ImportState.Success(counts.summary(includeEpg = false))
+                }
                 is SyncResult.Failed -> _importState.value = ImportState.Failed(friendlySyncError(r.message, connectivity.isOnlineNow()))
                 SyncResult.Cancelled -> _importState.value = ImportState.Idle
             }

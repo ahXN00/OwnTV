@@ -64,7 +64,7 @@ import tv.own.owntv.ui.theme.UiZoom
 
 private enum class TileTone { PRIMARY, SECONDARY, TERTIARY }
 
-private enum class SettingsTab { ROOT, SOURCES, PROFILES, BACKUP, VIDEO, CUSTOMIZE }
+private enum class SettingsTab { ROOT, SOURCES, EPG, PROFILES, BACKUP, VIDEO, CUSTOMIZE }
 
 /**
  * The MD3 Settings screen (shown when [MainSection.SETTINGS] is active): grouped sections, each row
@@ -78,8 +78,12 @@ fun SettingsScreen(
     onSetZoom: (Int) -> Unit,
     onOpenPlaylist: () -> Unit,
     modifier: Modifier = Modifier,
+    openEpgAdd: Boolean = false,
+    onEpgAddConsumed: () -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(SettingsTab.ROOT) }
+    // Deep-link from the Guide's "Add EPG" button: jump straight to EPG Sources in add mode.
+    var consumeEpgAdd by remember { mutableStateOf(false) }
     var showZoom by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
     var showAccent by remember { mutableStateOf(false) }
@@ -120,6 +124,7 @@ fun SettingsScreen(
     var lastTab by remember { mutableStateOf<SettingsTab?>(null) }
     val rowFocus = remember { mapOf(
         SettingsTab.SOURCES to FocusRequester(),
+        SettingsTab.EPG to FocusRequester(),
         SettingsTab.PROFILES to FocusRequester(),
         SettingsTab.BACKUP to FocusRequester(),
         SettingsTab.VIDEO to FocusRequester(),
@@ -132,9 +137,13 @@ fun SettingsScreen(
             runCatching { rowFocus[lastTab]?.requestFocus() }
         }
     }
+    LaunchedEffect(openEpgAdd) {
+        if (openEpgAdd) { consumeEpgAdd = true; open(SettingsTab.EPG); onEpgAddConsumed() }
+    }
 
     when (tab) {
         SettingsTab.SOURCES -> { ManageSourcesScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier); return }
+        SettingsTab.EPG -> { tv.own.owntv.features.settings.EpgSourcesScreen(onBack = { tab = SettingsTab.ROOT; consumeEpgAdd = false }, modifier = modifier, startOnAdd = consumeEpgAdd); return }
         SettingsTab.PROFILES -> { ManageProfilesScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier); return }
         SettingsTab.BACKUP -> { BackupScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier); return }
         SettingsTab.VIDEO -> { VideoPlayerSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier); return }
@@ -173,9 +182,15 @@ fun SettingsScreen(
         GroupLabel("Content")
         SettingsRow(
             tone = TileTone.PRIMARY, icon = OwnTVIcon.PLAYLIST,
-            title = "Sources", desc = "Add, re-sync or remove M3U / Xtream sources",
+            title = "Playlists", desc = "Add, re-sync or remove M3U / Xtream playlists",
             onClick = { open(SettingsTab.SOURCES) }, showChevron = true,
             modifier = Modifier.focusRequester(rowFocus.getValue(SettingsTab.SOURCES)),
+        )
+        SettingsRow(
+            tone = TileTone.PRIMARY, icon = OwnTVIcon.EPG,
+            title = "EPG Sources", desc = "Add XMLTV guide feeds for the TV Guide",
+            onClick = { open(SettingsTab.EPG) }, showChevron = true,
+            modifier = Modifier.focusRequester(rowFocus.getValue(SettingsTab.EPG)),
         )
         SettingsRow(
             tone = TileTone.PRIMARY, icon = OwnTVIcon.SORT,

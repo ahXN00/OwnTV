@@ -54,6 +54,9 @@ interface SeriesDao {
     @Query("SELECT COUNT(*) FROM series WHERE sourceId IN (:sourceIds)")
     fun countAll(sourceIds: List<Long>): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM series WHERE sourceId = :sourceId")
+    suspend fun countForSourceOnce(sourceId: Long): Int
+
     @Query(
         "SELECT * FROM series WHERE sourceId IN (:sourceIds) " +
             "AND id IN (SELECT rowid FROM series_fts WHERE series_fts MATCH :query) ORDER BY name ASC",

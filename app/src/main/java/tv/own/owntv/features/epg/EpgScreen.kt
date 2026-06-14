@@ -77,6 +77,7 @@ fun EpgScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onFullscreen: () -> Unit = {},
+    onAddEpg: () -> Unit = {},
     restoreFocus: Boolean = false,
     onRestored: () -> Unit = {},
 ) {
@@ -167,14 +168,6 @@ fun EpgScreen(
                 )
             }
             Spacer(Modifier.weight(1f))
-            if (state.canRefresh) {
-                OwnTVButton(
-                    if (state.refreshing) "Refreshing…" else "Refresh",
-                    onClick = { vm.refresh() },
-                    icon = OwnTVIcon.HISTORY,
-                    style = OwnTVButtonStyle.SECONDARY,
-                )
-            }
         }
         if (state.stats != null) {
             Spacer(Modifier.height(4.dp))
@@ -191,26 +184,19 @@ fun EpgScreen(
 
         when {
             state.loading -> CenterBox { OwnTVSpinner(sizeDp = 56) }
-            state.refreshing && state.channels.isEmpty() -> CenterBox {
-                OwnTVSpinner(sizeDp = 44)
-                Spacer(Modifier.height(16.dp))
-                Text("Downloading guide…", style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-            }
-            state.isError && state.channels.isEmpty() -> CenterBox {
-                val retry: (() -> Unit)? = if (state.canRefresh) ({ vm.refresh() }) else null
-                ErrorState(
-                    title = "Couldn't load the guide",
-                    message = state.message ?: "Something went wrong.",
-                    retryLabel = "Try again",
-                    onRetry = retry,
+            // No EPG feed added yet → guide it can't fill. Point the user to EPG Sources.
+            !state.hasEpgSources && state.channels.isEmpty() -> CenterBox {
+                Text("No EPG added.", style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Add an EPG (XMLTV) source to fill the guide with programmes.",
+                    style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant,
                 )
+                Spacer(Modifier.height(20.dp))
+                OwnTVButton("Add EPG", onClick = onAddEpg, icon = OwnTVIcon.ADD)
             }
             state.channels.isEmpty() -> CenterBox {
                 Text(state.message ?: "No guide.", style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-                if (state.canRefresh) {
-                    Spacer(Modifier.height(20.dp))
-                    OwnTVButton("Download guide", onClick = { vm.refresh() }, icon = OwnTVIcon.HISTORY)
-                }
             }
             else -> {
                 // Time axis (shares hScroll with the rows below).

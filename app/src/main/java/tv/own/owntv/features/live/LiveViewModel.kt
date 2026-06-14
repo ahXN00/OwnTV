@@ -73,6 +73,8 @@ class LiveViewModel(
     private val settings: SettingsRepository,
     private val xtreamClient: XtreamClient,
     private val customize: CustomizationStore,
+    private val epgDao: tv.own.owntv.core.database.dao.EpgDao,
+    private val epgSourceStore: tv.own.owntv.core.epg.EpgSourceStore,
     val player: OwnTVPlayer,
 ) : ViewModel() {
 
@@ -133,6 +135,30 @@ class LiveViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, SectionCustomizations())
 
+    /**
+     * Category DB ids of the profile's hidden categories. Hiding a category used to only drop its rail
+     * folder — its channels still showed in "All Channels", search and recently-watched (so hiding the
+     * adult groups left them all visible under ALL). Resolving the hidden category keys to ids here lets
+     * those lists filter the channels out, so hiding a group hides its channels everywhere.
+     */
+    private val hiddenCategoryIds: StateFlow<Set<Long>> = ctx
+        .flatMapLatest { c ->
+            if (c.profileId < 0) {
+                flowOf(emptySet())
+            } else {
+                combine(categoryDao.observe(c.sourceIds, MediaType.LIVE), custom) { cats, cust ->
+                    if (cust.hiddenCategories.isEmpty()) emptySet()
+                    else cats.filter { CustomizeKeys.category(it) in cust.hiddenCategories }.map { it.id }.toSet()
+                }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    /** Customizations + resolved hidden-category ids, bundled so the list pipeline takes one flow. */
+    private data class CustState(val cust: SectionCustomizations, val hiddenCats: Set<Long>)
+    private val custResolved: StateFlow<CustState> = combine(custom, hiddenCategoryIds) { c, h -> CustState(c, h) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, CustState(SectionCustomizations(), emptySet()))
+
     val railItems: StateFlow<List<LiveRailItem>> = ctx
         .flatMapLatest { c ->
             if (c.profileId < 0) flowOf(defaultRail)
@@ -149,24 +175,29 @@ class LiveViewModel(
         ctx,
         _search.map { it.trim() }.debounce(300).distinctUntilChanged(),
         sortMode,
-        custom,
-    ) { key, c, query, sort, cust -> Args(key, c, query, sort, cust) }
-        .flatMapLatest { (key, c, query, sort, cust) ->
+        custResolved,
+    ) { key, c, query, sort, cs -> Args(key, c, query, sort, cs) }
+        .flatMapLatest { (key, c, query, sort, cs) ->
             // Customizations are applied to each fresh PagingData inside the pager chain — a PagingData
             // that the UI already collected must never be re-transformed (Paging forbids re-collection,
             // which is why hiding a channel used to crash). A customization change re-creates the pager.
             Pager(PagingConfig(pageSize = 80, prefetchDistance = 40, initialLoadSize = 120, maxSize = 400)) {
                 pagingSource(key, c, query, sort)
             }.flow.map { paging ->
-                if (cust.hiddenItems.isEmpty() && cust.itemNames.isEmpty()) paging
+                val cust = cs.cust
+                val hiddenCats = cs.hiddenCats
+                if (cust.hiddenItems.isEmpty() && cust.itemNames.isEmpty() && hiddenCats.isEmpty()) paging
                 else paging
-                    .filter { ch -> CustomizeKeys.channel(ch) !in cust.hiddenItems }
+                    .filter { ch ->
+                        CustomizeKeys.channel(ch) !in cust.hiddenItems &&
+                            (ch.categoryId == null || ch.categoryId !in hiddenCats)
+                    }
                     .map { ch -> cust.itemNames[CustomizeKeys.channel(ch)]?.let { ch.copy(name = it) } ?: ch }
             }
         }
         .cachedIn(viewModelScope)
 
-    private data class Args(val key: LiveKey, val ctx: Ctx, val query: String, val sort: SettingsRepository.SortMode, val cust: SectionCustomizations)
+    private data class Args(val key: LiveKey, val ctx: Ctx, val query: String, val sort: SettingsRepository.SortMode, val cs: CustState)
 
     /** Hide the focused channel from all lists (undo via Settings → Customize → Hidden channels). */
     fun hideChannel(channel: ChannelEntity) {
@@ -183,8 +214,25 @@ class LiveViewModel(
         }
     }
 
-    val count: StateFlow<Int> = combine(_selected, ctx) { key, c -> key to c }
-        .flatMapLatest { (key, c) -> countFlow(key, c) }
+    /** Manually map a channel to an EPG channel id (null clears the override → auto-match). */
+    fun setEpgMatch(channel: ChannelEntity, epgChannelId: String?) {
+        viewModelScope.launch {
+            customize.setEpgMatch(ctx.value.profileId, MediaType.LIVE, CustomizeKeys.channel(channel), epgChannelId)
+        }
+    }
+
+    /** The current manual EPG id for a channel, or null if auto-matched. */
+    fun currentEpgMatch(channel: ChannelEntity): String? = custom.value.epgMatches[CustomizeKeys.channel(channel)]
+
+    /** Distinct EPG channels for the "Match EPG" picker (across the profile's playlists + EPG feeds). */
+    suspend fun availableEpgChannels(query: String): List<tv.own.owntv.core.database.entity.EpgChannelEntity> {
+        val ids = ctx.value.sourceIds + epgSourceStore.getAll().map { it.id }
+        if (ids.isEmpty()) return emptyList()
+        return epgDao.listEpgChannels(ids, query.trim().lowercase(), 300)
+    }
+
+    val count: StateFlow<Int> = combine(_selected, ctx, hiddenCategoryIds) { key, c, hidden -> Triple(key, c, hidden) }
+        .flatMapLatest { (key, c, hidden) -> countFlow(key, c, hidden) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val favoriteIds: StateFlow<Set<Long>> = ctx
@@ -194,9 +242,12 @@ class LiveViewModel(
 
     val recentlyWatched: StateFlow<List<ChannelEntity>> = ctx
         .flatMapLatest { channelDao.recentlyWatched(it.profileId, 20) }
-        .combine(custom) { list, cust ->
-            list.filter { CustomizeKeys.channel(it) !in cust.hiddenItems }
-                .map { ch -> cust.itemNames[CustomizeKeys.channel(ch)]?.let { ch.copy(name = it) } ?: ch }
+        .combine(custResolved) { list, cs ->
+            list.filter {
+                CustomizeKeys.channel(it) !in cs.cust.hiddenItems &&
+                    (it.categoryId == null || it.categoryId !in cs.hiddenCats)
+            }
+                .map { ch -> cs.cust.itemNames[CustomizeKeys.channel(ch)]?.let { ch.copy(name = it) } ?: ch }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -283,10 +334,25 @@ class LiveViewModel(
         _previewChannel.value = null
     }
 
-    /** Fetch now/next for [ch] (Xtream sources only), cached ~5 min to avoid re-hitting the API. */
+    /** Now/next for [ch], cached ~5 min. Prefers a manual EPG match / stored bulk guide, then falls
+     *  back to Xtream's short EPG API. */
     private suspend fun loadEpg(ch: ChannelEntity): EpgNowNext? = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         epgCache[ch.id]?.takeIf { now - it.at < 5 * 60_000 }?.let { return@withContext it.data }
+
+        // 1) Bulk guide via the effective EPG id (manual match overrides the channel's own id).
+        val epgKey = (custom.value.epgMatches[CustomizeKeys.channel(ch)] ?: ch.epgChannelId)?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+        if (epgKey != null) {
+            val nowProg = epgDao.nowPlaying(epgKey, now)
+            val nextProg = epgDao.upcoming(epgKey, now, 2).first().firstOrNull { it.startMs > (nowProg?.startMs ?: 0) }
+            if (nowProg != null || nextProg != null) {
+                val result = EpgNowNext(nowProg?.toXt(), nextProg?.toXt())
+                epgCache[ch.id] = CachedEpg(now, result)
+                return@withContext result
+            }
+        }
+
+        // 2) Xtream short-EPG API fallback.
         val streamId = ch.remoteId ?: return@withContext null
         val source = sourceDao.getById(ch.sourceId) ?: return@withContext null
         if (source.type != SourceType.XTREAM) return@withContext null
@@ -299,6 +365,9 @@ class LiveViewModel(
         epgCache[ch.id] = CachedEpg(now, result)
         result
     }
+
+    private fun tv.own.owntv.core.database.entity.EpgProgrammeEntity.toXt() =
+        XtEpgEntry(title = title, description = description, startMs = startMs, stopMs = stopMs)
 
     private fun pagingSource(key: LiveKey, c: Ctx, query: String, sort: SettingsRepository.SortMode): PagingSource<Int, ChannelEntity> {
         val ids = c.sourceIds.ifEmpty { listOf(-1L) }
@@ -320,10 +389,10 @@ class LiveViewModel(
         }
     }
 
-    private fun countFlow(key: LiveKey, c: Ctx): Flow<Int> {
+    private fun countFlow(key: LiveKey, c: Ctx, hiddenCats: Set<Long>): Flow<Int> {
         val ids = c.sourceIds.ifEmpty { listOf(-1L) }
         return when (key) {
-            LiveKey.All -> channelDao.countAll(ids)
+            LiveKey.All -> if (hiddenCats.isEmpty()) channelDao.countAll(ids) else channelDao.countAllExcluding(ids, hiddenCats.toList())
             LiveKey.Favorites -> channelDao.countFavorites(c.profileId)
             LiveKey.History -> historyDao.count(c.profileId, MediaType.LIVE)
             is LiveKey.Folder -> channelDao.countByCategory(key.id)

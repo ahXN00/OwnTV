@@ -55,4 +55,12 @@ interface EpgDao {
     /** How many distinct channels actually have guide data (for the Guide's status line). */
     @Query("SELECT COUNT(DISTINCT epgChannelId) FROM epg_programmes WHERE sourceId IN (:sourceIds)")
     suspend fun countGuideChannels(sourceIds: List<Long>): Int
+
+    /** Distinct EPG channels available across feeds — drives the manual "Match EPG" picker. */
+    @Query(
+        "SELECT * FROM epg_channels WHERE sourceId IN (:sourceIds) " +
+            "AND (:query = '' OR LOWER(displayName) LIKE '%' || :query || '%' OR LOWER(epgChannelId) LIKE '%' || :query || '%') " +
+            "GROUP BY epgChannelId ORDER BY displayName ASC LIMIT :limit",
+    )
+    suspend fun listEpgChannels(sourceIds: List<Long>, query: String, limit: Int): List<EpgChannelEntity>
 }

@@ -27,4 +27,16 @@ interface ProgressDao {
     /** Everything, for Backup & Restore. */
     @Query("SELECT * FROM playback_progress")
     suspend fun getAllOnce(): List<PlaybackProgressEntity>
+
+    /**
+     * Drops resume positions orphaned by a re-sync (see FavoriteDao.purgeOrphans). Episodes are
+     * excluded — they load lazily, so episode progress is kept and re-attached when the show opens.
+     */
+    @Query(
+        "DELETE FROM playback_progress WHERE " +
+            "(mediaType = 'LIVE'   AND itemId NOT IN (SELECT id FROM channels)) OR " +
+            "(mediaType = 'MOVIE'  AND itemId NOT IN (SELECT id FROM movies))   OR " +
+            "(mediaType = 'SERIES' AND itemId NOT IN (SELECT id FROM series))",
+    )
+    suspend fun purgeOrphans()
 }

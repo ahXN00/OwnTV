@@ -39,10 +39,11 @@ data class EpgUiState(
     val now: Long = 0,
     val loading: Boolean = true,
     val refreshing: Boolean = false,
-    val canRefresh: Boolean = false,
     val message: String? = null,
     val isError: Boolean = false,
-    /** "N channels · M programmes" once a guide is stored — the visible proof the EPG URL works. */
+    /** False when the user hasn't added any EPG source yet → the screen shows an "Add EPG" prompt. */
+    val hasEpgSources: Boolean = true,
+    /** "N channels · M programmes" once a guide is stored — the visible proof the EPG feed works. */
     val stats: String? = null,
 )
 
@@ -56,6 +57,7 @@ class EpgViewModel(
     private val channelDao: ChannelDao,
     private val epgDao: EpgDao,
     private val epgRepository: EpgRepository,
+    private val epgSourceStore: tv.own.owntv.core.epg.EpgSourceStore,
     private val connectivity: ConnectivityObserver,
     private val customize: CustomizationStore,
     private val historyDao: HistoryDao,
@@ -120,12 +122,14 @@ class EpgViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, message = null)
             val pid = settings.activeProfileId.first()
-            val sources = if (pid < 0) emptyList() else sourceRepository.observeSources(pid).first()
-            val sourceIds = sources.map { it.id }
-            val canRefresh = sources.any { epgRepository.hasGuide(it) }
+            val playlistIds = if (pid < 0) emptyList() else sourceRepository.observeSources(pid).first().map { it.id }
+            val epgIds = epgSourceStore.getAll().map { it.id }
+            // Channels come from the playlists; guide data is matched from BOTH the playlists' own EPG
+            // (kept for compatibility) and the standalone EPG sources — by epgChannelId across all ids.
+            val ids = playlistIds + epgIds
 
-            if (sourceIds.isEmpty()) {
-                _state.value = EpgUiState(loading = false, canRefresh = false, message = "Add a source to see the guide.")
+            if (playlistIds.isEmpty()) {
+                _state.value = EpgUiState(loading = false, message = "Add a playlist to see the guide.")
                 return@launch
             }
 
@@ -135,66 +139,80 @@ class EpgViewModel(
 
             // Respect customizations: hidden channels stay out of the guide, renames show.
             val cust = customize.observe(pid, MediaType.LIVE).first()
-            // ALL channels that actually have programmes in the window (matched case-insensitively —
-            // XMLTV ids often differ from the panel's epg_channel_id in case). No row cap: each row
-            // loads its own programmes lazily, so memory stays flat regardless of channel count.
             val q = _query.value.trim()
-            val channels = channelDao.channelsWithGuide(sourceIds, windowStart, windowEnd, q, MAX_CHANNELS)
+            val auto = channelDao.channelsWithGuide(ids, windowStart, windowEnd, q, MAX_CHANNELS)
                 .filter { CustomizeKeys.channel(it) !in cust.hiddenItems }
                 .map { ch -> cust.itemNames[CustomizeKeys.channel(ch)]?.let { ch.copy(name = it) } ?: ch }
-            val stored = epgDao.countForSources(sourceIds)
+            // Manual EPG matches: override the matched channels' epg id, and pull in any matched
+            // channel that wouldn't otherwise appear (its own epg id didn't auto-match).
+            val channels = applyEpgMatches(auto, cust, playlistIds, q)
+            val stored = epgDao.countForSources(ids)
 
             // New window/data → drop the per-row cache so rows re-query the fresh window.
             rowCache.clear()
-            loadedSourceIds = sourceIds
+            loadedSourceIds = ids
 
+            val hasEpg = epgIds.isNotEmpty()
             val message = when {
-                stored == 0 && canRefresh -> "No guide downloaded yet. Press Refresh to fetch the EPG."
-                stored == 0 -> "Your sources don't provide an EPG guide."
+                stored == 0 -> null // handled by the "No EPG added" prompt (hasEpgSources=false)
                 channels.isEmpty() && q.isNotBlank() -> "No guide channels found for “$q”."
                 channels.isEmpty() ->
                     "Guide data is stored, but its channel ids don't match your channels' EPG ids — " +
-                        "this EPG feed may belong to a different provider lineup. (If you just updated " +
-                        "OwnTV, press Refresh once to re-download the guide.)"
+                        "this EPG feed may belong to a different provider lineup."
                 else -> null
             }
-            // Visible proof the EPG feed works: how much guide data is actually stored.
             val stats = if (stored > 0) {
-                val guideChannels = epgDao.countGuideChannels(sourceIds)
+                val guideChannels = epgDao.countGuideChannels(ids)
                 "Guide loaded: $guideChannels channels · $stored programmes"
             } else null
 
             _state.value = EpgUiState(
                 channels = channels, windowStart = windowStart, windowEnd = windowEnd, now = now,
-                loading = false, refreshing = false, canRefresh = canRefresh, message = message,
-                stats = stats,
+                loading = false, message = message, hasEpgSources = hasEpg, stats = stats,
             )
         }
     }
 
-    fun refresh() {
-        if (_state.value.refreshing) return
-        viewModelScope.launch {
-            _state.value = _state.value.copy(refreshing = true, message = "Downloading guide…")
-            val pid = settings.activeProfileId.first()
-            val sources = if (pid < 0) emptyList() else sourceRepository.observeSources(pid).first()
-            var ok = false
-            var lastError: String? = null
-            for (source in sources.filter { epgRepository.hasGuide(it) }) {
-                runCatching { epgRepository.refresh(source) }
-                    .onSuccess { ok = true }
-                    .onFailure { lastError = it.message }
-            }
-            if (!ok && lastError != null) {
-                _state.value = _state.value.copy(
-                    refreshing = false,
-                    isError = true,
-                    message = friendlySyncError(lastError, connectivity.isOnlineNow()),
-                )
-            } else {
-                load() // reloads from DB (clears refreshing)
-            }
+    /** Apply per-channel manual EPG overrides to the auto-matched guide list. */
+    private suspend fun applyEpgMatches(
+        auto: List<ChannelEntity>,
+        cust: tv.own.owntv.core.customize.SectionCustomizations,
+        playlistIds: List<Long>,
+        query: String,
+    ): List<ChannelEntity> {
+        val matches = cust.epgMatches
+        if (matches.isEmpty()) return auto
+        val byKey = auto.associateBy { CustomizeKeys.channel(it) }
+        // Override the epg id of channels already in the list.
+        val overridden = auto.map { ch -> matches[CustomizeKeys.channel(ch)]?.let { ch.copy(epgChannelId = it) } ?: ch }.toMutableList()
+        // Add matched channels that didn't auto-appear.
+        for ((key, epgId) in matches) {
+            if (byKey.containsKey(key) || key in cust.hiddenItems) continue
+            val ch = resolveChannel(key, playlistIds) ?: continue
+            val name = cust.itemNames[key] ?: ch.name
+            if (query.isNotBlank() && !name.contains(query, ignoreCase = true)) continue
+            overridden.add(ch.copy(epgChannelId = epgId, name = name))
         }
+        return overridden
+    }
+
+    /** Find a channel from a stable customize key ("sourceId:remoteId-or-name"). */
+    private suspend fun resolveChannel(key: String, validSourceIds: List<Long>): ChannelEntity? {
+        val sep = key.indexOf(':')
+        if (sep <= 0) return null
+        val sid = key.substring(0, sep).toLongOrNull() ?: return null
+        if (sid !in validSourceIds) return null
+        val rest = key.substring(sep + 1)
+        return channelDao.findByRemote(sid, rest) ?: channelDao.findByName(sid, rest)
+    }
+
+    /** Distinct EPG channels for the manual "Match EPG" picker (across the profile's feeds). */
+    suspend fun availableEpgChannels(query: String): List<tv.own.owntv.core.database.entity.EpgChannelEntity> {
+        val pid = settings.activeProfileId.first()
+        val playlistIds = if (pid < 0) emptyList() else sourceRepository.observeSources(pid).first().map { it.id }
+        val ids = playlistIds + epgSourceStore.getAll().map { it.id }
+        if (ids.isEmpty()) return emptyList()
+        return epgDao.listEpgChannels(ids, query.trim().lowercase(), 300)
     }
 
     companion object {

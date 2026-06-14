@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
 import tv.own.owntv.core.update.UpdateManager
+import tv.own.owntv.features.update.UpdateDialog
 import tv.own.owntv.features.update.UpdateStatusToast
 import tv.own.owntv.features.downloads.DownloadsScreen
 import tv.own.owntv.features.epg.EpgScreen
@@ -90,6 +91,8 @@ fun OwnTVShell(
     var showExit by remember { mutableStateOf(false) }
     var showAvatarPicker by remember { mutableStateOf(false) }
     var playerMode by remember { mutableStateOf(PlayerMode.NONE) }
+    // Deep-link: the Guide's "Add EPG" button switches to Settings and opens EPG Sources → add.
+    var openEpgAdd by remember { mutableStateOf(false) }
     // One-shot: set when leaving the player so the returning browse screen re-focuses the item you played.
     var restoreFocus by remember { mutableStateOf(false) }
     val player = koinInject<OwnTVPlayer>()
@@ -97,7 +100,12 @@ fun OwnTVShell(
     val liveVm = org.koin.androidx.compose.koinViewModel<tv.own.owntv.features.live.LiveViewModel>()
     val canZap by liveVm.canZap.collectAsStateWithLifecycle()
 
-    val openFullscreen = { restoreFocus = false; playerMode = PlayerMode.FULLSCREEN }
+    // Opening content from a browse screen goes fullscreen — UNLESS the player is already docked as a
+    // mini-player, in which case it stays docked and just swaps to the newly-selected stream (the VM
+    // already started it), so picking a channel updates the PiP window in place (#6).
+    val openFullscreen = { restoreFocus = false; if (playerMode != PlayerMode.MINI) playerMode = PlayerMode.FULLSCREEN }
+    // The mini-player's own expand button always maximizes.
+    val expandPlayer = { restoreFocus = false; playerMode = PlayerMode.FULLSCREEN }
     val exitPlayer = {
         playerMode = PlayerMode.NONE
         player.stop()
@@ -158,6 +166,8 @@ fun OwnTVShell(
                         uiZoomPercent = uiZoomPercent,
                         onSetZoom = onSetZoom,
                         onOpenPlaylist = { /* Phase 6: open setup/playlist */ },
+                        openEpgAdd = openEpgAdd,
+                        onEpgAddConsumed = { openEpgAdd = false },
                         modifier = Modifier
                             .fillMaxSize()
                             .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }
@@ -207,6 +217,7 @@ fun OwnTVShell(
                     selectedSection == MainSection.EPG -> EpgScreen(
                         onBack = { runCatching { sidebarFocus.requestFocus() } },
                         onFullscreen = openFullscreen,
+                        onAddEpg = { openEpgAdd = true; onSelectSection(MainSection.SETTINGS) },
                         restoreFocus = restoreFocus,
                         onRestored = { restoreFocus = false },
                         modifier = Modifier
@@ -272,13 +283,13 @@ fun OwnTVShell(
                 PlayerHud(
                     player = player,
                     onBack = exitPlayer,
-                    onPip = if (!player.isLiveContent) dockPlayer else null,
+                    onPip = dockPlayer, // PiP/dock now available for live too (#6)
                     onChannelUp = if (liveZap) ({ liveVm.zap(-1) }) else null,
                     onChannelDown = if (liveZap) ({ liveVm.zap(1) }) else null,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                MiniPlayer(player = player, onExpand = openFullscreen, onClose = exitPlayer, modifier = Modifier.fillMaxSize())
+                MiniPlayer(player = player, onExpand = expandPlayer, onClose = exitPlayer, modifier = Modifier.fillMaxSize())
             }
         }
       }
@@ -300,6 +311,7 @@ fun OwnTVShell(
         // "Check for updates" dialog drives the same state machine) and during playback.
         val updateManager = koinInject<UpdateManager>()
         var showStartupToast by remember { mutableStateOf(false) }
+        var showChangelog by remember { mutableStateOf(false) }
         val settingsRepo = koinInject<tv.own.owntv.features.settings.data.SettingsRepository>()
         val updateCheckOnStart by settingsRepo.updateCheckOnStart.collectAsStateWithLifecycle(initialValue = false)
         LaunchedEffect(updateCheckOnStart) {
@@ -309,9 +321,16 @@ fun OwnTVShell(
                 updateManager.check()
             }
         }
-        if (showStartupToast && selectedSection != MainSection.SETTINGS && playerMode == PlayerMode.NONE) {
+        if (showChangelog) {
+            // Full "What's New" changelog (same dialog the manual Settings check uses), shown when
+            // the startup card's "What's New" is pressed. No re-check — the release is already loaded.
+            UpdateDialog(onDismiss = { showChangelog = false; showStartupToast = false; updateManager.reset() }, checkOnOpen = false)
+        } else if (showStartupToast && selectedSection != MainSection.SETTINGS && playerMode == PlayerMode.NONE) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
-                UpdateStatusToast(onDone = { showStartupToast = false; updateManager.reset() })
+                UpdateStatusToast(
+                    onDone = { showStartupToast = false; updateManager.reset() },
+                    onViewChangelog = { showChangelog = true },
+                )
             }
         }
     }

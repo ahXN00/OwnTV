@@ -30,4 +30,18 @@ interface FavoriteDao {
     /** Everything, for Backup & Restore. */
     @Query("SELECT * FROM favorites")
     suspend fun getAllOnce(): List<FavoriteEntity>
+
+    /**
+     * Drops favorites whose content row no longer exists — content is clear-then-insert on every sync,
+     * so a favorite's itemId goes stale and the join (pagingFavorites) returns nothing while the raw
+     * count still showed it. Called after a re-sync's relink (UserDataResolver). Episodes are excluded
+     * (they load lazily, so their rows are legitimately absent until a show is opened).
+     */
+    @Query(
+        "DELETE FROM favorites WHERE " +
+            "(mediaType = 'LIVE'   AND itemId NOT IN (SELECT id FROM channels)) OR " +
+            "(mediaType = 'MOVIE'  AND itemId NOT IN (SELECT id FROM movies))   OR " +
+            "(mediaType = 'SERIES' AND itemId NOT IN (SELECT id FROM series))",
+    )
+    suspend fun purgeOrphans()
 }

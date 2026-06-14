@@ -44,6 +44,9 @@ interface MovieDao {
     @Query("SELECT COUNT(*) FROM movies WHERE sourceId IN (:sourceIds)")
     fun countAll(sourceIds: List<Long>): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM movies WHERE sourceId = :sourceId")
+    suspend fun countForSourceOnce(sourceId: Long): Int
+
     @Query(
         "SELECT * FROM movies WHERE sourceId IN (:sourceIds) " +
             "AND id IN (SELECT rowid FROM movies_fts WHERE movies_fts MATCH :query) ORDER BY name ASC",

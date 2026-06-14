@@ -42,6 +42,11 @@ val dataModule = module {
     single { HttpClient(get()) }
     single { ConnectivityObserver(androidContext()) }
     single { CustomizationStore(androidContext()) }
+    single { tv.own.owntv.core.epg.EpgSourceStore(androidContext()) }
+    // store, sourceDao, epgRepository
+    single { tv.own.owntv.core.epg.EpgMigration(get(), get(), get()) }
+    // channelDao, movieDao, seriesDao, epgSourceStore, epgRepository
+    single { tv.own.owntv.core.sync.ImportFinalizer(get(), get(), get(), get(), get()) }
     single { M3uParser() }
     single { XtreamClient(get()) }
     single { SyncManager(get(), get(), get(), get(), get(), get(), get(), get()) }
@@ -55,8 +60,8 @@ val dataModule = module {
     single { SeriesRepository(get(), get(), get(), get()) }
     // context, downloadDao, okHttpClient, settings
     single { DownloadManager(androidContext(), get(), get(), get()) }
-    // profileDao, sourceDao, settings, customizationStore, userDataResolver
-    single { BackupManager(get(), get(), get(), get(), get()) }
+    // profileDao, sourceDao, settings, customizationStore, userDataResolver, epgSourceStore
+    single { BackupManager(get(), get(), get(), get(), get(), get()) }
     // context, okHttpClient — in-app updates from GitHub Releases
     single { UpdateManager(androidContext(), get()) }
 }

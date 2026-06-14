@@ -42,14 +42,16 @@ targets **Android TV only** (leanback launcher, D-pad-first UI).
 ### 🎬 Playback (libmpv / FFmpeg)
 - Plays virtually any codec/container, and exposes **every** audio and subtitle track (not just the
   ones the device can decode).
-- **TV-optimized rendering** — on TV-class hardware the decoder writes frames **directly to the
-  display** (the zero-copy pipeline streaming apps use): smooth 4K HDR with the panel's native HDR
-  handling and fast channel starts, with subtitles drawn by the app. A **Renderer** setting can
-  force mpv's full GL renderer (complete ASS/PGS subtitle styling) on devices that can afford it.
+- **TV-optimized rendering** — the decoder writes frames **directly to the display** (the zero-copy
+  pipeline streaming apps use): smooth 4K HDR with the panel's native HDR handling and fast channel
+  starts, with subtitles drawn by the app. Software decoding is used automatically as a fallback for
+  streams the hardware decoder can't handle.
 - Custom TV HUD: scrubbable seek bar, prev/next, audio/subtitle/speed pickers, zoom & aspect modes,
   volume, and auto-hide controls.
 - Large demuxer cache for smooth 4K/8K streams; **HDR passthrough** when the video and TV support it.
-- **Mini-player / PiP** — dock a movie or episode to a corner and keep browsing, then expand or close.
+- **Mini-player / PiP** — dock a movie, episode **or live channel** to a corner and keep browsing
+  (it keeps streaming across the whole app); selecting another channel updates the docked window,
+  and you can expand or close it.
 - **Resume, your way** — movies & episodes remember where you stopped; replaying shows a small
   *"Resume at 23:45?"* prompt, with a setting for **Always / Ask / Never** resume.
 - 📺 **[Complete player design & feature reference →](extras/player.html)** — an interactive Material 3
@@ -66,13 +68,15 @@ targets **Android TV only** (leanback launcher, D-pad-first UI).
 - Built for scale — tested with ~50k channels / ~168k movies via streaming import and Paging 3.
 
 ### 🗓️ EPG
-- A full **time × channel guide grid** (XMLTV from Xtream `xmltv.php` or an M3U `url-tvg`), plus
-  per-channel **now/next** in the Live preview.
-- **Custom EPG URL per source** (Xtream *and* M3U) — your own XMLTV link overrides the defaults.
+- A full **time × channel guide grid** (XMLTV), plus per-channel **now/next** in the Live preview.
+- **Multiple EPG sources** — add any number of XMLTV feeds in **Settings → EPG Sources** (edit /
+  delete / re-sync); they merge into the guide. Adding a playlist **auto-syncs its EPG** (Xtream
+  `xmltv.php` / M3U `url-tvg`), and you can **manually match** any channel to a guide entry when the
+  auto-match misses (per profile, survives re-syncs).
 - **Tune from the guide**: OK on a channel tunes straight to it; programme details have a
   *Watch channel* button.
-- Clear status everywhere: the Guide shows *"Guide loaded: N channels · M programmes"*, and each
-  source row in Settings shows its own EPG state.
+- Clear status: the Guide shows *"Guide loaded: N channels · M programmes"*, and each EPG source
+  shows its own sync state.
 
 ### 👥 Profiles
 - Multiple profiles with their own favorites/history/resume, optional **PIN locks** (salted hash) and a
@@ -191,8 +195,11 @@ https://github.com/ahXN00/OwnTV/releases/latest/download/OwnTV.apk
 - **Fire TV** — install the **Downloader** app (by AFTVnews) from the Amazon Appstore, then enter the
   **Downloader code `4308278`** (or [`aftv.news/4308278`](https://aftv.news/4308278), which always
   points at the latest signed `OwnTV.apk`). Enable *Apps from Unknown Sources* if prompted.
-- **Android TV / Google TV** — sideload the APK with your tool of choice (e.g. *Send files to TV*,
-  a USB drive, or `adb install OwnTV.apk`).
+- **Android TV / Google TV** — the **Downloader** app is also on Google Play, so the same code
+  **`4308278`** works here too. (If Downloader doesn't show in search, open the Play Store on the TV —
+  you can reach it via *Settings → Apps → See all apps → Show system apps → Google Play Store* — and
+  install it from there.) Or just sideload the APK with your tool of choice (*Send files to TV*, a USB
+  drive, or `adb install OwnTV.apk`).
 
 > Only install the APK from this repository's official Releases (or the `…/releases/latest/download/OwnTV.apk`
 > link above). It's the build signed by this project's CI — third-party re-hosts aren't endorsed.
