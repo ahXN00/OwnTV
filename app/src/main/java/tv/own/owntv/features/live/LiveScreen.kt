@@ -301,6 +301,9 @@ private fun LivePreviewPane(
     onMatchEpg: () -> Unit,
 ) {
     val colors = OwnTVTheme.colors
+    val videoAspect by player.videoAspect.collectAsStateWithLifecycle()
+    val playerError by player.error.collectAsStateWithLifecycle()
+    val previewLoading = showVideo && videoAspect == null && playerError == null
     if (channel == null) {
         PreviewPane(hint = "Focus a channel to see it here.")
         return
@@ -313,13 +316,17 @@ private fun LivePreviewPane(
             modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(12.dp)).background(colors.surfaceContainerLowest),
             contentAlignment = Alignment.Center,
         ) {
-            // Logo placeholder behind, live video on top once it starts.
             if (!channel.logoUrl.isNullOrBlank()) {
                 AsyncImage(model = channel.logoUrl, contentDescription = null, modifier = Modifier.size(120.dp))
             } else {
                 OwnTVIcon(OwnTVIcon.LIVE_TV, tint = colors.onSurfaceVariant, modifier = Modifier.size(56.dp))
             }
-            if (showVideo) tv.own.owntv.player.MpvVideoSurface(player = player, modifier = Modifier.fillMaxSize())
+            if (showVideo) {
+                tv.own.owntv.player.MpvVideoSurface(player = player, modifier = Modifier.fillMaxSize())
+            }
+            if (previewLoading) {
+                OwnTVSpinner(sizeDp = 28)
+            }
         }
         Spacer(Modifier.height(14.dp))
         Text(channel.name, style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
