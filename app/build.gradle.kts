@@ -22,7 +22,7 @@ android {
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         // Keep the fallback at the latest released version, or local debug builds will see the
         // in-app updater offer them the release as an "update".
-        versionName = System.getenv("VERSION_NAME") ?: "2.0.1"
+        versionName = System.getenv("VERSION_NAME") ?: "99.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
