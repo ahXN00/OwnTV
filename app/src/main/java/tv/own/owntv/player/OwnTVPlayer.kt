@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import tv.own.owntv.core.network.HttpClient
 import tv.own.owntv.features.settings.data.SettingsRepository
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /** A selectable audio/subtitle track ([mpvId] is the mpv track id used for `aid`/`sid`). */
 data class TrackOption(val label: String, val mpvId: Int, val selected: Boolean)
@@ -173,6 +175,58 @@ class OwnTVPlayer(
         mpvExecutor.execute { runCatching { m.block() } }
     }
 
+    private fun markActiveFile(active: Boolean, reason: String) {
+        mpvHasActiveFile.set(active)
+    }
+
+    private fun MPVLib.incrementPendingStopCounter(reason: String): Boolean {
+        if (!mpvHasActiveFile.get()) return false
+        pendingStopEndFiles.incrementAndGet()
+        return true
+    }
+
+    private fun MPVLib.rollbackPendingStopCounter(reason: String) {
+        while (true) {
+            val current = pendingStopEndFiles.get()
+            if (current <= 0) return
+            if (pendingStopEndFiles.compareAndSet(current, current - 1)) {
+                return
+            }
+        }
+    }
+
+    private fun MPVLib.loadfileWithStopClassification(url: String, reason: String) {
+        val counted = incrementPendingStopCounter(reason)
+        try {
+            command(arrayOf("loadfile", url))
+            markActiveFile(true, reason)
+        } catch (t: Throwable) {
+            if (counted) rollbackPendingStopCounter(reason)
+            throw t
+        }
+    }
+
+    private fun MPVLib.stopWithStopClassification(reason: String) {
+        val counted = incrementPendingStopCounter(reason)
+        try {
+            command(arrayOf("stop"))
+            markActiveFile(false, reason)
+        } catch (t: Throwable) {
+            if (counted) rollbackPendingStopCounter(reason)
+            throw t
+        }
+    }
+
+    private fun consumePendingStopEndFile(): Boolean {
+        while (true) {
+            val current = pendingStopEndFiles.get()
+            if (current <= 0) return false
+            if (pendingStopEndFiles.compareAndSet(current, current - 1)) {
+                return true
+            }
+        }
+    }
+
     init {
         // Track the HDR setting; apply it live and re-apply on each load via ensureInit.
         settings.hdrEnabled.onEach { enabled ->
@@ -211,6 +265,10 @@ class OwnTVPlayer(
     // may run, or a slow provider makes the worker grind through dead loads). Volatile: written on
     // the main thread, read on the mpv-cmd worker.
     @Volatile private var loadGeneration = 0
+    // App-issued loadfile/stop commands can leave a cleanup END_FILE behind. Track those separately
+    // so mpv's event thread can classify them as STOP instead of startup failure or reconnect.
+    private val pendingStopEndFiles = AtomicInteger(0)
+    private val mpvHasActiveFile = AtomicBoolean(false)
     private var errorCheckJob: Job? = null
 
     private val _nav = MutableStateFlow(NavState(false, false))
@@ -442,7 +500,7 @@ class OwnTVPlayer(
             // Superseded by a newer load or a stop while waiting in the queue? Skip the dead load —
             // this keeps fast preview-scrolling from grinding through every channel it passed.
             if (gen != loadGeneration) return@mpvAsync
-            command(arrayOf("loadfile", url))
+            loadfileWithStopClassification(url, "replacement loadfile")
             setPropertyBoolean("pause", false)
         }
         // mpv only fires the "pause" observer on a *change*; at startup pause is already false, so seed
@@ -511,7 +569,9 @@ class OwnTVPlayer(
 
     fun stop() {
         loadGeneration++ // cancels any queued-but-not-yet-executed load
-        if (initialized) mpvAsync { command(arrayOf("stop")) }
+        expectingPlayback = false
+        errorCheckJob?.cancel()
+        if (initialized) mpvAsync { stopWithStopClassification("stop") }
         currentUrl = null
         pendingUrl = null
         _isPlaying.value = false
@@ -687,7 +747,7 @@ class OwnTVPlayer(
         expectingPlayback = false
         errorCheckJob?.cancel()
         pendingUrl = null
-        mpvAsync { command(arrayOf("stop")) }
+        mpvAsync { stopWithStopClassification("decodeGuard") }
         scope.launch {
             _isPlaying.value = false
             _buffering.value = false
@@ -733,6 +793,15 @@ class OwnTVPlayer(
     override fun event(eventId: Int) {
         when (eventId) {
             MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
+                val pendingStops = pendingStopEndFiles.getAndSet(0)
+                if (pendingStops > 0) {
+                    android.util.Log.w(
+                        TAG,
+                        "FILE_LOADED observed with pendingStopEndFiles=$pendingStops generation=$loadGeneration " +
+                            "live=$isLiveContent; resetting counter",
+                    )
+                }
+                markActiveFile(true, "file loaded")
                 // The new file opened successfully — cancel any pending error and clear a stale one.
                 // This callback runs on mpv's event thread (not main), so sync reads are safe here.
                 expectingPlayback = false
@@ -794,13 +863,19 @@ class OwnTVPlayer(
                     }
                 }
             }
-            // A file ended. This also fires for the *previous* item when we load a new one (next/prev),
-            // so don't error immediately — wait briefly; if the new file loads, FILE_LOADED cancels this.
+            // mpv's Kotlin wrapper does not expose mpv_event_end_file.reason, so classify the cases we
+            // know the app caused (replacement loadfile, manual stop, decode guard) before treating an
+            // END_FILE as a possible playback failure.
             MPVLib.MpvEvent.MPV_EVENT_END_FILE -> {
+                if (consumePendingStopEndFile()) return
+                markActiveFile(false, "end file")
                 if (expectingPlayback) {
                     val gen = loadGeneration
                     errorCheckJob?.cancel()
                     errorCheckJob = scope.launch {
+                        // Unclassified END_FILE is not always a final failure: slow or flaky live
+                        // streams can still report FILE_LOADED shortly after. Give mpv a short grace
+                        // window; FILE_LOADED clears expectingPlayback/cancels this path.
                         delay(1500)
                         if (!expectingPlayback || gen != loadGeneration) return@launch
                         // No internet → don't burn the retry budget on a dead connection; surface the
