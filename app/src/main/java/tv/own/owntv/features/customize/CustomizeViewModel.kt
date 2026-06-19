@@ -59,8 +59,15 @@ class CustomizeViewModel(
     private val _section = MutableStateFlow(MediaType.LIVE)
     val section: StateFlow<MediaType> = _section.asStateFlow()
 
+    // Range select: key of the anchor category (first long-pressed Hide button), or null when no
+    // range is in progress. The UI highlights the anchor and shows a hint while this is set.
+    private val _rangeAnchorKey = MutableStateFlow<String?>(null)
+    val rangeAnchorKey: StateFlow<String?> = _rangeAnchorKey.asStateFlow()
+
     fun selectSection(type: MediaType) {
         _section.value = type
+        // A pending range belongs to the section it was started in — switching sections cancels it.
+        _rangeAnchorKey.value = null
     }
 
     /** Categories of the selected section, in their customized order, including hidden ones. */
@@ -127,5 +134,40 @@ class CustomizeViewModel(
         viewModelScope.launch {
             customize.setItemHidden(ctx.value.profileId, MediaType.LIVE, key, "", false)
         }
+    }
+
+    // --- range (span) select: long-press a Hide button to anchor, click another to set the end ---
+
+    /** Begins a range at [row] (its Hide button was long-pressed). */
+    fun beginRange(row: CustomizeCatRow) {
+        _rangeAnchorKey.value = row.key
+    }
+
+    fun cancelRange() {
+        _rangeAnchorKey.value = null
+    }
+
+    /**
+     * Keys of every category between the current anchor and [endRow], inclusive, in displayed
+     * order — independent of which end was picked first. Null if there is no valid anchor.
+     */
+    fun keysInRange(endRow: CustomizeCatRow): List<String>? {
+        val anchorKey = _rangeAnchorKey.value ?: return null
+        val current = rows.value
+        val anchorIndex = current.indexOfFirst { it.key == anchorKey }
+        val endIndex = current.indexOfFirst { it.key == endRow.key }
+        if (anchorIndex < 0 || endIndex < 0) return null
+        val lo = minOf(anchorIndex, endIndex)
+        val hi = maxOf(anchorIndex, endIndex)
+        return current.subList(lo, hi + 1).map { it.key }
+    }
+
+    /** Applies hide/show to the whole span ending at [endRow], then clears the range. */
+    fun applyRange(endRow: CustomizeCatRow, hidden: Boolean) {
+        val keys = keysInRange(endRow) ?: return
+        viewModelScope.launch {
+            customize.setCategoriesHidden(ctx.value.profileId, _section.value, keys, hidden)
+        }
+        _rangeAnchorKey.value = null
     }
 }

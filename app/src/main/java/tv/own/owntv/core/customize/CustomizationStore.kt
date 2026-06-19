@@ -75,6 +75,12 @@ class CustomizationStore(private val context: Context) {
             it.copy(hiddenCategories = if (hidden) it.hiddenCategories + catKey else it.hiddenCategories - catKey)
         }
 
+    /** Hide/show a whole span of categories in one atomic edit (range select in Customize). */
+    suspend fun setCategoriesHidden(profileId: Long, type: MediaType, catKeys: Collection<String>, hidden: Boolean) =
+        update(profileId, type) {
+            it.copy(hiddenCategories = if (hidden) it.hiddenCategories + catKeys else it.hiddenCategories - catKeys)
+        }
+
     suspend fun setItemHidden(profileId: Long, type: MediaType, itemKey: String, label: String, hidden: Boolean) =
         update(profileId, type) {
             it.copy(hiddenItems = if (hidden) it.hiddenItems + (itemKey to label) else it.hiddenItems - itemKey)

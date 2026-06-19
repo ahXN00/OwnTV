@@ -28,6 +28,7 @@ fun OwnTVButton(
     style: OwnTVButtonStyle = OwnTVButtonStyle.PRIMARY,
     icon: OwnTVIcon? = null,
     enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val colors = OwnTVTheme.colors
     val shape = RoundedCornerShape(50) // M3 full/pill button
@@ -36,6 +37,7 @@ fun OwnTVButton(
 
     FocusableSurface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = modifier,
         enabled = enabled,
         shape = shape,

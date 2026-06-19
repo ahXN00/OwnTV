@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -55,12 +56,16 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val section by vm.section.collectAsStateWithLifecycle()
     val rows by vm.rows.collectAsStateWithLifecycle()
     val hiddenChannels by vm.hiddenChannels.collectAsStateWithLifecycle()
+    val rangeAnchorKey by vm.rangeAnchorKey.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
     var renaming by remember { mutableStateOf<CustomizeCatRow?>(null) }
+    // The category whose Hide button was clicked to close a range — opens the Show/Hide/Cancel prompt.
+    var rangeEnd by remember { mutableStateOf<CustomizeCatRow?>(null) }
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { firstFocus.requestFocus() } }
 
-    BackHandler { onBack() }
+    // While a span selection is in progress, Back cancels the selection instead of leaving the screen.
+    BackHandler { if (rangeAnchorKey != null) vm.cancelRange() else onBack() }
 
     Column(
         modifier = modifier
@@ -88,6 +93,27 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             SectionChip("Series", section == MediaType.SERIES) { vm.selectSection(MediaType.SERIES) }
         }
         Spacer(Modifier.height(16.dp))
+
+        if (rangeAnchorKey != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(colors.primaryContainer)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Span selection started. Press Show/Hide on the end item to select the span.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onPrimaryContainer,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(10.dp))
+                OwnTVButton("Cancel", onClick = { vm.cancelRange() }, style = OwnTVButtonStyle.SECONDARY)
+            }
+            Spacer(Modifier.height(12.dp))
+        }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
             // Hidden Live channels first (channels are hidden from the Live preview pane) — kept on
@@ -140,10 +166,14 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             items(rows, key = { it.key }) { row ->
                 CategoryRow(
                     row = row,
+                    inRangeMode = rangeAnchorKey != null,
+                    isAnchor = row.key == rangeAnchorKey,
                     onMoveUp = { vm.move(row, up = true) },
                     onMoveDown = { vm.move(row, up = false) },
                     onRename = { renaming = row },
                     onToggleHidden = { vm.setCategoryHidden(row, !row.hidden) },
+                    onHideLongPress = { vm.beginRange(row) },
+                    onPickRangeEnd = { if (row.key == rangeAnchorKey) vm.cancelRange() else rangeEnd = row },
                 )
             }
         }
@@ -157,6 +187,51 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             onConfirm = { vm.renameCategory(row, it.takeIf { t -> t.isNotBlank() }); renaming = null },
             onDismiss = { renaming = null },
         )
+    }
+
+    rangeEnd?.let { row ->
+        val count = vm.keysInRange(row)?.size ?: 0
+        RangeHideDialog(
+            count = count,
+            onHide = { vm.applyRange(row, hidden = true); rangeEnd = null },
+            onShow = { vm.applyRange(row, hidden = false); rangeEnd = null },
+            onDismiss = { vm.cancelRange(); rangeEnd = null },
+        )
+    }
+}
+
+/**
+ * Confirms a range select: hide or show every category in the chosen span (or cancel). [count] is
+ * the number of categories the span covers, inclusive.
+ */
+@Composable
+private fun RangeHideDialog(count: Int, onHide: () -> Unit, onShow: () -> Unit, onDismiss: () -> Unit) {
+    val colors = OwnTVTheme.colors
+    val hideFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { hideFocus.requestFocus() } }
+    BackHandler { onDismiss() }
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.75f)).focusGroup(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.width(480.dp).clip(RoundedCornerShape(20.dp)).background(colors.surfaceContainerHigh).padding(28.dp),
+        ) {
+            Text("Hide or show categories", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "$count ${if (count == 1) "category" else "categories"} selected.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(22.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OwnTVButton("Cancel", onClick = onDismiss, style = OwnTVButtonStyle.SECONDARY)
+                Spacer(Modifier.weight(1f))
+                OwnTVButton("Show", onClick = onShow, style = OwnTVButtonStyle.SECONDARY)
+                OwnTVButton("Hide", onClick = onHide, modifier = Modifier.focusRequester(hideFocus))
+            }
+        }
     }
 }
 
@@ -188,14 +263,23 @@ private fun SectionChip(label: String, selected: Boolean, modifier: Modifier = M
 @Composable
 private fun CategoryRow(
     row: CustomizeCatRow,
+    inRangeMode: Boolean,
+    isAnchor: Boolean,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onRename: () -> Unit,
     onToggleHidden: () -> Unit,
+    onHideLongPress: () -> Unit,
+    onPickRangeEnd: () -> Unit,
 ) {
     val colors = OwnTVTheme.colors
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(colors.surfaceContainerHigh).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            // Tint the anchor while a range is in progress so its starting point is obvious.
+            .background(if (isAnchor) colors.primaryContainer else colors.surfaceContainerHigh)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -229,6 +313,13 @@ private fun CategoryRow(
         Spacer(Modifier.width(6.dp))
         OwnTVButton("Rename", onClick = onRename, style = OwnTVButtonStyle.SECONDARY)
         Spacer(Modifier.width(6.dp))
-        OwnTVButton(if (row.hidden) "Show" else "Hide", onClick = onToggleHidden, style = OwnTVButtonStyle.SECONDARY)
+        OwnTVButton(
+            label = if (row.hidden) "Show" else "Hide",
+            // Long-press anchors a range; a normal press picks the span end while a range is active,
+            // otherwise it toggles just this category.
+            onClick = { if (inRangeMode) onPickRangeEnd() else onToggleHidden() },
+            onLongClick = onHideLongPress,
+            style = OwnTVButtonStyle.SECONDARY,
+        )
     }
 }
