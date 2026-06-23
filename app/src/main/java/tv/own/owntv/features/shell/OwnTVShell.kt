@@ -98,6 +98,13 @@ fun OwnTVShell(
     var restoreFocus by remember { mutableStateOf(false) }
     val player = koinInject<OwnTVPlayer>()
     val mpvEngine = remember(player) { tv.own.owntv.player.MpvPlaybackEngine(player) }
+    // True picture-in-picture: a second, independent stream in a corner window, mounted at the shell's top
+    // level so it persists across the browse UI <-> full-screen. Audio belongs to one window at a time —
+    // by default the main stream, until the user hands sound to the corner (audioOnCorner).
+    val pip = koinInject<tv.own.owntv.features.multiview.PipController>()
+    val cornerActive by pip.active.collectAsStateWithLifecycle()
+    val cornerChannel by pip.channel.collectAsStateWithLifecycle()
+    var audioOnCorner by remember { mutableStateOf(false) }
     // Same activity-scoped instances the Live/Guide screens use — lets the fullscreen HUD zap channels
     // up/down (CH+/CH-) through whichever section's list opened the stream.
     val liveVm = org.koin.androidx.compose.koinViewModel<tv.own.owntv.features.live.LiveViewModel>()
@@ -138,6 +145,54 @@ fun OwnTVShell(
         restoreFocus = true
         runCatching { sidebarFocus.requestFocus() }
         Unit
+    }
+
+    // --- True PiP corner: audio arbitration + window gestures -------------------------------------
+    // Mute/unmute the main stream regardless of which engine owns it (promoted-live ExoPlayer vs mpv).
+    val setMainMuted: (Boolean) -> Unit = { muted ->
+        if (liveOnExo) liveVm.previewEngine.setMuted(muted) else player.setMuted(muted)
+    }
+    val closeCorner = {
+        setMainMuted(false) // hand the sound back to the main window
+        audioOnCorner = false
+        pip.closeCorner()
+        Unit
+    }
+    val toggleCornerAudio = { audioOnCorner = !audioOnCorner }
+    // Full-screen swap (live main only): exchange the corner stream with the main one.
+    val swapCorner = {
+        val cornerCh = cornerChannel
+        val mainCh = liveVm.previewChannel.value
+        if (cornerCh != null && mainCh != null) {
+            pip.openCorner(mainCh)         // old main → corner (starts muted)
+            zapSource = MainSection.LIVE_TV
+            liveVm.ensurePlaying(cornerCh) // old corner → main window
+            audioOnCorner = false          // sound follows the (new) main window
+        }
+        Unit
+    }
+    // Browse: promote the corner channel to full-screen, closing the corner.
+    val expandCorner = {
+        cornerChannel?.let { ch ->
+            audioOnCorner = false
+            pip.closeCorner()
+            zapSource = MainSection.LIVE_TV
+            onSelectSection(MainSection.LIVE_TV)
+            liveVm.watchFullscreen(ch, listOf(ch))
+            playerMode = PlayerMode.FULLSCREEN
+        }
+        Unit
+    }
+    // Only one window is audible at a time. The decision is a pure function (PipAudio) so it's unit-tested;
+    // a null plan (no corner) leaves both engines untouched, so normal playback never has its mute changed.
+    LaunchedEffect(cornerActive, audioOnCorner, playerMode, liveOnExo) {
+        val plan = tv.own.owntv.features.multiview.PipAudio.plan(
+            cornerActive = cornerActive,
+            mainPresent = playerMode != PlayerMode.NONE,
+            audioOnCorner = audioOnCorner,
+        ) ?: return@LaunchedEffect
+        plan.muteMain?.let { setMainMuted(it) }
+        pip.engine.setMuted(plan.muteCorner)
     }
 
     LaunchedEffect(Unit) { runCatching { sidebarFocus.requestFocus() } }
@@ -330,11 +385,37 @@ fun OwnTVShell(
                     onGoToLive = if (isLiveChannel) liveVm::goToLive else null,
                     onScrubLive = if (isLiveChannel && canRewindLive) liveVm::scrubLive else null,
                     timeshiftOffsetSec = if (isLiveChannel) timeshiftOffset else null,
+                    // True PiP corner controls — present only while a second stream is in the corner.
+                    // Swap is offered only when the main stream is a promoted live channel (both ExoPlayer),
+                    // so the exchange is clean; audio/close are always available with a corner up.
+                    onCornerSwap = if (cornerActive && liveOnExo) swapCorner else null,
+                    onCornerAudio = if (cornerActive) toggleCornerAudio else null,
+                    onCornerClose = if (cornerActive) closeCorner else null,
+                    cornerAudioOn = audioOnCorner,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
                 MiniPlayer(player = if (liveOnExo) liveVm.previewEngine else mpvEngine, onExpand = expandPlayer, onClose = exitPlayer, modifier = Modifier.fillMaxSize())
             }
+        }
+      }
+
+      // True picture-in-picture corner — a second, independent stream in the upper-right corner, drawn over
+      // both the browse UI and the full-screen player (its SurfaceView is z-ordered above the main surface).
+      // While full-screen the player HUD owns the corner's controls, so the window itself is video-only then.
+      if (cornerActive) {
+        Box(
+            modifier = Modifier.align(Alignment.TopEnd).padding(24.dp).size(width = 320.dp, height = 180.dp),
+        ) {
+            tv.own.owntv.player.PipCornerWindow(
+                engine = pip.engine,
+                showControls = playerMode != PlayerMode.FULLSCREEN,
+                audioOnCorner = audioOnCorner,
+                onToggleAudio = toggleCornerAudio,
+                onSwap = expandCorner, // window's expand button promotes the corner channel to full-screen
+                onClose = closeCorner,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
       }
 

@@ -78,6 +78,12 @@ fun PlayerHud(
     onGoToLive: (() -> Unit)? = null,
     onScrubLive: ((Int) -> Unit)? = null, // timeline scrub: +sec = back, −sec = toward live
     timeshiftOffsetSec: Int? = null,
+    // True picture-in-picture corner controls — shown only while a second (corner) stream is running.
+    // onCornerClose non-null = a corner is active; cornerAudioOn = the corner currently has the sound.
+    onCornerSwap: (() -> Unit)? = null,   // swap the corner stream into the main window (and vice versa)
+    onCornerAudio: (() -> Unit)? = null,  // move the audio between the main and corner windows
+    onCornerClose: (() -> Unit)? = null,  // close the corner window
+    cornerAudioOn: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val isPlaying by player.isPlaying.collectAsStateWithLifecycle()
@@ -173,6 +179,8 @@ fun PlayerHud(
                     speedLabel = formatSpeed(speed),
                     onScrubLive = onScrubLive, timeshiftOffsetSec = timeshiftOffsetSec,
                     onOpenDialog = { dialog = it }, onPip = onPip, onBack = onBack,
+                    onCornerSwap = onCornerSwap, onCornerAudio = onCornerAudio, onCornerClose = onCornerClose,
+                    cornerAudioOn = cornerAudioOn,
                     modifier = Modifier.align(Alignment.BottomStart),
                 )
             }
@@ -337,7 +345,10 @@ private fun BottomBar(
     player: PlaybackEngine, isLive: Boolean, position: Long, duration: Long,
     volume: Int, audioCount: Int, subCount: Int, zoomMode: ZoomMode, speedLabel: String,
     onScrubLive: ((Int) -> Unit)?, timeshiftOffsetSec: Int?,
-    onOpenDialog: (HudDialog) -> Unit, onPip: (() -> Unit)?, onBack: () -> Unit, modifier: Modifier = Modifier,
+    onOpenDialog: (HudDialog) -> Unit, onPip: (() -> Unit)?, onBack: () -> Unit,
+    onCornerSwap: (() -> Unit)? = null, onCornerAudio: (() -> Unit)? = null, onCornerClose: (() -> Unit)? = null,
+    cornerAudioOn: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp)) {
         when {
@@ -368,6 +379,14 @@ private fun BottomBar(
                 // Aspect/zoom works in every mode now — direct mode resizes the surface view itself
                 // (see MpvVideoSurface), GL mode scales internally.
                 CtrlButton(OwnTVIcon.ASPECT, active = zoomMode != ZoomMode.FIT) { onOpenDialog(HudDialog.ZOOM) }
+                // Corner (true PiP) controls — present only while a second stream is in the corner.
+                if (onCornerClose != null) {
+                    if (onCornerAudio != null) {
+                        CtrlButton(if (cornerAudioOn) OwnTVIcon.VOLUME_HIGH else OwnTVIcon.VOLUME_MUTE, active = cornerAudioOn) { onCornerAudio?.invoke() }
+                    }
+                    if (onCornerSwap != null) CtrlButton(OwnTVIcon.PIP, active = true) { onCornerSwap?.invoke() }
+                    CtrlButton(OwnTVIcon.CLOSE) { onCornerClose?.invoke() }
+                }
                 if (onPip != null) CtrlButton(OwnTVIcon.PIP) { onPip() }
                 CtrlButton(OwnTVIcon.FULLSCREEN_EXIT) { onBack() }
             }

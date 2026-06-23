@@ -13,4 +13,8 @@ val playerModule = module {
     single { OwnTVPlayer(androidContext(), get(), get(), get(), get()) }
     // ExoPlayer engine for the fast Live preview pane (mpv stays the full/fullscreen player).
     single { LivePreviewEngine(androidContext(), get(), get()) }
+    // Second, independent ExoPlayer for the picture-in-picture corner (true PiP — a different stream
+    // alongside the main one). Separate decoder/surface/audio from the preview engine above so both play.
+    single { tv.own.owntv.player.SecondaryLivePlayer(androidContext(), get(), get()) }
+    single { tv.own.owntv.features.multiview.PipController(get<tv.own.owntv.player.SecondaryLivePlayer>()) }
 }

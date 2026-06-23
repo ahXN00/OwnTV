@@ -72,6 +72,7 @@ fun LiveScreen(
     modifier: Modifier = Modifier,
 ) {
     val vm: LiveViewModel = koinViewModel()
+    val pip = org.koin.compose.koinInject<tv.own.owntv.features.multiview.PipController>()
     val railItems by vm.railItems.collectAsStateWithLifecycle()
     val selectedKey by vm.selectedKey.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
@@ -221,6 +222,7 @@ fun LiveScreen(
                 onHide = { previewChannel?.let { vm.hideChannel(it) } },
                 onMatchEpg = { matchingEpg = previewChannel },
                 onCatchup = { catchupChannel = previewChannel },
+                onWatchInCorner = { previewChannel?.let { pip.openCorner(it) } },
             )
         }
     }
@@ -313,6 +315,7 @@ private fun LivePreviewPane(
     onHide: () -> Unit,
     onMatchEpg: () -> Unit,
     onCatchup: () -> Unit,
+    onWatchInCorner: () -> Unit,
 ) {
     val colors = OwnTVTheme.colors
     val previewState by previewEngine.state.collectAsStateWithLifecycle()
@@ -372,6 +375,10 @@ private fun LivePreviewPane(
         }
 
         Spacer(Modifier.height(16.dp))
+        // True picture-in-picture: open this channel in a corner window that keeps playing while you watch
+        // (or browse) something else. Audio stays with the main stream until you hand it to the corner.
+        OwnTVButton(label = "Watch in corner", onClick = onWatchInCorner, icon = OwnTVIcon.PIP)
+        Spacer(Modifier.height(10.dp))
         OwnTVButton(
             label = if (isFavorite) "Favorited" else "Favorite",
             onClick = onToggleFavorite,

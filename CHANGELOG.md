@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### ✨ New features
+
+- **True picture-in-picture (watch two streams at once)** — you can now keep one live channel playing in a
+  corner window while you watch a *different* channel full-screen (or browse). On any channel's preview pane
+  press **Watch in corner** to dock it top-right; it keeps streaming on its own decoder, independent of the
+  main player. The window persists as you move between browsing and full-screen. Sound stays with the main
+  stream by default; the player HUD (and the corner's own buttons while browsing) let you **move the audio**
+  to the corner, **swap** the corner channel into the main window, or **close** it. The corner runs on a
+  second ExoPlayer instance with shallow buffers (the main mpv player is untouched), so the extra stream is
+  light on memory — a deliberate step toward a fuller MultiView grid later.
+
 ## v3.2.0 — 2026-06-22
 
 ### ✨ New features
