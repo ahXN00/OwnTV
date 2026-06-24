@@ -37,9 +37,9 @@ import tv.own.owntv.ui.components.OwnTVIcon
  * surface (`setZOrderMediaOverlay(true)`) so the corner draws on top of the full-screen stream behind it.
  *
  * Two overlapping SurfaceViews are the right tool here: both are hardware-overlay candidates, so on a TV
- * with ≥2 overlay planes (most) neither stream falls back to GPU composition. (mpv documents that putting
- * a *regular* view over its surface knocks 4K off the direct path — a second SurfaceView avoids that on
- * capable hardware; on a single-plane device the compositor blends them, which still works, just warmer.)
+ * with ≥2 overlay planes (most) neither stream falls back to GPU composition. (Both engines document that a
+ * *regular* view over a video surface knocks 4K off the direct scan-out path — a second SurfaceView avoids
+ * that on capable hardware; on a single-plane device the compositor blends them, which still works, warmer.)
  */
 @Composable
 fun SecondaryVideoSurface(engine: CornerEngine, modifier: Modifier = Modifier, keepAwake: Boolean = true) {

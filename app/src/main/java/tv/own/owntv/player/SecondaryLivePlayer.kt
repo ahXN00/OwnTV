@@ -2,7 +2,9 @@ package tv.own.owntv.player
 
 import android.content.Context
 import android.view.Surface
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
@@ -12,6 +14,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,20 +24,26 @@ import tv.own.owntv.core.network.HttpClient
 /**
  * A **second**, independent ExoPlayer that drives the picture-in-picture corner window — the half of
  * "true PiP" that lets you watch a different stream alongside the main one. It is deliberately separate
- * from [LivePreviewEngine] (which is busy being the in-pane preview / promoted-fullscreen live engine):
- * the two never share a player, a surface, or audio focus, so both can decode at once.
+ * from [LivePreviewEngine] (the in-pane preview / promoted-fullscreen live engine): the two never share a
+ * player, a surface, or audio focus, so both can decode at once.
  *
- * ExoPlayer (not mpv) for the corner because a second mpv context would be heavy and invasive, whereas
- * ExoPlayer instances are light and independently constructable — the same reasoning that put the live
- * preview on ExoPlayer. mpv stays the single full-screen player, untouched.
+ * Architecture: OwnTV's **live** full-screen player is ExoPlayer ([LivePreviewEngine] promoted; mpv is the
+ * fallback and the **VOD** full-screen player). So live PiP runs **two ExoPlayer instances** at once — the
+ * main one plus this corner. ExoPlayer (not a second mpv context) because instances are light and
+ * independently constructable, and it matches whatever the live main is already doing.
  *
- * Scope: **live channels only** for now (no VOD seek/resume state). Like the other engines, all calls
- * must be on the main thread (ExoPlayer is single-threaded); the corner surface attaches/detaches its
- * [Surface] from the holder callback and the controller calls [play]/[stop]/[setMuted] from the UI.
+ * Coexistence: two ExoPlayers competing for the device's scarce hardware decoders / single audio-passthrough
+ * path is the real risk on TV hardware, so [build] constrains this corner — capped to 720p30, stereo/AAC
+ * audio (no surround passthrough), subtitles disabled, software-decoder fallback enabled, and it never takes
+ * audio focus. That leaves the 4K/HDR hardware decoder and surround output to the main stream.
+ *
+ * Scope: **live channels only** for now (no VOD seek/resume state). Like the other engines, all calls must
+ * be on the main thread (ExoPlayer is single-threaded); the corner surface attaches/detaches its [Surface]
+ * from the holder callback and the controller calls [play]/[stop]/[setMuted] from the UI.
  *
  * Memory note: a second decoder competes for the device's player budget (see [PlayerBudget] — TV-class
- * boxes get OOM-killed at a few hundred MB PSS). Buffers here are intentionally shallow, and the corner
- * is a single extra stream (not four), which real Android TV hardware comfortably handles in practice.
+ * boxes get OOM-killed at a few hundred MB PSS). Buffers here are intentionally shallow, and the corner is
+ * a single capped-resolution extra stream, which real Android TV hardware handles in practice.
  */
 @UnstableApi
 class SecondaryLivePlayer(
@@ -180,12 +189,36 @@ class SecondaryLivePlayer(
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(2_000, 8_000, 1_000, 2_000)
             .build()
+        // The corner is a SECOND ExoPlayer running alongside the main one (which, for live, is also ExoPlayer).
+        // It's deliberately constrained so the two instances coexist on real TV hardware, where concurrent
+        // hardware decoders / audio passthrough are scarce:
+        //  • Cap the corner to 720p30 — a small overlay never needs 4K, and it frees the 4K/HDR hardware
+        //    decoder for the main stream (two simultaneous 4K HEVC sessions exceed most TV SoCs).
+        //  • Downmix to stereo + prefer AAC — the corner must not grab the single audio-passthrough path
+        //    (AC3/E-AC3/DTS surround), so the main keeps its surround output intact.
+        //  • No subtitles in the corner (it's a thumbnail) — avoids a second image-subtitle render path.
+        val trackSelector = DefaultTrackSelector(context)
+        trackSelector.parameters = trackSelector.buildUponParameters()
+            .setMaxVideoSize(1280, 720)
+            .setMaxVideoFrameRate(30)
+            .setMaxAudioChannelCount(2)
+            .setPreferredAudioMimeType(MimeTypes.AUDIO_AAC)
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            .build()
+        // Fall back to a software codec if no second hardware decoder is free, rather than failing the corner.
+        val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
         return ExoPlayer.Builder(context)
-            .setRenderersFactory(DefaultRenderersFactory(context))
+            .setRenderersFactory(renderers)
+            .setTrackSelector(trackSelector)
             .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
             .setLoadControl(loadControl)
             .build()
-            .apply { addListener(listener) }
+            .apply {
+                // Never take audio focus — the main player owns it. The corner is muted unless the user hands
+                // it the sound, and even then it shares the session without yanking focus from the main stream.
+                setAudioAttributes(androidx.media3.common.AudioAttributes.DEFAULT, /* handleAudioFocus = */ false)
+                addListener(listener)
+            }
     }
 
     companion object {
