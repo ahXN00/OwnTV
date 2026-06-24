@@ -37,6 +37,7 @@ class PipControllerTest {
         }
         override fun setMuted(muted: Boolean) { muteCalls += muted }
         override fun stop() { stopCalls++; currentUrl = null }
+        override fun release() { currentUrl = null }
         override fun setSurface(surface: Surface?) {}
     }
 

@@ -22,6 +22,9 @@ interface CornerEngine {
 
     fun play(url: String, meta: MediaMeta = MediaMeta(), muted: Boolean = true)
     fun setMuted(muted: Boolean)
+    /** Stop playback and free the decoder/connection, keeping the instance for reuse. */
     fun stop()
+    /** Fully tear down the underlying player and free all its memory (used when a tile is gone for good). */
+    fun release()
     fun setSurface(surface: Surface?)
 }

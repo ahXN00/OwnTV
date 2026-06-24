@@ -17,4 +17,18 @@ val playerModule = module {
     // alongside the main one). Separate decoder/surface/audio from the preview engine above so both play.
     single { tv.own.owntv.player.SecondaryLivePlayer(androidContext(), get(), get()) }
     single { tv.own.owntv.features.multiview.PipController(get<tv.own.owntv.player.SecondaryLivePlayer>()) }
+    // MultiView (up to 4 live tiles). Each tile is its own constrained ExoPlayer, created on demand and
+    // released when MultiView closes. Tile count is device-tiered (low-RAM boxes cap at 2) and each tile
+    // caps lower than a PiP corner — so several decoders coexist on weak hardware.
+    single {
+        tv.own.owntv.features.multiview.MultiViewController(
+            maxTiles = tv.own.owntv.features.multiview.MultiViewController.deviceMaxTiles(androidContext()),
+            engineFactory = {
+                tv.own.owntv.player.SecondaryLivePlayer(
+                    androidContext(), get(), get(),
+                    maxVideoHeight = tv.own.owntv.features.multiview.MultiViewController.TILE_MAX_HEIGHT,
+                )
+            },
+        )
+    }
 }

@@ -4,6 +4,16 @@
 
 ### ✨ New features
 
+- **MultiView — up to four live streams at once** — open a channel's preview pane and press **MultiView** to
+  watch several live channels side by side, in two layouts: an **equal grid** (1 / 2-up / 2×2) or a
+  **dominant** layout with one large stream and the rest in a small strip. D-pad moves between tiles; the
+  focused tile is the only one you hear, and pressing **OK** makes it the big one. Add more streams from
+  inside the grid (**＋ Add stream**, from your recent channels) and toggle the layout or exit from the
+  bottom bar. Built to be **light on constrained boxes**: each tile is its own constrained ExoPlayer (capped
+  to 480p — a selection hint, never a transcode — with software-decoder fallback and no audio focus), the
+  tile count is **device-tiered** (low-RAM boxes cap at 2 rather than stutter on 4), and **every tile is
+  released the moment you leave MultiView**, so it holds no decoder or memory when closed. Reuses the PiP
+  engine; live channels only.
 - **True picture-in-picture (watch two streams at once)** — you can now keep one live channel playing in a
   corner window while you watch a *different* channel full-screen (or browse). On any channel's preview pane
   press **Watch in corner** to dock it top-right; it keeps streaming on its own decoder, independent of the
@@ -11,11 +21,11 @@
   stream by default; the player HUD (and the corner's own buttons while browsing) let you **move the audio**
   to the corner, **swap** the corner channel into the main window, or **close** it. Live PiP runs **two
   ExoPlayer instances** (OwnTV's live full-screen player is ExoPlayer; mpv is the VOD player and the live
-  fallback), so the corner is a deliberately **constrained second decoder** — a 720p resolution-cap hint
-  (picks a lower rendition when the stream is adaptive HLS; never transcodes), stereo audio (no surround
-  passthrough), no subtitles, **software-decoder fallback** when no second hardware decoder is free, and it
-  never takes audio focus. That keeps surround output (and, for adaptive streams, the 4K/HDR hardware decoder)
-  with the main stream, so the two coexist on TV hardware. A deliberate step toward a fuller MultiView grid.
+  fallback), so the corner is a deliberately **constrained second decoder** — a resolution-cap hint (picks a
+  lower rendition when the stream is adaptive HLS; never transcodes), stereo audio (no surround passthrough),
+  no subtitles, **software-decoder fallback** when no second hardware decoder is free, and it never takes
+  audio focus. That keeps surround output (and, for adaptive streams, the 4K/HDR hardware decoder) with the
+  main stream, so the two coexist on TV hardware. A deliberate step toward a fuller MultiView grid later.
 
 ## v3.2.0 — 2026-06-22
 

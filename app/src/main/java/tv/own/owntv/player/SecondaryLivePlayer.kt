@@ -33,7 +33,7 @@ import tv.own.owntv.core.network.HttpClient
  * independently constructable, and it matches whatever the live main is already doing.
  *
  * Coexistence: two ExoPlayers competing for the device's scarce hardware decoders / single audio-passthrough
- * path is the real risk on TV hardware, so [build] constrains this corner — a 720p resolution-cap selection
+ * path is the real risk on TV hardware, so [build] constrains this corner — a resolution-cap track-selection
  * hint (picks a lower rendition when the stream is adaptive; a no-op, never a transcode, when it isn't),
  * stereo/AAC audio (no surround passthrough), subtitles disabled, **software-decoder fallback** (the real
  * safeguard when no second hardware decoder is free), and it never takes audio focus. That keeps the surround
@@ -52,6 +52,9 @@ class SecondaryLivePlayer(
     private val context: Context,
     private val okHttpClient: OkHttpClient,
     private val diagnostics: PlayerDiagnostics,
+    /** Resolution cap for this instance. 720p suits a single PiP corner; MultiView tiles pass a smaller cap
+     *  (a quarter-screen tile never needs more) so up to four concurrent decoders stay within the budget. */
+    private val maxVideoHeight: Int = 720,
 ) : CornerEngine {
 
     private var player: ExoPlayer? = null
@@ -155,7 +158,7 @@ class SecondaryLivePlayer(
         player?.run { stop(); clearMediaItems() }
     }
 
-    fun release() {
+    override fun release() {
         mainHandler.removeCallbacks(stallWatchdog)
         player?.run { removeListener(listener); release() }
         player = null
@@ -194,17 +197,17 @@ class SecondaryLivePlayer(
         // The corner is a SECOND ExoPlayer running alongside the main one (which, for live, is also ExoPlayer).
         // It's deliberately constrained so the two instances coexist on real TV hardware, where concurrent
         // hardware decoders / audio passthrough are scarce:
-        //  • Cap the corner to 720p30. This is a track-SELECTION hint, NOT transcoding: for an ADAPTIVE stream
-        //    (multi-variant HLS/DASH, common in IPTV) ExoPlayer picks a lower rendition the provider already
-        //    sends — a real saving (smaller decoder, less bandwidth). For a single-resolution stream there's
-        //    nothing lower to pick, so it decodes the full stream (the cap is a harmless no-op); the safeguard
-        //    there is decoder fallback below, plus the small surface (cheap HW downscale for display).
+        //  • Cap the video ([maxVideoHeight]p, 30fps). This is a track-SELECTION hint, NOT transcoding: for an
+        //    ADAPTIVE stream (multi-variant HLS/DASH, common in IPTV) ExoPlayer picks a lower rendition the
+        //    provider already sends — a real saving (smaller decoder, less bandwidth). For a single-resolution
+        //    stream there's nothing lower to pick, so it decodes the full stream (the cap is a harmless no-op);
+        //    the safeguard there is decoder fallback below, plus the small surface (cheap HW downscale).
         //  • Downmix to stereo + prefer AAC — the corner must not grab the single audio-passthrough path
         //    (AC3/E-AC3/DTS surround), so the main keeps its surround output intact.
         //  • No subtitles in the corner (it's a thumbnail) — avoids a second image-subtitle render path.
         val trackSelector = DefaultTrackSelector(context)
         trackSelector.parameters = trackSelector.buildUponParameters()
-            .setMaxVideoSize(1280, 720)
+            .setMaxVideoSize(maxVideoHeight * 16 / 9, maxVideoHeight)
             .setMaxVideoFrameRate(30)
             .setMaxAudioChannelCount(2)
             .setPreferredAudioMimeType(MimeTypes.AUDIO_AAC)

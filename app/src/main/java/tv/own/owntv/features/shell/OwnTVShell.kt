@@ -121,6 +121,11 @@ fun OwnTVShell(
     // Which section armed the current fullscreen stream — picks whose channel list CH+/CH- step through.
     var zapSource by remember { mutableStateOf<MainSection?>(null) }
 
+    // MultiView (PR #2): up to four live tiles. Channels to add come from the recently-watched list.
+    val mv = koinInject<tv.own.owntv.features.multiview.MultiViewController>()
+    val mvActive by mv.active.collectAsStateWithLifecycle()
+    val recentChannels by liveVm.recentlyWatched.collectAsStateWithLifecycle()
+
     // Opening content from a browse screen goes fullscreen — UNLESS the player is already docked as a
     // mini-player, in which case it stays docked and just swaps to the newly-selected stream (the VM
     // already started it), so picking a channel updates the PiP window in place (#6).
@@ -171,6 +176,25 @@ fun OwnTVShell(
         }
         Unit
     }
+    // Enter MultiView seeded with [channel] (plus the PiP corner channel, if one is up). Stops the single-
+    // stream players so ONLY MultiView's tile engines run — no main decoder competing with the tiles.
+    val enterMultiView: (tv.own.owntv.core.database.entity.ChannelEntity) -> Unit = { channel ->
+        val seed = buildList {
+            add(channel)
+            cornerChannel?.let { if (it.id != channel.id) add(it) }
+        }
+        pip.closeCorner(); audioOnCorner = false
+        liveVm.clearLiveOnExo() // stop the live ExoPlayer (preview/main)
+        player.stop()           // stop mpv (VOD), if it was the main
+        playerMode = PlayerMode.NONE
+        mv.enter(seed)
+    }
+    val exitMultiView = {
+        mv.exit()
+        restoreFocus = true
+        runCatching { sidebarFocus.requestFocus() }
+        Unit
+    }
     // Browse: promote the corner channel to full-screen, closing the corner.
     val expandCorner = {
         cornerChannel?.let { ch ->
@@ -213,8 +237,9 @@ fun OwnTVShell(
     }
 
     Box(modifier = modifier.fillMaxSize().background(colors.background)) {
-      // Browse UI — hidden while the player is fullscreen (stays visible behind the docked mini-player).
-      if (playerMode != PlayerMode.FULLSCREEN) {
+      // Browse UI — hidden while the player is fullscreen (stays visible behind the docked mini-player) and
+      // while MultiView owns the screen (so its hidden Live preview decoder doesn't run behind the tiles).
+      if (playerMode != PlayerMode.FULLSCREEN && !mvActive) {
         Column(modifier = Modifier.fillMaxSize()) {
           if (isOffline) OfflineBanner()
           Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -265,6 +290,7 @@ fun OwnTVShell(
                         previewEnabled = playerMode == PlayerMode.NONE,
                         restoreFocus = restoreFocus,
                         onRestored = { restoreFocus = false },
+                        onOpenMultiView = enterMultiView,
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -398,6 +424,17 @@ fun OwnTVShell(
                 MiniPlayer(player = if (liveOnExo) liveVm.previewEngine else mpvEngine, onExpand = expandPlayer, onClose = exitPlayer, modifier = Modifier.fillMaxSize())
             }
         }
+      }
+
+      // MultiView — up to four live tiles, full-screen above everything. The single-stream players were
+      // stopped on entry, so only the tile engines run; exiting releases them all.
+      if (mvActive) {
+        tv.own.owntv.features.multiview.MultiViewScreen(
+            controller = mv,
+            addableChannels = recentChannels,
+            onExit = exitMultiView,
+            modifier = Modifier.fillMaxSize(),
+        )
       }
 
       // True picture-in-picture corner — a second, independent stream in the upper-right corner, drawn over
