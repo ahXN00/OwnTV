@@ -107,7 +107,6 @@ fun HomeScreen(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val heroFocus = remember { FocusRequester() }
     val fallbackFocus = remember { FocusRequester() }
-    val emptyFocus = remember { FocusRequester() }
     val firstRowFocus = remember { FocusRequester() }
     var initialFocusApplied by remember { mutableStateOf(false) }
     var restoreFocusHandled by remember { mutableStateOf(false) }
@@ -151,12 +150,9 @@ fun HomeScreen(
         if (restoreFocus && restoreFocusHandled) return@LaunchedEffect
         val hasContent = !state.isEmpty
         if (!hasContent) {
-            if (!initialFocusApplied || restoreFocus) {
-                runCatching { emptyFocus.requestFocus() }
-                initialFocusApplied = true
-                restoreFocusHandled = restoreFocusHandled || restoreFocus
-                if (restoreFocus) onRestored()
-            }
+            initialFocusApplied = true
+            restoreFocusHandled = restoreFocusHandled || restoreFocus
+            if (restoreFocus) onRestored()
             return@LaunchedEffect
         }
 
@@ -177,8 +173,6 @@ fun HomeScreen(
     if (state.isEmpty) {
         EmptyHomeState(
             modifier = modifier.fillMaxSize(),
-            focusRequester = emptyFocus,
-            onChildFocused = onChildFocused,
         )
         return
     }
@@ -960,15 +954,11 @@ private fun HeroFallbackPane(
 @Composable
 private fun EmptyHomeState(
     modifier: Modifier = Modifier,
-    focusRequester: FocusRequester,
-    onChildFocused: () -> Unit,
 ) {
     val colors = OwnTVTheme.colors
     Box(
         modifier = modifier
-            .focusRequester(focusRequester)
-            .focusable()
-            .onFocusChanged { if (it.hasFocus) onChildFocused() }
+            .focusProperties { canFocus = false }
             .background(colors.surface),
         contentAlignment = Alignment.Center,
     ) {
