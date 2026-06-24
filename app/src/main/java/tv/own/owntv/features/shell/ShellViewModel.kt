@@ -27,6 +27,7 @@ import tv.own.owntv.ui.theme.UiZoom
 /** Top-level navigation destinations rendered in the Layer-1 sidebar. */
 enum class MainSection(val label: String) {
     SEARCH("Search"),
+    HOME("Home"),
     LIVE_TV("Live TV"),
     MOVIES("Movies"),
     SERIES("Series"),
@@ -134,7 +135,7 @@ class ShellViewModel(
         .map<Long, Long?> { it }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val _selectedSection = MutableStateFlow(MainSection.LIVE_TV)
+    private val _selectedSection = MutableStateFlow(MainSection.HOME)
     val selectedSection: StateFlow<MainSection> = _selectedSection.asStateFlow()
 
     fun selectSection(section: MainSection) {

@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
 
     private val player: tv.own.owntv.player.OwnTVPlayer by inject()
     private val previewEngine: tv.own.owntv.player.LivePreviewEngine by inject()
+    private val heroPreviewEngine: tv.own.owntv.player.HeroPreviewEngine by inject()
     private var pendingDeepLink by mutableStateOf<LauncherDeepLink?>(null)
 
     override fun onNewIntent(intent: Intent) {
@@ -53,7 +54,8 @@ class MainActivity : ComponentActivity() {
         // cache + decoder buffers — holding them while invisible got the process LMK-killed on real TVs.
         if (!isChangingConfigurations) {
             player.onAppBackgrounded()
-            previewEngine.stop() // live runs on ExoPlayer — must stop it too, or its audio keeps playing
+            previewEngine.stop()
+            heroPreviewEngine.stop()
         }
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -147,7 +149,7 @@ class MainActivity : ComponentActivity() {
                                 onExitApp = { finish() },
                                 onSwitchProfile = {
                                     // Stop playback and return to the "Who's watching?" gate — no app restart.
-                                    player.onAppBackgrounded(); previewEngine.stop(); gatePassed = false
+                                    player.onAppBackgrounded(); previewEngine.stop(); heroPreviewEngine.stop(); gatePassed = false
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
