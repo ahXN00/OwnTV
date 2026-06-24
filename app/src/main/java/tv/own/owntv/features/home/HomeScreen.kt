@@ -108,8 +108,6 @@ fun HomeScreen(
     val heroFocus = remember { FocusRequester() }
     val fallbackFocus = remember { FocusRequester() }
     val firstRowFocus = remember { FocusRequester() }
-    var initialFocusApplied by remember { mutableStateOf(false) }
-    var restoreFocusHandled by remember { mutableStateOf(false) }
     var expandedHeroIndex by remember { mutableStateOf(-1) }
     var focusedHeroIndex by remember { mutableStateOf(-1) }
 
@@ -141,23 +139,11 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(restoreFocus) {
-        if (!restoreFocus) restoreFocusHandled = false
-    }
-
-    LaunchedEffect(restoreFocus, state.heroItems, state.continueMovies, state.continueSeries, state.favoriteLive) {
-        if (state.isEmpty && !restoreFocus && initialFocusApplied) return@LaunchedEffect
-        if (restoreFocus && restoreFocusHandled) return@LaunchedEffect
-        val hasContent = !state.isEmpty
-        if (!hasContent) {
-            initialFocusApplied = true
-            restoreFocusHandled = restoreFocusHandled || restoreFocus
+    LaunchedEffect(state.heroItems, state.continueMovies, state.continueSeries, state.favoriteLive) {
+        if (state.isEmpty) {
             if (restoreFocus) onRestored()
             return@LaunchedEffect
         }
-
-        if (!restoreFocus && initialFocusApplied) return@LaunchedEffect
-
         runCatching { listState.scrollToItem(0) }
         kotlinx.coroutines.delay(60)
         if (state.heroItems.isNotEmpty()) {
@@ -165,8 +151,6 @@ fun HomeScreen(
         } else {
             runCatching { fallbackFocus.requestFocus() }
         }
-        initialFocusApplied = true
-        restoreFocusHandled = restoreFocusHandled || restoreFocus
         if (restoreFocus) onRestored()
     }
 
