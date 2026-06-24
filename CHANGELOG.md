@@ -11,10 +11,11 @@
   stream by default; the player HUD (and the corner's own buttons while browsing) let you **move the audio**
   to the corner, **swap** the corner channel into the main window, or **close** it. Live PiP runs **two
   ExoPlayer instances** (OwnTV's live full-screen player is ExoPlayer; mpv is the VOD player and the live
-  fallback), so the corner is a deliberately **constrained second decoder** — capped to 720p30, stereo audio
-  (no surround passthrough), no subtitles, software-decoder fallback, and it never takes audio focus. That
-  leaves the 4K/HDR hardware decoder and surround output to the main stream, so the two coexist on TV
-  hardware. A deliberate step toward a fuller MultiView grid later.
+  fallback), so the corner is a deliberately **constrained second decoder** — a 720p resolution-cap hint
+  (picks a lower rendition when the stream is adaptive HLS; never transcodes), stereo audio (no surround
+  passthrough), no subtitles, **software-decoder fallback** when no second hardware decoder is free, and it
+  never takes audio focus. That keeps surround output (and, for adaptive streams, the 4K/HDR hardware decoder)
+  with the main stream, so the two coexist on TV hardware. A deliberate step toward a fuller MultiView grid.
 
 ## v3.2.0 — 2026-06-22
 

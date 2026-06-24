@@ -33,9 +33,11 @@ import tv.own.owntv.core.network.HttpClient
  * independently constructable, and it matches whatever the live main is already doing.
  *
  * Coexistence: two ExoPlayers competing for the device's scarce hardware decoders / single audio-passthrough
- * path is the real risk on TV hardware, so [build] constrains this corner — capped to 720p30, stereo/AAC
- * audio (no surround passthrough), subtitles disabled, software-decoder fallback enabled, and it never takes
- * audio focus. That leaves the 4K/HDR hardware decoder and surround output to the main stream.
+ * path is the real risk on TV hardware, so [build] constrains this corner — a 720p resolution-cap selection
+ * hint (picks a lower rendition when the stream is adaptive; a no-op, never a transcode, when it isn't),
+ * stereo/AAC audio (no surround passthrough), subtitles disabled, **software-decoder fallback** (the real
+ * safeguard when no second hardware decoder is free), and it never takes audio focus. That keeps the surround
+ * output — and, for adaptive streams, the 4K/HDR hardware decoder — with the main stream.
  *
  * Scope: **live channels only** for now (no VOD seek/resume state). Like the other engines, all calls must
  * be on the main thread (ExoPlayer is single-threaded); the corner surface attaches/detaches its [Surface]
@@ -192,8 +194,11 @@ class SecondaryLivePlayer(
         // The corner is a SECOND ExoPlayer running alongside the main one (which, for live, is also ExoPlayer).
         // It's deliberately constrained so the two instances coexist on real TV hardware, where concurrent
         // hardware decoders / audio passthrough are scarce:
-        //  • Cap the corner to 720p30 — a small overlay never needs 4K, and it frees the 4K/HDR hardware
-        //    decoder for the main stream (two simultaneous 4K HEVC sessions exceed most TV SoCs).
+        //  • Cap the corner to 720p30. This is a track-SELECTION hint, NOT transcoding: for an ADAPTIVE stream
+        //    (multi-variant HLS/DASH, common in IPTV) ExoPlayer picks a lower rendition the provider already
+        //    sends — a real saving (smaller decoder, less bandwidth). For a single-resolution stream there's
+        //    nothing lower to pick, so it decodes the full stream (the cap is a harmless no-op); the safeguard
+        //    there is decoder fallback below, plus the small surface (cheap HW downscale for display).
         //  • Downmix to stereo + prefer AAC — the corner must not grab the single audio-passthrough path
         //    (AC3/E-AC3/DTS surround), so the main keeps its surround output intact.
         //  • No subtitles in the corner (it's a thumbnail) — avoids a second image-subtitle render path.
@@ -205,7 +210,9 @@ class SecondaryLivePlayer(
             .setPreferredAudioMimeType(MimeTypes.AUDIO_AAC)
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
             .build()
-        // Fall back to a software codec if no second hardware decoder is free, rather than failing the corner.
+        // The real coexistence safeguard: if no second HARDWARE decoder is free (TV SoCs typically allow only
+        // 1–2 concurrent), fall back to a SOFTWARE codec instead of failing the corner. SW decode costs CPU —
+        // the honest price of a second full-resolution stream when the provider offers no smaller rendition.
         val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
         return ExoPlayer.Builder(context)
             .setRenderersFactory(renderers)
