@@ -618,7 +618,7 @@ private fun OfflineBanner() {
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(
-            "You're offline — playback and updates won't work until you reconnect.",
+            "您已离线 — 重新连接前播放和更新将无法使用。",
             style = MaterialTheme.typography.labelLarge,
             color = colors.onTertiaryContainer,
         )

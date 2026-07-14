@@ -1,4 +1,4 @@
-package tv.own.owntv.features.shell.components
+﻿package tv.own.owntv.features.shell.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -77,7 +77,7 @@ private enum class SettingsTab { ROOT, SOURCES, EPG, PROFILES, BACKUP, VIDEO, CU
 /**
  * The MD3 Settings screen (shown when [MainSection.SETTINGS] is active): grouped sections, each row
  * a tonal icon tile + title/description + a trailing chip or chevron. Theme / UI Zoom are live;
- * unfinished features show a "Soon" chip.
+ * unfinished features show a "即将推出" chip.
  */
 @Composable
 fun SettingsScreen(
@@ -217,7 +217,7 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
-            text = "Settings",
+            text = "设置",
             style = MaterialTheme.typography.headlineLarge,
             color = colors.onSurface,
         )
@@ -234,11 +234,11 @@ fun SettingsScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            QuickToggleChip("Live preview", livePreview, OwnTVIcon.LIVE_TV) { settingsVm.setLivePreviewEnabled(!livePreview) }
-            QuickToggleChip("Preview sound", previewAudio, OwnTVIcon.AUDIO) { settingsVm.setLivePreviewAudio(!previewAudio) }
+            QuickToggleChip("直播预览", livePreview, OwnTVIcon.LIVE_TV) { settingsVm.setLivePreviewEnabled(!livePreview) }
+            QuickToggleChip("预览声音", previewAudio, OwnTVIcon.AUDIO) { settingsVm.setLivePreviewAudio(!previewAudio) }
             QuickToggleChip("HDR", hdr, OwnTVIcon.VIDEO) { settingsVm.setHdrEnabled(!hdr) }
-            QuickToggleChip("Auto-play", autoPlayNext, OwnTVIcon.SKIP_NEXT) { settingsVm.setAutoPlayNext(!autoPlayNext) }
-            QuickToggleChip("Check for update", updateCheckOnStart, OwnTVIcon.DOWNLOADS) { settingsVm.setUpdateCheckOnStart(!updateCheckOnStart) }
+            QuickToggleChip("自动播放", autoPlayNext, OwnTVIcon.SKIP_NEXT) { settingsVm.setAutoPlayNext(!autoPlayNext) }
+            QuickToggleChip("启动检查更新", updateCheckOnStart, OwnTVIcon.DOWNLOADS) { settingsVm.setUpdateCheckOnStart(!updateCheckOnStart) }
         }
         Spacer(Modifier.height(8.dp))
 
@@ -246,8 +246,8 @@ fun SettingsScreen(
         OwnTVTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            label = "Search settings",
-            placeholder = "Search settings…",
+            label = "搜索设置",
+            placeholder = "搜索设置…",
             focusRequester = searchFieldFocus,
             modifier = Modifier
                 .fillMaxWidth()
@@ -256,18 +256,18 @@ fun SettingsScreen(
         Spacer(Modifier.height(12.dp))
 
         if (searchQuery.isBlank()) {
-        GroupLabel("Profile")
+        GroupLabel("用户档案")
         SettingsRow(
             tone = TileTone.SECONDARY, icon = OwnTVIcon.PERSON,
-            title = "Profiles", desc = "Manage viewers, kids mode & PIN locks",
+            title = "用户档案", desc = "管理观看者、儿童模式与PIN锁",
             onClick = { open(SettingsTab.PROFILES) }, showChevron = true,
             modifier = Modifier.focusRequester(rowFocus.getValue(SettingsTab.PROFILES)),
         )
         SectionDivider()
-        GroupLabel("Content")
+        GroupLabel("内容")
         SettingsRow(
             tone = TileTone.PRIMARY, icon = OwnTVIcon.PLAYLIST,
-            title = "Playlists", desc = "Add, re-sync or remove M3U / Xtream playlists",
+            title = "播放列表", desc = "添加、重新同步或移除 M3U / Xtream 播放列表",
             onClick = { open(SettingsTab.SOURCES) }, showChevron = true,
             modifier = Modifier.focusRequester(rowFocus.getValue(SettingsTab.SOURCES)),
         )
@@ -360,7 +360,7 @@ fun SettingsScreen(
         GroupLabel("Playback")
         SettingsRow(
             tone = TileTone.TERTIARY, icon = OwnTVIcon.LIVE_TV,
-            title = "Live preview", desc = "Auto-play a channel when you focus it",
+            title = "直播预览", desc = "Auto-play a channel when you focus it",
             chip = if (livePreview) "On" else "Off",
             chipTone = if (livePreview) TileTone.PRIMARY else TileTone.SECONDARY,
             onClick = { settingsVm.setLivePreviewEnabled(!livePreview) },
@@ -399,11 +399,11 @@ fun SettingsScreen(
         )
         SettingsRow(
             tone = TileTone.SECONDARY, icon = OwnTVIcon.EPG,
-            title = "Catch-up time",
+            title = "回看时间",
             desc = if (catchupChannels > 0) "$catchupChannels channels support catch-up · timezone for archive playback"
                 else "No catch-up channels available on this playlist",
             chip = when (catchupTz) {
-                SettingsRepository.CatchupTimezone.DEVICE -> "Device"
+                SettingsRepository.CatchupTimezone.DEVICE -> "设备"
                 SettingsRepository.CatchupTimezone.MANUAL -> utcOffsetLabel(catchupOffset)
             },
             chipTone = TileTone.PRIMARY,
@@ -467,16 +467,16 @@ fun SettingsScreen(
             // isn't composed while searching). Toggle entries keep the results visible so the chip
             // updates live.
             val entries = listOf(
-                SettingsSearchEntry("Profile", "Profiles", "viewers kids mode pin lock account", OwnTVIcon.PERSON, TileTone.SECONDARY) { open(SettingsTab.PROFILES) },
-                SettingsSearchEntry("Content", "Playlists", "m3u xtream source sync add remove", OwnTVIcon.PLAYLIST, TileTone.PRIMARY) { open(SettingsTab.SOURCES) },
-                SettingsSearchEntry("Content", "EPG Sources", "xmltv guide feed program", OwnTVIcon.EPG, TileTone.PRIMARY) { open(SettingsTab.EPG) },
-                SettingsSearchEntry("Content", "Customize & Hidden Items", "hide unhide rename reorder categories", OwnTVIcon.SORT, TileTone.PRIMARY) { open(SettingsTab.CUSTOMIZE) },
-                SettingsSearchEntry("Content", "Home screen", "rows hero reorder filter", OwnTVIcon.HOME, TileTone.SECONDARY) { open(SettingsTab.HOME) },
-                SettingsSearchEntry("Content", "Metadata (TMDB)", "posters plots cast ratings", OwnTVIcon.VIDEO, TileTone.PRIMARY) { open(SettingsTab.METADATA) },
-                SettingsSearchEntry("Content", "Download folder", "storage path directory", OwnTVIcon.DOWNLOADS, TileTone.TERTIARY,
+                SettingsSearchEntry("用户档案", "用户档案", "viewers kids mode pin lock account", OwnTVIcon.PERSON, TileTone.SECONDARY) { open(SettingsTab.PROFILES) },
+                SettingsSearchEntry("内容", "播放列表", "m3u xtream source sync add remove", OwnTVIcon.PLAYLIST, TileTone.PRIMARY) { open(SettingsTab.SOURCES) },
+                SettingsSearchEntry("内容", "EPG Sources", "xmltv guide feed program", OwnTVIcon.EPG, TileTone.PRIMARY) { open(SettingsTab.EPG) },
+                SettingsSearchEntry("内容", "Customize & Hidden Items", "hide unhide rename reorder categories", OwnTVIcon.SORT, TileTone.PRIMARY) { open(SettingsTab.CUSTOMIZE) },
+                SettingsSearchEntry("内容", "Home screen", "rows hero reorder filter", OwnTVIcon.HOME, TileTone.SECONDARY) { open(SettingsTab.HOME) },
+                SettingsSearchEntry("内容", "Metadata (TMDB)", "posters plots cast ratings", OwnTVIcon.VIDEO, TileTone.PRIMARY) { open(SettingsTab.METADATA) },
+                SettingsSearchEntry("内容", "Download folder", "storage path directory", OwnTVIcon.DOWNLOADS, TileTone.TERTIARY,
                     chip = downloadRoot.ifBlank { "App storage" }.let { java.io.File(it).name.ifBlank { it } }, chipTone = TileTone.TERTIARY) { dialogReturn = searchFieldFocus; showFolderPicker = true },
-                SettingsSearchEntry("Content", "Backup & Restore", "export import profiles sources", OwnTVIcon.DOWNLOADS, TileTone.TERTIARY) { open(SettingsTab.BACKUP) },
-                SettingsSearchEntry("Content", "Clear watch history", "recently watched continue remove", OwnTVIcon.HISTORY, TileTone.SECONDARY) { dialogReturn = searchFieldFocus; showClearHistory = true },
+                SettingsSearchEntry("内容", "Backup & Restore", "export import profiles sources", OwnTVIcon.DOWNLOADS, TileTone.TERTIARY) { open(SettingsTab.BACKUP) },
+                SettingsSearchEntry("内容", "Clear watch history", "recently watched continue remove", OwnTVIcon.HISTORY, TileTone.SECONDARY) { dialogReturn = searchFieldFocus; showClearHistory = true },
                 SettingsSearchEntry("Appearance", "Theme", "light dark system", OwnTVIcon.THEME, TileTone.PRIMARY,
                     chip = themeLabel(themeMode)) { dialogReturn = searchFieldFocus; showTheme = true },
                 SettingsSearchEntry("Appearance", "Accent color", "tint palette hex preset", OwnTVIcon.PALETTE, TileTone.SECONDARY,
@@ -487,7 +487,7 @@ fun SettingsScreen(
                     chip = animationLevel.label, chipTone = TileTone.SECONDARY) { dialogReturn = searchFieldFocus; showAnimations = true },
                 SettingsSearchEntry("Appearance", "Weather", "top bar chip location celsius fahrenheit", OwnTVIcon.EPG, TileTone.SECONDARY,
                     chip = if (weatherEnabled) "On" else "Off", chipTone = if (weatherEnabled) TileTone.PRIMARY else TileTone.SECONDARY) { open(SettingsTab.WEATHER) },
-                SettingsSearchEntry("Playback", "Live preview", "auto play focus channel", OwnTVIcon.LIVE_TV, TileTone.TERTIARY,
+                SettingsSearchEntry("Playback", "直播预览", "auto play focus channel", OwnTVIcon.LIVE_TV, TileTone.TERTIARY,
                     chip = if (livePreview) "On" else "Off", chipTone = if (livePreview) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { settingsVm.setLivePreviewEnabled(!livePreview) },
                 SettingsSearchEntry("Playback", "Preview audio", "sound live preview", OwnTVIcon.AUDIO, TileTone.SECONDARY,
                     chip = if (previewAudio) "On" else "Off", chipTone = if (previewAudio) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { settingsVm.setLivePreviewAudio(!previewAudio) },
@@ -497,9 +497,9 @@ fun SettingsScreen(
                     chip = if (surroundSound) "On" else "Off", chipTone = if (surroundSound) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { settingsVm.setSurroundSound(!surroundSound) },
                 SettingsSearchEntry("Playback", "Auto-play next episode", "autoplay series season", OwnTVIcon.SKIP_NEXT, TileTone.SECONDARY,
                     chip = if (autoPlayNext) "On" else "Off", chipTone = if (autoPlayNext) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { settingsVm.setAutoPlayNext(!autoPlayNext) },
-                SettingsSearchEntry("Playback", "Catch-up time", "archive timezone offset", OwnTVIcon.EPG, TileTone.SECONDARY,
+                SettingsSearchEntry("Playback", "回看时间", "archive timezone offset", OwnTVIcon.EPG, TileTone.SECONDARY,
                     chip = when (catchupTz) {
-                        SettingsRepository.CatchupTimezone.DEVICE -> "Device"
+                        SettingsRepository.CatchupTimezone.DEVICE -> "设备"
                         SettingsRepository.CatchupTimezone.MANUAL -> utcOffsetLabel(catchupOffset)
                     }) { dialogReturn = searchFieldFocus; showCatchupTime = true },
                 SettingsSearchEntry("Playback", "Video Player Settings", "decoder subtitles sync", OwnTVIcon.VIDEO, TileTone.TERTIARY) { open(SettingsTab.VIDEO) },
@@ -995,9 +995,9 @@ private fun ZoomDialog(current: Int, onSet: (Int) -> Unit, onDismiss: () -> Unit
             }
             Spacer(Modifier.height(24.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OwnTVButton("Reset", onClick = { onSet(UiZoom.DEFAULT) }, style = OwnTVButtonStyle.SECONDARY)
+                OwnTVButton("重置", onClick = { onSet(UiZoom.DEFAULT) }, style = OwnTVButtonStyle.SECONDARY)
                 Spacer(Modifier.weight(1f))
-                OwnTVButton("Done", onClick = onDismiss)
+                OwnTVButton("完成", onClick = onDismiss)
             }
         }
 
@@ -1019,18 +1019,18 @@ private fun ZoomDialog(current: Int, onSet: (Int) -> Unit, onDismiss: () -> Unit
                     modifier = Modifier.dialogPanel(width = 460.dp, padding = 28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("⚠️ Low zoom warning", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
+                    Text("⚠️ 低缩放警告", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "Zoom below ${UiZoom.LOW_RAM_WARN}% shows many more items on screen at once. " +
-                            "On devices with limited memory (e.g. 2 GB TV sticks) this can make the app " +
-                            "unstable or crash, especially with large playlists and EPG data.\n\n" +
-                            "Press OK to continue, or Back to stay at ${UiZoom.LOW_RAM_WARN}%.",
+                        "缩放低于 ${UiZoom.LOW_RAM_WARN}% 会在屏幕上显示更多项目。 " +
+                            "在内存有限的设备上（例如 2 GB 的电视棒），这可能会使应用 " +
+                            "不稳定或崩溃，尤其是在有大量播放列表和节目指南数据时。\n\n" +
+                            "按确定继续，或按返回保持在 ${UiZoom.LOW_RAM_WARN}%。",
                         style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant,
                     )
                     Spacer(Modifier.height(20.dp))
                     OwnTVButton(
-                        "I understand and accept the risk",
+                        "我理解并接受风险",
                         onClick = {
                             lowZoomAccepted = true
                             pendingLowZoom = null
@@ -1082,10 +1082,10 @@ private fun CatchupTimeDialog(
             modifier = Modifier.dialogPanel(width = 480.dp, padding = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Catch-up time", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
+            Text("回看时间", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
             Spacer(Modifier.height(6.dp))
             Text(
-                "How catch-up timestamps are sent. Use your device timezone, or set the offset your provider's server expects.",
+                "回看时间戳的发送方式。使用您设备的时区，或设置您供应商服务器期望的偏移量。",
                 style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
@@ -1093,13 +1093,13 @@ private fun CatchupTimeDialog(
             // Mode toggle: Device / Manual.
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OwnTVButton(
-                    "Device",
+                    "设备",
                     onClick = { onSetMode(SettingsRepository.CatchupTimezone.DEVICE) },
                     style = if (!manual) OwnTVButtonStyle.PRIMARY else OwnTVButtonStyle.SECONDARY,
                     modifier = Modifier.focusRequester(firstFocus),
                 )
                 OwnTVButton(
-                    "Manual",
+                    "手动",
                     onClick = { onSetMode(SettingsRepository.CatchupTimezone.MANUAL) },
                     style = if (manual) OwnTVButtonStyle.PRIMARY else OwnTVButtonStyle.SECONDARY,
                 )
@@ -1119,7 +1119,7 @@ private fun CatchupTimeDialog(
                 }
             }
             Spacer(Modifier.height(24.dp))
-            OwnTVButton("Done", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
+            OwnTVButton("完成", onClick = onDismiss, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -1231,7 +1231,7 @@ private fun SettingsRow(
 private fun SoonChip() {
     val colors = OwnTVTheme.colors
     Text(
-        text = "SOON",
+        text = "即将推出",
         style = MaterialTheme.typography.labelMedium,
         color = colors.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold,
@@ -1286,7 +1286,7 @@ private fun QuickToggleChip(
             OwnTVIcon(icon = icon, tint = fg, modifier = Modifier.size(18.dp))
             Text(label, style = MaterialTheme.typography.labelLarge, color = fg, fontWeight = FontWeight.SemiBold)
             Text(
-                text = if (on) "On" else "Off",
+                text = if (on) "开" else "关",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (on) fg else colors.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold,

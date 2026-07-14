@@ -39,14 +39,14 @@ import tv.own.owntv.ui.theme.UiZoom
 
 /** Top-level navigation destinations rendered in the Layer-1 sidebar. */
 enum class MainSection(val label: String) {
-    SEARCH("Search"),
-    HOME("Home"),
-    LIVE_TV("Live TV"),
-    MOVIES("Movies"),
-    SERIES("Series"),
-    DOWNLOADS("Downloads"),
-    EPG("Guide"),
-    SETTINGS("Settings"); // pinned at the bottom of the nav
+    SEARCH("搜索"),
+    HOME("首页"),
+    LIVE_TV("直播"),
+    MOVIES("电影"),
+    SERIES("剧集"),
+    DOWNLOADS("下载"),
+    EPG("节目指南"),
+    SETTINGS("设置"); // pinned at the bottom of the nav
 
     /** Shown as an icon in the left nav rail. Phase 4 moved Search to the top bar, so it's excluded. */
     val isBrowse: Boolean get() = this != SETTINGS && this != SEARCH

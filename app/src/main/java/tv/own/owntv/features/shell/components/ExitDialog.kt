@@ -63,14 +63,14 @@ fun ExitDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Exit OwnTV?",
+                text = "退出 OwnTV？",
                 style = MaterialTheme.typography.titleLarge,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Are you sure you want to close the app?",
+                text = "确定要关闭应用吗？",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textSecondary,
                 textAlign = TextAlign.Center,
@@ -78,13 +78,13 @@ fun ExitDialog(
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 OwnTVButton(
-                    label = "Cancel",
+                    label = "取消",
                     onClick = onDismiss,
                     style = OwnTVButtonStyle.SECONDARY,
                     modifier = Modifier.focusRequester(cancelFocus),
                 )
                 OwnTVButton(
-                    label = "Exit",
+                    label = "退出",
                     onClick = onConfirm,
                     style = OwnTVButtonStyle.PRIMARY,
                 )

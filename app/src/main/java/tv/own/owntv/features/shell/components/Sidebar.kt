@@ -119,7 +119,7 @@ fun Sidebar(
             contentAlignment = Alignment.Center,
         ) {
             if (expanded) {
-                SectionLabel("Browse")
+                SectionLabel("浏览")
                 Spacer(Modifier.height(4.dp))
             }
 
@@ -229,7 +229,7 @@ private fun ProfileCard(
             AvatarButton(avatarId = avatarId, sizeDp = 64, onClick = onPickAvatar)
             Spacer(Modifier.height(10.dp))
             Text(
-                profileName.ifBlank { "OwnTV User" },
+                profileName.ifBlank { "OwnTV 用户" },
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.onSurface,
                 maxLines = 1,
@@ -259,7 +259,7 @@ private fun ProfileCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OwnTVIcon(icon = OwnTVIcon.PERSON, tint = c, modifier = Modifier.size(18.dp))
-                    Text("Switch Profile", style = MaterialTheme.typography.labelLarge, color = c, maxLines = 1)
+                    Text("切换用户", style = MaterialTheme.typography.labelLarge, color = c, maxLines = 1)
                 }
             }
         }

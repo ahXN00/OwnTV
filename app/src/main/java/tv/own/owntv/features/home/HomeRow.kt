@@ -10,11 +10,11 @@ enum class HomeRow(
     val settingsDesc: String,
     val implemented: Boolean = true,
 ) {
-    HERO("Keep Watching", "The large preview row at the top"),
-    RECENT_CHANNELS("Recent Channels", "Live channels you tuned recently"),
-    FAVORITE_CHANNELS("Favourite Channels", "Your favourited live channels"),
-    CONTINUE_MOVIES("Continue Watching Movies", "Movies with a saved position"),
-    CONTINUE_SERIES("Continue Watching Series", "Episodes to resume or play next"),
+    HERO("持续观看", "顶部的大型预览行"),
+    RECENT_CHANNELS("最近频道", "最近收看的直播频道"),
+    FAVORITE_CHANNELS("收藏频道", "您收藏的直播频道"),
+    CONTINUE_MOVIES("继续观看电影", "有保存位置的电影"),
+    CONTINUE_SERIES("继续观看剧集", "要继续或播放下一个的剧集"),
 }
 
 enum class HomeLiveRowMode(
