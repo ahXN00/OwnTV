@@ -35,6 +35,7 @@ import org.koin.androidx.compose.koinViewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import tv.own.owntv.core.database.entity.SourceEntity
+import tv.own.owntv.core.cloud.CloudServerState
 import tv.own.owntv.core.model.SourceType
 import tv.own.owntv.core.sync.SyncCounts
 import tv.own.owntv.core.sync.SyncProgressCounts
@@ -64,6 +65,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val sourceExpiry by vm.sourceExpiry.collectAsStateWithLifecycle()
     val deletingIds by vm.deletingSourceIds.collectAsStateWithLifecycle()
     val epgSync by vm.epgSync.collectAsStateWithLifecycle()
+    val cloudState by vm.cloudState.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
 
     var showAdd by remember { mutableStateOf(false) }
@@ -86,7 +88,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
     BackHandler {
         when {
-            showAdd -> { showAdd = false; vm.cancelImport() }
+            showAdd -> { showAdd = false; vm.clearTransientAddSourceState() }
             editingSource != null -> editingSource = null
             else -> onBack()
         }
@@ -110,6 +112,9 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 editingSource = null
             },
             onStartM3u = { n, url, ua, epg, autoRefresh, isDefault -> vm.updateSource(src.id, n, url, "", "", ua, epg, autoRefresh, isDefault); editingSource = null },
+            onStartCloud = null,
+            onStopCloud = null,
+            cloudState = CloudServerState.Idle,
             onStartStalker = { n, url, mac, ua, autoRefresh, isDefault ->
                 vm.updateSource(src.id, n, url, "", "", ua, "", autoRefresh, isDefault, mac = mac)
                 vm.resetStalkerTest()
@@ -130,6 +135,9 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     vm.addXtream(n, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault)
                 },
                 onStartM3u = { n, url, ua, epg, autoRefresh, isDefault -> vm.addM3u(n, url, ua, epg, autoRefresh, isDefault) },
+                onStartCloud = { port -> vm.startCloudListener(port) },
+                onStopCloud = { vm.stopCloudListener() },
+                cloudState = cloudState,
                 onStartStalker = { n, url, mac, ua, autoRefresh, isDefault ->
                     vm.resetStalkerTest()
                     vm.addStalker(n, url, mac, ua, autoRefresh, isDefault)
@@ -138,7 +146,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 stalkerTest = stalkerTestUi,
                 // A newly-added playlist can be made default only when others already exist.
                 showDefaultToggle = sources.isNotEmpty(),
-                onBack = { vm.resetStalkerTest(); showAdd = false },
+                onBack = { vm.clearTransientAddSourceState(); showAdd = false },
                 modifier = modifier,
                 initial = vm.lastFailedSource, // pre-fill on retry — no re-typing after a typo
             )
@@ -156,7 +164,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Spacer(Modifier.height(4.dp))
                 Text(display?.detail ?: "Preparing catalog", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 Spacer(Modifier.height(20.dp))
-                OwnTVButton("Cancel", onClick = { showAdd = false; vm.cancelImport() }, style = OwnTVButtonStyle.SECONDARY)
+                OwnTVButton("Cancel", onClick = { showAdd = false; vm.clearTransientAddSourceState() }, style = OwnTVButtonStyle.SECONDARY)
             }
             is SettingsViewModel.ImportState.Success -> {
                 // Semi-auto EPG: ask → sync (with a live count, like the import) → done, before returning.
@@ -168,10 +176,10 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         Spacer(Modifier.height(8.dp))
                         Text(s.summary, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                         Spacer(Modifier.height(20.dp))
-                        OwnTVButton("Done", onClick = { showAdd = false; vm.resetImport() })
+                        OwnTVButton("Done", onClick = { showAdd = false; vm.clearTransientAddSourceState() })
                     }
                 } else {
-                    LaunchedEffect(Unit) { showAdd = false; vm.resetImport() }
+                    LaunchedEffect(Unit) { showAdd = false; vm.clearTransientAddSourceState() }
                 }
             }
             is SettingsViewModel.ImportState.Failed -> CenterStatus {
@@ -180,7 +188,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Text(s.message, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 Spacer(Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OwnTVButton("Back", onClick = { showAdd = false; vm.resetImport() }, style = OwnTVButtonStyle.SECONDARY)
+                    OwnTVButton("Back", onClick = { showAdd = false; vm.clearTransientAddSourceState() }, style = OwnTVButtonStyle.SECONDARY)
                     OwnTVButton("Try again", onClick = { vm.resetImport() }, modifier = Modifier.focusRequester(errorFocus))
                 }
             }

@@ -26,6 +26,9 @@ import kotlinx.coroutines.withContext
 import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.SourceEntity
+import tv.own.owntv.core.cloud.CloudServerState
+import tv.own.owntv.core.cloud.XtreamCloudListener
+import tv.own.owntv.core.cloud.XtreamCloudPayload
 import tv.own.owntv.core.network.ConnectivityObserver
 import tv.own.owntv.core.repository.SourceRepository
 import tv.own.owntv.core.sync.ImportStage
@@ -75,7 +78,14 @@ class SettingsViewModel(
 
         /** Sentinel session key for pre-save "Test connection" handshakes (no real source id yet). */
         private const val STALKER_TEST_SOURCE_ID = -1L
+
+        private const val CLOUD_LISTENER_PORT = 8089
     }
+
+    private val cloudListener = XtreamCloudListener()
+
+    private val _cloudState = MutableStateFlow<CloudServerState>(CloudServerState.Idle)
+    val cloudState: StateFlow<CloudServerState> = _cloudState.asStateFlow()
 
     // Semi-auto EPG: after a playlist import, if the playlist has a guide URL we offer to sync the EPG now
     // (instead of the old slow auto-sync). "Sync now" shows a live programme count, just like the import.
@@ -139,6 +149,60 @@ class SettingsViewModel(
         /** [summary] is the per-type breakdown, e.g. "40K channels · 100K movies · 30K series synced". */
         data class Success(val summary: String) : ImportState
         data class Failed(val message: String) : ImportState
+    }
+
+    fun startCloudListener(port: Int = CLOUD_LISTENER_PORT) {
+        if (port !in 1..65535) {
+            _cloudState.value = CloudServerState.Failed("Enter a valid port between 1 and 65535.")
+            return
+        }
+        viewModelScope.launch {
+            _cloudState.value = CloudServerState.Starting
+            runCatching {
+                cloudListener.start(port) { payload ->
+                    handleCloudPayload(payload)
+                }
+            }.onSuccess { urls ->
+                _cloudState.value = CloudServerState.Listening(port, urls)
+            }.onFailure { error ->
+                _cloudState.value = CloudServerState.Failed(friendlyCloudError(error))
+            }
+        }
+    }
+
+    fun stopCloudListener() {
+        cloudListener.stop()
+        _cloudState.value = CloudServerState.Idle
+    }
+
+    private fun handleCloudPayload(payload: XtreamCloudPayload) {
+        viewModelScope.launch {
+            val autoRefresh = runCatching { PlaylistAutoRefresh.valueOf(payload.autoRefresh) }.getOrDefault(PlaylistAutoRefresh.OFF)
+            if (payload.sourceType.equals("stalker", ignoreCase = true)) {
+                addStalker(
+                    name = payload.name,
+                    portalUrl = payload.portalUrl,
+                    mac = payload.mac,
+                    userAgent = payload.userAgent,
+                    autoRefresh = autoRefresh,
+                    isDefault = payload.isDefault,
+                )
+            } else {
+                addXtream(
+                    name = payload.name,
+                    server = payload.server,
+                    user = payload.user,
+                    pass = payload.pass,
+                    userAgent = payload.userAgent,
+                    epgUrl = payload.epgUrl,
+                    autoRefresh = autoRefresh,
+                    syncLive = payload.syncLive,
+                    syncMovies = payload.syncMovies,
+                    syncSeries = payload.syncSeries,
+                    isDefault = payload.isDefault,
+                )
+            }
+        }
     }
 
     val sources: StateFlow<List<SourceEntity>> = settings.activeProfileId
@@ -695,6 +759,12 @@ class SettingsViewModel(
     private fun String.isLocalPlaylistPath(): Boolean =
         startsWith("/") || startsWith("file://") || startsWith("content://")
 
+    private fun friendlyCloudError(t: Throwable): String = when (t) {
+        is java.net.BindException -> "Port is already in use. Pick another port."
+        is java.net.SocketException -> t.message?.takeIf { it.isNotBlank() } ?: "Could not open the local server."
+        else -> t.message?.takeIf { it.isNotBlank() } ?: "Could not open the local server."
+    }
+
     /** Re-sync an existing source through WorkManager so it can continue after leaving this screen. */
     fun resync(source: SourceEntity) {
         Log.d(TAG, "resync enqueue sourceId=${source.id}")
@@ -751,6 +821,15 @@ class SettingsViewModel(
         _progress.value = null
     }
 
+    /** Clears transient cloud/import UI state when leaving Add Source. */
+    fun clearTransientAddSourceState() {
+        stopCloudListener()
+        cancelImport()
+        dismissPendingEpg()
+        resetStalkerTest()
+        _lastFailedSource = null
+    }
+
     private suspend fun refreshActiveTvHome(allowBrowsableRequest: Boolean = true) {
         val pid = profileDao.resolveExistingProfileId(settings.activeProfileId.first()) ?: return
         Log.d(TAG, "refreshActiveTvHome profile=$pid allowBrowsable=$allowBrowsableRequest")
@@ -777,6 +856,11 @@ class SettingsViewModel(
 
     private fun String.withWarnings(result: SyncResult.Success): String =
         result.warningSummary()?.let { "$this\n$it" } ?: this
+
+    override fun onCleared() {
+        cloudListener.close()
+        super.onCleared()
+    }
 
     // --- Global proxy (Approach 1 — one app-wide HTTP proxy) ---
 

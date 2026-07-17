@@ -66,6 +66,7 @@ fun Onboarding(firstRun: Boolean, onDone: () -> Unit, onCancel: () -> Unit, modi
     val importState by vm.state.collectAsStateWithLifecycle()
     val progress by vm.progress.collectAsStateWithLifecycle()
     val epgSync by vm.epgSync.collectAsStateWithLifecycle()
+    val cloudState by vm.cloudState.collectAsStateWithLifecycle()
     var existing by remember { mutableStateOf<List<SourceEntity>>(emptyList()) }
     // Where "Try Again" returns to when an import fails (new source vs. linking existing).
     var importOrigin by remember { mutableStateOf(Step.ADD_SOURCE) }
@@ -74,6 +75,14 @@ fun Onboarding(firstRun: Boolean, onDone: () -> Unit, onCancel: () -> Unit, modi
 
     // Refresh the "existing playlists" availability whenever we land on the add-content step.
     LaunchedEffect(step) { if (step == Step.ADD_CONTENT) existing = runCatching { vm.availableExistingSources() }.getOrDefault(emptyList()) }
+    // Cloud import starts asynchronously from the listener callback; move forward automatically when
+    // the first import state arrives so onboarding behaves like pressing "Start Import".
+    LaunchedEffect(step, importState) {
+        if (step == Step.ADD_SOURCE && importState is SetupViewModel.ImportState.Running) {
+            importOrigin = Step.ADD_SOURCE
+            step = Step.IMPORTING
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize().background(OwnTVTheme.colors.background)) {
         when (step) {
@@ -93,7 +102,11 @@ fun Onboarding(firstRun: Boolean, onDone: () -> Unit, onCancel: () -> Unit, modi
             )
             Step.ADD_CONTENT -> AddContentScreen(
                 hasExisting = existing.isNotEmpty(),
-                onNew = { step = Step.ADD_SOURCE },
+                onNew = {
+                    vm.reset()
+                    vm.dismissPendingEpg()
+                    step = Step.ADD_SOURCE
+                },
                 onExisting = { step = Step.EXISTING },
                 onImport = { backupOrigin = Step.ADD_CONTENT; step = Step.IMPORT_BACKUP },
                 onSkip = { vm.finish(onDone) },
@@ -110,7 +123,13 @@ fun Onboarding(firstRun: Boolean, onDone: () -> Unit, onCancel: () -> Unit, modi
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING
                 },
-                onBack = { step = Step.ADD_CONTENT },
+                onStartCloud = { port -> vm.startCloudListener(port) },
+                onStopCloud = { vm.stopCloudListener() },
+                cloudState = cloudState,
+                onBack = {
+                    vm.clearTransientAddSourceState()
+                    step = Step.ADD_CONTENT
+                },
                 initial = vm.lastFailedSource, // pre-fill on retry after failed import
                 showDefaultToggle = false, // first playlist in setup: nothing to be "default" over yet
             )
@@ -120,7 +139,6 @@ fun Onboarding(firstRun: Boolean, onDone: () -> Unit, onCancel: () -> Unit, modi
                 onContinue = { vm.finish(onDone) }, // playlist + its EPG synced (auto)
                 onRetry = { vm.reset(); step = importOrigin },
                 onCancel = { vm.cancelImport(); step = importOrigin },
-                onBackground = { vm.continueInBackground(onDone) }, // enter the app; sync keeps running
             )
             Step.EXISTING -> ExistingSourcesScreen(
                 sources = existing,
@@ -355,12 +373,10 @@ private fun ImportProgressScreen(
     onContinue: () -> Unit,
     onRetry: () -> Unit,
     onCancel: () -> Unit,
-    onBackground: () -> Unit,
 ) {
     val colors = OwnTVTheme.colors
     val fr = remember { FocusRequester() }
-    val bgFr = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { bgFr.requestFocus() } }
+    LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
     LaunchedEffect(state) {
         if (state is SetupViewModel.ImportState.Success || state is SetupViewModel.ImportState.Failed) runCatching { fr.requestFocus() }
     }
@@ -386,15 +402,10 @@ private fun ImportProgressScreen(
                     color = colors.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(24.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Enter the app right away; the import keeps running (VM is activity-scoped) and
-                    // content appears as it lands — no need to sit through a big movies/series sync.
-                    OwnTVButton("Run in background", onClick = onBackground, icon = OwnTVIcon.PLAY, modifier = Modifier.focusRequester(bgFr))
-                    OwnTVButton("Cancel", onClick = onCancel, style = OwnTVButtonStyle.SECONDARY)
-                }
+                OwnTVButton("Cancel", onClick = onCancel, style = OwnTVButtonStyle.SECONDARY, modifier = Modifier.focusRequester(fr))
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "You can start watching while the rest of the catalog loads.",
+                    "Please wait while channels and catalog data finish loading.",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onSurfaceVariant,
                 )

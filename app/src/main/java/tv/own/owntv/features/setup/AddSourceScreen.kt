@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import tv.own.owntv.core.database.entity.SourceEntity
+import tv.own.owntv.core.cloud.CloudServerState
 import tv.own.owntv.core.model.SourceType
 import tv.own.owntv.features.settings.PickerDialog
 import tv.own.owntv.features.settings.data.PlaylistAutoRefresh
@@ -45,7 +47,7 @@ import tv.own.owntv.ui.components.OwnTVTextField
 import tv.own.owntv.ui.components.roundedPanel
 import tv.own.owntv.ui.theme.OwnTVTheme
 
-private enum class SourceKind { XTREAM, M3U, STALKER }
+private enum class SourceKind { XTREAM, CLOUD, M3U, STALKER }
 
 /** UI state of the Stalker "Test connection" probe (mapped from the owning ViewModel's state). */
 sealed interface StalkerTestUi {
@@ -79,6 +81,9 @@ fun AddSourceScreen(
         syncSeries: Boolean,
         isDefault: Boolean,
     ) -> Unit,
+    onStartCloud: ((port: Int) -> Unit)? = null,
+    onStopCloud: (() -> Unit)? = null,
+    cloudState: CloudServerState = CloudServerState.Idle,
     onStartM3u: (name: String, url: String, userAgent: String, epgUrl: String, autoRefresh: PlaylistAutoRefresh, isDefault: Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -110,6 +115,7 @@ fun AddSourceScreen(
     var portalUrl by remember(initial) { mutableStateOf(if (initial != null && initial.type == SourceType.STALKER) initial.url else "") }
     var mac by remember(initial) { mutableStateOf(initial?.mac ?: "") }
     var showUaPresetPicker by remember { mutableStateOf(false) }
+    var cloudPort by remember { mutableStateOf("8089") }
     var epgUrl by remember(initial) { mutableStateOf(initial?.epgUrl ?: "") }
     var userAgent by remember(initial) { mutableStateOf(initial?.userAgent ?: "") }
     var autoRefresh by remember(initialAutoRefresh) { mutableStateOf(initialAutoRefresh) }
@@ -124,10 +130,22 @@ fun AddSourceScreen(
 
     val showContentToggles = kind == SourceKind.XTREAM && !editing
     val macValid = tv.own.owntv.core.stalker.StalkerClient.canonicalizeMac(mac) != null
+    val cloudPortValid = cloudPort.toIntOrNull()?.let { it in 1..65535 } == true
+    val cloudListening = cloudState is CloudServerState.Listening
     val canStart = when (kind) {
         SourceKind.XTREAM -> server.isNotBlank() && username.isNotBlank() && password.isNotBlank() && (syncLive || syncMovies || syncSeries)
+        SourceKind.CLOUD -> cloudPortValid
         SourceKind.M3U -> m3uUrl.isNotBlank()
         SourceKind.STALKER -> tv.own.owntv.core.stalker.StalkerClient.isValidPortalUrl(portalUrl) && macValid
+    }
+
+    // If the user leaves the Cloud tab, stop the listener so stale URLs/server sessions don't linger.
+    LaunchedEffect(kind, cloudListening, onStopCloud) {
+        if (kind != SourceKind.CLOUD && cloudListening) onStopCloud?.invoke()
+    }
+    // Also stop listener when this screen leaves composition (back/navigation/import transition).
+    DisposableEffect(onStopCloud) {
+        onDispose { onStopCloud?.invoke() }
     }
 
     Box(modifier.fillMaxSize().roundedPanel()) {
@@ -152,6 +170,9 @@ fun AddSourceScreen(
             // goes to the Name field instead of a dead chip).
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 KindChip("Xtream", kind == SourceKind.XTREAM, Modifier.weight(1f).then(if (!editing) Modifier.focusRequester(firstFocus) else Modifier)) { if (!editing) kind = SourceKind.XTREAM }
+                if (onStartCloud != null) {
+                    KindChip("Cloud", kind == SourceKind.CLOUD, Modifier.weight(1f)) { if (!editing) kind = SourceKind.CLOUD }
+                }
                 KindChip("M3U / M3U8", kind == SourceKind.M3U, Modifier.weight(1f)) { if (!editing) kind = SourceKind.M3U }
                 if (onStartStalker != null) {
                     KindChip("Stalker (MAC)", kind == SourceKind.STALKER, Modifier.weight(1f)) { if (!editing) kind = SourceKind.STALKER }
@@ -159,8 +180,10 @@ fun AddSourceScreen(
             }
             Spacer(Modifier.height(20.dp))
 
-            OwnTVTextField(name, { name = it }, label = "Name (optional)", placeholder = "My IPTV", modifier = Modifier.fillMaxWidth(), focusRequester = if (editing) firstFocus else null)
-            Spacer(Modifier.height(14.dp))
+            if (kind != SourceKind.CLOUD) {
+                OwnTVTextField(name, { name = it }, label = "Name (optional)", placeholder = "My IPTV", modifier = Modifier.fillMaxWidth(), focusRequester = if (editing) firstFocus else null)
+                Spacer(Modifier.height(14.dp))
+            }
 
             when (kind) {
                 SourceKind.XTREAM -> {
@@ -169,6 +192,39 @@ fun AddSourceScreen(
                     OwnTVTextField(username, { username = it }, label = "Username", modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(14.dp))
                     OwnTVTextField(password, { password = it }, label = if (editing) "Password (leave blank to keep)" else "Password", isPassword = true, modifier = Modifier.fillMaxWidth())
+                }
+                SourceKind.CLOUD -> {
+                    OwnTVTextField(cloudPort, { cloudPort = it.filter { ch -> ch.isDigit() }.take(5) }, label = "Local server port", placeholder = "8089", keyboardType = KeyboardType.Number, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Start the listener, then open the URLs below from any device on the same network.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    when (cloudState) {
+                        CloudServerState.Idle -> Unit
+                        CloudServerState.Starting -> {
+                            Text("Opening local server...", style = MaterialTheme.typography.bodySmall, color = colors.primary)
+                        }
+                        is CloudServerState.Listening -> {
+                            Text("Listener is active.", style = MaterialTheme.typography.bodySmall, color = colors.primary)
+                            Spacer(Modifier.height(8.dp))
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                cloudState.urls.take(4).forEach { url ->
+                                    Text(url, style = MaterialTheme.typography.bodySmall, color = colors.onSurface)
+                                }
+                                if (cloudState.urls.size > 4) {
+                                    Text("... and ${cloudState.urls.size - 4} more", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text("Open the root page to use Xtream/Stalker forms, or POST to /xtream and /stalker.", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                        }
+                        is CloudServerState.Failed -> {
+                            Text(cloudState.message, style = MaterialTheme.typography.bodySmall, color = Color(0xFFEF4444))
+                        }
+                    }
                 }
                 SourceKind.M3U -> {
                     val pickedName = remember(m3uUrl) {
@@ -222,23 +278,25 @@ fun AddSourceScreen(
                 }
             }
 
-            // EPG is managed separately now (Settings → EPG Sources), so no EPG field here. For an
-            // Xtream server the guide URL is still derived automatically; M3U EPG can be added there.
-            Spacer(Modifier.height(14.dp))
-            OwnTVTextField(userAgent, { userAgent = it }, label = "User-Agent (optional)", placeholder = "e.g. VLC/3.0.20 LibVLC/3.0.20", modifier = Modifier.fillMaxWidth())
+            if (kind != SourceKind.CLOUD) {
+                // EPG is managed separately now (Settings → EPG Sources), so no EPG field here. For an
+                // Xtream server the guide URL is still derived automatically; M3U EPG can be added there.
+                Spacer(Modifier.height(14.dp))
+                OwnTVTextField(userAgent, { userAgent = it }, label = "User-Agent (optional)", placeholder = "e.g. VLC/3.0.20 LibVLC/3.0.20", modifier = Modifier.fillMaxWidth())
 
-            Spacer(Modifier.height(16.dp))
-            // Auto-refresh dropdown (replaces the old binary "Refresh on startup" toggle). Off/Startup or a
-            // staleness threshold — the source is refreshed when its data is at least this old.
-            AutoRefreshRow(selected = autoRefresh) { showAutoRefreshPicker = true }
-
-            if (showDefaultToggle) {
                 Spacer(Modifier.height(16.dp))
-                ToggleRow(
-                    label = "Default playlist",
-                    desc = "Show only this playlist across the app. Turn off for all playlists; change anytime from the top bar.",
-                    checked = isDefault,
-                ) { isDefault = it }
+                // Auto-refresh dropdown (replaces the old binary "Refresh on startup" toggle). Off/Startup or a
+                // staleness threshold — the source is refreshed when its data is at least this old.
+                AutoRefreshRow(selected = autoRefresh) { showAutoRefreshPicker = true }
+
+                if (showDefaultToggle) {
+                    Spacer(Modifier.height(16.dp))
+                    ToggleRow(
+                        label = "Default playlist",
+                        desc = "Show only this playlist across the app. Turn off for all playlists; change anytime from the top bar.",
+                        checked = isDefault,
+                    ) { isDefault = it }
+                }
             }
 
             if (showContentToggles) {
@@ -259,15 +317,24 @@ fun AddSourceScreen(
                 OwnTVButton("Back", onClick = onBack, style = OwnTVButtonStyle.SECONDARY)
                 Spacer(Modifier.weight(1f))
                 OwnTVButton(
-                    label = if (editing) "Save" else "Start Import",
+                    label = when (kind) {
+                        SourceKind.CLOUD -> if (cloudListening) "Stop server" else "Open server"
+                        else -> if (editing) "Save" else "Start Import"
+                    },
                     onClick = {
                         when (kind) {
                             SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault)
+                            SourceKind.CLOUD -> {
+                                if (cloudListening) onStopCloud?.invoke() else onStartCloud?.invoke(cloudPort.toIntOrNull() ?: 8089)
+                            }
                             SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, epgUrl, autoRefresh, isDefault)
                             SourceKind.STALKER -> onStartStalker?.invoke(name, portalUrl, mac, userAgent, autoRefresh, isDefault)
                         }
                     },
-                    enabled = canStart,
+                    enabled = when (kind) {
+                        SourceKind.CLOUD -> cloudListening || (cloudPortValid && onStartCloud != null)
+                        else -> canStart
+                    },
                 )
             }
         }

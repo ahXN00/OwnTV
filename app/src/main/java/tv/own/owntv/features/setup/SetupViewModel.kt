@@ -17,6 +17,9 @@ import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.ProfileEntity
 import tv.own.owntv.core.database.entity.ProfileSourceCrossRef
 import tv.own.owntv.core.database.entity.SourceEntity
+import tv.own.owntv.core.cloud.CloudServerState
+import tv.own.owntv.core.cloud.XtreamCloudListener
+import tv.own.owntv.core.cloud.XtreamCloudPayload
 import tv.own.owntv.core.network.ConnectivityObserver
 import tv.own.owntv.core.repository.SourceRepository
 import tv.own.owntv.core.sync.ImportStage
@@ -50,6 +53,10 @@ class SetupViewModel(
     private val catalogSyncScheduler: CatalogSyncScheduler,
     private val stalkerAuth: tv.own.owntv.core.stalker.StalkerAuthManager,
 ) : ViewModel() {
+
+    private val cloudListener = XtreamCloudListener()
+    private val _cloudState = MutableStateFlow<CloudServerState>(CloudServerState.Idle)
+    val cloudState: StateFlow<CloudServerState> = _cloudState.asStateFlow()
 
     // Semi-auto EPG: after the first playlist imports, offer a one-tap guide sync (with a live count) if it
     // has a guide feed.
@@ -132,6 +139,67 @@ class SetupViewModel(
                 userAgent = userAgent.trim().takeIf { it.isNotBlank() },
                 epgUrl = epgUrl.trim().takeIf { it.isNotBlank() },
             )
+        }
+    }
+
+    fun startCloudListener(port: Int = CLOUD_LISTENER_PORT) {
+        if (port !in 1..65535) {
+            _cloudState.value = CloudServerState.Failed("Enter a valid port between 1 and 65535.")
+            return
+        }
+        viewModelScope.launch {
+            _cloudState.value = CloudServerState.Starting
+            runCatching {
+                cloudListener.start(port) { payload ->
+                    handleCloudPayload(payload)
+                }
+            }.onSuccess { urls ->
+                _cloudState.value = CloudServerState.Listening(port, urls)
+            }.onFailure { error ->
+                _cloudState.value = CloudServerState.Failed(friendlyCloudError(error))
+            }
+        }
+    }
+
+    fun stopCloudListener() {
+        cloudListener.stop()
+        _cloudState.value = CloudServerState.Idle
+    }
+
+    /** Clears transient listener/import UI state when leaving the cloud/add-source step. */
+    fun clearTransientAddSourceState() {
+        stopCloudListener()
+        cancelImport()
+        dismissPendingEpg()
+        reset()
+        lastFailedSource = null
+    }
+
+    private fun handleCloudPayload(payload: XtreamCloudPayload) {
+        viewModelScope.launch {
+            val autoRefresh = runCatching { PlaylistAutoRefresh.valueOf(payload.autoRefresh) }.getOrDefault(PlaylistAutoRefresh.OFF)
+            if (payload.sourceType.equals("stalker", ignoreCase = true)) {
+                startStalker(
+                    name = payload.name,
+                    portalUrl = payload.portalUrl,
+                    mac = payload.mac,
+                    userAgent = payload.userAgent,
+                    autoRefresh = autoRefresh,
+                )
+            } else {
+                startXtream(
+                    name = payload.name,
+                    server = payload.server,
+                    username = payload.user,
+                    password = payload.pass,
+                    userAgent = payload.userAgent,
+                    epgUrl = payload.epgUrl,
+                    autoRefresh = autoRefresh,
+                    syncLive = payload.syncLive,
+                    syncMovies = payload.syncMovies,
+                    syncSeries = payload.syncSeries,
+                )
+            }
         }
     }
 
@@ -396,7 +464,20 @@ class SetupViewModel(
     private fun String.withWarnings(result: SyncResult.Success): String =
         result.warningSummary()?.let { "$this\n$it" } ?: this
 
+    private fun friendlyCloudError(t: Throwable): String = when (t) {
+        is java.net.BindException -> "Port is already in use. Pick another port."
+        is java.net.SocketException -> t.message?.takeIf { it.isNotBlank() } ?: "Could not open the local server."
+        else -> t.message?.takeIf { it.isNotBlank() } ?: "Could not open the local server."
+    }
+
+    override fun onCleared() {
+        cloudListener.close()
+        super.onCleared()
+    }
+
     private companion object {
+        private const val CLOUD_LISTENER_PORT = 8089
+
         /** Sentinel sourceId for the pre-save Stalker handshake (same as SettingsViewModel's). */
         const val STALKER_TEST_SOURCE_ID = -1L
 
