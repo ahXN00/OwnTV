@@ -44,6 +44,7 @@ import tv.own.owntv.core.sync.resyncBadgeText
 import tv.own.owntv.core.sync.syncProgressCountsLabel
 import tv.own.owntv.core.sync.work.CatalogSyncState
 import tv.own.owntv.features.settings.data.PlaylistAutoRefresh
+import tv.own.owntv.features.settings.data.SourceExpiryStatus
 import tv.own.owntv.features.setup.AddSourceChooserScreen
 import tv.own.owntv.features.setup.AddSourceScreen
 import tv.own.owntv.features.setup.RemoteSetupScreen
@@ -347,7 +348,7 @@ private fun SourceRow(
     source: SourceEntity,
     autoRefresh: PlaylistAutoRefresh,
     isDefault: Boolean,
-    expiry: String?,
+    expiry: SourceExpiryStatus?,
     counts: SyncCounts?,
     syncState: CatalogSyncState,
     isDeleting: Boolean,
@@ -376,6 +377,15 @@ private fun SourceRow(
                         modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(colors.primaryContainer).padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
+                if (expiry?.isExpired == true) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "EXPIRED",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.surface,
+                        modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(colors.favorite).padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
                 if (isDeleting) {
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -400,7 +410,8 @@ private fun SourceRow(
                     append(when (source.type) { SourceType.XTREAM -> "Xtream • ${source.url}"; SourceType.M3U -> "M3U • ${source.url}"; SourceType.STALKER -> "Stalker • ${source.url}"; SourceType.LOCAL_BACKUP -> "Backup" })
                     if (autoRefresh != PlaylistAutoRefresh.OFF) append("  •  ⟳ ${autoRefresh.label}")
                     // Subscription expiry (Phase F): Xtream user_info.exp_date / Stalker account_info.
-                    if (!expiry.isNullOrBlank()) append("  •  Expires $expiry")
+                    val expiryLabel = expiry?.label
+                    if (!expiryLabel.isNullOrBlank()) append("  •  Expires $expiryLabel")
                     val visibleCounts = if (activeSync == null) counts?.breakdown else activeCountsLabel
                     if (!visibleCounts.isNullOrBlank()) {
                         append("  •  $visibleCounts")

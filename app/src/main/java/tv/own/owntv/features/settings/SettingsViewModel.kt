@@ -44,6 +44,8 @@ import tv.own.owntv.features.settings.data.ChNavLimits
 import tv.own.owntv.features.settings.data.EpgAutoRefresh
 import tv.own.owntv.features.settings.data.PlaylistAutoRefresh
 import tv.own.owntv.features.settings.data.SettingsRepository
+import tv.own.owntv.features.settings.data.SourceExpiryStatus
+import tv.own.owntv.features.settings.data.parseStalkerExpiry
 import tv.own.owntv.ui.theme.AccentColor
 import tv.own.owntv.ui.theme.ThemeMode
 import tv.own.owntv.ui.theme.UiZoom
@@ -169,10 +171,10 @@ class SettingsViewModel(
      * Fetched once per source per ViewModel lifetime (in-memory cache; only while the screen is
      * subscribed); any failure simply leaves the line off the row.
      */
-    private val expiryCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
-    val sourceExpiry: StateFlow<Map<Long, String>> = sources
+    private val expiryCache = java.util.concurrent.ConcurrentHashMap<Long, SourceExpiryStatus>()
+    val sourceExpiry: StateFlow<Map<Long, SourceExpiryStatus>> = sources
         .map { list ->
-            val out = HashMap<Long, String>()
+            val out = HashMap<Long, SourceExpiryStatus>()
             for (s in list) {
                 if (s.type != tv.own.owntv.core.model.SourceType.XTREAM &&
                     s.type != tv.own.owntv.core.model.SourceType.STALKER
@@ -184,10 +186,11 @@ class SettingsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    private suspend fun fetchExpiry(s: SourceEntity): String? = runCatching {
+    private suspend fun fetchExpiry(s: SourceEntity): SourceExpiryStatus? = runCatching {
         when (s.type) {
-            tv.own.owntv.core.model.SourceType.XTREAM -> xtreamClient.accountExpiryMs(s)?.let {
-                java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(it))
+            tv.own.owntv.core.model.SourceType.XTREAM -> xtreamClient.accountExpiryMs(s)?.let { expiryMs ->
+                val formatted = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(expiryMs))
+                SourceExpiryStatus(label = formatted, isExpired = System.currentTimeMillis() > expiryMs)
             }
             tv.own.owntv.core.model.SourceType.STALKER ->
                 s.mac?.let { tv.own.owntv.core.stalker.StalkerClient.canonicalizeMac(it) }?.let { mac ->
@@ -196,7 +199,8 @@ class SettingsViewModel(
                         val info = runCatching {
                             stalkerClient.getAccountInfo(session.apiBase, mac, session.token, creds.userAgent)
                         }.getOrDefault(emptyMap())
-                        stalkerExpiryOf(info) ?: stalkerExpiryOf(session.profile)
+                        val label = stalkerExpiryOf(info) ?: stalkerExpiryOf(session.profile)
+                        label?.let { parseStalkerExpiry(it) }
                     }
                 }
             else -> null
