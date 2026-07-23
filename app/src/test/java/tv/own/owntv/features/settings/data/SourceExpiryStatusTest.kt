@@ -10,46 +10,60 @@ import java.util.Locale
 
 class SourceExpiryStatusTest {
 
-    private fun dateLabel(daysOffset: Long): String {
-        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    private fun label(pattern: String, daysOffset: Long): String {
+        val fmt = SimpleDateFormat(pattern, Locale.US)
         return fmt.format(Date(System.currentTimeMillis() + daysOffset * 86_400_000L))
     }
 
     @Test
-    fun `past date marks expired`() {
-        val label = dateLabel(-30)
-        val result = parseStalkerExpiry(label)
+    fun `past ISO date marks expired`() {
+        val text = label("yyyy-MM-dd", -30)
+        val result = parseStalkerExpiry(text)
         assertTrue(result.isExpired)
-        assertEquals(label, result.label)
+        assertEquals(text, result.label)
     }
 
     @Test
-    fun `future date does not mark expired`() {
-        val label = dateLabel(30)
-        val result = parseStalkerExpiry(label)
+    fun `future ISO date does not mark expired`() {
+        val text = label("yyyy-MM-dd", 30)
+        val result = parseStalkerExpiry(text)
         assertFalse(result.isExpired)
-        assertEquals(label, result.label)
+        assertEquals(text, result.label)
     }
 
     @Test
     fun `today is not expired`() {
-        val label = dateLabel(0)
-        val result = parseStalkerExpiry(label)
-        assertFalse(result.isExpired)
+        assertFalse(parseStalkerExpiry(label("yyyy-MM-dd", 0)).isExpired)
     }
 
     @Test
     fun `yesterday is expired`() {
-        val label = dateLabel(-1)
-        val result = parseStalkerExpiry(label)
-        assertTrue(result.isExpired)
+        assertTrue(parseStalkerExpiry(label("yyyy-MM-dd", -1)).isExpired)
     }
 
     @Test
     fun `tomorrow is not expired`() {
-        val label = dateLabel(1)
-        val result = parseStalkerExpiry(label)
-        assertFalse(result.isExpired)
+        assertFalse(parseStalkerExpiry(label("yyyy-MM-dd", 1)).isExpired)
+    }
+
+    @Test
+    fun `european dotted past date marks expired`() {
+        assertTrue(parseStalkerExpiry(label("dd.MM.yyyy", -30)).isExpired)
+    }
+
+    @Test
+    fun `european slashed future date does not mark expired`() {
+        assertFalse(parseStalkerExpiry(label("dd/MM/yyyy", 30)).isExpired)
+    }
+
+    @Test
+    fun `european dashed past date marks expired`() {
+        assertTrue(parseStalkerExpiry(label("dd-MM-yyyy", -30)).isExpired)
+    }
+
+    @Test
+    fun `written month past date marks expired`() {
+        assertTrue(parseStalkerExpiry(label("dd MMM yyyy", -30)).isExpired)
     }
 
     @Test
@@ -64,11 +78,5 @@ class SourceExpiryStatusTest {
         val result = parseStalkerExpiry("")
         assertFalse(result.isExpired)
         assertEquals("", result.label)
-    }
-
-    @Test
-    fun `dashed non-ISO date does not false expired`() {
-        val result = parseStalkerExpiry("22-08-2026")
-        assertFalse(result.isExpired)
     }
 }
