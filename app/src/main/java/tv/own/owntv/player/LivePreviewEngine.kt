@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import okhttp3.OkHttpClient
 import tv.own.owntv.core.network.HttpClient
 
@@ -228,7 +229,7 @@ class LivePreviewEngine(
         val chips = ArrayList<String>(5)
         p.videoFormat?.let { f ->
             if (f.width > 0 && f.height > 0) aspectLabel(f.width, f.height)?.let { chips += it }
-            qualityLabel(f.height)?.let { chips += it }
+            qualityLabel(f.width, f.height)?.let { chips += it }
             displayFps(f)?.let { chips += "${Math.round(it)} FPS" }
             f.bitrate.takeIf { it > 0 }?.let { chips += "%.1f Mbps".format(it / 1_000_000.0) }
         }
@@ -259,15 +260,25 @@ class LivePreviewEngine(
             else -> "%.2f:1".format(r)
         }
     }
-    private fun qualityLabel(h: Int): String? = when {
-        h <= 0 -> null
-        h >= 2160 -> "4K"
-        h >= 1440 -> "1440p"
-        h >= 1080 -> "1080p"
-        h >= 720 -> "720p"
-        h >= 480 -> "480p"
-        else -> "${h}p"
+    private fun qualityLabel(w: Int, h: Int): String? {
+        if (h <= 0) return null
+        if (h < 480) return "${h}p"
+        if (w <= 0) return null
+        val area = w.toLong() * h.toLong()
+        return standards.minByOrNull { (_, stdArea) ->
+            abs(area - stdArea).toDouble() / stdArea.toDouble()
+        }?.label
     }
+
+    private data class ResStd(val label: String, val pixelArea: Long)
+
+    private val standards = listOf(
+        ResStd("4K",     8_294_400),     // 3840×2160
+        ResStd("1440p",  3_686_400),     // 2560×1440
+        ResStd("1080p",  2_073_600),     // 1920×1080
+        ResStd("720p",   921_600),       // 1280×720
+        ResStd("480p",   409_920),       // 854×480
+    )
 
     private val _currentMeta = MutableStateFlow(MediaMeta())
     override val currentMeta: StateFlow<MediaMeta> = _currentMeta.asStateFlow()
