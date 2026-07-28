@@ -84,7 +84,7 @@ import tv.own.owntv.core.database.dao.SubtitleDao
         SeriesFtsEntity::class,
         EpisodeFtsEntity::class,
     ],
-    version = 20, // v7: content_order (Move). v8: contentHash + browse/unique indexes. v9: EPG contentHash + natural key. v10: TMDB metadata cache. v11: movies/series rating-sort indexes. v12: metadata_cache trailerKey. v13: metadata_cache logoPath. v14: sources.mac (Stalker portal). v15: external-subtitle cache/selection/timing tables. v16: subtitle_link (downloaded-sub ↔ content). v17: sources.syncLive/Movies/Series (skip-sync enabledScope). v18: series.episodesSyncedAt (episode-cache freshness, S8). v19: epg_channels.iconUrl (XMLTV channel logos). v20: channels (sourceId, number) index for direct tune
+    version = 21, // v7: content_order (Move). v8: contentHash + browse/unique indexes. v9: EPG contentHash + natural key. v10: TMDB metadata cache. v11: movies/series rating-sort indexes. v12: metadata_cache trailerKey. v13: metadata_cache logoPath. v14: sources.mac (Stalker portal). v15: external-subtitle cache/selection/timing tables. v16: subtitle_link (downloaded-sub ↔ content). v17: sources.syncLive/Movies/Series (skip-sync enabledScope). v18: series.episodesSyncedAt (episode-cache freshness, S8). v19: epg_channels.iconUrl (XMLTV channel logos). v20: channels (sourceId, number) index for direct tune. v21: series.addedAt + date-added sorting triggers
 
     exportSchema = true,
 )
@@ -529,6 +529,60 @@ abstract class OwnTVDatabase : RoomDatabase() {
         }
 
         /**
+         * v20 → v21: `series.addedAt` column + import-time triggers for date-added sorting.
+         * Movies already have `addedAt` since the original schema; series did not.
+         * Triggers assign the current timestamp to new rows with NULL addedAt (M3U/Stalker
+         * sources have no provider date) and preserve existing dates on update (re-sync
+         * never overwrites a known date with NULL).
+         */
+        val MIGRATION_20_21 = object : androidx.room.migration.Migration(20, 21) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // New column: series.addedAt (movies already has it since the original schema).
+                db.execSQL("ALTER TABLE series ADD COLUMN addedAt INTEGER")
+
+                db.execSQL("""
+                    CREATE TRIGGER IF NOT EXISTS movies_added_at_insert
+                    AFTER INSERT ON movies
+                    WHEN NEW.addedAt IS NULL
+                    BEGIN
+                        UPDATE movies SET addedAt = strftime('%s','now') * 1000 WHERE rowid = NEW.rowid;
+                    END;
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TRIGGER IF NOT EXISTS movies_added_at_update
+                    AFTER UPDATE OF addedAt ON movies
+                    WHEN NEW.addedAt IS NULL AND OLD.addedAt IS NOT NULL
+                    BEGIN
+                        UPDATE movies SET addedAt = OLD.addedAt WHERE rowid = NEW.rowid;
+                    END;
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TRIGGER IF NOT EXISTS series_added_at_insert
+                    AFTER INSERT ON series
+                    WHEN NEW.addedAt IS NULL
+                    BEGIN
+                        UPDATE series SET addedAt = strftime('%s','now') * 1000 WHERE rowid = NEW.rowid;
+                    END;
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TRIGGER IF NOT EXISTS series_added_at_update
+                    AFTER UPDATE OF addedAt ON series
+                    WHEN NEW.addedAt IS NULL AND OLD.addedAt IS NOT NULL
+                    BEGIN
+                        UPDATE series SET addedAt = OLD.addedAt WHERE rowid = NEW.rowid;
+                    END;
+                """.trimIndent())
+
+                db.execSQL("UPDATE movies SET addedAt = strftime('%s','now') * 1000 WHERE addedAt IS NULL")
+                db.execSQL("UPDATE series SET addedAt = strftime('%s','now') * 1000 WHERE addedAt IS NULL")
+                OwnTVDatabase.healSchema(db)  // ← AÑADIR ESTA LÍNEA (standing rule: last migration heals)
+            }
+        }
+
+        /**
          * Canonical CREATE statements for every NON-unique index Room expects on the four
          * bulk-synced tables, keyed by table (must stay in sync with the current schema JSON).
          * BulkInsertHelper drops exactly these during eligible fresh imports; restore, the
@@ -676,3 +730,4 @@ abstract class OwnTVDatabase : RoomDatabase() {
         }
     }
 }
+
