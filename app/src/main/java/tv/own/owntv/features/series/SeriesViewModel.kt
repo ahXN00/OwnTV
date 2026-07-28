@@ -161,7 +161,8 @@ class SeriesViewModel(
                 when (sortMode.value) {
                     SettingsRepository.SortMode.PLAYLIST -> SettingsRepository.SortMode.ALPHA
                     SettingsRepository.SortMode.ALPHA -> SettingsRepository.SortMode.RATING
-                    SettingsRepository.SortMode.RATING -> SettingsRepository.SortMode.PLAYLIST
+                    SettingsRepository.SortMode.RATING -> SettingsRepository.SortMode.DATE_ADDED
+                    SettingsRepository.SortMode.DATE_ADDED -> SettingsRepository.SortMode.PLAYLIST
                 },
             )
         }
@@ -851,10 +852,12 @@ class SeriesViewModel(
         val ids = c.sourceIds.ifEmpty { listOf(-1L) }
         val playlist = sort == SettingsRepository.SortMode.PLAYLIST
         val rating = sort == SettingsRepository.SortMode.RATING
+        val dateAdded = sort == SettingsRepository.SortMode.DATE_ADDED
         return if (query.isBlank()) when (key) {
             LiveKey.All -> when {
                 rating -> seriesDao.pagingAllRating(ids)
                 playlist -> seriesDao.pagingAllOriginal(ids)
+                dateAdded -> seriesDao.pagingAllDateAdded(ids)
                 else -> seriesDao.pagingAll(ids)
             }
             LiveKey.Favorites -> seriesDao.pagingFavoritesManual(c.profileId, ContentOrderEntity.FAV_CONTEXT, ids)
@@ -863,6 +866,7 @@ class SeriesViewModel(
                 val ctxKey = folderContextKeys.value[key.id] ?: ""
                 when {
                     rating -> seriesDao.pagingByCategoryRating(key.id)
+                    dateAdded -> seriesDao.pagingByCategoryDateAdded(key.id)
                     // C3 fast path: no manual order in this folder → the plain indexed query has
                     // the identical (sortOrder, name) order without the join-sort.
                     ctxKey !in orderedContexts.value -> seriesDao.pagingByCategory(key.id)
@@ -870,10 +874,14 @@ class SeriesViewModel(
                 }
             }
         } else when (key) {
-            LiveKey.All -> seriesDao.searchAll(query, ids)
+            LiveKey.All ->
+                if (dateAdded) seriesDao.searchAllDateAdded(query, ids)
+                else seriesDao.searchAll(query, ids)
             LiveKey.Favorites -> seriesDao.searchFavorites(query, c.profileId, ids)
             LiveKey.History -> seriesDao.searchHistory(query, c.profileId, ids)
-            is LiveKey.Folder -> seriesDao.searchInCategory(query, key.id)
+            is LiveKey.Folder ->
+                if (dateAdded) seriesDao.searchInCategoryDateAdded(query, key.id)
+                else seriesDao.searchInCategory(query, key.id)
         }
     }
 
