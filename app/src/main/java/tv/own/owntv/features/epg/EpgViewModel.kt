@@ -621,7 +621,7 @@ class EpgViewModel(
                 val liveOrdered = when (sortLiveMode) {
                     SettingsRepository.SortMode.ALPHA -> matched.sortedWith(byAlpha)
                     // Live/EPG have no rating; RATING can't be selected there, so treat it as provider order.
-                    SettingsRepository.SortMode.PLAYLIST, SettingsRepository.SortMode.RATING -> matched.sortedWith(byProvider)
+                    SettingsRepository.SortMode.PLAYLIST, SettingsRepository.SortMode.RATING, SettingsRepository.SortMode.DATE_ADDED -> matched.sortedWith(byProvider)
                 }
                 when (sortGuideMode) {
                     SettingsRepository.GuideSort.ALPHA -> matched.sortedWith(byAlpha)

@@ -56,6 +56,7 @@ fun SortChip(
                     SortMode.PLAYLIST -> playlistLabel
                     SortMode.ALPHA -> "A–Z"
                     SortMode.RATING -> "Rating"
+                    SortMode.DATE_ADDED -> "Fecha de añadido"
                 },
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,

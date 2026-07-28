@@ -27,6 +27,7 @@ data class XtVod(
 data class XtSeries(
     val seriesId: String, val name: String, val cover: String?, val plot: String?,
     val rating: Double?, val categoryId: String?, val year: Int?,
+    val added: Long? = null, val lastModified: Long? = null,
 )
 data class XtEpisode(
     val id: String, val seasonNumber: Int, val episodeNumber: Int, val title: String, val containerExt: String?,
@@ -144,8 +145,8 @@ class XtreamClient(private val http: HttpClient) {
         streamSeries(
             s = s,
             categoryId = categoryId,
-            transform = { seriesId, name, cover, plot, rating, itemCategoryId, year ->
-                XtSeries(seriesId, name, cover, plot, rating, itemCategoryId, year)
+            transform = { seriesId, name, cover, plot, rating, itemCategoryId, year, added, lastModified ->
+                XtSeries(seriesId, name, cover, plot, rating, itemCategoryId, year, added, lastModified)
             },
             onItem = onItem,
             onProgress = onProgress,
@@ -162,6 +163,8 @@ class XtreamClient(private val http: HttpClient) {
             rating: Double?,
             categoryId: String?,
             year: Int?,
+            added: Long?,
+            lastModified: Long?,
         ) -> T?,
         onItem: suspend (T) -> Unit,
         onProgress: ((Long, Long?) -> Unit)? = null,
@@ -613,6 +616,8 @@ class XtreamClient(private val http: HttpClient) {
             rating: Double?,
             categoryId: String?,
             year: Int?,
+            added: Long?,
+            lastModified: Long?,
         ) -> T?,
     ): T? {
         if (reader.peek() != JsonToken.BEGIN_OBJECT) {
@@ -626,6 +631,8 @@ class XtreamClient(private val http: HttpClient) {
         var rating: Double? = null
         var categoryId: String? = null
         var year: Int? = null
+        var added: Long? = null
+        var lastModified: Long? = null
 
         reader.beginObject()
         while (reader.hasNext()) {
@@ -637,11 +644,25 @@ class XtreamClient(private val http: HttpClient) {
                 "rating" -> rating = reader.nextDoubleOrNull()
                 "category_id" -> categoryId = reader.nextScalarStringOrNull()
                 "year" -> year = reader.nextIntOrNull()
+                "added" -> added = reader.nextScalarStringOrNull()?.toLongOrNull()
+                "last_modified" -> lastModified = reader.nextScalarStringOrNull()?.toLongOrNull()
                 else -> reader.skipValue()
             }
         }
         reader.endObject()
-        return seriesId?.let { transform(it, name, cover, plot, rating, categoryId, year) }
+        return seriesId?.let {
+            transform(
+                it,
+                name,
+                cover,
+                plot,
+                rating,
+                categoryId,
+                year,
+                added,
+                lastModified,
+            )
+        }
     }
 
     private fun readObject(reader: JsonReader): Map<String, String?> {

@@ -156,7 +156,8 @@ class MovieViewModel(
                 when (sortMode.value) {
                     SettingsRepository.SortMode.PLAYLIST -> SettingsRepository.SortMode.ALPHA
                     SettingsRepository.SortMode.ALPHA -> SettingsRepository.SortMode.RATING
-                    SettingsRepository.SortMode.RATING -> SettingsRepository.SortMode.PLAYLIST
+                    SettingsRepository.SortMode.RATING -> SettingsRepository.SortMode.DATE_ADDED
+                    SettingsRepository.SortMode.DATE_ADDED -> SettingsRepository.SortMode.PLAYLIST
                 },
             )
         }
@@ -617,10 +618,12 @@ class MovieViewModel(
         val ids = c.sourceIds.ifEmpty { listOf(-1L) }
         val playlist = sort == SettingsRepository.SortMode.PLAYLIST
         val rating = sort == SettingsRepository.SortMode.RATING
+        val dateAdded = sort == SettingsRepository.SortMode.DATE_ADDED
         return if (query.isBlank()) when (key) {
             LiveKey.All -> when {
                 rating -> movieDao.pagingAllRating(ids)
                 playlist -> movieDao.pagingAllOriginal(ids)
+                dateAdded -> movieDao.pagingAllDateAdded(ids)
                 else -> movieDao.pagingAll(ids)
             }
             LiveKey.Favorites -> movieDao.pagingFavoritesManual(c.profileId, ContentOrderEntity.FAV_CONTEXT, ids)
@@ -629,6 +632,7 @@ class MovieViewModel(
                 val ctxKey = folderContextKeys.value[key.id] ?: ""
                 when {
                     rating -> movieDao.pagingByCategoryRating(key.id)
+                    dateAdded -> movieDao.pagingByCategoryDateAdded(key.id)
                     // C3 fast path: no manual order in this folder → the plain indexed query has
                     // the identical (sortOrder, name) order without the join-sort.
                     ctxKey !in orderedContexts.value -> movieDao.pagingByCategory(key.id)
@@ -636,10 +640,14 @@ class MovieViewModel(
                 }
             }
         } else when (key) {
-            LiveKey.All -> movieDao.searchAll(query, ids)
+            LiveKey.All ->
+                if (dateAdded) movieDao.searchAllDateAdded(query, ids)
+                else movieDao.searchAll(query, ids)
             LiveKey.Favorites -> movieDao.searchFavorites(query, c.profileId, ids)
             LiveKey.History -> movieDao.searchHistory(query, c.profileId, ids)
-            is LiveKey.Folder -> movieDao.searchInCategory(query, key.id)
+            is LiveKey.Folder ->
+                if (dateAdded) movieDao.searchInCategoryDateAdded(query, key.id)
+                else movieDao.searchInCategory(query, key.id)
         }
     }
 
