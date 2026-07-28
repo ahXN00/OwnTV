@@ -86,6 +86,19 @@ interface MovieDao {
     @Query("SELECT * FROM movies WHERE categoryId = :categoryId ORDER BY rating DESC, name ASC")
     fun pagingByCategoryRating(categoryId: Long): PagingSource<Int, MovieEntity>
 
+    // Date added / last modification (newest first). NULLs explicitly last.
+    @Query("SELECT * FROM movies WHERE sourceId IN (:sourceIds) ORDER BY addedAt IS NULL, addedAt DESC, id DESC, name ASC")
+    fun pagingAllDateAdded(sourceIds: List<Long>): PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movies WHERE categoryId = :categoryId ORDER BY addedAt IS NULL, addedAt DESC, id DESC, name ASC")
+    fun pagingByCategoryDateAdded(categoryId: Long): PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movies WHERE sourceId IN (:sourceIds) AND name LIKE '%' || :query || '%' ORDER BY addedAt IS NULL, addedAt DESC, id DESC, name ASC")
+    fun searchAllDateAdded(query: String, sourceIds: List<Long>): PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movies WHERE categoryId = :categoryId AND name LIKE '%' || :query || '%' ORDER BY addedAt IS NULL, addedAt DESC, id DESC, name ASC")
+    fun searchInCategoryDateAdded(query: String, categoryId: Long): PagingSource<Int, MovieEntity>
+
     // --- Manual order (Move) — see ChannelDao for the join shape. ---
     @Query(
         "SELECT m.* FROM movies m " +
