@@ -106,7 +106,8 @@ internal class XtreamSyncer(
                                 sourceId = s.id, categoryId = catMap[categoryId], name = name,
                                 posterUrl = icon, rating = rating, plot = plot,
                                 streamUrl = xtream.movieUrl(s, streamId, containerExt),
-                                containerExt = containerExt, remoteId = streamId, addedAt = added,
+                                containerExt = containerExt, remoteId = streamId,
+                                addedAt = added?.takeIf { it > 0L }?.let { if (it < 10_000_000_000L) it * 1000L else it },
                                 sortOrder = order++,
                             )
                         }
@@ -139,11 +140,14 @@ internal class XtreamSyncer(
                             plot: String?,
                             rating: Double?,
                             categoryId: String?,
-                            year: Int? ->
+                            year: Int?, added: Long?, lastModified: Long? ->
                             SeriesEntity(
                                 sourceId = s.id, categoryId = catMap[categoryId], name = name,
                                 posterUrl = cover, plot = plot, rating = rating,
                                 year = year, remoteId = seriesId,
+                                addedAt = (lastModified ?: added)?.takeIf { it > 0L }?.let {
+                                    if (it < 10_000_000_000L) it * 1000L else it
+                                },
                                 sortOrder = order++,
                             )
                         }
