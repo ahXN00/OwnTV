@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -53,6 +52,7 @@ import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.dao.resolveExistingProfileId
 import tv.own.owntv.core.database.entity.ChannelEntity
+import tv.own.owntv.core.database.entity.CategoryEntity
 import tv.own.owntv.core.database.entity.ContentOrderEntity
 import tv.own.owntv.core.database.entity.FavoriteEntity
 import tv.own.owntv.core.database.entity.WatchHistoryEntity
@@ -67,6 +67,9 @@ import tv.own.owntv.features.settings.data.SettingsRepository
 import tv.own.owntv.player.OwnTVPlayer
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.format.formatSystemTime
+
+/** Nivel del overlay de canales en el player: lista de canales o lista de categorías. */
+enum class ChannelOverlayLevel { CHANNELS, CATEGORIES }
 
 /** Layer-2 rail selection for Live TV. */
 sealed interface LiveKey {
@@ -538,6 +541,38 @@ class LiveViewModel(
     /** The category [zapList] was built from; null means the uncategorized → All fallback. */
     private var zapCategoryId: Long? = null
     private var zapArmed = false
+
+    // --- Category browser (second Left press shows all categories) ---
+    private val _showCategoryBrowser = MutableStateFlow(false)
+    val showCategoryBrowser: StateFlow<Boolean> = _showCategoryBrowser.asStateFlow()
+
+    /** Categories for the category browser (with customizations applied). */
+    val browserCategories: StateFlow<List<Pair<CategoryEntity, String>>> = ctx
+        .flatMapLatest { c ->
+            if (c.profileId < 0) flowOf(emptyList())
+            else combine(categoryDao.observe(c.sourceIds, MediaType.LIVE), custom) { cats, cust ->
+                cats.applyCustomizations(cust)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun showCategories() { _showCategoryBrowser.value = true }
+    fun hideCategoryBrowser() { _showCategoryBrowser.value = false }
+
+    /** Load channels for an arbitrary category into the zap list. */
+    fun loadChannelsForCategory(categoryId: Long) {
+        zapListJob?.cancel()
+        zapListJob = viewModelScope.launch {
+            val pid = currentProfileId() ?: return@launch
+            val ctxKey = folderContextKeys.value[categoryId] ?: ""
+            val list = channelDao.snapshotByCategoryManual(categoryId, pid, ctxKey, ZAP_LIST_LIMIT)
+            zapCategoryId = categoryId
+            zapArmed = true
+            _zapChannels.value = list
+            _zapListTitle.value = categoryDao.getById(categoryId)?.name ?: "Channels"
+            _showCategoryBrowser.value = false
+        }
+    }
     private var zapListJob: Job? = null
 
     /** Rebuild [zapList] from [channel]'s own provider category. No-op while zapping inside the same
