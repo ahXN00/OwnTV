@@ -1,3 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="common_cancel">Mégse</string>
+    <string name="common_back">Vissza</string>
+    <string name="common_save">Mentés</string>
+    <string name="common_edit">Szerkesztés</string>
+    <string name="common_delete">Törlés</string>
+    <string name="common_clear">Ürítés</string>
+    <string name="common_retry">Újra</string>
+    <string name="common_create">Létrehoz</string>
+    <string name="common_reset">Reset</string>
+    <string name="common_done">Kész</string>
+    <string name="common_ok">OK</string>
+    <string name="common_on">Be</string>
+    <string name="common_off">Ki</string>
+    <string name="common_exit">Kilépés</string>
+    <string name="common_resume">Folytatás</string>
+    <string name="common_start_over">Újrakezdés</string>
+    <string name="common_name">Név</string>
+    <string name="common_own_tv_user">OwnTV Felhasználó</string>
+    <string name="common_switch_profile">Profil váltása</string>
+    <string name="common_proxy">Proxy</string>
+    <string name="common_title">Cím</string>
+    <string name="common_search_hint">Keresés…</string>
+    <string name="common_search">Keresés</string>
+    <string name="common_nav_search">Keresés</string>
+    <string name="common_nav_home">Kezdőlap</string>
+    <string name="common_nav_live_tv">Élő TV</string>
+    <string name="common_nav_movies">Filmek</string>
+    <string name="common_nav_series">Sorozatok</string>
+    <string name="common_nav_downloads">Letöltések</string>
+    <string name="common_nav_guide">Műsorújság</string>
+    <string name="common_nav_settings">Beállítások</string>
+    <string name="shell_no_source">Nincs forrás</string>
+    <string name="common_something_went_wrong">Valami hiba történt</string>
+    <string name="common_move_instructions">▲/▼ mozgatáshoz · OK a mentéshez · Vissza a mégséhez</string>
+    <string name="common_resume_position">Itt állítottad meg: <xliff:g id="position">%1$s</xliff:g>.</string>
+    <string name="common_resume_prompt">Folytatod a lejátszást?</string>
+    <string name="sync_error_offline">Úgy néz ki offline vagy. Ellenőrizd a kapcsolatot és próbáld újra.</string>
+    <string name="sync_error_generic">Valami hiba történt. Próbáld meg újra.</string>
+    <string name="sync_error_timeout">A szerver túl sokáig nem válaszolt. Próbáld meg újra.</string>
+    <string name="sync_error_unreachable">Nem sikerült a szervert elérni. Ellenőrizd a címet és a kapcsolatodat.</string>
+    <string name="sync_error_connection">Nem sikerült a szerverhez csatlakozni. Lehet, hogy épp nem működik, vagy rossz a cím.</string>
+    <string name="sync_error_interrupted">A szerver megállította a letöltést. Próbáld újra.</string>
+    <string name="sync_error_mac">A portál visszautasította ezt a MAC címet. Ellenőrízd a MAC címet(és a TV dátum/idő beállítását) — vagy az előfizetésed lejárt.</string>
+    <string name="sync_error_invalid_mac">Hibás MAC cím— például AA:BB:CC:DD:EE:FF</string>
+    <string name="sync_counts_separator">·</string>
+    <string name="sync_counts_success">Szinkronizálva</string>
+    <string name="sync_counts_synced"><xliff:g id="counts">%1$s</xliff:g> szinkronizálva</string>
+    <string name="sync_import_warnings">Importálva figyelmeztetésekkel: <xliff:g id="phases">%1$s</xliff:g></string>
+    <string name="sync_progress_preparing">Katalógus előkészítése</string>
+    <string name="sync_progress_connecting">Csatlakozás a forráshoz…</string>
+    <string name="sync_progress_syncing">Katalógus szinkronizálása</string>
+    <string name="sync_progress_percent">Szinkronizálás <xliff:g id="percent">%1$d</xliff:g>%%</string>
+    <string name="sync_status_catalog"><xliff:g id="source">%1$s</xliff:g> szinkronizálása</string>
+    <string name="sync_status_catalog_with_counts"><xliff:g id="source">%1$s</xliff:g> szinkronizálása · <xliff:g id="counts">%2$s</xliff:g></string>
+    <string name="sync_status_epg">Műsorújság frissítése · <xliff:g id="source">%1$s</xliff:g></string>
+    <string name="sync_status_epg_with_counts">Műsorújság frissítése · <xliff:g id="source">%1$s</xliff:g> · <xliff:g id="counts">%2$s</xliff:g></string>
+    <string name="sync_status_complete">Szinkronizálás kész · <xliff:g id="source">%1$s</xliff:g></string>
 </resources>
