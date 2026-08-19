@@ -7,8 +7,8 @@
     <string name="common_delete">Törlés</string>
     <string name="common_clear">Ürítés</string>
     <string name="common_retry">Újra</string>
-    <string name="common_create">Létrehoz</string>
-    <string name="common_reset">Reset</string>
+    <string name="common_create">Létrehozás</string>
+    <string name="common_reset">Visszaállítás</string>
     <string name="common_done">Kész</string>
     <string name="common_ok">OK</string>
     <string name="common_on">Be</string>
@@ -33,28 +33,132 @@
     <string name="common_nav_settings">Beállítások</string>
     <string name="shell_no_source">Nincs forrás</string>
     <string name="common_something_went_wrong">Valami hiba történt</string>
-    <string name="common_move_instructions">▲/▼ mozgatáshoz · OK a mentéshez · Vissza a mégséhez</string>
+    <string name="common_move_instructions">▲/▼ mozgatás · OK mentés · Vissza mégse</string>
     <string name="common_resume_position">Itt állítottad meg: <xliff:g id="position">%1$s</xliff:g>.</string>
     <string name="common_resume_prompt">Folytatod a lejátszást?</string>
-    <string name="sync_error_offline">Úgy néz ki offline vagy. Ellenőrizd a kapcsolatot és próbáld újra.</string>
+    <string name="sync_error_offline">Úgy tűnik, nincs internetkapcsolat. Ellenőrizd a kapcsolatot, és próbáld újra.</string>
     <string name="sync_error_generic">Valami hiba történt. Próbáld meg újra.</string>
     <string name="sync_error_timeout">A szerver túl sokáig nem válaszolt. Próbáld meg újra.</string>
-    <string name="sync_error_unreachable">Nem sikerült a szervert elérni. Ellenőrizd a címet és a kapcsolatodat.</string>
-    <string name="sync_error_connection">Nem sikerült a szerverhez csatlakozni. Lehet, hogy épp nem működik, vagy rossz a cím.</string>
-    <string name="sync_error_interrupted">A szerver megállította a letöltést. Próbáld újra.</string>
-    <string name="sync_error_mac">A portál visszautasította ezt a MAC címet. Ellenőrízd a MAC címet(és a TV dátum/idő beállítását) — vagy az előfizetésed lejárt.</string>
-    <string name="sync_error_invalid_mac">Hibás MAC cím— például AA:BB:CC:DD:EE:FF</string>
+    <string name="sync_error_unreachable">Nem sikerült elérni a szervert. Ellenőrizd a címet és a kapcsolatodat.</string>
+    <string name="sync_error_connection">Nem sikerült csatlakozni a szerverhez. Lehet, hogy épp nem működik, vagy rossz a cím.</string>
+    <string name="sync_error_interrupted">A szerver megszakította a letöltést. Próbáld meg újra.</string>
+    <string name="sync_error_mac">A portál visszautasította ezt a MAC-címet. Ellenőrizd a MAC-címet (és a TV dátum- és időbeállítását) — vagy lehet, hogy lejárt az előfizetés.</string>
+    <string name="sync_error_invalid_mac">Érvénytelen MAC-cím — használd az AA:BB:CC:DD:EE:FF formátumot</string>
     <string name="sync_counts_separator">·</string>
-    <string name="sync_counts_success">Szinkronizálva</string>
+    <string name="sync_counts_success">Sikeresen szinkronizálva</string>
     <string name="sync_counts_synced"><xliff:g id="counts">%1$s</xliff:g> szinkronizálva</string>
-    <string name="sync_import_warnings">Importálva figyelmeztetésekkel: <xliff:g id="phases">%1$s</xliff:g></string>
+    <string name="sync_import_warnings">Importálva, figyelmeztetésekkel: <xliff:g id="phases">%1$s</xliff:g></string>
     <string name="sync_progress_preparing">Katalógus előkészítése</string>
     <string name="sync_progress_connecting">Csatlakozás a forráshoz…</string>
     <string name="sync_progress_syncing">Katalógus szinkronizálása</string>
-    <string name="sync_progress_percent">Szinkronizálás <xliff:g id="percent">%1$d</xliff:g>%%</string>
+    <string name="sync_progress_percent">Szinkronizálás — <xliff:g id="percent">%1$d</xliff:g>%%</string>
     <string name="sync_status_catalog"><xliff:g id="source">%1$s</xliff:g> szinkronizálása</string>
     <string name="sync_status_catalog_with_counts"><xliff:g id="source">%1$s</xliff:g> szinkronizálása · <xliff:g id="counts">%2$s</xliff:g></string>
     <string name="sync_status_epg">Műsorújság frissítése · <xliff:g id="source">%1$s</xliff:g></string>
     <string name="sync_status_epg_with_counts">Műsorújság frissítése · <xliff:g id="source">%1$s</xliff:g> · <xliff:g id="counts">%2$s</xliff:g></string>
     <string name="sync_status_complete">Szinkronizálás kész · <xliff:g id="source">%1$s</xliff:g></string>
+    <string name="common_weather_fahrenheit"><xliff:g id="temperature">%1$d</xliff:g>°F</string>
+    <string name="common_weather_celsius"><xliff:g id="temperature">%1$d</xliff:g>°C</string>
+    <string name="common_weather_city"><xliff:g id="temperature">%1$s</xliff:g> · <xliff:g id="city">%2$s</xliff:g></string>
+    <string name="common_number_grouped"><xliff:g id="count">%1$,d</xliff:g></string>
+    <string name="common_rating"><xliff:g id="rating">%1$.1f</xliff:g></string>
+    <string name="common_percent"><xliff:g id="percent">%1$d</xliff:g>%%</string>
+    <string name="common_timestamp_minutes"><xliff:g id="minutes">%1$d</xliff:g>:<xliff:g id="seconds">%2$02d</xliff:g></string>
+    <string name="common_timestamp_hours"><xliff:g id="hours">%1$d</xliff:g>:<xliff:g id="minutes">%2$02d</xliff:g>:<xliff:g id="seconds">%3$02d</xliff:g></string>
+    <string name="sync_warning_phase_error"><xliff:g id="phase">%1$s</xliff:g>: <xliff:g id="message">%2$s</xliff:g></string>
+    <plurals name="sync_warning_catalog_shrink">
+        <item quantity="one">Megtartva <xliff:g id="stored">%1$d</xliff:g> meglévő elem — ez az importálás <xliff:g id="percent">%2$d</xliff:g>%%-kal kevesebbet adott vissza. Szinkronizálj újra, vagy használd a kényszerített tiszta szinkronizálást, ha a szolgáltató tényleg eltávolította.</item>
+        <item quantity="other">Megtartva <xliff:g id="stored">%1$d</xliff:g> meglévő elem — ez az importálás <xliff:g id="percent">%2$d</xliff:g>%%-kal kevesebbet adott vissza. Szinkronizálj újra, vagy használd a kényszerített tiszta szinkronizálást, ha a szolgáltató tényleg eltávolította őket.</item>
+    </plurals>
+    <plurals name="sync_warning_page_failures">
+        <item quantity="one"><xliff:g id="count">%1$d</xliff:g> forrásoldal betöltése sikertelen; a következő szinkronizálásig hiányozhat tartalom.</item>
+        <item quantity="other"><xliff:g id="count">%1$d</xliff:g> forrásoldal betöltése sikertelen; a következő szinkronizálásig hiányozhat tartalom.</item>
+    </plurals>
+    <string name="sync_remainder_note">A katalógus többi része a háttérben szinkronizálódik tovább — már most elkezdhetsz nézni valamit. A folyamat a képernyő alján lévő kis buborékban látszik.</string>
+    <string name="sync_status_complete_with_changes">Szinkronizálás kész · <xliff:g id="source">%1$s</xliff:g> · <xliff:g id="changes">%2$s</xliff:g></string>
+    <string name="sync_status_failed">Szinkronizálás sikertelen · <xliff:g id="source">%1$s</xliff:g>: <xliff:g id="reason">%2$s</xliff:g></string>
+    <string name="sync_status_cancelled">Szinkronizálás megszakítva · <xliff:g id="source">%1$s</xliff:g></string>
+    <string name="sync_status_trending_starting">Szinkronizálás kész · <xliff:g id="source">%1$s</xliff:g> · Most felkapott összeállítása</string>
+    <string name="sync_status_trending_matching">Most felkapott elemek párosítása a lejátszási listáddal</string>
+    <string name="sync_status_trending_detail_waiting">Várakozás a TMDB jelöltek válaszára</string>
+    <string name="sync_status_trending_detail_received">TMDB jelöltek · Filmek: <xliff:g id="movies">%1$d</xliff:g> · Sorozatok: <xliff:g id="series">%2$d</xliff:g></string>
+    <string name="sync_status_trending_detail_preparing">Szolgáltatói címindex · <xliff:g id="processed">%1$d</xliff:g> / <xliff:g id="total">%2$d</xliff:g></string>
+    <string name="sync_status_trending_detail_movies">Filmek ellenőrzése: <xliff:g id="checked">%1$d</xliff:g>/<xliff:g id="candidates">%2$d</xliff:g> · találatok: <xliff:g id="matched">%3$d</xliff:g>/<xliff:g id="target">%4$d</xliff:g></string>
+    <string name="sync_status_trending_detail_series">Sorozatok ellenőrzése: <xliff:g id="checked">%1$d</xliff:g>/<xliff:g id="candidates">%2$d</xliff:g> · találatok: <xliff:g id="matched">%3$d</xliff:g>/<xliff:g id="target">%4$d</xliff:g></string>
+    <string name="sync_status_trending_detail_selected">Kiválasztva · Filmek: <xliff:g id="movies">%1$d</xliff:g> · Sorozatok: <xliff:g id="series">%2$d</xliff:g> · Kezdőlap: <xliff:g id="home">%3$d</xliff:g></string>
+    <string name="sync_status_trending_detail_completed">Párosítva · Filmek: <xliff:g id="movie_matches">%1$d</xliff:g>/<xliff:g id="movie_candidates">%2$d</xliff:g> · Sorozatok: <xliff:g id="series_matches">%3$d</xliff:g>/<xliff:g id="series_candidates">%4$d</xliff:g></string>
+    <string name="sync_status_trending_preparing">Szolgáltatói címek előkészítése a gyors párosításhoz</string>
+    <string name="sync_status_trending_matching_movies">Most felkapott filmek párosítása a szolgáltatóddal</string>
+    <string name="sync_status_trending_matching_series">Most felkapott sorozatok párosítása a szolgáltatóddal</string>
+    <string name="sync_status_trending_loading_seasons">Szolgáltatói évadok betöltése</string>
+    <string name="sync_status_trending_detail_loading_seasons">Ellenőrzött sorozatok: <xliff:g id="processed">%1$d</xliff:g>/<xliff:g id="total">%2$d</xliff:g></string>
+    <string name="sync_status_trending_preserved">A most felkapott frissítése nem érhető el · a korábbi találatok megmaradtak</string>
+    <plurals name="sync_status_trending_received">
+        <item quantity="one">Megérkezett a legfrissebb <xliff:g id="count">%1$d</xliff:g> most felkapott elem</item>
+        <item quantity="other">Megérkezett a legfrissebb <xliff:g id="count">%1$d</xliff:g> most felkapott elem</item>
+    </plurals>
+    <plurals name="sync_status_trending_matched">
+        <item quantity="one">Párosítva: <xliff:g id="total">%1$d</xliff:g> · <xliff:g id="movies">%2$s</xliff:g> · <xliff:g id="series">%3$s</xliff:g></item>
+        <item quantity="other">Párosítva: <xliff:g id="total">%1$d</xliff:g> · <xliff:g id="movies">%2$s</xliff:g> · <xliff:g id="series">%3$s</xliff:g></item>
+    </plurals>
+    <plurals name="sync_status_trending_building">
+        <item quantity="one">Most felkapott összeállítása · <xliff:g id="count">%1$d</xliff:g> találat</item>
+        <item quantity="other">Most felkapott összeállítása · <xliff:g id="count">%1$d</xliff:g> találat</item>
+    </plurals>
+    <plurals name="sync_status_trending_publishing">
+        <item quantity="one">Most felkapott közzététele · <xliff:g id="count">%1$d</xliff:g> elem</item>
+        <item quantity="other">Most felkapott közzététele · <xliff:g id="count">%1$d</xliff:g> elem</item>
+    </plurals>
+    <plurals name="sync_status_trending_ready">
+        <item quantity="one">Most felkapott kész · <xliff:g id="count">%1$d</xliff:g> találat</item>
+        <item quantity="other">Most felkapott kész · <xliff:g id="count">%1$d</xliff:g> találat</item>
+    </plurals>
+    <plurals name="sync_status_trending_below_minimum">
+        <item quantity="one">Most felkapott rejtve · csak <xliff:g id="count">%1$d</xliff:g> találat</item>
+        <item quantity="other">Most felkapott rejtve · csak <xliff:g id="count">%1$d</xliff:g> találat</item>
+    </plurals>
+    <string name="sync_phase_live">Élő TV</string>
+    <string name="sync_phase_movies">Filmek</string>
+    <string name="sync_phase_series">Sorozatok</string>
+    <plurals name="sync_count_channels">
+        <item quantity="one"><xliff:g id="count">%1$s</xliff:g> csatorna</item>
+        <item quantity="other"><xliff:g id="count">%1$s</xliff:g> csatorna</item>
+    </plurals>
+    <plurals name="sync_count_movies">
+        <item quantity="one"><xliff:g id="count">%1$s</xliff:g> film</item>
+        <item quantity="other"><xliff:g id="count">%1$s</xliff:g> film</item>
+    </plurals>
+    <plurals name="sync_count_series">
+        <item quantity="one"><xliff:g id="count">%1$s</xliff:g> sorozat</item>
+        <item quantity="other"><xliff:g id="count">%1$s</xliff:g> sorozat</item>
+    </plurals>
+    <plurals name="sync_count_epg">
+        <item quantity="one"><xliff:g id="count">%1$s</xliff:g> EPG-bejegyzés</item>
+        <item quantity="other"><xliff:g id="count">%1$s</xliff:g> EPG-bejegyzés</item>
+    </plurals>
+    <plurals name="sync_status_more">
+        <item quantity="one">+<xliff:g id="count">%1$d</xliff:g> további szinkronizálás</item>
+        <item quantity="other">+<xliff:g id="count">%1$d</xliff:g> további szinkronizálás</item>
+    </plurals>
+    <plurals name="sync_categories_added">
+        <item quantity="one"><xliff:g id="count">%1$d</xliff:g> kategória hozzáadva</item>
+        <item quantity="other"><xliff:g id="count">%1$d</xliff:g> kategória hozzáadva</item>
+    </plurals>
+    <plurals name="sync_categories_removed">
+        <item quantity="one"><xliff:g id="count">%1$d</xliff:g> kategória eltávolítva</item>
+        <item quantity="other"><xliff:g id="count">%1$d</xliff:g> kategória eltávolítva</item>
+    </plurals>
+    <string name="sync_error_portal">Nem sikerült elérni a portált. Ellenőrizd a portál URL-jét — általában /c/ végződésű.</string>
+    <string name="sync_error_session">A portál munkamenete lejárt. Próbáld meg újra.</string>
+    <string name="sync_error_auth">A szerver visszautasította a bejelentkezést. Ellenőrizd a felhasználóneved és a jelszavad.</string>
+    <string name="sync_error_not_found">Nem található a szerveren. Ellenőrizd az URL-t.</string>
+    <string name="sync_error_server">A szerveren hiba történt. Próbáld meg újra később.</string>
+    <string name="sync_error_secure">A biztonságos kapcsolat nem jött létre — lehet, hogy a szerver tanúsítványa érvénytelen.</string>
+    <string name="sync_error_malformed_guide">A szervertől érkező műsorújság-adatok hibásak voltak. Egy részük így is betöltődhetett — próbáld meg újra, vagy ellenőrizd az EPG URL-t.</string>
+    <string name="common_items_per_skip">Elemek ugrásonként</string>
+    <string name="common_plus">+</string>
+    <string name="common_minus">–</string>
+    <string name="common_hide">Elrejtés</string>
+    <string name="common_show">Megjelenítés</string>
+    <string name="common_qr_code_companion_url">QR-kód a párosítási címhez</string>
 </resources>
