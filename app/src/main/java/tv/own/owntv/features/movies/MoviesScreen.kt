@@ -268,7 +268,8 @@ fun MoviesScreen(
     //     list no longer contains it, so focus the NEAREST surviving neighbour by position (the item
     //     that slid into the removed slot, else the new last item, else first item). Only if the whole
     //     category is now empty do we let focus leave (there's nothing here to land on).
-    LaunchedEffect(contextMovie, moveItem, creatingCategory) {
+    var reorderWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(contextMovie, moveItem, creatingCategory, moveState) {
         if (contextMovie != null) return@LaunchedEffect
         // Opening the TMDB Details window or the Set TMDB name dialog closes the menu; don't yank focus
         // back to the grid — they need it (and trap it). The grid is refocused when they close (see below).
@@ -278,6 +279,13 @@ fun MoviesScreen(
         // The context menu closes before MoveToCategoryDialog (and its nested name prompt) opens.
         // Do not focus the grid behind either modal; re-run this effect when the whole flow closes.
         if (moveItem != null || creatingCategory) return@LaunchedEffect
+
+        if (moveState != null) { reorderWasOpen = true; return@LaunchedEffect }
+        if (reorderWasOpen) {
+            reorderWasOpen = false
+            // Fall through to restoreToContextRow logic below.
+        }
+
         val targetId = contextMovieId
         if (targetId == null) { contextMovieIndex = -1; return@LaunchedEffect }
         val items = movies.itemSnapshotList.items

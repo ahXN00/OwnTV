@@ -348,7 +348,8 @@ private fun SeriesGrid(
     //     list no longer contains it, so focus the NEAREST surviving neighbour by position (the item
     //     that slid into the removed slot, else the new last item, else first item). Only if the whole
     //     category is now empty do we let focus leave (there's nothing here to land on).
-    LaunchedEffect(contextSeries, moveItem, creatingCategory) {
+    var reorderWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(contextSeries, moveItem, creatingCategory, moveState) {
         if (contextSeries != null) return@LaunchedEffect
         // Opening the TMDB Details window closes the menu; let the window keep focus (it traps focus and
         // refocuses the series on close), don't yank it back to the grid here.
@@ -360,6 +361,14 @@ private fun SeriesGrid(
         // The context menu closes before MoveToCategoryDialog (and its nested name prompt) opens.
         // Do not focus the grid behind either modal; re-run this effect when the whole flow closes.
         if (moveItem != null || creatingCategory) return@LaunchedEffect
+
+        // Move mode (reorder) restoration: when the overlay is dismissed (Commit/Cancel).
+        if (moveState != null) { reorderWasOpen = true; return@LaunchedEffect }
+        if (reorderWasOpen) {
+            reorderWasOpen = false
+            // Fall through to restoreToContextRow logic below.
+        }
+
         val targetId = contextSeriesId
         if (targetId == null) { contextSeriesIndex = -1; return@LaunchedEffect }
         val items = series.itemSnapshotList.items

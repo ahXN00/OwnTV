@@ -281,6 +281,34 @@ fun LiveScreen(
             restoreToContextRow()
         }
     }
+    // Rename restoration: completes via a TextInputDialog. Like Match EPG, renaming can trigger
+    // a list rebuild (the name change flow), so re-assert the row target.
+    var renameWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(renaming) {
+        if (renaming != null) { renameWasOpen = true; return@LaunchedEffect }
+        if (!renameWasOpen) return@LaunchedEffect
+        renameWasOpen = false
+        repeat(5) {
+            delay(200)
+            restoreToContextRow()
+        }
+    }
+    // Catch-up restoration: returning from the picker or the follow-up detail dialog.
+    var catchupWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(catchupChannel, catchupDetail) {
+        if (catchupChannel != null || catchupDetail != null) { catchupWasOpen = true; return@LaunchedEffect }
+        if (!catchupWasOpen) return@LaunchedEffect
+        catchupWasOpen = false
+        restoreToContextRow()
+    }
+    // Move mode (reordering) restoration: when the overlay is dismissed (Commit/Cancel).
+    var reorderWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(moveState) {
+        if (moveState != null) { reorderWasOpen = true; return@LaunchedEffect }
+        if (!reorderWasOpen) return@LaunchedEffect
+        reorderWasOpen = false
+        restoreToContextRow()
+    }
     // The Match EPG dialog grabbed focus while open — when it closes (pick/clear/dismiss), put focus
     // back on the channel it was opened for instead of letting it fall to the nav panel.
     var matchEpgWasOpen by remember { mutableStateOf(false) }
