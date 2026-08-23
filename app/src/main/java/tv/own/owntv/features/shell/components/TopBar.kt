@@ -66,7 +66,6 @@ fun TopBar(
     playlistName: String,
     weatherInfo: WeatherInfo? = null,
     weatherFahrenheit: Boolean = false,
-    searchVisible: Boolean = true,
     playlistInteractive: Boolean = false,
     onPlaylistClick: () -> Unit = {},
     playlistDownFocusRequester: FocusRequester? = null,
@@ -120,11 +119,11 @@ fun TopBar(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionChip(label = sectionLabel)
-            SearchPill(onClick = onSearchClick, visible = searchVisible)
-            // Only focusable while the nav panel holds focus (same rule as the search pill) so it can
-            // never trap D-pad focus inside a section.
+            SearchPill(onClick = onSearchClick)
+            // Always reachable from the Sidebar or by pressing Up from a section; never popping
+            // in/out based on focus layer.
             if (continueLabel != null) {
-                ContinueChip(label = continueLabel, icon = continueIcon, onClick = onContinueClick, visible = searchVisible)
+                ContinueChip(label = continueLabel, icon = continueIcon, onClick = onContinueClick)
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -146,25 +145,38 @@ fun TopBar(
 @Composable
 private fun SectionChip(label: String) {
     val colors = OwnTVTheme.colors
-    // Keeps its accent tint (marks the current section) but frosts in glass mode like the other chips.
+    // Shared "selected-idle" look (matches the nav ladder's selected state): tonal fill + accent
+    // content. Hardcoding primaryContainer made this look focused even when focus was elsewhere.
     val shape = RoundedCornerShape(TopBarChipCorner)
-    Box(Modifier.clip(shape).glass(GlassSurface.TOPBAR, colors.primaryContainer, shape, frostScale = TopBarFrost, condenseChrome = true).padding(horizontal = 14.dp, vertical = 7.dp)) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = colors.onPrimaryContainer, fontWeight = FontWeight.Bold)
+    Box(
+        Modifier
+            .clip(shape)
+            .glass(
+                surface = GlassSurface.TOPBAR,
+                baseFill = colors.secondaryContainer.copy(alpha = 0.45f),
+                shape = shape,
+                frostScale = TopBarFrost,
+                condenseChrome = true,
+            )
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.accent,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
 @Composable
-private fun SearchPill(onClick: () -> Unit, visible: Boolean) {
+private fun SearchPill(onClick: () -> Unit) {
     val colors = OwnTVTheme.colors
-    // Fade instead of remove: the pill keeps its space so the top-bar row never shifts, and it
-    // becomes unfocusable while hidden so an escaping vertical focus search can never land on it.
-    val alpha by animateFloatAsState(if (visible) 1f else 0f, ownTvTween(160), label = "searchPillAlpha")
+    // Always visible and reachable from anywhere in the screen (matches the clock and weather chips);
+    // no longer popping in/out based on sidebar focus (#128).
     FocusableSurface(
         onClick = onClick,
-        modifier = Modifier
-            .widthIn(max = 180.dp)
-            .graphicsLayer { this.alpha = alpha }
-            .focusProperties { canFocus = visible },
+        modifier = Modifier.widthIn(max = 180.dp),
         shape = RoundedCornerShape(TopBarChipCorner),
         surface = GlassSurface.TOPBAR,
         glassFrostScale = TopBarFrost,
@@ -194,22 +206,19 @@ private fun SearchPill(onClick: () -> Unit, visible: Boolean) {
 }
 
 @Composable
-private fun ContinueChip(label: String, icon: OwnTVIcon, onClick: () -> Unit, visible: Boolean) {
+private fun ContinueChip(label: String, icon: OwnTVIcon, onClick: () -> Unit) {
     val colors = OwnTVTheme.colors
-    val alpha by animateFloatAsState(if (visible) 1f else 0f, label = "continueChipAlpha")
     FocusableSurface(
         onClick = onClick,
-        modifier = Modifier
-            .widthIn(max = 240.dp)
-            .graphicsLayer { this.alpha = alpha }
-            .focusProperties { canFocus = visible },
+        modifier = Modifier.widthIn(max = 240.dp),
         shape = RoundedCornerShape(TopBarChipCorner),
         surface = GlassSurface.TOPBAR,
         glassFrostScale = TopBarFrost,
         glassIdleRimAlpha = 0.18f,
         glassCondensesWithContent = true,
         focusedContainerColor = colors.primary,
-        unfocusedContainerColor = colors.primaryContainer.copy(alpha = 0.6f),
+        // Shared "action pill" style: neutral when idle so it does not compete for focus attention.
+        unfocusedContainerColor = colors.surfaceContainer.copy(alpha = 0.6f),
         contentAlignment = Alignment.Center,
     ) { focused ->
         Row(

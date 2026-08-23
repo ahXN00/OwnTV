@@ -813,9 +813,6 @@ fun OwnTVShell(
                     },
                     weatherInfo = weatherInfo,
                     weatherFahrenheit = weatherFahrenheit,
-                    // The Search pill only exists while focus sits on the nav panel — inside a
-                    // section it fades out and turns unfocusable, so focus can never jump to it.
-                    searchVisible = focusedLayer == ShellLayer.SIDEBAR,
                     // The playlist chip becomes a quick-switcher only when there's more than one to pick.
                     playlistInteractive = playlists.size > 1,
                     onPlaylistClick = { showPlaylistPicker = true },
