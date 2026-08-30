@@ -128,9 +128,9 @@ fun FocusableSurface(
         // they used before Phase 5; using surfaceContainerLow made both themes look flat and muddy.
         colors.surfaceContainerHigh
     }
-    val solidFocusedContainer = colors.primaryContainer.copy(alpha = 0.22f)
+    val solidFocusedContainer = colors.primaryContainer.copy(alpha = 0.30f)
         .compositeOver(solidTonalBase)
-    val solidSelectedContainer = colors.primaryContainer.copy(alpha = 0.14f)
+    val solidSelectedContainer = colors.primaryContainer.copy(alpha = 0.18f)
         .compositeOver(solidTonalBase)
 
     // Fast D-pad navigation can move focus through several cards before the previous frame reaches

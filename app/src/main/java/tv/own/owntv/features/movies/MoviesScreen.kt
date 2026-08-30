@@ -56,6 +56,8 @@ import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import tv.own.owntv.features.live.LiveRailItem
+import tv.own.owntv.features.live.displayLabel
 import org.koin.androidx.compose.koinViewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -77,6 +79,7 @@ import tv.own.owntv.features.settings.data.browsePanelGapTotal
 import tv.own.owntv.features.settings.data.computePanelWidths
 import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.features.settings.rememberPanelShares
+import tv.own.owntv.features.shell.components.CategoryContextMenu
 import tv.own.owntv.features.shell.components.CategoryRail
 import tv.own.owntv.features.shell.components.MediaDetailsScreen
 import tv.own.owntv.features.shell.components.PreviewPane
@@ -140,7 +143,10 @@ fun MoviesScreen(
     val selectedMovieMeta by vm.selectedMovieMeta.collectAsStateWithLifecycle()
     val metadataMode by vm.metadataMode.collectAsStateWithLifecycle()
     val moveState by vm.moveState.collectAsStateWithLifecycle()
+    val categoryMoveState by vm.categoryMoveState.collectAsStateWithLifecycle()
     var contextMovie by remember { mutableStateOf<MovieEntity?>(null) }
+    var contextCategory by remember { mutableStateOf<LiveRailItem?>(null) }
+    val railFocus = remember { FocusRequester() }
     // The movie the "Move to category…" flow is moving (issue #87), with the origin captured at
     // menu-open time (the rail can't change under the modal, but capturing is still safer).
     var moveItem by remember { mutableStateOf<MovieEntity?>(null) }
@@ -321,6 +327,17 @@ fun MoviesScreen(
         }
         contextMovieIndex = -1
     }
+    // Category rail restoration: returning from the category context menu.
+    var contextCategoryWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(contextCategory) {
+        if (contextCategory != null) {
+            contextCategoryWasOpen = true
+        } else if (contextCategoryWasOpen) {
+            contextCategoryWasOpen = false
+            kotlinx.coroutines.delay(60)
+            runCatching { railFocus.requestFocus() }
+        }
+    }
 
     // Manual panel widths (Settings → Panel Width Adjustment). The saved percentages now resolve
     // against the inside of one shared content container; no stored value is rewritten.
@@ -351,7 +368,16 @@ fun MoviesScreen(
             },
             selectedIndex = selectedIndex,
             onSelect = { idx -> railItems.getOrNull(idx)?.let { vm.select(it.key) } },
+            onLongSelect = { idx ->
+                railItems.getOrNull(idx)?.let { item ->
+                    if (item.key is LiveKey.Folder || item.key is LiveKey.Custom) {
+                        vm.select(item.key)
+                        contextCategory = item
+                    }
+                }
+            },
             listState = catListState,
+            focusRequester = railFocus,
             showPanel = false,
             modifier = Modifier
                 .onFocusChanged { railPaneFocused = it.hasFocus }
@@ -759,6 +785,51 @@ fun MoviesScreen(
             onCommit = vm::commitMove,
             onCancel = vm::cancelMove,
         )
+    }
+
+    // Category Move mode overlay — intercepts D-pad Up/Down/OK/Back while reordering.
+    categoryMoveState?.let { ms ->
+        MoveOrderOverlay(
+            title = stringResource(R.string.content_reorder_category),
+            itemNames = ms.items,
+            activeIndex = ms.activeIndex,
+            onMoveUp = vm::moveCategoryUp,
+            onMoveDown = vm::moveCategoryDown,
+            onCommit = vm::commitCategoryMove,
+            onCancel = vm::cancelCategoryMove,
+        )
+    }
+
+    contextCategory?.let { item ->
+        CategoryContextMenu(
+            categoryName = item.displayLabel(R.string.content_category_all_movies),
+            canHide = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
+            canMove = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
+            onHide = { vm.hideCategory(item.key); contextCategory = null },
+            onMove = { vm.enterCategoryMoveMode(item.key); contextCategory = null },
+            onDismiss = { contextCategory = null }
+        )
+    }
+
+    // Restore focus to the rail when the context menu or category move mode closes.
+    var catMenuWasOpen by remember { mutableStateOf(false) }
+    var categoryMoveWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(contextCategory, categoryMoveState) {
+        if (contextCategory != null) catMenuWasOpen = true
+        if (categoryMoveState != null) categoryMoveWasOpen = true
+
+        if (contextCategory == null && catMenuWasOpen && categoryMoveState == null) {
+            catMenuWasOpen = false
+            if (!categoryMoveWasOpen) {
+                kotlinx.coroutines.delay(60)
+                runCatching { railFocus.requestFocus() }
+            }
+        }
+        if (categoryMoveState == null && categoryMoveWasOpen) {
+            categoryMoveWasOpen = false
+            kotlinx.coroutines.delay(60)
+            runCatching { railFocus.requestFocus() }
+        }
     }
 
     InAppToast(toast)

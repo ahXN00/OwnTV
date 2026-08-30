@@ -71,6 +71,7 @@ import tv.own.owntv.core.settings.PanelSection
 import tv.own.owntv.features.settings.data.browsePanelGapTotal
 import tv.own.owntv.features.settings.data.computePanelWidths
 import tv.own.owntv.features.settings.rememberPanelShares
+import tv.own.owntv.features.shell.components.CategoryContextMenu
 import tv.own.owntv.features.shell.components.CategoryRail
 import tv.own.owntv.ui.components.MoveOrderOverlay
 import tv.own.owntv.features.shell.components.PreviewPane
@@ -121,6 +122,7 @@ fun LiveScreen(
     val vm: LiveViewModel = koinViewModel()
     val railItems by vm.railItems.collectAsStateWithLifecycle()
     val providerNames by vm.providerNames.collectAsStateWithLifecycle()
+    val railFocus = remember { FocusRequester() }
     val selectedKey by vm.selectedKey.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val favoriteIds by vm.favoriteIds.collectAsStateWithLifecycle()
@@ -137,6 +139,7 @@ fun LiveScreen(
     val livePreviewSetting by vm.livePreviewEnabled.collectAsStateWithLifecycle()
     val channels = vm.channels.collectAsLazyPagingItems()
     val moveState by vm.moveState.collectAsStateWithLifecycle()
+    val categoryMoveState by vm.categoryMoveState.collectAsStateWithLifecycle()
 
     // Current programme title for each loaded channel (id → title), batched in ONE query against the
     // stored guide. Drives the small "now playing" subtitle on each channel row. Recomputed when the page
@@ -222,6 +225,7 @@ fun LiveScreen(
         mutableStateOf<Pair<ChannelEntity, tv.own.owntv.core.database.entity.EpgProgrammeEntity>?>(null)
     }
     var contextChannel by remember { mutableStateOf<ChannelEntity?>(null) } // long-press quick menu
+    var contextCategory by remember { mutableStateOf<LiveRailItem?>(null) }
     // The channel the "Move to category…" flow is moving (issue #87), with the origin captured at
     // menu-open time (the rail can't change under the modal, but capturing is still safer).
     var moveItem by remember { mutableStateOf<ChannelEntity?>(null) }
@@ -334,6 +338,26 @@ fun LiveScreen(
         epgOffsetWasOpen = false
         restoreToContextRow()
     }
+    // Category rail restoration: returning from the category context menu or category move mode.
+    var contextCategoryWasOpen by remember { mutableStateOf(false) }
+    var categoryMoveWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(contextCategory, categoryMoveState) {
+        if (contextCategory != null) contextCategoryWasOpen = true
+        if (categoryMoveState != null) categoryMoveWasOpen = true
+
+        if (contextCategory == null && contextCategoryWasOpen && categoryMoveState == null) {
+            contextCategoryWasOpen = false
+            if (!categoryMoveWasOpen) {
+                kotlinx.coroutines.delay(60)
+                runCatching { railFocus.requestFocus() }
+            }
+        }
+        if (categoryMoveState == null && categoryMoveWasOpen) {
+            categoryMoveWasOpen = false
+            kotlinx.coroutines.delay(60)
+            runCatching { railFocus.requestFocus() }
+        }
+    }
     // Returning from fullscreen: scroll to and focus the channel you were watching (waits for the list to load).
     // Also used by "Startup → Live · Favorites": there's no remembered channel yet, so land on the first row
     // (not the nav panel).
@@ -385,11 +409,20 @@ fun LiveScreen(
             },
             selectedIndex = selectedIndex,
             onSelect = { idx -> railItems.getOrNull(idx)?.let { vm.select(it.key) } },
+            onLongSelect = { idx -> 
+                railItems.getOrNull(idx)?.let { item ->
+                    if (item.key is LiveKey.Folder || item.key is LiveKey.Custom) {
+                        vm.select(item.key)
+                        contextCategory = item
+                    }
+                }
+            },
             // Focusing a folder stops the in-pane preview — but only when a preview is actually running.
             // When the player is docked (live PiP) or fullscreen, previewEnabled is false and stopPreview
             // would kill that stream (e.g. while navigating left to leave Live), so we skip it.
             onFocused = { if (previewEnabled) vm.stopPreview() },
             listState = catListState,
+            focusRequester = railFocus,
             showPanel = false,
             modifier = Modifier
                 .onFocusChanged { railPaneFocused = it.hasFocus }
@@ -714,6 +747,30 @@ fun LiveScreen(
             onMoveDown = vm::moveDown,
             onCommit = vm::commitMove,
             onCancel = vm::cancelMove,
+        )
+    }
+
+    // Category Move mode overlay — intercepts D-pad Up/Down/OK/Back while reordering.
+    categoryMoveState?.let { ms ->
+        MoveOrderOverlay(
+            title = stringResource(R.string.content_reorder_category),
+            itemNames = ms.items,
+            activeIndex = ms.activeIndex,
+            onMoveUp = vm::moveCategoryUp,
+            onMoveDown = vm::moveCategoryDown,
+            onCommit = vm::commitCategoryMove,
+            onCancel = vm::cancelCategoryMove,
+        )
+    }
+
+    contextCategory?.let { item ->
+        CategoryContextMenu(
+            categoryName = item.displayLabel(),
+            canHide = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
+            canMove = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
+            onHide = { vm.hideCategory(item.key); contextCategory = null },
+            onMove = { vm.enterCategoryMoveMode(item.key); contextCategory = null },
+            onDismiss = { contextCategory = null }
         )
     }
 }

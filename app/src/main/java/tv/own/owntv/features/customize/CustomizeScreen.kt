@@ -140,8 +140,9 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     }
     // Index (within `rows`) of the category row that currently holds focus — the paging anchor.
     var focusedCatIndex by remember { mutableIntStateOf(0) }
-    // One FocusRequester per category row, so a jump can land focus on the target row.
-    val rowFocusers = remember(rows) { rows.map { FocusRequester() } }
+    // Stable FocusRequester map keyed by row ID: re-ordering or paging rows must never discard
+    // the focus handles that are already on screen.
+    val rowFocusers = remember { mutableMapOf<String, FocusRequester>() }
     // LazyColumn items before the category rows (hidden-items header + hidden rows + "Categories"
     // header) — the offset that maps a category index to its LazyColumn item index.
     val headerOffset = if (hiddenChannels.isNotEmpty()) hiddenChannels.size + 2 else 0
@@ -196,7 +197,7 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             if (index >= 0) {
                 listState.scrollToItem(headerOffset + index)
                 kotlinx.coroutines.delay(80)
-                runCatching { rowFocusers.getOrNull(index)?.requestFocus() }
+                runCatching { rowFocusers[key]?.requestFocus() }
             } else {
                 runCatching { firstFocus.requestFocus() }
             }
@@ -373,7 +374,7 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     currentTargetIndex = { focusedCatIndex },
                     onJumpToIndex = { idx ->
                         scope.jumpLazyListTo(listState, headerOffset + idx) {
-                            rowFocusers.getOrNull(idx)?.let { runCatching { it.requestFocus() } }
+                            rows.getOrNull(idx)?.let { rowFocusers[it.key] }?.let { runCatching { it.requestFocus() } }
                         }
                     },
                 ),
@@ -448,12 +449,13 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             itemsIndexed(rows, key = { _, r -> r.key }) { index, row ->
                 val inMoveRange = rangeAnchorKey != null && rangeMode == SpanSelector.Mode.MOVE
                 val inRenameRange = rangeAnchorKey != null && rangeMode == SpanSelector.Mode.RENAME
+                val isInSpan = row.key in rangeSelectedKeys || renaming?.key == row.key || deletingCategory?.key == row.key
                 CategoryRow(
                     row = row,
                     inRangeMode = rangeAnchorKey != null && rangeMode == SpanSelector.Mode.HIDE,
                     inRenameRange = inRenameRange,
-                    isInSpan = row.key in rangeSelectedKeys,
-                    focusRequester = rowFocusers.getOrNull(index),
+                    isInSpan = isInSpan,
+                    focusRequester = remember(row.key) { rowFocusers.getOrPut(row.key) { FocusRequester() } },
                     upFocusRequester = firstFocus.takeIf { index == 0 && hiddenChannels.isEmpty() },
                     onRowFocused = { focusedCatIndex = index },
                     // While a move span is active every arrow acts on the whole block, not this row.
@@ -461,29 +463,29 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     onMoveDown = { if (inMoveRange) vm.moveRange(row, MoveKind.DOWN) else vm.move(row, up = false) },
                     onMoveTop = { if (inMoveRange) vm.moveRange(row, MoveKind.TOP) else vm.moveToEdge(row, top = true) },
                     onMoveBottom = { if (inMoveRange) vm.moveRange(row, MoveKind.BOTTOM) else vm.moveToEdge(row, top = false) },
-                    onMoveLongPress = { vm.beginMoveRange(row) },
+                    onMoveLongPress = { dialogReturn = rowFocusers[row.key]; vm.beginMoveRange(row) },
                     // Long-press Rename anchors a rename span; while one is active, pressing Rename on
                     // a second row opens the bulk rename flow over the whole span. On the anchor row
                     // itself it cancels, mirroring the Show/Hide span behavior.
                     // Restore focus to this row's first button when the rename dialog (or its delete
                     // confirm) closes — same restore target as the span-rename path below.
-                    onRename = { dialogReturn = rowFocusers.getOrNull(index); renaming = row },
-                    onRenameLongPress = { vm.beginRenameRange(row) },
+                    onRename = { dialogReturn = rowFocusers[row.key]; renaming = row },
+                    onRenameLongPress = { dialogReturn = rowFocusers[row.key]; vm.beginRenameRange(row) },
                     onPickRenameEnd = {
                         if (row.key == rangeAnchorKey) {
                             vm.cancelRange()
                         } else {
-                            dialogReturn = rowFocusers.getOrNull(index)
+                            dialogReturn = rowFocusers[row.key]
                             // No active span (anchor vanished?) — fall back to the single rename.
                             if (vm.finishRenameRange(row) == null) renaming = row
                         }
                     },
                     onToggleHidden = { vm.setCategoryHidden(row, !row.hidden) },
-                    onHideLongPress = { vm.beginRange(row) },
+                    onHideLongPress = { dialogReturn = rowFocusers[row.key]; vm.beginRange(row) },
                     onPickRangeEnd = {
                         if (row.key == rangeAnchorKey) vm.cancelRange()
                         else {
-                            dialogReturn = rowFocusers.getOrNull(index)
+                            dialogReturn = rowFocusers[row.key]
                             rangeEnd = row
                         }
                     },
@@ -735,7 +737,8 @@ private fun CategoryRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             // Tint every row in the span while a range is in progress, so the selected block is obvious.
-            .background(if (isInSpan) colors.primaryContainer else colors.surfaceContainerHigh)
+            // Use alpha so the opaque focus highlight of the pills inside remains visible (#121).
+            .background(if (isInSpan) colors.primaryContainer.copy(alpha = 0.35f) else colors.surfaceContainerHigh)
             .padding(horizontal = 16.dp, vertical = 8.dp)
             // CH+- paging: a focusGroup with a FocusRequester so a jump lands focus on this row's first
             // button; report up whenever any of the row's buttons gains focus (the paging anchor).
@@ -747,6 +750,7 @@ private fun CategoryRow(
         // row. Right steps into move arrows, Rename and Hide/Show.
         FocusableSurface(
             onClick = onOpenItems,
+            selected = isInSpan,
             modifier = Modifier
                 .weight(1f)
                 // Match the action pills' normal 12.dp + label height so the name focus target is
@@ -795,13 +799,13 @@ private fun CategoryRow(
         Spacer(Modifier.width(10.dp))
         // Long-pressing any arrow anchors a move span; pressing an arrow on a second row picks the
         // span end and moves the whole block, and keeps it selected for further steps.
-        OwnTVButton("⤒", onClick = onMoveTop, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY)
+        OwnTVButton("⤒", onClick = onMoveTop, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY, selected = isInSpan)
         Spacer(Modifier.width(6.dp))
-        OwnTVButton("↑", onClick = onMoveUp, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY)
+        OwnTVButton("↑", onClick = onMoveUp, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY, selected = isInSpan)
         Spacer(Modifier.width(6.dp))
-        OwnTVButton("↓", onClick = onMoveDown, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY)
+        OwnTVButton("↓", onClick = onMoveDown, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY, selected = isInSpan)
         Spacer(Modifier.width(6.dp))
-        OwnTVButton("⤓", onClick = onMoveBottom, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY)
+        OwnTVButton("⤓", onClick = onMoveBottom, onLongClick = onMoveLongPress, style = OwnTVButtonStyle.SECONDARY, selected = isInSpan)
         Spacer(Modifier.width(6.dp))
         // Long-press anchors a rename span; a normal press picks the span end while one is active,
         // otherwise it opens the single-row rename dialog.
@@ -810,6 +814,7 @@ private fun CategoryRow(
             onClick = { if (inRenameRange) onPickRenameEnd() else onRename() },
             onLongClick = onRenameLongPress,
             style = OwnTVButtonStyle.SECONDARY,
+            selected = isInSpan,
         )
         Spacer(Modifier.width(6.dp))
         OwnTVButton(
@@ -819,6 +824,7 @@ private fun CategoryRow(
             onClick = { if (inRangeMode) onPickRangeEnd() else onToggleHidden() },
             onLongClick = onHideLongPress,
             style = OwnTVButtonStyle.SECONDARY,
+            selected = isInSpan,
         )
     }
 }

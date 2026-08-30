@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Translators: Context-menu option to hide a category from the rail. -->
+    <string name="content_hide_category">Hide category</string>
+    <!-- Translators: Context-menu option to reorder a category in the rail. -->
+    <string name="content_reorder_category">Reorder category</string>
+</resources>

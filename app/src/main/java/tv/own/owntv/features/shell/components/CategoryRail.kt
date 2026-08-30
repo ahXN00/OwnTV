@@ -6,16 +6,20 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.ui.draw.rotate
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.components.ChannelGenre
 import tv.own.owntv.ui.components.NavAccentBar
 import tv.own.owntv.ui.components.OwnTVIcon
@@ -94,11 +100,14 @@ fun CategoryRail(
     categories: List<RailCategory>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
+    onLongSelect: ((Int) -> Unit)? = null,
     onFocused: () -> Unit = {},
     modifier: Modifier = Modifier,
     // Caller-supplied list state. Defaulted so existing callers are unchanged, but Live/Movies/Series
     // pass their own so CH+- key paging can drive the rail's scroll position from the screen.
     listState: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState(),
+    // Optional focus requester to target the rail's focusable list.
+    focusRequester: FocusRequester? = null,
     // Column width. Defaults to the stock rail width; Live/Movies/Series override it when the user has
     // turned on manual panel widths for that section (see PanelWidths.kt).
     width: androidx.compose.ui.unit.Dp = Dimens.RailWidthFixed,
@@ -117,6 +126,7 @@ fun CategoryRail(
         if (q.isEmpty()) categories.indices.toList()
         else categories.indices.filter { categories[it].fullName.contains(q, ignoreCase = true) }
     }
+    val rowFocusers = remember(visible.size) { List(visible.size) { FocusRequester() } }
     // Phase 2 — the rail is a FIXED full-label column (no collapse/abbreviation overlay), so it never
     // reflows the layout on the D-pad. Always "expanded" = full category names.
     val expanded = true
@@ -150,6 +160,7 @@ fun CategoryRail(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 // LazyColumn fill is now transparent — the outer Box's roundedPanel surfaceContainerLowest
                 // shows through, keeping panel 1 the same colour as panels 2/3/4 (Phase 6).
                 .onFocusChanged {
@@ -202,7 +213,7 @@ fun CategoryRail(
                     )
                 }
             }
-            items(count = visible.size, key = { visible[it] }) { i ->
+            items(count = visible.size, key = { visible[it].let { idx -> categories.getOrNull(idx)?.fullName ?: idx } }) { i ->
                 val index = visible[i]
                 RailPill(
                     category = categories[index],
@@ -211,7 +222,17 @@ fun CategoryRail(
                     selected = index == selectedIndex,
                     expanded = expanded,
                     onClick = { onSelect(index) },
-                    modifier = if (index == selectedIndex) Modifier.focusRequester(selectedFocus) else Modifier,
+                    onLongClick = onLongSelect?.let { 
+                        { 
+                            rowFocusers.getOrNull(i)?.requestFocus()
+                            it(index) 
+                        } 
+                    },
+                    modifier = if (index == selectedIndex) {
+                        Modifier.focusRequester(selectedFocus).focusRequester(rowFocusers[i])
+                    } else {
+                        Modifier.focusRequester(rowFocusers[i])
+                    },
                 )
             }
             if (hasFocus && visible.isEmpty()) {
@@ -234,6 +255,7 @@ private fun RailPill(
     selected: Boolean,
     expanded: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -272,11 +294,22 @@ private fun RailPill(
                     else -> Modifier
                 }
             )
-            .selectable(
-                selected = selected,
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
+            .then(
+                if (onLongClick != null) {
+                    Modifier.combinedClickable(
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
+                } else {
+                    Modifier.selectable(
+                        selected = selected,
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = onClick,
+                    )
+                }
             ),
     ) {
         // Persistent left accent bar marking the active category.
@@ -318,4 +351,112 @@ private fun RailPill(
             }
         }
     }
+}
+
+/** Long-press quick actions for a category (hide / move). */
+@Composable
+fun CategoryContextMenu(
+    categoryName: String,
+    canHide: Boolean,
+    canMove: Boolean = true,
+    onHide: () -> Unit,
+    onMove: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = OwnTVTheme.colors
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    androidx.activity.compose.BackHandler { onDismiss() }
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f))
+            .focusGroup()
+            .longPressMenuGuard(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.roundedPanel(fillColor = colors.surfaceContainerLow).padding(14.dp).width(280.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(categoryName, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(8.dp))
+
+            if (canMove) {
+                RailMenuAction(
+                    label = stringResource(tv.own.owntv.R.string.content_move),
+                    onClick = onMove,
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                )
+            }
+
+            if (canHide) {
+                RailMenuDivider()
+                RailMenuAction(
+                    label = stringResource(tv.own.owntv.R.string.content_hide_category),
+                    onClick = onHide,
+                    modifier = if (!canMove) Modifier.fillMaxWidth().focusRequester(focus) else Modifier.fillMaxWidth(),
+                    destructive = true,
+                )
+            }
+
+            RailMenuDivider()
+            RailMenuAction(stringResource(tv.own.owntv.R.string.common_cancel), onDismiss, OwnTVIcon.CLOSE, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+private fun RailMenuAction(
+    label: String,
+    onClick: () -> Unit,
+    icon: OwnTVIcon? = null,
+    modifier: Modifier = Modifier,
+    iconModifier: Modifier = Modifier,
+    destructive: Boolean = false,
+) {
+    val colors = OwnTVTheme.colors
+    val danger = Color(0xFFFFB4AB)
+    tv.own.owntv.ui.components.FocusableSurface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        focusedScale = 1.012f,
+        unfocusedContainerColor = Color.Transparent,
+        focusedContainerColor = if (destructive) Color(0xFF6E2B2B) else colors.primaryContainer,
+        selectedContainerColor = Color.Transparent,
+        surface = GlassSurface.DIALOGS,
+        glassFrostScale = 0.86f,
+        glassIdleRimAlpha = 0f,
+    ) { focused ->
+        val foreground = when {
+            destructive && !focused -> danger
+            destructive -> Color.White
+            focused -> colors.onPrimaryContainer
+            else -> colors.onSurface
+        }
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (icon != null) OwnTVIcon(icon, foreground, Modifier.size(19.dp).then(iconModifier), filled = true)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = foreground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RailMenuDivider() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .height(1.dp)
+            .background(OwnTVTheme.colors.outlineVariant.copy(alpha = 0.45f)),
+    )
 }
