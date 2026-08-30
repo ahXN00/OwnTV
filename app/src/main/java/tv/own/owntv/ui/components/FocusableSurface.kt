@@ -252,17 +252,15 @@ fun FocusableSurface(
             .then(
                 when {
                     showBorder && focused && lit -> Modifier.border(1.6.dp, focusLight, shape)
-                    showBorder && focused && !glassy -> Modifier.border(
+                    showBorder && focused -> Modifier.border(
                         focusBorderWidth,
                         borderColor,
                         shape,
                     )
                     showBorder && visuallySelected && !focused -> Modifier.border(
-                        // The idle "selected" hairline stays thin whatever the focus width: it marks
-                        // where you were, and thickening it too would compete with the live cursor.
-                        width = 1.dp,
-                        color = colors.focusBorder.copy(alpha = 0.45f),
-                        shape = shape,
+                        1.dp,
+                        colors.primary.copy(alpha = 0.28f),
+                        shape,
                     )
                     else -> Modifier
                 }

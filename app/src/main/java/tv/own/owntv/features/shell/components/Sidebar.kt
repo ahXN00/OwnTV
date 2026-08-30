@@ -503,12 +503,21 @@ private fun NavItem(
                     )
                     .then(
                         when {
-                            active -> Modifier.border(
+                            focused && active -> Modifier.border(
                                 1.dp,
-                                colors.primary.copy(alpha = if (focused) 0.95f else 0.72f),
+                                colors.primary.copy(alpha = 0.95f),
                                 shape,
                             )
-                            ladder.focusBorder != null -> Modifier.border(tv.own.owntv.ui.theme.LocalFocusBorderWidth.current, ladder.focusBorder, shape)
+                            focused -> Modifier.border(
+                                tv.own.owntv.ui.theme.LocalFocusBorderWidth.current,
+                                ladder.focusBorder ?: colors.focusBorder,
+                                shape,
+                            )
+                            active -> Modifier.border(
+                                1.dp,
+                                colors.primary.copy(alpha = 0.28f),
+                                shape,
+                            )
                             else -> Modifier
                         }
                     ),

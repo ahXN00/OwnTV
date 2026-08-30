@@ -240,9 +240,6 @@ private fun RailPill(
     val focused by interaction.collectIsFocusedAsState()
     // Box-style corners (8.dp), close to the live-TV channel list item, not an over-rounded pill.
     val shape = if (expanded) RoundedCornerShape(8.dp) else CircleShape
-    // Glass effect: when the PANELS surface is glassy, the focused/active highlight renders as a
-    // frosted glass slice (via Modifier.glass) with a bright white rim, matching the sidebar.
-    val panelsGlassy = LocalGlass.current.isGlassy(GlassSurface.PANELS)
     // Shared 4-state nav ladder (see NavLadder.kt) — identical treatment to the sidebar nav items so
     // both panels read the same (#47): active+focused (full fill) → focused cursor (outline) →
     // selected-idle (tonal fill + left accent bar) → idle. Focus fills snap in both material modes
@@ -252,7 +249,6 @@ private fun RailPill(
         focused = focused,
     )
     val activeSelected = selected && focused
-    val highlighted = focused || selected
 
     Box(
         modifier = modifier
@@ -263,16 +259,16 @@ private fun RailPill(
             .glass(surface = GlassSurface.PANELS, baseFill = ladder.container, shape = shape)
             .then(
                 when {
-                    // Glass mode replaces the ladder outline with a frosted rim. The *focused* pill
-                    // still has to follow the user's focus highlight (#121) — only the selected-idle
-                    // marker keeps the neutral white rim, so the cursor stays the louder of the two.
-                    panelsGlassy && focused -> Modifier.border(
+                    focused -> Modifier.border(
                         tv.own.owntv.ui.theme.LocalFocusBorderWidth.current,
                         OwnTVTheme.colors.focusBorder,
                         shape,
                     )
-                    panelsGlassy && highlighted -> Modifier.border(Dimens.FocusBorderWidth, Color.White.copy(alpha = 0.35f), shape)
-                    ladder.focusBorder != null -> Modifier.border(tv.own.owntv.ui.theme.LocalFocusBorderWidth.current, ladder.focusBorder, shape)
+                    selected -> Modifier.border(
+                        1.dp,
+                        OwnTVTheme.colors.primary.copy(alpha = 0.28f),
+                        shape,
+                    )
                     else -> Modifier
                 }
             )
@@ -283,10 +279,8 @@ private fun RailPill(
                 onClick = onClick,
             ),
     ) {
-        // Persistent left accent bar marking the active category (only in the expanded full-label rail —
-        // a vertical bar on a compact circle pill would look wrong). Hidden in glass mode: the frosted
-        // highlight already marks the active pill and the accent bar clashes (matches the sidebar).
-        NavAccentBar(visible = ladder.showAccentBar && expanded && !panelsGlassy)
+        // Persistent left accent bar marking the active category.
+        NavAccentBar(visible = ladder.showAccentBar && expanded)
 
         Row(
             modifier = Modifier
