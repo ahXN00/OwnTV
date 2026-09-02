@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.CustomizeKeys
 import tv.own.owntv.core.database.dao.CategoryDao
@@ -67,6 +69,10 @@ class CustomizeViewModel(
     private val customize: CustomizationStore,
 ) : ViewModel() {
 
+    /** Moves serialize so a fast second press snapshots the result of the first, never the stale
+     *  pre-move order. */
+    private val moveMutex = Mutex()
+
     private data class Ctx(val profileId: Long, val sources: List<tv.own.owntv.core.database.entity.SourceEntity>) {
         fun sourceIdsFor(type: MediaType): List<Long> = ActiveProfileSources(profileId, sources).sourceIdsFor(type)
     }
@@ -109,17 +115,6 @@ class CustomizeViewModel(
         _visibilityFilter.value = filter
         span.cancel()
     }
-
-    // --- Span selection (shared machinery, see SpanSelector.kt) ---
-
-    private val span = SpanSelector(
-        getRows = { rows.value },
-        getKey = { it.key },
-        scope = viewModelScope,
-    )
-    val rangeAnchorKey: StateFlow<String?> = span.anchorKey
-    val rangeMode: StateFlow<SpanSelector.Mode> = span.mode
-    val rangeEndKey: StateFlow<String?> = span.endKey
 
     fun selectSection(type: MediaType) {
         _section.value = type
@@ -180,6 +175,17 @@ class CustomizeViewModel(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // --- Span selection (shared machinery, see SpanSelector.kt) ---
+
+    private val span = SpanSelector(
+        rows = rows,
+        getKey = { it.key },
+        scope = viewModelScope,
+    )
+    val rangeAnchorKey: StateFlow<String?> = span.anchorKey
+    val rangeMode: StateFlow<SpanSelector.Mode> = span.mode
+    val rangeEndKey: StateFlow<String?> = span.endKey
 
     /** Hidden items of the selected section (key → label) so they can be unhidden from here. */
     val hiddenChannels: StateFlow<Map<String, String>> = combine(ctx, _section) { c, s -> c to s }
@@ -304,21 +310,17 @@ class CustomizeViewModel(
         moveSingle(row, if (top) MoveKind.TOP else MoveKind.BOTTOM)
 
     private fun moveSingle(row: CustomizeCatRow, kind: MoveKind) {
-        val index = rows.value.indexOfFirst { it.key == row.key }
-        if (index < 0) return
-        moveBlock(index, index, kind)
-    }
-
-    /**
-     * Shifts the contiguous block of rows [lo]..[hi] as one unit and persists the resulting order.
-     * The block keeps its internal order; a move that would run off either end is a no-op.
-     */
-    private fun moveBlock(lo: Int, hi: Int, kind: MoveKind) {
-        val reordered = moveBlock(rows.value, lo, hi, kind) ?: return
         viewModelScope.launch {
-            customize.setCategoryOrder(ctx.value.profileId, _section.value, reordered.map { it.key })
+            moveMutex.withLock {
+                val current = rows.value
+                val index = current.indexOfFirst { it.key == row.key }
+                if (index < 0) return@withLock
+                val reordered = moveBlock(current, index, index, kind) ?: return@withLock
+                customize.setCategoryOrder(ctx.value.profileId, _section.value, reordered.map { it.key })
+            }
         }
     }
+
 
     fun unhideChannel(key: String) {
         viewModelScope.launch {
@@ -344,12 +346,17 @@ class CustomizeViewModel(
     fun moveRange(endRow: CustomizeCatRow, kind: MoveKind) {
         val anchorKey = span.anchorKey.value ?: return
         val endKey = span.endKey.value ?: endRow.key
-        val current = rows.value
-        val anchorIndex = current.indexOfFirst { it.key == anchorKey }
-        val endIndex = current.indexOfFirst { it.key == endKey }
-        if (anchorIndex < 0 || endIndex < 0) return
-        span.setEndKey(endKey)
-        moveBlock(minOf(anchorIndex, endIndex), maxOf(anchorIndex, endIndex), kind)
+        viewModelScope.launch {
+            moveMutex.withLock {
+                val current = rows.value
+                val anchorIndex = current.indexOfFirst { it.key == anchorKey }
+                val endIndex = current.indexOfFirst { it.key == endKey }
+                if (anchorIndex < 0 || endIndex < 0) return@withLock
+                span.setEndKey(endKey)
+                val reordered = moveBlock(current, minOf(anchorIndex, endIndex), maxOf(anchorIndex, endIndex), kind) ?: return@withLock
+                customize.setCategoryOrder(ctx.value.profileId, _section.value, reordered.map { it.key })
+            }
+        }
     }
 
     val rangeSelectedKeys: StateFlow<Set<String>> = span.selectedKeys

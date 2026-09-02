@@ -164,7 +164,7 @@ class CustomizeItemsViewModel(
     // --- Span selection (shared machinery, see SpanSelector.kt) ---
 
     private val span = SpanSelector(
-        getRows = { loadedRows.value },
+        rows = loadedRows,
         getKey = { it.key },
         scope = viewModelScope,
     )
