@@ -3,9 +3,9 @@
 package tv.own.owntv.features.live
 
 import tv.own.owntv.core.epg.displayLogoUrl
-import androidx.compose.runtime.Immutable
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -126,6 +126,10 @@ class LiveViewModel(
     data class ChannelMoveState(val items: List<ChannelEntity>, val activeIndex: Int, val contextKey: String)
     private val _moveState = MutableStateFlow<ChannelMoveState?>(null)
     val moveState: StateFlow<ChannelMoveState?> = _moveState.asStateFlow()
+
+    data class CategoryMoveState(val items: List<String>, val keys: List<String>, val activeIndex: Int, val targetKey: String)
+    private val _categoryMoveState = MutableStateFlow<CategoryMoveState?>(null)
+    val categoryMoveState: StateFlow<CategoryMoveState?> = _categoryMoveState.asStateFlow()
 
     val livePreviewEnabled: StateFlow<Boolean> = settings.livePreviewEnabled
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
@@ -540,6 +544,104 @@ class LiveViewModel(
             epgReader.invalidate(channel.id)
             epgRefresh.value++
         }
+    }
+
+    /** Hide a category by its rail key (undo via Settings → Customize). */
+    fun hideCategory(key: LiveKey) {
+        if (key !is LiveKey.Folder && key !is LiveKey.Custom) return
+        viewModelScope.launch {
+            val pid = currentProfileId() ?: return@launch
+            val customizationKey = when (key) {
+                is LiveKey.Folder -> categoryDao.getById(key.id)?.let { CustomizeKeys.category(it) }
+                is LiveKey.Custom -> key.id
+            } ?: return@launch
+            customize.setCategoryHidden(pid, MediaType.LIVE, customizationKey, true)
+        }
+    }
+
+    fun enterCategoryMoveMode(key: LiveKey) {
+        if (key !is LiveKey.Folder && key !is LiveKey.Custom) return
+        viewModelScope.launch {
+            val c = ctx.first { it.profileId >= 0 }
+            val pid = c.profileId
+            val type = MediaType.LIVE
+            val cats = categoryDao.observe(c.sourceIds, type).first()
+            val cust = customize.observe(pid, type).first()
+            val sort = sortMode.value
+            val profile = profileDao.getById(pid)
+
+            val kids = profile?.isKids == true
+            val visibleCats = if (kids) cats.filterNot { tv.own.owntv.core.content.AdultCategoryClassifier.isAdult(it.name) } else cats
+            val visibleCustoms = if (kids) cust.customCategories.filterNot { tv.own.owntv.core.content.AdultCategoryClassifier.isAdult(it.name) } else cust.customCategories
+
+            val targetKey = when (key) {
+                is LiveKey.Folder -> categoryDao.getById(key.id)?.let { CustomizeKeys.category(it) }
+                is LiveKey.Custom -> key.id
+            } ?: return@launch
+
+            // Filter hidden categories so reordering exactly mirrors applyCustomizationsWithCustoms.
+            val filteredCats = if (cust.hiddenCategories.isEmpty()) visibleCats else visibleCats.filter { CustomizeKeys.category(it) !in cust.hiddenCategories }
+            val filteredCustoms = visibleCustoms.filter { it.id !in cust.hiddenCategories }
+
+            val orderIndex = cust.categoryOrder.withIndex().associate { (i, k) -> k to i }
+            val entries = filteredCustoms.map { cc ->
+                cc.id to (cust.categoryNames[cc.id] ?: cc.name)
+            } + filteredCats.map { cat ->
+                val k = CustomizeKeys.category(cat)
+                k to (cust.categoryNames[k] ?: cat.name)
+            }
+
+            val alpha = sort == SettingsRepository.SortMode.ALPHA
+            val (pinned, rest) = entries.partition { it.first in orderIndex }
+            val sortedList = pinned.sortedBy { orderIndex.getValue(it.first) } +
+                (if (alpha) rest.sortedBy { it.second.lowercase() } else rest)
+
+            val fullKeys = sortedList.map { it.first }
+            val entryIdx = fullKeys.indexOf(targetKey)
+            if (entryIdx < 0) return@launch
+
+            _categoryMoveState.value = CategoryMoveState(
+                items = sortedList.map { it.second },
+                keys = fullKeys,
+                activeIndex = entryIdx,
+                targetKey = targetKey,
+            )
+        }
+    }
+
+    fun moveCategoryUp() {
+        val s = _categoryMoveState.value ?: return
+        if (s.activeIndex <= 0) return
+        val items = s.items.toMutableList()
+        val keys = s.keys.toMutableList()
+        val i = s.activeIndex
+        items[i - 1] = s.items[i]; items[i] = s.items[i - 1]
+        keys[i - 1] = s.keys[i]; keys[i] = s.keys[i - 1]
+        _categoryMoveState.value = s.copy(items = items, keys = keys, activeIndex = i - 1)
+    }
+
+    fun moveCategoryDown() {
+        val s = _categoryMoveState.value ?: return
+        if (s.activeIndex >= s.items.lastIndex) return
+        val items = s.items.toMutableList()
+        val keys = s.keys.toMutableList()
+        val i = s.activeIndex
+        items[i + 1] = s.items[i]; items[i] = s.items[i + 1]
+        keys[i + 1] = s.keys[i]; keys[i] = s.keys[i + 1]
+        _categoryMoveState.value = s.copy(items = items, keys = keys, activeIndex = i + 1)
+    }
+
+    fun commitCategoryMove() {
+        val s = _categoryMoveState.value ?: return
+        _categoryMoveState.value = null
+        viewModelScope.launch {
+            val pid = currentProfileId() ?: return@launch
+            customize.setCategoryOrder(pid, MediaType.LIVE, s.keys)
+        }
+    }
+
+    fun cancelCategoryMove() {
+        _categoryMoveState.value = null
     }
 
     /** The current manual EPG id for a channel, or null if auto-matched. */
