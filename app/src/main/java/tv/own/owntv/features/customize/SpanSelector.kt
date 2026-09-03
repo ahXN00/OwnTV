@@ -39,12 +39,12 @@ fun <T> moveBlock(list: List<T>, lo: Int, hi: Int, kind: MoveKind): List<T>? {
  * need. Persistence (hide/show, move/reorder) stays in each ViewModel — this only tracks the span.
  *
  * @param T  The row type (must provide a stable key).
- * @param getRows  Supplier of the current row list in display order.
+ * @param rows  StateFlow of the current row list in display order.
  * @param getKey   Extracts the stable key from a row.
  * @param scope    Coroutine scope for [selectedKeys] state-in.
  */
 class SpanSelector<T>(
-    private val getRows: () -> List<T>,
+    private val rows: StateFlow<List<T>>,
     private val getKey: (T) -> String,
     scope: CoroutineScope,
 ) {
@@ -114,7 +114,7 @@ class SpanSelector<T>(
 
     /** Keys of every row between [anchorKey] and [endKey], inclusive, in displayed order. */
     private fun keysBetween(anchorKey: String, endKey: String): List<String>? {
-        val current = getRows()
+        val current = rows.value
         val anchorIndex = current.indexOfFirst { getKey(it) == anchorKey }
         val endIndex = current.indexOfFirst { getKey(it) == endKey }
         if (anchorIndex < 0 || endIndex < 0) return null
@@ -128,9 +128,8 @@ class SpanSelector<T>(
      * Drives the block highlight; empty when no range is in progress.
      */
     val selectedKeys: StateFlow<Set<String>> =
-        combine(_anchorKey, _endKey) { anchorKey, endKey ->
+        combine(_anchorKey, _endKey, rows) { anchorKey, endKey, current ->
             if (anchorKey == null) return@combine emptySet()
-            val current = getRows()
             val anchorIndex = current.indexOfFirst { getKey(it) == anchorKey }
             if (anchorIndex < 0) return@combine emptySet()
             val endIndex = endKey?.let { k -> current.indexOfFirst { getKey(it) == k } } ?: anchorIndex
