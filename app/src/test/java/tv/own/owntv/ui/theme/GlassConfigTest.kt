@@ -13,10 +13,21 @@ class GlassConfigTest {
     @Test
     fun `surface bit assignments remain stable for stored settings`() {
         assertEquals(
-            listOf("PANELS", "SIDEBAR", "PREVIEW", "DIALOGS", "TOPBAR", "CARDS", "MINI_PLAYER"),
+            listOf(
+                "PANELS", "SIDEBAR", "PREVIEW", "DIALOGS", "TOPBAR", "CARDS", "MINI_PLAYER",
+                // Appended for the mobile app, and only ever appended: the stored scope is a
+                // bitmask over these ordinals.
+                "PLAYER_CONTROLS", "TOASTS",
+            ),
             GlassSurface.entries.map { it.name },
         )
+        // The two appended surfaces have no ten-foot caller, so the television neither offers nor
+        // stores them; its own set is still the original seven bits.
         assertEquals(0b111_1111, GlassConfig(scope = ALL_GLASS_SURFACES).toBitmask())
+        assertEquals(
+            setOf(GlassSurface.PLAYER_CONTROLS, GlassSurface.TOASTS),
+            GlassSurface.entries.toSet() - ALL_GLASS_SURFACES,
+        )
     }
 
     @Test
