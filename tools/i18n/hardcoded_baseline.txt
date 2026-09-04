@@ -4,7 +4,7 @@
 # Phase 1 deletes occurrences until this file is empty; the CI guard then becomes absolute.
 # Format: <count>\t<relative path>\t<content with \t/\n escaped>
 
-2	app/src/main/java/tv/own/owntv/features/customize/BulkRenameDialogs.kt	\0
+1	app/src/main/java/tv/own/owntv/features/customize/BulkRenameDialogs.kt	\0
 1	app/src/main/java/tv/own/owntv/features/customize/BulkRenameDialogs.kt	ADD
 1	app/src/main/java/tv/own/owntv/features/customize/BulkRenameDialogs.kt	PREFIX
 1	app/src/main/java/tv/own/owntv/features/customize/BulkRenameDialogs.kt	REMOVE

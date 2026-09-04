@@ -65,6 +65,8 @@ import tv.own.owntv.core.theme.GlassSurface
 import tv.own.owntv.ui.theme.LocalActionSurface
 import tv.own.owntv.ui.theme.OwnTVTheme
 import tv.own.owntv.ui.theme.PopupFontTheme
+import tv.own.owntv.core.customize.MoveKind
+import tv.own.owntv.core.customize.SpanSelector
 
 /**
  * Category items screen — shows every item (channel/movie/series) in a category, including hidden

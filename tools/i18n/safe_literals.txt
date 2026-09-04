@@ -349,29 +349,20 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/PanelWidthSettingsScreen.kt	–
 28	empty	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	/
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	0
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	0000
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	FIT
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	Metadata cache wipe after language change failed: ${it.message}
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	Network is unreachable
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	OwnTVHome
 2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	Proxy-Authorization
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	SettingsViewModel
-1	regex	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	\\d{4}|\\d{1,2}[./-]\\d{1,2}
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	add_remainder
 1	url	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	content://
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	delete sourceId=${source.id}
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	end_date
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	exp_date
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	expire_billing_date
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	expire_date
 1	url	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	file://
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	fresh_add
 1	url	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	https://www.gstatic.com/generate_204
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	manual_clean_resync
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	manual_resync
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	null
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	phone
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	refreshActiveTvHome profile=$pid allowBrowsable=$allowBrowsableRequest
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	resync cancel sourceId=${source.id}
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	resync enqueue sourceId=${source.id} clean=$clean
@@ -379,7 +370,6 @@
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	runImport sync success sourceId=${source.id} profile=$pid
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	scope_edit
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	setAndroidTvHomeEnabled enabled=$enabled
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	tariff_expired_date
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	timed out
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	unknown host
 12	empty	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	\0

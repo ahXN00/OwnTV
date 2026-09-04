@@ -35,6 +35,10 @@ import tv.own.owntv.core.database.dao.MovieDao
 import tv.own.owntv.core.database.dao.SeriesDao
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.ContentOrderEntity
+import tv.own.owntv.core.customize.BulkRenameSession
+import tv.own.owntv.core.customize.MoveKind
+import tv.own.owntv.core.customize.SpanSelector
+import tv.own.owntv.core.customize.moveBlock
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.CustomizeKeys
 import tv.own.owntv.core.model.MediaType

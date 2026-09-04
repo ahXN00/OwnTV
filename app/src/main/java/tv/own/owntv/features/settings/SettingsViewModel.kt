@@ -201,7 +201,7 @@ class SettingsViewModel(
     /**
      * Subscription expiry per source id — the "Expires …" note in the Manage-sources row (Phase F).
      * Xtream reads `user_info.exp_date` from the panel; Stalker reads `account_info`/`get_profile`
-     * (see [stalkerExpiryOf]). M3U is a plain playlist file with no account concept — never listed.
+     * (see core's `stalkerExpiryOf`). M3U is a plain playlist file with no account concept — never listed.
      * Fetched once per source per ViewModel lifetime (in-memory cache; only while the screen is
      * subscribed); any failure simply leaves the line off the row.
      */
@@ -232,7 +232,8 @@ class SettingsViewModel(
                         val info = runCatching {
                             stalkerClient.getAccountInfo(session.apiBase, mac, session.token, creds.userAgent)
                         }.getOrDefault(emptyMap())
-                        stalkerExpiryOf(info) ?: stalkerExpiryOf(session.profile)
+                        tv.own.owntv.core.stalker.stalkerExpiryOf(info)
+                            ?: tv.own.owntv.core.stalker.stalkerExpiryOf(session.profile)
                     }
                 }
             else -> null
@@ -1071,22 +1072,6 @@ class SettingsViewModel(
             )
         }
     }
-
-    /**
-     * Pull a subscription end date out of a Stalker `account_info`/`get_profile` map. Portals are
-     * inconsistent: proper `end_date`/`exp_date` keys, or a date-looking string stuffed into `phone`
-     * (§1.2). Values like "0000-00-00", "null" or empty are ignored.
-     */
-    private fun stalkerExpiryOf(fields: Map<String, String>): String? {
-        val direct = listOf("end_date", "exp_date", "expire_date", "expire_billing_date", "tariff_expired_date")
-            .firstNotNullOfOrNull { key -> fields[key]?.trim()?.takeIf { it.looksLikeExpiryValue() } }
-        if (direct != null) return direct
-        // Some portals put the expiry text in `phone` — accept it only when it actually contains a date.
-        return fields["phone"]?.trim()?.takeIf { it.looksLikeExpiryValue() && it.contains(Regex("\\d{4}|\\d{1,2}[./-]\\d{1,2}")) }
-    }
-
-    private fun String.looksLikeExpiryValue(): Boolean =
-        isNotEmpty() && !equals("null", true) && !startsWith("0000") && this != "0"
 
     fun addM3u(name: String, url: String, userAgent: String = "", epgUrl: String = "", autoRefresh: PlaylistRefresh = PlaylistRefresh.OFF, isDefault: Boolean = false) = runImport(
         autoRefresh,

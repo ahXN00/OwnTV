@@ -69,6 +69,8 @@ import tv.own.owntv.ui.components.trapVerticalFocusExit
 import tv.own.owntv.core.theme.GlassSurface
 import tv.own.owntv.ui.theme.LocalActionSurface
 import tv.own.owntv.ui.theme.OwnTVTheme
+import tv.own.owntv.core.customize.MoveKind
+import tv.own.owntv.core.customize.SpanSelector
 
 /**
  * Settings → Customize Categories & Items: hide / rename / reorder categories per section, and unhide
