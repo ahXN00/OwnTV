@@ -15,6 +15,7 @@
 
 - **🧪 Test a playlist before you trust it**
 - **🔄 Auto refresh: choose your own number of days**
+- **🪟 A new Glass Effect look: Aurora**
 
 ### 🐛 Fixes
 

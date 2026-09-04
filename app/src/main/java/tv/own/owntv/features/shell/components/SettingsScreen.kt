@@ -3710,6 +3710,7 @@ private fun glassPresetLabel(preset: GlassPreset): String = stringResource(
         GlassPreset.BALANCED -> R.string.settings_glass_preset_balanced
         GlassPreset.TINTED -> R.string.settings_glass_preset_tinted
         GlassPreset.OPAQUE -> R.string.settings_glass_preset_opaque
+        GlassPreset.AURORA -> R.string.settings_glass_preset_aurora
         GlassPreset.CUSTOM -> R.string.settings_glass_preset_custom
     },
 )
@@ -3722,6 +3723,7 @@ private fun glassPresetDescription(preset: GlassPreset): String = stringResource
         GlassPreset.BALANCED -> R.string.settings_glass_preset_balanced_description
         GlassPreset.TINTED -> R.string.settings_glass_preset_tinted_description
         GlassPreset.OPAQUE -> R.string.settings_glass_preset_opaque_description
+        GlassPreset.AURORA -> R.string.settings_glass_preset_aurora_description
         GlassPreset.CUSTOM -> R.string.settings_glass_preset_custom_description
     },
 )

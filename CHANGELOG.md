@@ -2,6 +2,14 @@
 
 ## v4.2.5 — unreleased
 
+### 🪟 A new Glass Effect look: Aurora
+
+- **Aurora** joins Subtle, Balanced, Frosted, Vivid and Opaque in Settings → Appearance → Glass
+  Effect. It is clearer than Balanced and frosts a little harder, and it is the look the phone app
+  uses by default — so a television and a phone set to Aurora are set to the same thing. Nothing
+  already chosen changes: the new look sits between Opaque and Custom, and every existing preset,
+  scope and slider is exactly where it was.
+
 ### 🌍 The guide now matches channels in any alphabet, and matches them quickly
 
 - **Auto-match works for Cyrillic, Greek, Arabic and CJK channel names** (community PR by
