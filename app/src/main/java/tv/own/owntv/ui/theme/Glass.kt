@@ -85,7 +85,10 @@ private val InlineGlassMaterial = GlassMaterial(-0.08f, 0.18f, 0.06f, 0.30f, 0.6
 val GlassSurface.material: GlassMaterial
     get() = when (this) {
         GlassSurface.DIALOGS -> FloatingGlassMaterial
-        GlassSurface.SIDEBAR, GlassSurface.TOPBAR, GlassSurface.MINI_PLAYER -> ChromeGlassMaterial
+        GlassSurface.SIDEBAR, GlassSurface.TOPBAR, GlassSurface.MINI_PLAYER,
+        GlassSurface.PLAYER_CONTROLS,
+        -> ChromeGlassMaterial
+        GlassSurface.TOASTS -> FloatingGlassMaterial
         GlassSurface.PANELS, GlassSurface.PREVIEW -> ContainerGlassMaterial
         GlassSurface.CARDS -> InlineGlassMaterial
     }
@@ -113,7 +116,16 @@ private fun GlassSurface.defaultLayer(): Int = when (this) {
 }
 
 /** Every surface that can be glassed. Used to implement the "All" master tick. */
-val ALL_GLASS_SURFACES: Set<GlassSurface> = GlassSurface.entries.toSet()
+/**
+ * The surfaces this app can actually render as glass.
+ *
+ * `PLAYER_CONTROLS` and `TOASTS` were added to core for the phone's player chrome; the ten-foot HUD
+ * does not use them yet, and a switch that does nothing is worse than no switch — nor should "all
+ * surfaces on" mean a state the user can never reach by hand. They join this set on the day the TV
+ * HUD honours them.
+ */
+val ALL_GLASS_SURFACES: Set<GlassSurface> =
+    GlassSurface.entries.toSet() - setOf(GlassSurface.PLAYER_CONTROLS, GlassSurface.TOASTS)
 
 /** Ambient glass state. Default is "off" so the app looks unchanged until a background image is set. */
 val LocalGlass = compositionLocalOf { GlassConfig() }

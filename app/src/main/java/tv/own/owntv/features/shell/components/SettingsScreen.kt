@@ -3143,7 +3143,7 @@ private fun GlassEffectDesignedScreen(
             GlassSettingsSection(stringResource(R.string.settings_glass_apply_to)) {
                 val allSelected = scope == ALL_GLASS_SURFACES
                 val choices = listOf<Pair<String, GlassSurface?>>(stringResource(R.string.settings_glass_surface_all) to null) +
-                    GlassSurface.entries.map { glassSurfaceLabel(it) to it }
+                    ALL_GLASS_SURFACES.map { glassSurfaceLabel(it) to it }
                 BoxWithConstraints(Modifier.fillMaxWidth()) {
                     val columns = if (maxWidth < 650.dp) 2 else 4
                     Column {
@@ -3739,6 +3739,8 @@ private fun glassSurfaceLabel(s: GlassSurface): String = stringResource(
         GlassSurface.TOPBAR -> R.string.settings_glass_surface_topbar
         GlassSurface.CARDS -> R.string.settings_glass_surface_cards
         GlassSurface.MINI_PLAYER -> R.string.settings_glass_surface_miniplayer
+        GlassSurface.PLAYER_CONTROLS -> R.string.settings_glass_surface_player_controls
+        GlassSurface.TOASTS -> R.string.settings_glass_surface_toasts
     },
 )
 
@@ -3787,7 +3789,7 @@ private fun GlassSurfacesDialog(
                 modifier = Modifier.fillMaxWidth().focusRequester(firstFocus),
             )
             Spacer(Modifier.height(12.dp))
-            GlassSurface.entries.forEach { s ->
+            ALL_GLASS_SURFACES.forEach { s ->
                 val on = s in scope
                 OwnTVButton(
                     stringResource(R.string.settings_surface_toggle, glassSurfaceLabel(s), stringResource(if (on) R.string.common_on else R.string.common_off)),
