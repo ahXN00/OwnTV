@@ -1,6 +1,5 @@
 package tv.own.owntv.features.profiles
 
-import kotlinx.coroutines.flow.first
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -9,10 +8,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tv.own.owntv.core.database.dao.ProfileDao
-import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.ProfileEntity
-import tv.own.owntv.core.database.entity.ProfileSourceCrossRef
-import tv.own.owntv.core.launcher.LauncherIntegrationRepository
+import tv.own.owntv.core.profile.ProfileManager
 import tv.own.owntv.core.util.Pin
 import tv.own.owntv.core.settings.SettingsRepository
 
@@ -22,10 +19,8 @@ import tv.own.owntv.core.settings.SettingsRepository
  */
 class ProfilesViewModel(
     private val profileDao: ProfileDao,
-    private val sourceDao: SourceDao,
     private val settings: SettingsRepository,
-    private val launcherIntegrationRepository: LauncherIntegrationRepository,
-    private val openSubtitlesAccounts: tv.own.owntv.core.subtitles.OpenSubtitlesAccountManager,
+    private val manager: ProfileManager,
 ) : ViewModel() {
 
     // Eagerly on purpose: MainActivity's splash gate blocks the first frame on this list, so the
@@ -53,12 +48,12 @@ class ProfilesViewModel(
     /** Make [profile] active (routes the app into the shell) once the preference write commits. */
     fun switchTo(profile: ProfileEntity, onSwitched: () -> Unit = {}) {
         viewModelScope.launch {
-            settings.setActiveProfile(profile.id)
+            manager.switchTo(profile.id)
             onSwitched()
         }
     }
 
-    fun verifyPin(profile: ProfileEntity, pin: String): Boolean = Pin.verify(pin, profile.pinHash)
+    fun verifyPin(profile: ProfileEntity, pin: String): Boolean = manager.verifyPin(profile, pin)
 
     /**
      * Create a new profile. New profiles inherit the existing sources (single-account, multi-viewer)
@@ -66,34 +61,13 @@ class ProfilesViewModel(
      */
     fun create(name: String, avatarId: Int, isKids: Boolean, pin: String?, defaultName: String, onCreated: (Long) -> Unit = {}) {
         viewModelScope.launch {
-            val id = profileDao.insert(
-                ProfileEntity(
-                    name = name.ifBlank { defaultName },
-                    avatarColor = 0,
-                    avatarId = avatarId,
-                    isKids = isKids,
-                    pinHash = pin?.takeIf { it.isNotBlank() }?.let { Pin.hash(it) },
-                ),
-            )
-            // Link every existing source to the new profile.
-            sourceDao.observeForProfileOnceLinked(id)
-            onCreated(id)
+            onCreated(manager.create(name, avatarId, isKids, pin, defaultName))
         }
     }
 
     /** Apply edits from the editor dialog. [pin]: null = keep the existing PIN, "" = remove it. */
     fun edit(profile: ProfileEntity, name: String, avatarId: Int, isKids: Boolean, pin: String?) {
-        viewModelScope.launch {
-            val pinHash = when {
-                pin == null -> profile.pinHash
-                pin.isEmpty() -> null
-                else -> Pin.hash(pin)
-            }
-            profileDao.update(profile.copy(name = name.ifBlank { profile.name }, avatarId = avatarId, isKids = isKids, pinHash = pinHash))
-            if (profile.isKids != isKids) {
-                launcherIntegrationRepository.refreshProfile(profile.id, allowBrowsableRequest = false)
-            }
-        }
+        viewModelScope.launch { manager.edit(profile, name, avatarId, isKids, pin) }
     }
 
     fun rename(profile: ProfileEntity, name: String) {
@@ -109,20 +83,7 @@ class ProfilesViewModel(
     }
 
     fun delete(profile: ProfileEntity) {
-        viewModelScope.launch {
-            // Never delete the last profile.
-            if (profileDao.count() <= 1) return@launch
-            val activeProfileId = settings.activeProfileId.first()
-            val remainingProfileId = profileDao.getAllOnce().firstOrNull { it.id != profile.id }?.id
-            runCatching { launcherIntegrationRepository.clearProfile(profile.id) }
-            // Deleting a profile permanently erases its stored OpenSubtitles login (subtitle plan §5.5).
-            openSubtitlesAccounts.eraseFor(profile.id)
-            settings.setStartupChannel(profile.id, null)
-            profileDao.delete(profile)
-            if (activeProfileId == profile.id) {
-                settings.setActiveProfile(remainingProfileId ?: -1L)
-            }
-        }
+        viewModelScope.launch { manager.delete(profile) }
     }
 }
 
@@ -144,20 +105,14 @@ internal fun shellMayCompose(
     activeProfileId: Long?,
     authenticatedProfileId: Long?,
     gateRequired: Boolean,
-): Boolean {
-    val loaded = profileState as? ProfileLoadState.Loaded ?: return false
-    val active = activeProfileId ?: return false
-    if (active < 0L || loaded.profiles.none { it.id == active }) return false
-    return !gateRequired || authenticatedProfileId == active
-}
+): Boolean = tv.own.owntv.core.profile.shellMayCompose(
+    profiles = (profileState as? ProfileLoadState.Loaded)?.profiles,
+    activeProfileId = activeProfileId,
+    authenticatedProfileId = authenticatedProfileId,
+    gateRequired = gateRequired,
+)
 
-/** One unlocked profile enters the shell immediately; all chooser/PIN cases stay gated. */
+/** One unlocked profile enters the shell immediately; all chooser/PIN cases stay gated. Core's rule
+ *  — the phone applies the same one. */
 internal fun profileGateRequired(profiles: List<ProfileEntity>): Boolean =
-    profiles.size > 1 || profiles.singleOrNull()?.pinHash != null
-
-/** Links all currently-known sources to a freshly created profile (helper kept off the entity API). */
-private suspend fun SourceDao.observeForProfileOnceLinked(profileId: Long) {
-    // All sources currently belong to existing profiles; share them with the new one.
-    val allSourceIds = allSourceIds()
-    allSourceIds.forEach { link(ProfileSourceCrossRef(profileId = profileId, sourceId = it)) }
-}
+    tv.own.owntv.core.profile.profileGateRequired(profiles)
