@@ -80,7 +80,7 @@ espressoCore = "3.7.0"
 # Both artifacts always ship on the same version; never split them. Bumping this is how the TV app
 # takes a core change. For local work, owntv.corePath in ~/.gradle/gradle.properties substitutes
 # core's source for these artifacts, and this number is then ignored.
-owntvCore = "1.0.24"
+owntvCore = "1.0.25"
 
 [libraries]
 # The shared engine, from its own repository
