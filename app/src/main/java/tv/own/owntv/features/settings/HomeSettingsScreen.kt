@@ -36,6 +36,7 @@ import androidx.tv.material3.Text
 import tv.own.owntv.core.model.HeroKind
 import tv.own.owntv.core.model.HomeLiveRowMode
 import tv.own.owntv.core.model.HomeRow
+import tv.own.owntv.core.trending.TrendingAvailability
 import tv.own.owntv.features.home.displayTitle
 import tv.own.owntv.features.home.displayLabel
 import tv.own.owntv.features.home.settingsDescription

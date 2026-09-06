@@ -252,7 +252,6 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/HomeSettingsScreen.kt	↓
 1	technical	app/src/main/java/tv/own/owntv/features/settings/HomeSettingsScreen.kt	⤒
 1	technical	app/src/main/java/tv/own/owntv/features/settings/HomeSettingsScreen.kt	⤓
-1	protocol	app/src/main/java/tv/own/owntv/features/settings/HomeSettingsViewModel.kt	no VOD content
 1	empty	app/src/main/java/tv/own/owntv/features/settings/LanguageSettingsScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/ManageProfilesScreen.kt	•
 5	empty	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	\0

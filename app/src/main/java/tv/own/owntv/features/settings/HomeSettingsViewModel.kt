@@ -22,10 +22,10 @@ import tv.own.owntv.core.model.HomeRow
 import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.dao.TrendingDao
-import tv.own.owntv.core.database.entity.TrendingAttemptStatus
 import tv.own.owntv.core.database.entity.TrendingSnapshotEntity
-import tv.own.owntv.core.database.entity.TrendingSnapshotStatus
 import tv.own.owntv.core.sync.TrendingActivityTracker
+import tv.own.owntv.core.trending.TrendingAvailability
+import tv.own.owntv.core.trending.trendingAvailability
 import tv.own.owntv.core.sync.work.CatalogSyncScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,23 +78,11 @@ class HomeSettingsViewModel(
     }
 
     val trendingAvailability: StateFlow<TrendingAvailability> = combine(trendingData, trendingActivity.active) { data, active ->
-        when {
-            !data.metadataEnabled -> TrendingAvailability.MetadataDisabled
-            active.keys.any { it in data.sourceIds } -> TrendingAvailability.Building
-            data.states.any { it.status == TrendingSnapshotStatus.ELIGIBLE } -> {
-                val eligible = data.states.filter { it.status == TrendingSnapshotStatus.ELIGIBLE }
-                TrendingAvailability.Showing(
-                    count = eligible.sumOf { it.itemCount }.coerceAtMost(10),
-                    refreshFailed = eligible.any { it.lastAttemptStatus == TrendingAttemptStatus.FAILED },
-                )
-            }
-            data.states.any { it.failureStage == "no VOD content" } -> TrendingAvailability.NoVodScope
-            data.states.any { it.status == TrendingSnapshotStatus.BELOW_THRESHOLD } -> TrendingAvailability.BelowThreshold(
-                data.states.maxOf { it.matchedItemCount },
-            )
-            data.states.any { it.lastAttemptStatus == TrendingAttemptStatus.FAILED } -> TrendingAvailability.Failed
-            else -> TrendingAvailability.WaitingForSync
-        }
+        trendingAvailability(
+            states = data.states,
+            metadataEnabled = data.metadataEnabled,
+            building = active.keys.any { it in data.sourceIds },
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrendingAvailability.WaitingForSync)
 
     private val _devRebuild = MutableStateFlow(DevRebuildState.IDLE)
@@ -190,14 +178,4 @@ class HomeSettingsViewModel(
             settings.updateHomeConfig(pid) { current -> transform(current) }
         }
     }
-}
-
-sealed interface TrendingAvailability {
-    data object WaitingForSync : TrendingAvailability
-    data object Building : TrendingAvailability
-    data object MetadataDisabled : TrendingAvailability
-    data object NoVodScope : TrendingAvailability
-    data object Failed : TrendingAvailability
-    data class BelowThreshold(val matched: Int) : TrendingAvailability
-    data class Showing(val count: Int, val refreshFailed: Boolean) : TrendingAvailability
 }
