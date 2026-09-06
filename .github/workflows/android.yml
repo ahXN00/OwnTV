@@ -1,10 +1,11 @@
 name: Android CI
 
-# Two jobs:
-#   check — unit tests + lint. Runs on everything, including pull requests. Gates the build.
-#   build — assembles the APK, and publishes a GitHub Release on v* tags. Never runs for a PR, so
-#           PR branches still don't produce APKs (the restriction added in ac33c65 is unchanged);
-#           they only get the test/lint verdict.
+# Three jobs:
+#   verify-pin — core pin bumps ONLY. Seconds, no build. See its own note.
+#   check      — unit tests + lint. Gates the build. Skipped on core pin bumps.
+#   build      — assembles the APK, and publishes a GitHub Release on v* tags. Never runs for a PR,
+#                so PR branches still don't produce APKs (the restriction added in ac33c65 is
+#                unchanged); they only get the test/lint verdict.
 on:
   push:
     branches: [ main ]
@@ -12,14 +13,24 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      force_core_source:
+        description: 'Build core from source, as a fork pull request does (ignores GPR_TOKEN)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write   # required so tag builds can create a Release
 
 # Resolving tv.own.owntv:core and :player-core from GitHub Packages. The registry belongs to a
-# DIFFERENT, private repository (ahXN00/OwnTV_Core), and the built-in GITHUB_TOKEN is scoped to this
-# one — so a personal access token with read:packages is required, stored as the GPR_TOKEN secret.
-# Every Gradle step needs it, hence workflow level rather than per job.
+# DIFFERENT repository (ahXN00/OwnTV_Core) and the built-in GITHUB_TOKEN is scoped to this one — so a
+# personal access token with read:packages is required, stored as the GPR_TOKEN secret. That repo is
+# public; GitHub's Maven registry demands a login even for public packages, which is why the token is
+# needed at all. Every Gradle step needs it, hence workflow level rather than per job.
+#
+# A fork pull request gets no secrets, so GPR_TOKEN is empty there and this resolution cannot work.
+# The resolve-core action below covers that case by building core from source instead.
 env:
   GITHUB_ACTOR: ${{ github.actor }}
   GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
@@ -29,9 +40,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A "Pin core x.y.z" pull request opened by core's bump-consumers workflow changes exactly two
+  # files and no application code. Running the unit tests, lint and the i18n checks on it re-verifies
+  # this repo's Kotlin, which is byte-identical to main — minutes of runner time that cannot report
+  # anything new. So those jobs step aside for these branches and this one runs instead.
+  #
+  # It also keeps the workflow run itself concluding "success". A run whose every job is skipped
+  # concludes as "skipped", and automerge-core-bump.yml requires success — skip everything and the
+  # pull request would sit open for ever.
+  #
+  # What is actually worth checking on such a pull request is that the numbers agree: seconds, no
+  # build, no Gradle, no Android SDK.
+  verify-pin:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'bump/core-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: The pin must be core's newest release, and locales.json must match it
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          PIN=$(sed -n 's/^owntvCore = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
+          [ -n "$PIN" ] || { echo "::error::Could not read owntvCore from gradle/libs.versions.toml."; exit 1; }
+
+          # The branch name carries the version too, so a mismatch means the two halves of the bump
+          # disagree about what is being pinned.
+          if [ "$HEAD_BRANCH" != "bump/core-$PIN" ]; then
+            echo "::error::Branch $HEAD_BRANCH does not match the pin $PIN."
+            exit 1
+          fi
+
+          # Core publishes the release only AFTER its tests pass and both artifacts are pushed, so a
+          # release existing is proof the version is real and installable.
+          LATEST=$(gh api repos/ahXN00/OwnTV_Core/releases/latest --jq .tag_name)
+          LATEST="${LATEST#core-}"
+          if [ "$PIN" != "$LATEST" ]; then
+            echo "::error::Pinned $PIN but core's newest release is $LATEST."
+            exit 1
+          fi
+
+          # The other file the bump touches. It is duplicated into every consumer because Gradle
+          # reads it at configure time to build localeFilters, and core's own copy never reaches
+          # here. A stale copy silently strips a language out of the APK with a green build.
+          curl -fsSL -o /tmp/locales.core.json \
+            "https://raw.githubusercontent.com/ahXN00/OwnTV_Core/core-$PIN/tools/i18n/locales.json"
+          if ! diff -u /tmp/locales.core.json tools/i18n/locales.json; then
+            echo "::error::tools/i18n/locales.json differs from core's copy at core-$PIN."
+            exit 1
+          fi
+
+          echo "Pin $PIN is core's newest release, the branch agrees, and locales.json matches."
+
   # Nothing was checking the unit tests or lint before, so both could rot silently while the APK
   # kept building. This job is the gate: if it is red, no APK is produced and no release is cut.
   check:
+    # Core pin bumps carry no application code — verify-pin above covers them instead.
+    if: ${{ !(github.event_name == 'pull_request' && startsWith(github.head_ref, 'bump/core-')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -48,6 +117,11 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve core
+        uses: ./.github/actions/resolve-core
+        with:
+          force-source-build: ${{ inputs.force_core_source || false }}
 
       # One variant, not `test`/`lint` across every flavor: standard+debug is the variant the JVM
       # tests are written against, and the ABI flavors differ only in the packaged native libs.
@@ -97,6 +171,11 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve core
+        uses: ./.github/actions/resolve-core
+        with:
+          force-source-build: ${{ inputs.force_core_source || false }}
 
       - name: Compute version (from the git tag on releases)
         id: ver

@@ -1,0 +1,72 @@
+name: Resolve core
+description: >
+  Make tv.own.owntv:core and :player-core resolvable. Normally that means doing nothing — the
+  GPR_TOKEN secret is present and Gradle downloads the pinned artifacts. When the secret is absent
+  it clones core at the pinned tag and points owntv.corePath at it, so the build uses the composite
+  instead.
+
+# Why this exists: GitHub deliberately withholds secrets from workflows triggered by a pull request
+# from a FORK. GPR_TOKEN is therefore empty for every outside contributor, dependency resolution
+# fails before a line is compiled, and their pull request goes red through no fault of their own.
+#
+# ahXN00/OwnTV_Core is public, so `git clone` needs no credentials at all — only GitHub's Maven
+# registry does, and only because it demands a login even for public packages. Cloning core at the
+# tag the pin names and building it through the composite gives the same code by a route that works
+# without secrets. settings.gradle.kts already reads owntv.corePath; this is the same mechanism the
+# maintainer uses locally, so there is nothing new to keep working.
+#
+# Deliberately NOT the default path. A source-built core is not a byte-identical test of the
+# published AAR — a missing `api` declaration or a dependency absent from the POM compiles fine from
+# source and fails from the artifact. Builds that CAN use the artifact must, because that is what a
+# release ships.
+
+inputs:
+  force-source-build:
+    description: >
+      Take the source path even when GPR_TOKEN is present. The only way to exercise this from inside
+      the repository, where the secret is always available and the fallback would otherwise never
+      run even once.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve core from source when there is no package token
+      shell: bash
+      env:
+        FORCE: ${{ inputs.force-source-build }}
+      run: |
+        set -euo pipefail
+
+        if [ "$FORCE" != "true" ] && [ -n "${GPR_TOKEN:-}" ]; then
+          echo "GPR_TOKEN is present — resolving core from GitHub Packages, as usual."
+          exit 0
+        fi
+
+        if [ "$FORCE" = "true" ]; then
+          echo "force-source-build is on — ignoring GPR_TOKEN and building core from source."
+        else
+          echo "No GPR_TOKEN (fork pull request) — building core from source instead."
+        fi
+
+        # The pin is the single source of truth for which core this commit is meant to build against.
+        VERSION=$(sed -n 's/^owntvCore = "\(.*\)"$/\1/p' gradle/libs.versions.toml)
+        if [ -z "$VERSION" ]; then
+          echo "::error::Could not read owntvCore from gradle/libs.versions.toml."
+          exit 1
+        fi
+
+        # Core's tags are core-<version>, NOT v<version>, and publish.yml refuses to publish unless
+        # the tag matches coreVersion in build.gradle.kts — so this tag always exists for a pin that
+        # was produced by the bump workflow.
+        DEST="$RUNNER_TEMP/owntv-core"
+        echo "Cloning ahXN00/OwnTV_Core at core-$VERSION"
+        git clone --depth 1 --branch "core-$VERSION" \
+          https://github.com/ahXN00/OwnTV_Core.git "$DEST"
+
+        # The home gradle.properties, never the repo's: owntv.corePath is a machine-local setting and
+        # writing it into a checked-in file would follow the branch into a merge.
+        mkdir -p "$HOME/.gradle"
+        echo "owntv.corePath=$DEST" >> "$HOME/.gradle/gradle.properties"
+        echo "owntv.corePath=$DEST"

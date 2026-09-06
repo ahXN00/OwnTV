@@ -20,9 +20,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         // tv.own.owntv:core and :player-core, built from https://github.com/ahXN00/OwnTV_Core.
-        // The package registry is private, so resolution needs a token with read:packages — put it
-        // in ~/.gradle/gradle.properties as gpr.user / gpr.token, NEVER in this repo. CI passes the
-        // same values through the GITHUB_ACTOR / GPR_TOKEN environment variables.
+        // That repository is public, but GitHub's Maven registry demands credentials even for a
+        // public package — so resolution needs a token with read:packages. Put it in
+        // ~/.gradle/gradle.properties as gpr.user / gpr.token, NEVER in this repo. CI passes the
+        // same values through the GITHUB_ACTOR / GPR_TOKEN environment variables, except on a fork
+        // pull request, where GitHub withholds secrets and CI builds core from source instead.
         maven {
             name = "OwnTVCore"
             url = uri("https://maven.pkg.github.com/ahXN00/OwnTV_Core")

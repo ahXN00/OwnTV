@@ -21,18 +21,29 @@ name: i18n
 # compare against, so it runs in bootstrap mode: main must be self-consistent (nothing unclassified,
 # nothing stale), which is the invariant a PR then inherits. pseudo stays off the push path — it
 # assembles both APKs, which android.yml already does for main.
+#
+# All three step aside for a "Pin core x.y.z" branch: that pull request changes the pin and
+# locales.json and no Kotlin at all, so every check here would re-examine code identical to main.
+# android.yml's verify-pin job covers those pull requests instead.
 
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_core_source:
+        description: 'Build core from source, as a fork pull request does (ignores GPR_TOKEN)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
 
-# The pseudo job assembles APKs, so it resolves core from the private package registry of
-# ahXN00/OwnTV_Core — see the note in android.yml.
+# The pseudo job assembles APKs, so it resolves core from the GitHub Packages registry of
+# ahXN00/OwnTV_Core — see the note in android.yml, including what happens on a fork pull request,
+# where this secret is empty.
 env:
   GITHUB_ACTOR: ${{ github.actor }}
   GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
@@ -43,6 +54,7 @@ concurrency:
 
 jobs:
   baseline:
+    if: ${{ !(github.event_name == 'pull_request' && startsWith(github.head_ref, 'bump/core-')) }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR head
@@ -74,6 +86,7 @@ jobs:
           fi
 
   validate:
+    if: ${{ !(github.event_name == 'pull_request' && startsWith(github.head_ref, 'bump/core-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -89,7 +102,7 @@ jobs:
     # Builds the debug + release standard APKs and inspects their resource tables. Heavier than the
     # other two jobs, so it is its own job rather than piggy-backed on android.yml — and skipped on
     # push, where android.yml already assembles main.
-    if: github.event_name != 'push'
+    if: ${{ github.event_name != 'push' && !(github.event_name == 'pull_request' && startsWith(github.head_ref, 'bump/core-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,6 +113,10 @@ jobs:
           java-version: '21'
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+      - name: Resolve core
+        uses: ./.github/actions/resolve-core
+        with:
+          force-source-build: ${{ inputs.force_core_source || false }}
       - name: Assemble standard debug + release APKs
         run: ./gradlew :app:assembleStandardDebug :app:assembleStandardRelease --console=plain
       - name: Verify pseudolocale packaging

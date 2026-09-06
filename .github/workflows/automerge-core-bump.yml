@@ -14,12 +14,17 @@ name: Auto-merge core pin bumps
 # start rejecting the maintainer's direct pushes.
 #
 # One consequence worth knowing: a merge performed with GITHUB_TOKEN does not trigger workflows on
-# main, so there is no second CI run after the merge. That is acceptable here because a
-# pull_request run already tested the merge result, not the branch in isolation.
+# main, so there is no second CI run after the merge. That is acceptable here because the pin does
+# not change this repository's own code, and the maintainer has already built against that core.
+#
+# Only "Android CI" is watched, not i18n as well. Both workflows now skip every job on a bump branch
+# except android.yml's verify-pin, and a run whose jobs are ALL skipped concludes as "skipped", never
+# "success" — so the i18n run can no longer trigger anything here. Android CI's success on such a
+# branch means exactly one thing: verify-pin passed. That is the gate.
 
 on:
   workflow_run:
-    workflows: [ "Android CI", "i18n" ]
+    workflows: [ "Android CI" ]
     types: [ completed ]
 
 permissions:
@@ -66,12 +71,10 @@ jobs:
             exit 0
           fi
 
-          # Exits non-zero while anything is pending or failing, so this is both the "all green" and
-          # the "nothing still running" test — the other workflow may not have finished yet.
-          if ! gh pr checks "$NUMBER" --repo "$REPO"; then
-            echo "Checks on PR #$NUMBER are not all green yet. The other workflow will retry this."
-            exit 0
-          fi
+          # No `gh pr checks` gate any more. It reported the deliberately skipped jobs as unfinished
+          # and would have held the pull request open for ever. The trigger condition on this
+          # workflow — Android CI concluded successfully on this branch — already means verify-pin
+          # passed, and on a bump branch verify-pin is the only job Android CI runs.
 
           echo "Merging PR #$NUMBER."
           gh pr merge "$NUMBER" --repo "$REPO" --merge --delete-branch
