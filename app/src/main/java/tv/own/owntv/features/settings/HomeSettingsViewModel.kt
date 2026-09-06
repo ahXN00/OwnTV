@@ -19,6 +19,7 @@ import tv.own.owntv.core.model.HeroKind
 import tv.own.owntv.core.model.HomeConfig
 import tv.own.owntv.core.model.HomeLiveRowMode
 import tv.own.owntv.core.model.HomeRow
+import tv.own.owntv.core.model.HomeTrendingStyle
 import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.dao.TrendingDao
@@ -159,6 +160,11 @@ class HomeSettingsViewModel(
                 HeroKind.SERIES -> config.copy(heroIncludeSeries = included)
             }
         }
+    }
+
+    /** How Now Trending is drawn: the full hero, or a row of posters. */
+    fun setTrendingStyle(style: HomeTrendingStyle) {
+        updateConfig { it.copy(trendingStyle = style) }
     }
 
     fun setLiveRowMode(row: HomeRow, mode: HomeLiveRowMode) {

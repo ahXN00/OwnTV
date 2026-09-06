@@ -16,10 +16,12 @@
 - **🧪 Test a playlist before you trust it**
 - **🔄 Auto refresh: choose your own number of days**
 - **🪟 A new Glass Effect look: Aurora**
+- **🖼️ Trending layout choice: detailed card or posters only**
 
 ### 🐛 Fixes
 
 - **Live TV's catch-up list now reaches back a full week**
+- **The guide refreshes itself after adding, re-syncing or deleting an EPG source**
 - **The guide line under a channel's name no longer goes blank after updating the app**
 - **Guide auto-match now works for non-Latin channel names** (community PR by @Sekator778)
 - **⚡ Guide auto-match finishes in seconds instead of minutes**

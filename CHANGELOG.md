@@ -2,6 +2,20 @@
 
 ## v4.2.5 — unreleased
 
+### 🖼️ Now Trending, your way
+
+- **Choose how Now Trending looks.** Settings → Home has a new *Trending layout* line: keep the big
+  detailed card with its artwork, badges and the panel explaining why a title is there, or switch to
+  *Posters only* — a plain row of posters like the rows under it. The detailed card is what you have
+  today and stays the default, and the line only appears while Now Trending is switched on. The
+  choice is kept with your profile, so the phone app shows trending the same way.
+
+### 📅 The guide keeps itself up to date
+
+- **The guide refreshes itself after a guide feed changes.** Adding, re-syncing or deleting an EPG
+  source now updates the guide straight away, instead of showing the old programmes until the app is
+  restarted.
+
 ### 🪟 A new Glass Effect look: Aurora
 
 - **Aurora** joins Subtle, Balanced, Frosted, Vivid and Opaque in Settings → Appearance → Glass

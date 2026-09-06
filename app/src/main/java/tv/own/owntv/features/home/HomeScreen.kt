@@ -95,6 +95,7 @@ import tv.own.owntv.core.launcher.LauncherContinuationItem
 import tv.own.owntv.core.launcher.LauncherWatchNextType
 import tv.own.owntv.core.model.HomeLiveRowMode
 import tv.own.owntv.core.model.HomeRow
+import tv.own.owntv.core.model.HomeTrendingStyle
 import tv.own.owntv.player.HeroPreviewEngine
 import tv.own.owntv.ui.components.BrandLockup
 import tv.own.owntv.ui.components.FocusableSurface
@@ -299,6 +300,12 @@ fun HomeScreen(
         }
     }
 
+    // The poster row is an ordinary row, so the hero's "do not scroll me" rule must not survive a
+    // switch to it.
+    LaunchedEffect(state.config.trendingStyle) {
+        if (state.config.trendingStyle == HomeTrendingStyle.POSTERS) trendingRowFocused.value = false
+    }
+
     LaunchedEffect(trendingRowFocused.value) {
         if (trendingRowFocused.value && renderRows.firstOrNull() == HomeRow.TRENDING) {
             listState.animateScrollToItem(0, 0)
@@ -337,7 +344,25 @@ fun HomeScreen(
                 }
             }
             when (row) {
-                HomeRow.TRENDING -> if (state.trendingItems.size >= TrendingDao.MIN_ELIGIBLE_ITEMS) {
+                // Two shapes, the user's choice: the full hero, or the plain strip of posters the
+                // rest of Home is made of. Same items, same order, either way.
+                HomeRow.TRENDING -> if (state.trendingItems.size < TrendingDao.MIN_ELIGIBLE_ITEMS) {
+                    Unit
+                } else if (state.config.trendingStyle == HomeTrendingStyle.POSTERS) {
+                    TrendingPosterRow(
+                        title = row.displayTitle(),
+                        items = state.trendingItems,
+                        onItemClick = { item ->
+                            onActivateTrending(item) {
+                                trendingToast.show(trendingUnavailableMessage)
+                                vm.refresh()
+                            }
+                        },
+                        onFocus = onNonHeroFocused,
+                        firstItemFocusRequester = firstItemFocusRequester ?: trendingPrimaryFocus,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
                     TrendingHeroSection(
                         items = state.trendingItems,
                         activeIndex = state.activeTrendingIndex,
@@ -1716,6 +1741,61 @@ private fun ContinueWatchingRow(
                             onClick = { onItemClick(item) },
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Now Trending drawn as posters — the alternative to the hero, for anyone who wants Home to be one
+ * consistent set of rows. Read-only, like the hero: core's worker decides what is in it.
+ */
+@Composable
+private fun TrendingPosterRow(
+    title: String,
+    items: List<TrendingHomeItem>,
+    onItemClick: (TrendingHomeItem) -> Unit,
+    onFocus: () -> Unit,
+    firstItemFocusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.titleSmall,
+            color = OwnTVTheme.colors.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = Dimens.HomeRowPaddingH),
+        )
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = Dimens.HomeRowPaddingH),
+            modifier = Modifier.focusGroup(),
+        ) {
+            itemsIndexed(items, key = { _, item -> item.stableKey }) { index, item ->
+                val itemModifier =
+                    if (firstItemFocusRequester != null && index == 0) {
+                        Modifier.focusRequester(firstItemFocusRequester)
+                    } else {
+                        Modifier
+                    }
+                Box(Modifier.width(150.dp)) {
+                    PosterCard(
+                        posterUrl = when (item) {
+                            is TrendingHomeItem.Movie -> item.movie.posterUrl
+                            is TrendingHomeItem.Series -> item.series.posterUrl
+                        },
+                        title = when (item) {
+                            is TrendingHomeItem.Movie -> item.movie.name
+                            is TrendingHomeItem.Series -> item.series.name
+                        },
+                        progressFraction = null,
+                        modifier = itemModifier,
+                        onFocus = onFocus,
+                        onClick = { onItemClick(item) },
+                    )
                 }
             }
         }

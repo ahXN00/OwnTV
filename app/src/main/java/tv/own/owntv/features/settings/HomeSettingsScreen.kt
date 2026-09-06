@@ -36,6 +36,7 @@ import androidx.tv.material3.Text
 import tv.own.owntv.core.model.HeroKind
 import tv.own.owntv.core.model.HomeLiveRowMode
 import tv.own.owntv.core.model.HomeRow
+import tv.own.owntv.core.model.HomeTrendingStyle
 import tv.own.owntv.core.trending.TrendingAvailability
 import tv.own.owntv.features.home.displayTitle
 import tv.own.owntv.features.home.displayLabel
@@ -111,6 +112,33 @@ fun HomeSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     modifier = Modifier.focusRequester(firstFocus),
                     onClick = { vm.setRowHidden(HomeRow.TRENDING, trendingEnabled) },
                 )
+            }
+
+            // Only while the row is actually on — with Trending off there is nothing for the choice
+            // to apply to, so it is not shown at all.
+            if (trendingEnabled) {
+                item {
+                    Row2(
+                        icon = OwnTVIcon.MOVIES,
+                        title = stringResource(R.string.home_trending_style),
+                        desc = stringResource(R.string.home_row_trending_description),
+                        chip = stringResource(
+                            when (config.trendingStyle) {
+                                HomeTrendingStyle.HERO -> R.string.home_trending_style_hero
+                                HomeTrendingStyle.POSTERS -> R.string.home_trending_style_posters
+                            },
+                        ),
+                        primaryChip = true,
+                        onClick = {
+                            vm.setTrendingStyle(
+                                when (config.trendingStyle) {
+                                    HomeTrendingStyle.HERO -> HomeTrendingStyle.POSTERS
+                                    HomeTrendingStyle.POSTERS -> HomeTrendingStyle.HERO
+                                },
+                            )
+                        },
+                    )
+                }
             }
 
             item {

@@ -299,6 +299,23 @@ class EpgViewModel(
             .distinctUntilChanged()
             .onEach { load() }
             .launchIn(viewModelScope)
+        // Reload when the guide's own data changes underneath an open screen — a feed added,
+        // re-synced or deleted. Leaving the Guide and coming back already picks it up (`load()` runs
+        // on every mount and compares the stored count), but a background auto-refresh finishing
+        // while the grid is on screen had no way to show itself. Room reports every write to the
+        // programme table, so this waits for the writes to stop rather than reloading per batch, and
+        // `load()`'s own stored-count guard means a settled sync that changed nothing costs nothing.
+        // drop(1): the first is the guide as it already stands.
+        epgSourceStore.sources
+            .map { sources -> sources.map { it.id } }
+            .distinctUntilChanged()
+            .flatMapLatest { ids ->
+                if (ids.isEmpty()) flowOf(0) else combine(ids.map { epgDao.countForSource(it) }) { it.sum() }
+            }
+            .debounce(GUIDE_DATA_SETTLE_MS)
+            .drop(1)
+            .onEach { load() }
+            .launchIn(viewModelScope)
     }
 
     /** The Guide's current sort, for the header button. */
@@ -846,6 +863,9 @@ class EpgViewModel(
 
     companion object {
         const val GRID_HOURS = 24
+        // A sync writes the guide in batches, so every batch is reported. Long enough that one
+        // download reloads once at the end rather than on every batch.
+        private const val GUIDE_DATA_SETTLE_MS = 1_500L
         private const val HALF_HOUR_MS = 30L * 60 * 1000
         private const val GUIDE_VISIBLE_PAST_MS = 2L * 60 * 60 * 1000
         private const val DAY_MS = 24L * 60 * 60 * 1000
