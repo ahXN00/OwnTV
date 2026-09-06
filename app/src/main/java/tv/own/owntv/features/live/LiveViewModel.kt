@@ -105,6 +105,7 @@ class LiveViewModel(
     private val categoryDao: CategoryDao,
     private val favoriteDao: FavoriteDao,
     private val historyDao: HistoryDao,
+    private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val profileDao: ProfileDao,
     private val sourceDao: SourceDao,
     private val settings: SettingsRepository,
@@ -403,8 +404,8 @@ class LiveViewModel(
             customCategoryDao.appendItem(pid, MediaType.LIVE, targetId, itemId)
             if (!keepInOrigin) {
                 when {
-                    originKey == ContentOrderEntity.FAV_CONTEXT -> favoriteDao.remove(pid, MediaType.LIVE, itemId)
-                    CustomizeKeys.isCustom(originKey) -> customCategoryDao.deleteItem(pid, MediaType.LIVE, originKey, itemId)
+                    originKey == ContentOrderEntity.FAV_CONTEXT -> userDataWriter.removeFavorite(pid, MediaType.LIVE, itemId)
+                    CustomizeKeys.isCustom(originKey) -> userDataWriter.removeCustomCategoryMember(pid, MediaType.LIVE, originKey, itemId)
                     else -> customize.setItemMovedFromOrigin(pid, MediaType.LIVE, itemKey, originKey, moved = true)
                 }
             }
@@ -2100,7 +2101,7 @@ class LiveViewModel(
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
             if (favoriteIds.value.contains(channel.id)) {
-                favoriteDao.remove(pid, MediaType.LIVE, channel.id)
+                userDataWriter.removeFavorite(pid, MediaType.LIVE, channel.id)
             } else {
                 favoriteDao.add(FavoriteEntity(profileId = pid, mediaType = MediaType.LIVE, itemId = channel.id))
             }
@@ -2221,7 +2222,7 @@ class LiveViewModel(
     fun removeFromHistory(channelId: Long) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            historyDao.remove(pid, MediaType.LIVE, channelId)
+            userDataWriter.removeHistory(pid, MediaType.LIVE, channelId)
         }
     }
 

@@ -86,6 +86,7 @@ import tv.own.owntv.R
 import tv.own.owntv.features.customize.CustomizeScreen
 import tv.own.owntv.core.i18n.SupportedLocales
 import tv.own.owntv.core.player.SurroundMode
+import tv.own.owntv.features.settings.LocalSyncScreen
 import tv.own.owntv.features.settings.HomeSettingsScreen
 import tv.own.owntv.features.settings.LanguageSettingsScreen
 import tv.own.owntv.features.settings.LanguageSettingsViewModel
@@ -154,7 +155,7 @@ internal val LocalSettingsRowTone = staticCompositionLocalOf { TileTone.PRIMARY 
 private fun Toned(tone: TileTone, content: @Composable () -> Unit) =
     CompositionLocalProvider(LocalSettingsRowTone provides tone, content = content)
 
-private enum class SettingsTab { ROOT, LANGUAGE, SOURCES, EPG, PROFILES, BACKUP, VIDEO, CUSTOMIZE, HOME, NETWORK, DNS, METADATA, OPEN_SUBTITLES, WEATHER, NAV_MENU, CH_NAV, PANEL_WIDTH, GUIDE_WIDTH, GLASS_EFFECT, CONTENT_MENUS }
+private enum class SettingsTab { ROOT, LANGUAGE, SOURCES, EPG, PROFILES, BACKUP, LOCAL_SYNC, VIDEO, CUSTOMIZE, HOME, NETWORK, DNS, METADATA, OPEN_SUBTITLES, WEATHER, NAV_MENU, CH_NAV, PANEL_WIDTH, GUIDE_WIDTH, GLASS_EFFECT, CONTENT_MENUS }
 
 @Composable
 internal fun surroundModeLabel(mode: SurroundMode): String = stringResource(
@@ -383,6 +384,7 @@ fun SettingsScreen(
         SettingsTab.EPG to FocusRequester(),
         SettingsTab.PROFILES to FocusRequester(),
         SettingsTab.BACKUP to FocusRequester(),
+        SettingsTab.LOCAL_SYNC to FocusRequester(),
         SettingsTab.VIDEO to FocusRequester(),
         SettingsTab.CUSTOMIZE to FocusRequester(),
         SettingsTab.HOME to FocusRequester(),
@@ -420,6 +422,7 @@ fun SettingsScreen(
         SettingsTab.EPG -> { tv.own.owntv.features.settings.EpgSourcesScreen(onBack = { tab = SettingsTab.ROOT; consumeEpgAdd = false }, modifier = modifier, startOnAdd = consumeEpgAdd); return }
         SettingsTab.PROFILES -> { ManageProfilesScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier); return }
         SettingsTab.BACKUP -> { Toned(TileTone.TERTIARY) { BackupScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }; return }
+        SettingsTab.LOCAL_SYNC -> { Toned(TileTone.TERTIARY) { LocalSyncScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }; return }
         SettingsTab.VIDEO -> {
             Toned(TileTone.TERTIARY) {
                 VideoPlayerSettingsScreen(
@@ -736,6 +739,12 @@ fun SettingsScreen(
             onClick = { open(SettingsTab.BACKUP) },
         ),
         RootRow(
+            tabRowKey(SettingsTab.LOCAL_SYNC), TileTone.TERTIARY, OwnTVIcon.REFRESH,
+            title = stringResource(R.string.local_sync_title), desc = stringResource(R.string.local_sync_description),
+            focus = rowFocus.getValue(SettingsTab.LOCAL_SYNC),
+            onClick = { open(SettingsTab.LOCAL_SYNC) },
+        ),
+        RootRow(
             "download_folder", TileTone.TERTIARY, OwnTVIcon.DOWNLOADS,
             title = stringResource(R.string.settings_download_folder),
             chip = downloadRoot.ifBlank { stringResource(R.string.settings_app_storage) }.let { java.io.File(it).name.ifBlank { it } },
@@ -994,6 +1003,7 @@ fun SettingsScreen(
             SettingsSearchEntry(stringResource(R.string.settings_group_data), stringResource(R.string.settings_download_folder), stringResource(R.string.settings_search_keywords_download), OwnTVIcon.DOWNLOADS, TileTone.TERTIARY,
                 chip = downloadRoot.ifBlank { stringResource(R.string.settings_app_storage) }.let { java.io.File(it).name.ifBlank { it } }, chipTone = TileTone.TERTIARY) { saveScroll(); dialogReturn = searchFieldFocus; showFolderPicker = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_data), stringResource(R.string.settings_backup_restore), stringResource(R.string.settings_search_keywords_backup), OwnTVIcon.BACKUP, TileTone.TERTIARY) { open(SettingsTab.BACKUP) },
+            SettingsSearchEntry(stringResource(R.string.settings_group_data), stringResource(R.string.local_sync_title), stringResource(R.string.local_sync_search_keywords), OwnTVIcon.REFRESH, TileTone.TERTIARY) { open(SettingsTab.LOCAL_SYNC) },
             SettingsSearchEntry(stringResource(R.string.settings_group_data), stringResource(R.string.settings_clear_history), stringResource(R.string.settings_search_keywords_history), OwnTVIcon.HISTORY, TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showClearHistory = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_theme), stringResource(R.string.settings_search_keywords_theme), OwnTVIcon.THEME, TileTone.PRIMARY,
                 chip = themeLabel(themeMode)) { saveScroll(); dialogReturn = searchFieldFocus; showTheme = true },

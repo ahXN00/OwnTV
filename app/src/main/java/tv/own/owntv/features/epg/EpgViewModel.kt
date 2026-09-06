@@ -118,6 +118,7 @@ class EpgViewModel(
     private val sourceDao: SourceDao,
     private val xtream: XtreamClient,
     private val favoriteDao: tv.own.owntv.core.database.dao.FavoriteDao,
+    private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val categoryDao: tv.own.owntv.core.database.dao.CategoryDao,
     private val streamUrlResolver: tv.own.owntv.core.stalker.StreamUrlResolver,
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
@@ -414,7 +415,7 @@ class EpgViewModel(
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
             if (favoriteChannelIds.value.contains(channel.id)) {
-                favoriteDao.remove(pid, MediaType.LIVE, channel.id)
+                userDataWriter.removeFavorite(pid, MediaType.LIVE, channel.id)
             } else {
                 favoriteDao.add(tv.own.owntv.core.database.entity.FavoriteEntity(profileId = pid, mediaType = MediaType.LIVE, itemId = channel.id))
             }

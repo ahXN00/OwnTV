@@ -17,6 +17,10 @@
 - **🔄 Auto refresh: choose your own number of days**
 - **🪟 A new Glass Effect look: Aurora**
 - **🖼️ Trending layout choice: detailed card or posters only**
+- **🔄 Local sync: swap your data with your phone over your own Wi-Fi**
+- **🔀 Send, receive or merge — you pick the direction and what travels**
+- **👁️ See exactly what a sync will change before it changes anything**
+- **🪦 A deletion now stays deleted on both devices**
 
 ### 🐛 Fixes
 

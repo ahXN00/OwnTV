@@ -80,6 +80,7 @@ class SeriesViewModel(
     private val categoryDao: CategoryDao,
     private val favoriteDao: FavoriteDao,
     private val historyDao: HistoryDao,
+    private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val progressDao: ProgressDao,
     private val profileDao: ProfileDao,
     private val sourceDao: SourceDao,
@@ -193,8 +194,8 @@ class SeriesViewModel(
             customCategoryDao.appendItem(pid, MediaType.SERIES, targetId, itemId)
             if (!keepInOrigin) {
                 when {
-                    originKey == ContentOrderEntity.FAV_CONTEXT -> favoriteDao.remove(pid, MediaType.SERIES, itemId)
-                    CustomizeKeys.isCustom(originKey) -> customCategoryDao.deleteItem(pid, MediaType.SERIES, originKey, itemId)
+                    originKey == ContentOrderEntity.FAV_CONTEXT -> userDataWriter.removeFavorite(pid, MediaType.SERIES, itemId)
+                    CustomizeKeys.isCustom(originKey) -> userDataWriter.removeCustomCategoryMember(pid, MediaType.SERIES, originKey, itemId)
                     else -> customize.setItemMovedFromOrigin(pid, MediaType.SERIES, itemKey, originKey, moved = true)
                 }
             }
@@ -611,7 +612,7 @@ class SeriesViewModel(
     fun markEpisodeUnwatched(episode: EpisodeEntity) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            progressDao.clear(pid, MediaType.EPISODE, episode.id)
+            userDataWriter.clearProgress(pid, MediaType.EPISODE, episode.id)
         }
     }
 
@@ -1063,7 +1064,7 @@ class SeriesViewModel(
     fun toggleFavorite(s: SeriesEntity) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            if (favoriteIds.value.contains(s.id)) favoriteDao.remove(pid, MediaType.SERIES, s.id)
+            if (favoriteIds.value.contains(s.id)) userDataWriter.removeFavorite(pid, MediaType.SERIES, s.id)
             else favoriteDao.add(FavoriteEntity(profileId = pid, mediaType = MediaType.SERIES, itemId = s.id))
             refreshList() // the Favorites category uses a manual PagingSource — force a rebuild
         }
@@ -1154,12 +1155,11 @@ class SeriesViewModel(
     fun removeFromHistory(seriesId: Long) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            historyDao.remove(pid, MediaType.SERIES, seriesId)
             // A show is watched one episode at a time, so its trace lives in the EPISODE rows too:
             // the resume positions Home's Continue watching row is built from, and the episode
-            // history the Continue chip reads. Without these the removed show came straight back.
-            historyDao.removeSeriesEpisodes(pid, seriesId)
-            progressDao.clearSeriesEpisodes(pid, seriesId)
+            // history the Continue chip reads. Without those the removed show came straight back —
+            // which is why removeSeriesHistory clears all three together.
+            userDataWriter.removeSeriesHistory(pid, seriesId)
             refreshList() // the History category uses a manual PagingSource — force a rebuild
         }
     }

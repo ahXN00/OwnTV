@@ -75,6 +75,7 @@ class MovieViewModel(
     private val categoryDao: CategoryDao,
     private val favoriteDao: FavoriteDao,
     private val historyDao: HistoryDao,
+    private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val progressDao: ProgressDao,
     private val profileDao: ProfileDao,
     private val sourceDao: SourceDao,
@@ -186,8 +187,8 @@ class MovieViewModel(
             customCategoryDao.appendItem(pid, MediaType.MOVIE, targetId, itemId)
             if (!keepInOrigin) {
                 when {
-                    originKey == ContentOrderEntity.FAV_CONTEXT -> favoriteDao.remove(pid, MediaType.MOVIE, itemId)
-                    CustomizeKeys.isCustom(originKey) -> customCategoryDao.deleteItem(pid, MediaType.MOVIE, originKey, itemId)
+                    originKey == ContentOrderEntity.FAV_CONTEXT -> userDataWriter.removeFavorite(pid, MediaType.MOVIE, itemId)
+                    CustomizeKeys.isCustom(originKey) -> userDataWriter.removeCustomCategoryMember(pid, MediaType.MOVIE, originKey, itemId)
                     else -> customize.setItemMovedFromOrigin(pid, MediaType.MOVIE, itemKey, originKey, moved = true)
                 }
             }
@@ -669,7 +670,7 @@ class MovieViewModel(
     fun toggleFavorite(movie: MovieEntity) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            if (favoriteIds.value.contains(movie.id)) favoriteDao.remove(pid, MediaType.MOVIE, movie.id)
+            if (favoriteIds.value.contains(movie.id)) userDataWriter.removeFavorite(pid, MediaType.MOVIE, movie.id)
             else favoriteDao.add(FavoriteEntity(profileId = pid, mediaType = MediaType.MOVIE, itemId = movie.id))
             refreshList() // the Favorites category uses a manual PagingSource — force a rebuild
         }
@@ -694,7 +695,7 @@ class MovieViewModel(
     fun markMovieUnwatched(movie: MovieEntity) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            progressDao.clear(pid, MediaType.MOVIE, movie.id)
+            userDataWriter.clearProgress(pid, MediaType.MOVIE, movie.id)
         }
     }
 
@@ -823,8 +824,8 @@ class MovieViewModel(
     fun removeFromHistory(movieId: Long) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            historyDao.remove(pid, MediaType.MOVIE, movieId)
-            progressDao.clear(pid, MediaType.MOVIE, movieId)
+            userDataWriter.removeHistory(pid, MediaType.MOVIE, movieId)
+            userDataWriter.clearProgress(pid, MediaType.MOVIE, movieId)
             refreshList() // the History category uses a manual PagingSource — force a rebuild
         }
     }

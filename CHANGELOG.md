@@ -2,6 +2,26 @@
 
 ## v4.2.5 — unreleased
 
+### 🔄 Sync with your phone over your own Wi-Fi
+
+- **Local sync.** Settings → Data → Local sync pairs this television with the OwnTV app on your phone
+  or tablet, over your home Wi-Fi — no account, no cloud, nothing leaving the house. Turn *Sync mode*
+  on here and on the other device, tap *Connect*, and type the six-digit PIN once; a badge at the top
+  right shows while sync mode is on, and it switches itself off the moment you leave the screen.
+  After that either device can start a sync: *Send to*, *Receive from* or *Merge with*, always named
+  so the direction is never a guess.
+- **You choose what travels.** The same tick-list Backup & Restore uses — playlists, favourites, watch
+  history, resume positions, your customisations, your manual ordering and your settings — all of it
+  or only the parts you want. Add a password and your playlist logins travel too.
+- **You see what will change before it does.** A summary counts what would be added and what would be
+  removed, and nothing is written until you say yes. A sync never deletes anything you did not delete
+  yourself.
+- **A deletion now stays deleted.** Unfavourite a channel here, sync, and it does not come back from
+  the phone on the next sync. This is why the database gains a table on this update: OwnTV now
+  remembers *that* you removed something, not merely that it is gone.
+- **Each device shows when you last synced with it**, and forgetting a device asks for the PIN again
+  next time.
+
 ### 🖼️ Now Trending, your way
 
 - **Choose how Now Trending looks.** Settings → Home has a new *Trending layout* line: keep the big

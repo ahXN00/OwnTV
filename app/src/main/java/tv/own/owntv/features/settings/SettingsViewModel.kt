@@ -72,8 +72,7 @@ class SettingsViewModel(
     private val categoryDao: tv.own.owntv.core.database.dao.CategoryDao,
     private val customizationStore: tv.own.owntv.core.customize.CustomizationStore,
     private val navVisibility: tv.own.owntv.core.nav.NavVisibility,
-    private val historyDao: tv.own.owntv.core.database.dao.HistoryDao,
-    private val progressDao: tv.own.owntv.core.database.dao.ProgressDao,
+    private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val epgRepository: tv.own.owntv.core.repository.EpgRepository,
     private val epgSourceStore: tv.own.owntv.core.epg.EpgSourceStore,
     private val launcherIntegrationRepository: LauncherIntegrationRepository,
@@ -147,21 +146,11 @@ class SettingsViewModel(
         viewModelScope.launch {
             val pid = settings.activeProfileId.first()
             if (pid < 0) return@launch
-            if (type == null) {
-                historyDao.clear(pid)
-                progressDao.clearProfile(pid) // also wipe resume positions → empties Home's continue-watching
-            } else {
-                historyDao.clearType(pid, type)
-                // Home's Movies/Series continue-watching comes from the resume (progress) table, not history;
-                // series progress is stored under EPISODE. Live has no resume progress to clear.
-                when (type) {
-                    tv.own.owntv.core.model.MediaType.MOVIE ->
-                        progressDao.clearProfileType(pid, tv.own.owntv.core.model.MediaType.MOVIE)
-                    tv.own.owntv.core.model.MediaType.SERIES ->
-                        progressDao.clearProfileType(pid, tv.own.owntv.core.model.MediaType.EPISODE)
-                    else -> Unit
-                }
-            }
+            // Home's Movies/Series continue-watching comes from the resume (progress) table, not
+            // history, and series progress is stored under EPISODE — so the resume rows go with it.
+            // Live has none to clear. All of that lives in userDataWriter, which also records each
+            // deletion so a local sync does not hand the cleared history straight back.
+            userDataWriter.clearHistory(pid, type)
             // Rebuild the Android TV home cards so the cleared items also leave the system Continue Watching row.
             runCatching { launcherIntegrationRepository.refreshProfile(pid) }
         }

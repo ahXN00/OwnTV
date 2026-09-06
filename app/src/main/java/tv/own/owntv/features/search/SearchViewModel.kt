@@ -57,6 +57,7 @@ class SearchViewModel(
     private val sourceDao: SourceDao,
     private val settings: SettingsRepository,
     private val favoriteDao: FavoriteDao,
+    private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val searchReader: SearchReader,
     val player: OwnTVPlayer,
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
@@ -139,7 +140,7 @@ class SearchViewModel(
             val pid = ctx.value.profileId
             if (pid < 0) return@launch
             if (favoriteChannelIds.value.contains(channel.id)) {
-                favoriteDao.remove(pid, MediaType.LIVE, channel.id)
+                userDataWriter.removeFavorite(pid, MediaType.LIVE, channel.id)
             } else {
                 favoriteDao.add(FavoriteEntity(profileId = pid, mediaType = MediaType.LIVE, itemId = channel.id))
             }
