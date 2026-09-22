@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">搜索频道…</string>
+    <string name="content_search_movies">搜索电影…</string>
+    <string name="content_search_series">搜索剧集…</string>
+</resources>

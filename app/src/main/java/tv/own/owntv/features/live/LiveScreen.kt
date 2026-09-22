@@ -589,8 +589,8 @@ fun LiveScreen(
                 .focusGroup()
         ) {
             Text(
-                stringResource(R.string.content_section_category, stringResource(R.string.common_nav_live_tv), selectedLabel),
-                style = MaterialTheme.typography.headlineMedium,
+                stringResource(R.string.common_nav_live_tv),
+                style = MaterialTheme.typography.headlineLarge,
                 color = OwnTVTheme.colors.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -608,7 +608,7 @@ fun LiveScreen(
                 SearchBar(
                     query = searchQuery,
                     onQueryChange = vm::setSearchQuery,
-                    placeholder = stringResource(R.string.content_search_channels, selectedLabel),
+                    placeholder = stringResource(R.string.content_search_channels),
                     modifier = Modifier.weight(1f).onFocusChanged { if (it.hasFocus && previewEnabled) vm.stopPreview() },
                 )
                 Spacer(Modifier.size(10.dp))

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">搜尋頻道…</string>
+    <string name="content_search_movies">搜尋電影…</string>
+    <string name="content_search_series">搜尋影集…</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">चैनल खोजें…</string>
+    <string name="content_search_movies">फ़िल्में खोजें…</string>
+    <string name="content_search_series">सीरीज़ खोजें…</string>
+</resources>

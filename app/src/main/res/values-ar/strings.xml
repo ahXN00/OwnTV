@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">بحث في القنوات…</string>
+    <string name="content_search_movies">بحث في الأفلام…</string>
+    <string name="content_search_series">بحث في المسلسلات…</string>
+</resources>

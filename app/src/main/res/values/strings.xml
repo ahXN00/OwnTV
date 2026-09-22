@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">Search channels\u2026</string>
+    <string name="content_search_movies">Search movies…</string>
+    <string name="content_search_series">Search series…</string>
+</resources>

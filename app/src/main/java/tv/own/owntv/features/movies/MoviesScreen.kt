@@ -572,7 +572,13 @@ fun MoviesScreen(
                 )
                 Spacer(Modifier.height(8.dp))
             } else {
-                Text(stringResource(R.string.content_section_category, stringResource(R.string.common_nav_movies), selectedLabel), style = MaterialTheme.typography.headlineLarge, color = OwnTVTheme.colors.onSurface)
+                Text(
+                    stringResource(R.string.common_nav_movies),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = OwnTVTheme.colors.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     pluralStringResource(R.plurals.content_count_movies, count, selectedLabel, count),
@@ -586,7 +592,7 @@ fun MoviesScreen(
                 SearchBar(
                     query = searchQuery,
                     onQueryChange = vm::setSearchQuery,
-                    placeholder = stringResource(R.string.content_search_movies, selectedLabel),
+                    placeholder = stringResource(R.string.content_search_movies),
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(10.dp))

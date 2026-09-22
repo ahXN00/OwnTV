@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">채널 검색…</string>
+    <string name="content_search_movies">영화 검색…</string>
+    <string name="content_search_series">시리즈 검색…</string>
+</resources>

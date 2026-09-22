@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">Søg i kanaler…</string>
+    <string name="content_search_movies">Søg i film…</string>
+    <string name="content_search_series">Søg i serier…</string>
+</resources>

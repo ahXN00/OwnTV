@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">ചാനലുകൾ തിരയുക…</string>
+    <string name="content_search_movies">സിനിമകൾ തിരയുക…</string>
+    <string name="content_search_series">പരമ്പരകൾ തിരയുക…</string>
+</resources>
