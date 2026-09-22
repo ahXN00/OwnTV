@@ -250,24 +250,6 @@ fun FocusableSurface(
                 },
             )
             .then(
-                when {
-                    showBorder && focused && lit -> Modifier.border(1.6.dp, focusLight, shape)
-                    showBorder && focused -> Modifier.border(
-                        focusBorderWidth,
-                        borderColor,
-                        shape,
-                    )
-                    // The idle "selected" hairline stays a muted 1.dp user highlight stroke: it marks
-                    // position without competing with the live remote cursor.
-                    showBorder && visuallySelected && !focused -> Modifier.border(
-                        1.dp,
-                        colors.focusBorder.copy(alpha = 0.28f),
-                        shape,
-                    )
-                    else -> Modifier
-                }
-            )
-            .then(
                 if (focused && useSolidTonalLadder) {
                     Modifier.drawWithCache {
                         val highlightHeight = 2.dp.toPx()
@@ -301,6 +283,24 @@ fun FocusableSurface(
                 } else {
                     Modifier
                 },
+            )
+            .then(
+                when {
+                    showBorder && focused && lit -> Modifier.border(1.6.dp, focusLight, shape)
+                    showBorder && focused -> Modifier.border(
+                        focusBorderWidth,
+                        borderColor,
+                        shape,
+                    )
+                    // The idle "selected" hairline stays a muted 1.dp user highlight stroke: it marks
+                    // position without competing with the live remote cursor.
+                    showBorder && visuallySelected && !focused -> Modifier.border(
+                        1.dp,
+                        colors.focusBorder.copy(alpha = 0.28f),
+                        shape,
+                    )
+                    else -> Modifier
+                }
             )
             .then(
                 if (onLongClick != null) {

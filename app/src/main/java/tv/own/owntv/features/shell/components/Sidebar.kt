@@ -486,7 +486,7 @@ private fun NavItem(
                     .width(48.dp)
                     .height(39.dp)
                     .then(
-                        if (active) Modifier.shadow(
+                        if (active && focused) Modifier.shadow(
                             elevation = 6.dp,
                             shape = shape,
                             ambientColor = colors.primary.copy(alpha = 0.30f),
@@ -498,7 +498,7 @@ private fun NavItem(
                     // Material follows the active mode; compact geometry stays identical in both.
                     .glass(surface = GlassSurface.SIDEBAR, baseFill = ladder.container, shape = shape)
                     .then(
-                        if (active) Modifier.background(
+                        if (active && focused) Modifier.background(
                             Brush.linearGradient(
                                 listOf(
                                     colors.primary.copy(alpha = 0.64f),
@@ -510,12 +510,16 @@ private fun NavItem(
                     )
                     .then(
                         when {
-                            active -> Modifier.border(
-                                1.dp,
-                                colors.primary.copy(alpha = if (focused) 0.95f else 0.72f),
+                            focused -> Modifier.border(
+                                tv.own.owntv.ui.theme.LocalFocusBorderWidth.current,
+                                OwnTVTheme.colors.focusBorder,
                                 shape,
                             )
-                            ladder.focusBorder != null -> Modifier.border(tv.own.owntv.ui.theme.LocalFocusBorderWidth.current, ladder.focusBorder, shape)
+                            active -> Modifier.border(
+                                1.dp,
+                                OwnTVTheme.colors.focusBorder.copy(alpha = 0.28f),
+                                shape,
+                            )
                             else -> Modifier
                         }
                     ),
@@ -525,7 +529,7 @@ private fun NavItem(
                 // accent when active). No per-frame animation on the always-visible nav.
                 NavDuotoneIcon(
                     section = section,
-                    color = if (active) colors.onPrimaryContainer else ladder.icon,
+                    color = ladder.icon,
                     modifier = Modifier.size(24.dp),
                 )
             }
