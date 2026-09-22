@@ -263,7 +263,7 @@ fun CategoryRail(
                 .trapVerticalFocusExit()
                 .focusGroup(),
             contentPadding = if (showPanel) {
-                PaddingValues(vertical = Dimens.GapLarge, horizontal = 10.dp)
+                PaddingValues(start = 0.dp, top = Dimens.GapLarge, end = 10.dp, bottom = Dimens.GapLarge)
             } else {
                 PaddingValues(0.dp)
             },
@@ -287,7 +287,7 @@ fun CategoryRail(
                             }
                         }
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp)
+                        .padding(start = 14.dp, bottom = 4.dp)
                         .then(
                             if (onNavigateRight != null) {
                                 Modifier.onPreviewKeyEvent { event ->
@@ -340,7 +340,12 @@ fun CategoryRail(
                         stringResource(tv.own.owntv.R.string.content_no_categories_match),
                         color = colors.textSecondary,
                         style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(
+                            start = 14.dp,
+                            end = if (showPanel) 10.dp else 0.dp,
+                            top = 12.dp,
+                            bottom = 12.dp,
+                        ),
                     )
                 }
             }
@@ -383,6 +388,7 @@ private fun RailPill(
 
     Box(
         modifier = modifier
+            .fillMaxWidth()
             .onFocusChanged { if (it.isFocused) onFocused?.invoke() }
             .then(
                 if (onNavigateRight != null) {
@@ -398,29 +404,6 @@ private fun RailPill(
                     }
                 } else {
                     Modifier
-                }
-            )
-            .then(if (expanded) Modifier.fillMaxWidth().heightIn(min = 40.dp) else Modifier.size(Dimens.RailPillSize))
-            .clip(shape)
-            // Frosted glass fill when the panel is glassy (idle pills have a transparent ladder fill,
-            // which glass() skips); plain tonal fill otherwise.
-            .glass(surface = GlassSurface.PANELS, baseFill = ladder.container, shape = shape)
-            .then(
-                when {
-                    // Focused pill renders the user's configured focus highlight ring. Selected-idle pills
-                    // use a muted 1.dp hairline to mark the active category without competing with
-                    // the live remote cursor on the content pane.
-                    focused -> Modifier.border(
-                        tv.own.owntv.ui.theme.LocalFocusBorderWidth.current,
-                        OwnTVTheme.colors.focusBorder,
-                        shape,
-                    )
-                    selected -> Modifier.border(
-                        1.dp,
-                        OwnTVTheme.colors.focusBorder.copy(alpha = 0.28f),
-                        shape,
-                    )
-                    else -> Modifier
                 }
             )
             .then(
@@ -440,44 +423,74 @@ private fun RailPill(
                     )
                 }
             ),
+        contentAlignment = Alignment.CenterStart,
     ) {
         // Persistent left accent bar marking the active category (only in the expanded full-label rail —
-        // a vertical bar on a compact circle pill would look wrong). Hidden in glass mode: the frosted
-        // highlight already marks the active pill and the accent bar clashes (matches the sidebar).
-        NavAccentBar(visible = ladder.showAccentBar && expanded && !panelsGlassy)
+        // a vertical bar on a compact circle pill would look wrong). Positioned outside the category pill's
+        // border at the start of the item slot, matching the 9 dp spacing and visual treatment of Sidebar.kt.
+        // Hidden in glass mode: the frosted highlight already marks the active pill and the accent bar clashes (matches the sidebar).
+        NavAccentBar(visible = ladder.showAccentBar && expanded && !panelsGlassy, height = 22.dp)
 
-        Row(
+        Box(
             modifier = Modifier
+                .padding(start = 14.dp)
                 .then(if (expanded) Modifier.fillMaxWidth().heightIn(min = 40.dp) else Modifier.size(Dimens.RailPillSize))
-                .then(if (expanded) Modifier.padding(horizontal = 10.dp, vertical = 8.dp) else Modifier),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center,
+                .clip(shape)
+                // Frosted glass fill when the panel is glassy (idle pills have a transparent ladder fill,
+                // which glass() skips); plain tonal fill otherwise.
+                .glass(surface = GlassSurface.PANELS, baseFill = ladder.container, shape = shape)
+                .then(
+                    when {
+                        // Focused pill renders the user's configured focus highlight ring. Selected-idle pills
+                        // use a muted 1.dp hairline to mark the active category without competing with
+                        // the live remote cursor on the content pane.
+                        focused -> Modifier.border(
+                            tv.own.owntv.ui.theme.LocalFocusBorderWidth.current,
+                            OwnTVTheme.colors.focusBorder,
+                            shape,
+                        )
+                        selected -> Modifier.border(
+                            1.dp,
+                            OwnTVTheme.colors.focusBorder.copy(alpha = 0.28f),
+                            shape,
+                        )
+                        else -> Modifier
+                    }
+                ),
         ) {
-            // Favorites / History carry an [icon] inline before the name; category folders show the
-            // name alone with no abbreviation badge (#75).
-            if (category.icon != null) {
-                OwnTVIcon(icon = category.icon, tint = ladder.icon, filled = activeSelected, modifier = Modifier.size(if (expanded) 20.dp else Dimens.RailPillSize / 2))
-                if (expanded) Spacer(Modifier.width(8.dp))
-            } else if (expanded && category.showGenreDot) {
-                // Genre hint dot (Sport/News/Movies/Action/…); unknown categories show the grey
-                // "Other" dot rather than an empty slot, so every row has a consistent marker.
-                val genreDot = ChannelGenre.fromCategory(category.fullName).dot
-                Box(Modifier.size(8.dp).clip(CircleShape).background(genreDot))
-                Spacer(Modifier.width(10.dp))
-            }
-            if (expanded) {
-                Text(
-                    text = category.labelRes?.let { stringResource(it) } ?: category.fullName,
-                    color = ladder.content,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                category.providerName?.let {
-                    Spacer(Modifier.width(6.dp))
-                    ProviderChip(name = it, maxWidth = 78.dp, compact = true)
+            Row(
+                modifier = Modifier
+                    .then(if (expanded) Modifier.fillMaxWidth().heightIn(min = 40.dp) else Modifier.size(Dimens.RailPillSize))
+                    .then(if (expanded) Modifier.padding(horizontal = 10.dp, vertical = 8.dp) else Modifier),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center,
+            ) {
+                // Favorites / History carry an [icon] inline before the name; category folders show the
+                // name alone with no abbreviation badge (#75).
+                if (category.icon != null) {
+                    OwnTVIcon(icon = category.icon, tint = ladder.icon, filled = activeSelected, modifier = Modifier.size(if (expanded) 20.dp else Dimens.RailPillSize / 2))
+                    if (expanded) Spacer(Modifier.width(8.dp))
+                } else if (expanded && category.showGenreDot) {
+                    // Genre hint dot (Sport/News/Movies/Action/…); unknown categories show the grey
+                    // "Other" dot rather than an empty slot, so every row has a consistent marker.
+                    val genreDot = ChannelGenre.fromCategory(category.fullName).dot
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(genreDot))
+                    Spacer(Modifier.width(10.dp))
+                }
+                if (expanded) {
+                    Text(
+                        text = category.labelRes?.let { stringResource(it) } ?: category.fullName,
+                        color = ladder.content,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    category.providerName?.let {
+                        Spacer(Modifier.width(6.dp))
+                        ProviderChip(name = it, maxWidth = 78.dp, compact = true)
+                    }
                 }
             }
         }

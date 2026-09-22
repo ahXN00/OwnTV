@@ -434,7 +434,12 @@ fun LiveScreen(
             // over the wallpaper next to a second one.
             .then(
                 if (lockedKey == null) {
-                    Modifier.roundedPanel(fillColor = ContentPanelFill).padding(BrowseContainerPadding)
+                    Modifier.roundedPanel(fillColor = ContentPanelFill).padding(
+                        start = 0.dp,
+                        top = BrowseContainerPadding,
+                        end = BrowseContainerPadding,
+                        bottom = BrowseContainerPadding,
+                    )
                 } else {
                     Modifier
                 },
@@ -443,7 +448,8 @@ fun LiveScreen(
     ) {
     val previewVisible = panelShares?.preview != 0
     val innerGapTotal = browsePanelGapTotal(previewVisible)
-    val panels = panelShares?.let { computePanelWidths(it, maxWidth, innerGapTotal) }
+    val contentWidth = if (lockedKey == null) maxWidth - BrowseContainerPadding else maxWidth
+    val panels = panelShares?.let { computePanelWidths(it, contentWidth, innerGapTotal) }
     Row(
         modifier = Modifier
             .fillMaxSize(),
@@ -452,7 +458,7 @@ fun LiveScreen(
         // their own three tabs above it, so there is no category rail to draw.
         if (lockedKey == null) {
         CategoryRail(
-            width = panels?.category ?: Dimens.RailWidthFixed,
+            width = (panels?.category ?: Dimens.RailWidthFixed) + BrowseContainerPadding,
             categories = railItems.map {
                 RailCategory(
                     it.displayLabel(),

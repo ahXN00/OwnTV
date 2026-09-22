@@ -393,9 +393,19 @@ fun MoviesScreen(
                 if (lockedKey != null) {
                     Modifier
                 } else if (cinematic) {
-                    Modifier.padding(BrowseContainerPadding)
+                    Modifier.padding(
+                        start = 0.dp,
+                        top = BrowseContainerPadding,
+                        end = BrowseContainerPadding,
+                        bottom = BrowseContainerPadding,
+                    )
                 } else {
-                    Modifier.roundedPanel(fillColor = ContentPanelFill).padding(BrowseContainerPadding)
+                    Modifier.roundedPanel(fillColor = ContentPanelFill).padding(
+                        start = 0.dp,
+                        top = BrowseContainerPadding,
+                        end = BrowseContainerPadding,
+                        bottom = BrowseContainerPadding,
+                    )
                 },
             )
             .onFocusChanged { if (it.hasFocus) onChildFocused() },
@@ -403,14 +413,15 @@ fun MoviesScreen(
     // Cinematic has no preview column — the detail block above the grid replaces it.
     val previewVisible = !cinematic && panelShares?.preview != 0
     val innerGapTotal = browsePanelGapTotal(previewVisible)
-    val panels = panelShares?.let { computePanelWidths(it, maxWidth, innerGapTotal) }
+    val contentWidth = if (lockedKey == null) maxWidth - BrowseContainerPadding else maxWidth
+    val panels = panelShares?.let { computePanelWidths(it, contentWidth, innerGapTotal) }
     // Cinematic resolves the same three stored numbers differently: two columns, and the third
     // share as the detail block's height. See computeCinematicLayout for why.
     val cine = if (!cinematic) null else {
         computeCinematicLayout(
-            shares = panelShares ?: defaultPanelShares(PanelSection.MOVIES, maxWidth),
+            shares = panelShares ?: defaultPanelShares(PanelSection.MOVIES, contentWidth),
             detailsPercent = cinematicDetailsPct,
-            totalWidth = maxWidth,
+            totalWidth = contentWidth,
             totalHeight = maxHeight,
         )
     }
@@ -422,7 +433,7 @@ fun MoviesScreen(
         // their own three tabs above it, so there is no category rail to draw.
         if (lockedKey == null) {
         CategoryRail(
-            width = cine?.category ?: panels?.category ?: Dimens.RailWidthFixed,
+            width = (cine?.category ?: panels?.category ?: Dimens.RailWidthFixed) + BrowseContainerPadding,
             categories = railItems.map {
                 RailCategory(
                     it.displayLabel(R.string.content_category_all_movies),
