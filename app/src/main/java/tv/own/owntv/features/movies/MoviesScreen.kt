@@ -252,6 +252,7 @@ fun MoviesScreen(
     // states to the top whenever the category changes (fixes the cross-category scroll-leak bug).
     val perCategoryGrid = remember { mutableStateMapOf<LiveKey, LazyGridState>() }
     val perCategoryList = remember { mutableStateMapOf<LiveKey, LazyListState>() }
+    val perCategoryMovieIds = remember { mutableStateMapOf<LiveKey, Long>() }
     // NOTE: plain constructors, not remember*State() — these are created lazily inside getOrPut, so a
     // @Composable/rememberSaveable call here would register slots conditionally and corrupt the slot table.
     val effectiveGridState = if (rememberMovies) perCategoryGrid.getOrPut(selectedKey) { LazyGridState() } else gridState
@@ -444,6 +445,35 @@ fun MoviesScreen(
             },
             listState = catListState,
             focusRequester = railFocus,
+            onNavigateRight = {
+                val targetId = if (rememberMovies) {
+                    perCategoryMovieIds[selectedKey] ?: selectedMovie?.id
+                } else {
+                    selectedMovie?.id
+                }
+                scope.launch {
+                    if (movies.itemCount > 0) {
+                        val targetIdx = if (targetId != null) {
+                            movies.itemSnapshotList.items.indexOfFirst { it.id == targetId }.takeIf { it >= 0 } ?: 0
+                        } else 0
+                        if (viewMode == SettingsRepository.VodViewMode.GRID) {
+                            runCatching { effectiveGridState.scrollToItem(targetIdx) }
+                        } else {
+                            runCatching { effectiveListState.scrollToItem(targetIdx) }
+                        }
+                        withFrameNanos { }
+                        repeat(3) {
+                            val focused = if (targetId != null) {
+                                runCatching { selFocus.requestFocus() }.isSuccess
+                            } else false
+                            if (focused) return@launch
+                            if (runCatching { firstItemFocus.requestFocus() }.isSuccess) return@launch
+                            if (runCatching { selFocus.requestFocus() }.isSuccess) return@launch
+                            withFrameNanos { }
+                        }
+                    }
+                }
+            },
             // Cinematic floats the category panel on the artwork as its own frosted plate; the
             // Separate layout has the content panel behind it and needs none.
             showPanel = cinematic,
@@ -471,6 +501,12 @@ fun MoviesScreen(
         )
 
         Spacer(Modifier.width(BrowseColumnGap))
+        }
+
+        val targetMovieId = if (rememberMovies) {
+            perCategoryMovieIds[selectedKey] ?: selectedMovie?.id
+        } else {
+            selectedMovie?.id
         }
 
         Column(
@@ -529,8 +565,13 @@ fun MoviesScreen(
                 // from outside (internal moves don't re-trigger it).
                 .focusProperties {
                     onEnter = {
-                        if (runCatching { selFocus.requestFocus() }.isFailure) {
-                            runCatching { firstItemFocus.requestFocus() }
+                        val focused = if (targetMovieId != null) {
+                            runCatching { selFocus.requestFocus() }.isSuccess
+                        } else false
+                        if (!focused) {
+                            if (runCatching { firstItemFocus.requestFocus() }.isFailure) {
+                                runCatching { selFocus.requestFocus() }
+                            }
                         }
                     }
                 }
@@ -588,7 +629,20 @@ fun MoviesScreen(
                 )
                 Spacer(Modifier.height(14.dp))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .focusProperties {
+                        onEnter = {
+                            if (requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Right ||
+                                requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Left
+                            ) {
+                                cancelFocusChange()
+                            }
+                        }
+                    }
+                    .focusGroup(),
+            ) {
                 SearchBar(
                     query = searchQuery,
                     onQueryChange = vm::setSearchQuery,
@@ -640,10 +694,15 @@ fun MoviesScreen(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = movie.id, index = index,
                                     contextId = contextMovieId, contextFocus = contextFocus,
-                                    selectedId = selectedMovie?.id, selectedFocus = selFocus,
+                                    selectedId = targetMovieId, selectedFocus = selFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onMovieFocused(movie) },
+                                onFocus = {
+                                    vm.onMovieFocused(movie)
+                                    if (rememberMovies) {
+                                        perCategoryMovieIds[selectedKey] = movie.id
+                                    }
+                                },
                                 onClick = { startMovie(movie) },
                                 onLongClick = { contextMovie = movie; contextMovieId = movie.id; contextMovieIndex = index },
                             )
@@ -678,10 +737,15 @@ fun MoviesScreen(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = movie.id, index = index,
                                     contextId = contextMovieId, contextFocus = contextFocus,
-                                    selectedId = selectedMovie?.id, selectedFocus = selFocus,
+                                    selectedId = targetMovieId, selectedFocus = selFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onMovieFocused(movie) },
+                                onFocus = {
+                                    vm.onMovieFocused(movie)
+                                    if (rememberMovies) {
+                                        perCategoryMovieIds[selectedKey] = movie.id
+                                    }
+                                },
                                 onClick = { startMovie(movie) },
                                 onLongClick = { contextMovie = movie; contextMovieId = movie.id; contextMovieIndex = index },
                             )

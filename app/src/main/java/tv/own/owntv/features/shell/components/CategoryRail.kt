@@ -32,15 +32,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -56,6 +60,11 @@ import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.components.ChannelGenre
 import tv.own.owntv.ui.components.NavAccentBar
 import tv.own.owntv.ui.components.OwnTVIcon
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import tv.own.owntv.ui.components.OwnTVPopup
 import tv.own.owntv.ui.components.ProviderChip
 import tv.own.owntv.ui.components.rememberNavLadderColors
@@ -90,15 +99,19 @@ data class RailCategory(
 )
 
 /**
- * Layer 2 — the vertical folder rail. Collapsed (focus elsewhere) it shows compact abbreviation
- * pills (FAV, HIS, UK, …); when it holds focus it expands to show full names.
+ * Layer 2 — the vertical folder rail.
  *
  * Performance notes (providers can have hundreds of categories):
  *  - The pills live in a [LazyColumn], so only the visible ones are composed.
- *  - The rail's slot in the screen layout stays a fixed [Dimens.RailWidth]; the expanded rail is
- *    drawn as an overlay (zIndex) on top of the content pane instead of pushing it, so the channel
- *    grid is never re-laid-out during the expand animation.
+ *  - The rail's slot in the screen layout stays a fixed width, taking its own column so the
+ *    adjacent content pane is never re-laid-out when focus enters or leaves.
+ *  - Category search is permanently present at item 0 to prevent list shifts and relayouts.
+ *
+ * Shared category rail (left vertical navigation column) used by Live TV, Movies, and Series screens.
+ * Fixed full-label column with folder search, persistent active-category highlight, and optional
+ * genre dot indicators.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun CategoryRail(
     categories: List<RailCategory>,
@@ -126,9 +139,14 @@ fun CategoryRail(
     /** Overrides the panel fill. Cinematic passes a translucent one so the backdrop shows through
      *  even for users who have Glass Effect turned off — a solid plate there would hide the art. */
     panelFill: androidx.compose.ui.graphics.Color? = null,
+    /** Direct programmatic navigation to the adjacent content pane when pressing D-pad Right,
+     *  bypassing Compose's 2D spatial search so focus never lands on the search bar or an arbitrary row. */
+    onNavigateRight: (() -> Unit)? = null,
 ) {
     val colors = OwnTVTheme.colors
     var hasFocus by remember { mutableStateOf(false) }
+    var focusedRowIndex by remember { mutableIntStateOf(-1) }
+    var focusedSearch by remember { mutableStateOf(false) }
     // Folder search (for big libraries). Filters the rail by name but keeps each folder's ORIGINAL
     // index, so selection highlighting and onSelect still map correctly. Reset when the rail loses
     // focus, so it's fresh every time you open it.
@@ -145,6 +163,8 @@ fun CategoryRail(
         val target = focusRowIndex ?: return@LaunchedEffect
         val pos = visible.indexOf(target)
         if (pos >= 0) {
+            focusedRowIndex = pos
+            focusedSearch = false
             runCatching { rowFocusers[pos].requestFocus() }
         }
         onRowFocused()
@@ -156,14 +176,37 @@ fun CategoryRail(
     val selectedFocus = remember { FocusRequester() }
     val searchFocus = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val bringIntoViewSpec = androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
+
     // Keep the selected category in view when the selection changes — both for the initial load /
     // restored state (rail not yet focused) AND when CH+- paging selects a far-away category while the
-    // rail IS focused. While the user D-pads inside, focus handles scrolling for adjacent moves; this
-    // covers the case where a CH key changes selectedIndex by a large jump.
+    // rail IS focused.
     LaunchedEffect(selectedIndex, categories.size) {
         if (selectedIndex in categories.indices) {
-            runCatching { listState.scrollToItem(selectedIndex) }
-            if (hasFocus) runCatching { selectedFocus.requestFocus() }
+            val targetPos = visible.indexOf(selectedIndex)
+            if (targetPos >= 0) {
+                if (!hasFocus) {
+                    focusedRowIndex = targetPos
+                    focusedSearch = false
+                }
+                val listIndex = targetPos + 1
+                val isVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == listIndex }
+                if (!isVisible) {
+                    val containerHeight = listState.layoutInfo.viewportSize.height.toFloat()
+                    val itemHeight = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index != 0 }?.size?.toFloat()
+                        ?: with(density) { 40.dp.toPx() }
+                    val offsetDistance = if (containerHeight > 0f) {
+                        bringIntoViewSpec.calculateScrollDistance(
+                            offset = 0f,
+                            size = itemHeight,
+                            containerSize = containerHeight,
+                        ).toInt()
+                    } else 0
+                    runCatching { listState.scrollToItem(listIndex, scrollOffset = offsetDistance) }
+                }
+                if (hasFocus) runCatching { selectedFocus.requestFocus() }
+            }
         }
     }
 
@@ -186,25 +229,32 @@ fun CategoryRail(
                 // LazyColumn fill is now transparent — the outer Box's roundedPanel surfaceContainerLowest
                 // shows through, keeping panel 1 the same colour as panels 2/3/4 (Phase 6).
                 .onFocusChanged {
-                    // Spatial D-pad entry would land on whatever pill is horizontally aligned —
-                    // redirect every entry (from the sidebar OR back from the content list) to the
-                    // SELECTED category, so you return to the folder you're actually in (e.g. pressing
-                    // Left from a channel lands back on that channel's category, not the top of the rail).
-                    // Internal moves between pills don't re-trigger this. The redirect must be deferred a
-                    // frame: requesting focus inside onFocusChanged is rejected (the focus transaction is
-                    // still in progress).
-                    val entered = it.hasFocus && !hasFocus
                     hasFocus = it.hasFocus
                     if (it.hasFocus) onFocused() else query = "" // reset the search on leaving
-                    if (entered) scope.launch {
-                        if (selectedIndex in categories.indices) {
-                            // Land on the current category; the search box (top) is one Up away.
-                            runCatching { listState.scrollToItem(selectedIndex) }
-                            runCatching { selectedFocus.requestFocus() }
-                        } else {
-                            // No selection (e.g. an empty/special rail) — fall back to the search box.
-                            runCatching { listState.scrollToItem(0) }
-                            runCatching { searchFocus.requestFocus() }
+                }
+                .focusProperties {
+                    onEnter = {
+                        val targetRequester = when {
+                            focusedSearch -> searchFocus
+                            focusedRowIndex in rowFocusers.indices -> rowFocusers[focusedRowIndex]
+                            else -> {
+                                val targetPos = visible.indexOf(selectedIndex)
+                                if (targetPos in rowFocusers.indices) rowFocusers[targetPos] else searchFocus
+                            }
+                        }
+                        if (runCatching { targetRequester.requestFocus() }.isFailure) {
+                            val targetIndex = if (focusedSearch) 0 else {
+                                val rowPos = if (focusedRowIndex in rowFocusers.indices) focusedRowIndex else visible.indexOf(selectedIndex)
+                                if (rowPos >= 0) rowPos + 1 else 0
+                            }
+                            scope.launch {
+                                runCatching { listState.scrollToItem(targetIndex) }
+                                withFrameNanos { }
+                                repeat(3) {
+                                    if (runCatching { targetRequester.requestFocus() }.isSuccess) return@launch
+                                    withFrameNanos { }
+                                }
+                            }
                         }
                     }
                 }
@@ -220,20 +270,42 @@ fun CategoryRail(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Dimens.GapSmall),
         ) {
-            // Category-search field, only while the rail is expanded (focused). Entering the rail lands
-            // here; Down drops into the list, and the filter clears when the rail loses focus.
-            if (hasFocus) {
-                item(key = "__rail_search__") {
-                    SearchBar(
-                        query = query,
-                        onQueryChange = { query = it },
-                        placeholder = stringResource(tv.own.owntv.R.string.content_search_categories),
-                        modifier = Modifier
-                            .focusRequester(searchFocus)
-                            .fillMaxWidth()
-                            .padding(bottom = 4.dp),
-                    )
-                }
+            // Category-search field is permanently rendered at the top of the rail to avoid
+            // reflow/jumping when focus enters or leaves. Entering the rail lands on the current
+            // category (search is one Up away), and the query filter clears when the rail loses focus.
+            item(key = "__rail_search__") {
+                SearchBar(
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholder = stringResource(tv.own.owntv.R.string.content_search_categories),
+                    modifier = Modifier
+                        .focusRequester(searchFocus)
+                        .onFocusChanged {
+                            if (it.isFocused) {
+                                focusedSearch = true
+                                focusedRowIndex = -1
+                            }
+                        }
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .then(
+                            if (onNavigateRight != null) {
+                                Modifier.onPreviewKeyEvent { event ->
+                                    if (query.isEmpty() &&
+                                        event.type == KeyEventType.KeyDown &&
+                                        event.key == Key.DirectionRight
+                                    ) {
+                                        onNavigateRight()
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            }
+                        ),
+                )
             }
             items(count = visible.size, key = { visible[it] }) { i ->
                 val index = visible[i]
@@ -250,6 +322,11 @@ fun CategoryRail(
                             it(index) 
                         } 
                     },
+                    onNavigateRight = onNavigateRight,
+                    onFocused = {
+                        focusedRowIndex = i
+                        focusedSearch = false
+                    },
                     modifier = if (index == selectedIndex) {
                         Modifier.focusRequester(selectedFocus).focusRequester(rowFocusers[i])
                     } else {
@@ -257,7 +334,7 @@ fun CategoryRail(
                     },
                 )
             }
-            if (hasFocus && visible.isEmpty()) {
+            if (visible.isEmpty()) {
                 item {
                     Text(
                         stringResource(tv.own.owntv.R.string.content_no_categories_match),
@@ -271,6 +348,8 @@ fun CategoryRail(
     }
 }
 
+/** Single vertical category pill in the rail. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun RailPill(
     category: RailCategory,
@@ -278,10 +357,15 @@ private fun RailPill(
     expanded: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    onNavigateRight: (() -> Unit)? = null,
+    onFocused: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    LaunchedEffect(focused) {
+        if (focused) onFocused?.invoke()
+    }
     // Box-style corners (8.dp), close to the live-TV channel list item, not an over-rounded pill.
     val shape = if (expanded) RoundedCornerShape(8.dp) else CircleShape
     // Glass effect: when the PANELS surface is glassy, the focused/active highlight renders as a
@@ -299,7 +383,24 @@ private fun RailPill(
 
     Box(
         modifier = modifier
-            .then(if (expanded) Modifier.fillMaxWidth() else Modifier.size(Dimens.RailPillSize))
+            .onFocusChanged { if (it.isFocused) onFocused?.invoke() }
+            .then(
+                if (onNavigateRight != null) {
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown &&
+                            event.key == Key.DirectionRight
+                        ) {
+                            onNavigateRight()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                } else {
+                    Modifier
+                }
+            )
+            .then(if (expanded) Modifier.fillMaxWidth().heightIn(min = 40.dp) else Modifier.size(Dimens.RailPillSize))
             .clip(shape)
             // Frosted glass fill when the panel is glassy (idle pills have a transparent ladder fill,
             // which glass() skips); plain tonal fill otherwise.
@@ -347,7 +448,7 @@ private fun RailPill(
 
         Row(
             modifier = Modifier
-                .then(if (expanded) Modifier.fillMaxWidth() else Modifier.size(Dimens.RailPillSize))
+                .then(if (expanded) Modifier.fillMaxWidth().heightIn(min = 40.dp) else Modifier.size(Dimens.RailPillSize))
                 .then(if (expanded) Modifier.padding(horizontal = 10.dp, vertical = 8.dp) else Modifier),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = if (expanded) Arrangement.Start else Arrangement.Center,
@@ -369,7 +470,7 @@ private fun RailPill(
                     text = category.labelRes?.let { stringResource(it) } ?: category.fullName,
                     color = ladder.content,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = if (focused) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),

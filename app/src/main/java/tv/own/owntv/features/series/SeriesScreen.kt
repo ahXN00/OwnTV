@@ -40,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -344,6 +346,7 @@ private fun SeriesGrid(
     // (fixes the cross-category scroll-leak bug).
     val perCategoryGrid = remember { mutableStateMapOf<LiveKey, androidx.compose.foundation.lazy.grid.LazyGridState>() }
     val perCategoryList = remember { mutableStateMapOf<LiveKey, androidx.compose.foundation.lazy.LazyListState>() }
+    val perCategorySeriesIds = remember { mutableStateMapOf<LiveKey, Long>() }
     // NOTE: plain constructors, not remember*State() — these are created lazily inside getOrPut, so a
     // @Composable/rememberSaveable call here would register slots conditionally and corrupt the slot table.
     val effectiveGridState = if (rememberSeries) perCategoryGrid.getOrPut(selectedKey) { androidx.compose.foundation.lazy.grid.LazyGridState() } else gridState
@@ -524,6 +527,35 @@ private fun SeriesGrid(
             },
             listState = catListState,
             focusRequester = railFocus,
+            onNavigateRight = {
+                val targetId = if (rememberSeries) {
+                    perCategorySeriesIds[selectedKey] ?: selectedSeries?.id
+                } else {
+                    selectedSeries?.id
+                }
+                scope.launch {
+                    if (series.itemCount > 0) {
+                        val targetIdx = if (targetId != null) {
+                            series.itemSnapshotList.items.indexOfFirst { it.id == targetId }.takeIf { it >= 0 } ?: 0
+                        } else 0
+                        if (viewMode == SettingsRepository.VodViewMode.LIST) {
+                            runCatching { effectiveListState.scrollToItem(targetIdx) }
+                        } else {
+                            runCatching { effectiveGridState.scrollToItem(targetIdx) }
+                        }
+                        withFrameNanos { }
+                        repeat(3) {
+                            val focused = if (targetId != null) {
+                                runCatching { gridSelFocus.requestFocus() }.isSuccess
+                            } else false
+                            if (focused) return@launch
+                            if (runCatching { firstItemFocus.requestFocus() }.isSuccess) return@launch
+                            if (runCatching { gridSelFocus.requestFocus() }.isSuccess) return@launch
+                            withFrameNanos { }
+                        }
+                    }
+                }
+            },
             // Cinematic floats the category panel on the artwork as its own frosted plate; the
             // Separate layout has the content panel behind it and needs none.
             showPanel = cinematic,
@@ -553,12 +585,21 @@ private fun SeriesGrid(
         Spacer(Modifier.width(BrowseColumnGap))
         }
 
+        val targetSeriesId = if (rememberSeries) {
+            perCategorySeriesIds[selectedKey] ?: selectedSeries?.id
+        } else {
+            selectedSeries?.id
+        }
+
         Column(
             modifier = Modifier
-                // Cinematic is two columns, so the content takes everything the rail leaves.
+                // Cinematic is two columns, so the content takes everything the rail leaves —
+                // the stored list share is a three-way split and would leave the preview's gap empty.
                 .then(if (cine != null) Modifier.width(cine.content) else if (panels != null) Modifier.width(panels.list) else Modifier.weight(1.8f))
                 .fillMaxSize()
                 .onFocusChanged { gridPaneFocused = it.hasFocus }
+                // CH+- key paging for this series list/grid. currentTargetIndex falls back to the
+                // visible top when the selected series isn't in the loaded window (paged data).
                 .chNavPaging(
                     enabled = chNavEnabled,
                     upSkip = chNavUpSkip,
@@ -581,6 +622,9 @@ private fun SeriesGrid(
                         }
                     },
                     onJumpToIndex = { idx ->
+                        // Scroll the target into view (grid or list), then set it as the selected
+                        // series so gridSelFocus binds to it (gridFocusTarget keys on selectedSeries.id),
+                        // and request focus after one frame.
                         scope.launch {
                             val item = series.itemSnapshotList.items.getOrNull(idx)
                             if (viewMode == SettingsRepository.VodViewMode.GRID) {
@@ -603,8 +647,13 @@ private fun SeriesGrid(
                 // from outside (internal moves don't re-trigger it).
                 .focusProperties {
                     onEnter = {
-                        if (runCatching { gridSelFocus.requestFocus() }.isFailure) {
-                            runCatching { firstItemFocus.requestFocus() }
+                        val focused = if (targetSeriesId != null) {
+                            runCatching { gridSelFocus.requestFocus() }.isSuccess
+                        } else false
+                        if (!focused) {
+                            if (runCatching { firstItemFocus.requestFocus() }.isFailure) {
+                                runCatching { gridSelFocus.requestFocus() }
+                            }
                         }
                     }
                 }
@@ -664,7 +713,20 @@ private fun SeriesGrid(
                 Text(pluralStringResource(R.plurals.content_count_series, count, selectedLabel, count), style = MaterialTheme.typography.titleMedium, color = OwnTVTheme.colors.primary, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .focusProperties {
+                        onEnter = {
+                            if (requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Right ||
+                                requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Left
+                            ) {
+                                cancelFocusChange()
+                            }
+                        }
+                    }
+                    .focusGroup(),
+            ) {
                 SearchBar(query = searchQuery, onQueryChange = vm::setSearchQuery, placeholder = stringResource(R.string.content_search_series), modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(10.dp))
                 SortChip(mode = sortMode, onToggle = vm::toggleSort, playlistLabel = stringResource(R.string.content_provider))
@@ -708,10 +770,15 @@ private fun SeriesGrid(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = s.id, index = index,
                                     contextId = contextSeriesId, contextFocus = contextFocus,
-                                    selectedId = selectedSeries?.id, selectedFocus = gridSelFocus,
+                                    selectedId = targetSeriesId, selectedFocus = gridSelFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onSeriesFocused(s) },
+                                onFocus = {
+                                    vm.onSeriesFocused(s)
+                                    if (rememberSeries) {
+                                        perCategorySeriesIds[selectedKey] = s.id
+                                    }
+                                },
                                 onClick = { vm.openSeries(s) },
                                 onLongClick = { contextSeries = s; contextSeriesId = s.id; contextSeriesIndex = index },
                             )
@@ -741,10 +808,15 @@ private fun SeriesGrid(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = s.id, index = index,
                                     contextId = contextSeriesId, contextFocus = contextFocus,
-                                    selectedId = selectedSeries?.id, selectedFocus = gridSelFocus,
+                                    selectedId = targetSeriesId, selectedFocus = gridSelFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onSeriesFocused(s) },
+                                onFocus = {
+                                    vm.onSeriesFocused(s)
+                                    if (rememberSeries) {
+                                        perCategorySeriesIds[selectedKey] = s.id
+                                    }
+                                },
                                 onClick = { vm.openSeries(s) },
                                 onLongClick = { contextSeries = s; contextSeriesId = s.id; contextSeriesIndex = index },
                             )

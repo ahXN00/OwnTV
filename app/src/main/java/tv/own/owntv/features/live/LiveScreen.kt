@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -216,6 +217,7 @@ fun LiveScreen(
     // state map (so A→B→A lands back where you were in A). OFF → reset the shared state to the top whenever
     // the category changes (fixes the cross-category scroll-leak bug).
     val perCategoryStates = remember { mutableStateMapOf<LiveKey, androidx.compose.foundation.lazy.LazyListState>() }
+    val perCategoryChannelIds = remember { mutableStateMapOf<LiveKey, Long>() }
     val effectiveListState =
         if (rememberLive) perCategoryStates.getOrPut(selectedKey) { androidx.compose.foundation.lazy.LazyListState() }
         else listState
@@ -477,6 +479,31 @@ fun LiveScreen(
             onFocused = { if (previewEnabled) vm.stopPreview() },
             listState = catListState,
             focusRequester = railFocus,
+            onNavigateRight = {
+                val targetId = if (rememberLive) {
+                    perCategoryChannelIds[selectedKey] ?: previewChannel?.id
+                } else {
+                    previewChannel?.id
+                }
+                scope.launch {
+                    if (channels.itemCount > 0) {
+                        val targetIdx = if (targetId != null) {
+                            channels.itemSnapshotList.items.indexOfFirst { it.id == targetId }.takeIf { it >= 0 } ?: 0
+                        } else 0
+                        runCatching { effectiveListState.scrollToItem(targetIdx) }
+                        withFrameNanos { }
+                        repeat(3) {
+                            val focused = if (targetId != null) {
+                                runCatching { selFocus.requestFocus() }.isSuccess
+                            } else false
+                            if (focused) return@launch
+                            if (runCatching { firstItemFocus.requestFocus() }.isSuccess) return@launch
+                            if (runCatching { selFocus.requestFocus() }.isSuccess) return@launch
+                            withFrameNanos { }
+                        }
+                    }
+                }
+            },
             showPanel = false,
             modifier = Modifier
                 .onFocusChanged { railPaneFocused = it.hasFocus }
@@ -503,6 +530,12 @@ fun LiveScreen(
         )
 
         Spacer(Modifier.width(BrowseColumnGap))
+        }
+
+        val targetChannelId = if (rememberLive) {
+            perCategoryChannelIds[selectedKey] ?: previewChannel?.id
+        } else {
+            previewChannel?.id
         }
 
         // Layer 3 — header + channel list (fixed-width column; the preview pane fills the rest)
@@ -559,8 +592,13 @@ fun LiveScreen(
                 // only for directional entry from outside (internal moves don't re-trigger it).
                 .focusProperties {
                     onEnter = {
-                        if (runCatching { selFocus.requestFocus() }.isFailure) {
-                            runCatching { firstItemFocus.requestFocus() }
+                        val focused = if (targetChannelId != null) {
+                            runCatching { selFocus.requestFocus() }.isSuccess
+                        } else false
+                        if (!focused) {
+                            if (runCatching { firstItemFocus.requestFocus() }.isFailure) {
+                                runCatching { selFocus.requestFocus() }
+                            }
                         }
                     }
                 }
@@ -604,7 +642,22 @@ fun LiveScreen(
             )
             Spacer(Modifier.height(14.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .focusProperties {
+                        onEnter = {
+                            // Prevent entering search/sort horizontally from the category rail (D-pad Right).
+                            // SearchBar and SortChip remain fully accessible by pressing Up from the channel rows.
+                            if (requestedFocusDirection == FocusDirection.Right ||
+                                requestedFocusDirection == FocusDirection.Left
+                            ) {
+                                cancelFocusChange()
+                            }
+                        }
+                    }
+                    .focusGroup(),
+            ) {
                 SearchBar(
                     query = searchQuery,
                     onQueryChange = vm::setSearchQuery,
@@ -650,10 +703,15 @@ fun LiveScreen(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = channel.id, index = index,
                                     contextId = contextChannelId, contextFocus = contextFocus,
-                                    selectedId = previewChannel?.id, selectedFocus = selFocus,
+                                    selectedId = targetChannelId, selectedFocus = selFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onChannelFocused(channel) },
+                                onFocus = {
+                                    vm.onChannelFocused(channel)
+                                    if (rememberLive) {
+                                        perCategoryChannelIds[selectedKey] = channel.id
+                                    }
+                                },
                                 onClick = {
                                     vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
                                     // External player on for Live TV: the channel went to another app, so
