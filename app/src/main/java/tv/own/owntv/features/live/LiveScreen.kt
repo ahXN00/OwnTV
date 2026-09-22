@@ -565,11 +565,27 @@ fun LiveScreen(
                     }
                 }
                 // Held Up/Down can outrun the lazy list's composition and escape this pane
-                // (landing on the top bar) — trap vertical exits; Left/Right/Back leave normally.
+                // (landing on the top bar) — trap vertical exits; D-pad Right is also trapped
+                // so remote navigation does not escape to the TopBar or preview pane; Left/Back leave normally.
                 // Plan Z — while pinned there IS somewhere above to go: the More screen's tab
                 // strip. It owns the trap instead, so Up reaches the tabs and still cannot escape
                 // past them to the shell's top bar.
-                .then(if (lockedKey == null) Modifier.trapVerticalFocusExit() else Modifier)
+                .then(
+                    if (lockedKey == null) {
+                        Modifier.focusProperties {
+                            onExit = {
+                                if (requestedFocusDirection == FocusDirection.Up ||
+                                    requestedFocusDirection == FocusDirection.Down ||
+                                    requestedFocusDirection == FocusDirection.Right
+                                ) {
+                                    cancelFocusChange()
+                                }
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
                 .focusGroup()
         ) {
             Text(

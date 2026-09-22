@@ -926,8 +926,9 @@ fun OwnTVShell(
                     // The Search pill only exists while focus sits on the nav panel — inside a
                     // section it fades out and turns unfocusable, so focus can never jump to it.
                     searchVisible = focusedLayer == ShellLayer.SIDEBAR,
-                    // The playlist chip becomes a quick-switcher only when there's more than one to pick.
-                    playlistInteractive = playlists.size > 1,
+                    // The playlist chip becomes a quick-switcher only when there's more than one to pick
+                    // and focus is on the sidebar or the Home screen, preventing focus escapes from content lists.
+                    playlistInteractive = playlists.size > 1 && (focusedLayer == ShellLayer.SIDEBAR || selectedSection == MainSection.HOME),
                     onPlaylistClick = { showPlaylistPicker = true },
                     playlistDownFocusRequester = homeFirstRowFocus.takeIf {
                         selectedSection == MainSection.HOME
