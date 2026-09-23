@@ -67,6 +67,7 @@ private enum class UserDataTab { LIVE, MOVIES, SERIES }
 fun FavoritesScreen(
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
+    previewEnabled: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) = UserDataScreen(
@@ -74,6 +75,7 @@ fun FavoritesScreen(
     titleRes = R.string.content_category_favorites,
     onFullscreen = onFullscreen,
     onChildFocused = onChildFocused,
+    previewEnabled = previewEnabled,
     onBack = onBack,
     modifier = modifier,
 )
@@ -87,6 +89,7 @@ fun FavoritesScreen(
 fun HistoryScreen(
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
+    previewEnabled: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) = UserDataScreen(
@@ -94,6 +97,7 @@ fun HistoryScreen(
     titleRes = R.string.content_category_history,
     onFullscreen = onFullscreen,
     onChildFocused = onChildFocused,
+    previewEnabled = previewEnabled,
     onBack = onBack,
     modifier = modifier,
 )
@@ -108,6 +112,9 @@ private fun UserDataScreen(
     titleRes: Int,
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
+    /** Whether the Live tab may run its in-pane preview. False while a film or channel plays docked or
+     *  full screen: the preview would stop that player on focus, or open a second decoder beside it. */
+    previewEnabled: Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     counts: MoreCountsViewModel = koinViewModel(),
@@ -191,6 +198,7 @@ private fun UserDataScreen(
                 onFullscreen = onFullscreen,
                 onChildFocused = onChildFocused,
                 lockedKey = key,
+                previewEnabled = previewEnabled,
                 modifier = Modifier.fillMaxSize(),
             )
             UserDataTab.MOVIES -> MoviesScreen(

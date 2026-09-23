@@ -9,6 +9,15 @@
 > (e.g. `(community PR #40 by @codeVerine)`). Issue numbers that are part of a title (e.g. `(#57)`) are
 > fine; explanatory parentheticals are not. Descriptions belong in CHANGELOG.md, never here.
 
+## Unreleased
+
+### 🩹 Fixes
+
+- **🔇 Home during Multiview no longer keeps playing**
+- **📺 The Live preview stops when you leave Live TV**
+- **🎬 Favourites and History no longer stop a docked film**
+- **🧠 Kinder to memory on 2 GB televisions**
+
 ## v5.0.2 — 2026-09-21
 
 ### 🩹 Fixes

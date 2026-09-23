@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### 🩹 Fixes
+
+#### 🔇 Home during Multiview no longer keeps playing
+
+Pressing Home (or the screensaver starting) with Multiview up left every tile streaming — sound
+included — behind the launcher. The grid now frees its streams like the rest of the app and brings
+each tile back to its channel when you return. While the grid is on screen the screensaver no longer
+starts, and the TV's media controls and the Assistant follow the tile that has the sound.
+
+#### 📺 The Live preview stops when you leave Live TV
+
+Leaving Live TV by a shortcut or a launcher link left the channel preview decoding in the background,
+holding a connection a one-connection provider needed for whatever you opened next.
+
+#### 🎬 Favourites and History no longer stop a docked film
+
+Opening the Live tab under More → Favourites or History while a film played in the small player
+stopped the film, or started a second picture beside it. The preview there now stays off while the
+player is busy, as it already did on the Live TV screen.
+
+#### 🧠 Kinder to memory on 2 GB televisions
+
+Every Home press used to shrink the player's stream cache for the rest of the session. Only real
+memory pressure does that now, and the full cache comes back with the next channel or film. When the
+system is critically short of memory, the next live channel — Multiview tiles included — starts with
+a smaller buffer instead of the app being closed.
+
 ## v5.0.2 — 2026-09-21
 
 ### 🩹 Fixes

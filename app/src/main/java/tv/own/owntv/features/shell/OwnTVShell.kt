@@ -238,13 +238,6 @@ fun OwnTVShell(
     // rather than the live stream — the HUD swaps live-only controls for the VOD ones.
     val catchupActive by liveVm.catchupActive.collectAsStateWithLifecycle()
     val vodExoActive by player.exoActiveState.collectAsStateWithLifecycle()
-    // Publish the active engine to the system (audio focus + MediaSession), and detach when the player
-    // is closed — an inactive session must not keep answering the TV's transport keys or the Assistant.
-    LaunchedEffect(liveOnExo, playerMode) {
-        playbackSession.attach(
-            if (playerMode == PlayerMode.NONE) null else if (liveOnExo) liveVm.previewEngine else mpvEngine,
-        )
-    }
     // Auto frame rate: only ever applied to the FULL-SCREEN surface (never the mini-player or the
     // in-pane Live preview) — see FrameRateController.
     val autoFrameRate by settingsRepo.autoFrameRate.collectAsStateWithLifecycle(initialValue = false)
@@ -288,6 +281,27 @@ fun OwnTVShell(
     val streamRegistry = koinInject<tv.own.owntv.core.live.OpenStreamRegistry>()
     var multiview by remember { mutableStateOf<tv.own.owntv.features.multiview.MultiviewState?>(null) }
     var multiviewPickFor by remember { mutableStateOf<Int?>(null) }
+    // Publish the active engine to the system (audio focus + MediaSession), and detach when the player
+    // is closed — an inactive session must not keep answering the TV's transport keys or the Assistant.
+    // During Multiview that is the tile with the sound; the preview engine it used to stay on is stopped.
+    val multiviewAudibleEngine = multiview?.let { it.pool.peek(it.audible) }
+    LaunchedEffect(liveOnExo, playerMode, multiviewAudibleEngine) {
+        playbackSession.attach(
+            when {
+                multiview != null -> multiviewAudibleEngine
+                playerMode == PlayerMode.NONE -> null
+                liveOnExo -> liveVm.previewEngine
+                else -> mpvEngine
+            },
+        )
+    }
+    // The pool outlives this composable (it is app-wide), the grid state does not. If the shell is torn
+    // down with the grid up, release its engines and stream claims, or they play on as ghosts that
+    // refuse later tiles and recordings.
+    val currentMultiview by rememberUpdatedState(multiview)
+    DisposableEffect(Unit) {
+        onDispose { currentMultiview?.releaseAll() }
+    }
     // Channels kept from the Live list (B5's second entry point). Pressing play on any channel is
     // what says "now": the grid opens with them already in it, and the selection is spent.
     val multiviewSelection by liveVm.multiviewSelection.collectAsStateWithLifecycle()
@@ -704,8 +718,10 @@ fun OwnTVShell(
     }
 
     // Stop a leftover live preview when you leave the Live section (but never while fullscreen/mini plays).
+    // The preview runs on the ExoPlayer live engine, not mpv: stopping only mpv here (as when the preview
+    // was mpv) left it decoding and holding a provider connection after a shortcut or deep link out.
     LaunchedEffect(selectedSection, playerMode) {
-        if (selectedSection != MainSection.LIVE_TV && playerMode == PlayerMode.NONE) player.stop()
+        if (selectedSection != MainSection.LIVE_TV && playerMode == PlayerMode.NONE) liveVm.stopPreview()
         if (selectedSection != MainSection.HOME || playerMode != PlayerMode.NONE) homeVm.stopPreview()
     }
 
@@ -992,6 +1008,7 @@ fun OwnTVShell(
                             onOpenSettings = { onSelectSection(MainSection.SETTINGS) },
                             onFullscreen = { openFullscreen() },
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
+                            previewEnabled = playerMode == PlayerMode.NONE,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }

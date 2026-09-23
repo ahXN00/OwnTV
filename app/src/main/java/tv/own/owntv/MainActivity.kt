@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
     private val player: tv.own.owntv.player.OwnTVPlayer by inject()
     private val previewEngine: tv.own.owntv.player.LivePreviewEngine by inject()
     private val heroPreviewEngine: tv.own.owntv.player.HeroPreviewEngine by inject()
+    private val engines: tv.own.owntv.player.PlaybackEngines by inject()
     // Activity-scoped: the same instance Compose retrieves via koinViewModel() inside setContent.
     private val shellViewModel: ShellViewModel by viewModel()
     // The sole locale authority (SharedPreferences-backed; see docs/internationalization.md 0b).
@@ -128,12 +129,8 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         // Backgrounded (Home / another app), exited, or logged out: stop playback and free the demuxer
         // cache + decoder buffers — holding them while invisible got the process LMK-killed on real TVs.
-        if (!isChangingConfigurations) {
-            player.onAppBackgrounded()
-            // Live runs on ExoPlayer — remember the channel and free the stream (its audio must stop too).
-            previewEngine.onAppBackgrounded()
-            heroPreviewEngine.stop()
-        }
+        // Every engine: mpv, the Live engine (its audio must stop too), each Multiview tile and the hero.
+        if (!isChangingConfigurations) engines.onAppBackgrounded()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
@@ -142,8 +139,7 @@ class MainActivity : ComponentActivity() {
         // Paired with onStop: bring back what was freed while backgrounded (notably the TV screensaver, which
         // kicks in during a long pause) — a VOD restored paused at its position, and a live channel re-tuned
         // to the live edge — so Play resumes instead of sitting on a dead/empty stream. No-op on fresh launch.
-        player.onAppForegrounded()
-        previewEngine.onAppForegrounded()
+        engines.onAppForegrounded()
         // Staleness-based auto refresh on resume (interval modes only — STARTUP is cold-start only). The
         // ViewModel throttles this internally so a quick toggle doesn't re-run the check.
         shellViewModel.checkAutoRefresh(includeStartup = false)

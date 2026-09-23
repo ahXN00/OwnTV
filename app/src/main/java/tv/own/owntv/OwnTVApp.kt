@@ -207,7 +207,9 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         @Suppress("DEPRECATION")
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             runCatching { SingletonImageLoader.get(this).memoryCache?.clear() }
-            runCatching { GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.player.OwnTVPlayer>()?.onTrimMemory() }
         }
+        // The engines judge the level themselves: UI_HIDDEN (every Home press) is not pressure for them,
+        // and used to leave mpv on a trimmed cache for the rest of the session.
+        runCatching { GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.player.PlaybackEngines>()?.onTrimMemory(level) }
     }
 }

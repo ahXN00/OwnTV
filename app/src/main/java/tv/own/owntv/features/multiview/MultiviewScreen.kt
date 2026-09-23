@@ -243,6 +243,8 @@ private fun Tile(
                         engine = engine,
                         modifier = Modifier.fillMaxSize(),
                         useTextureView = true,
+                        // The grid is watched, not read: without this the screensaver started mid-match.
+                        keepAwake = true,
                     )
                 }
                 TileCaption(name = channel.name, audible = state.audible == index)

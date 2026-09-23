@@ -114,6 +114,8 @@ fun MoreScreen(
     onOpenSettings: () -> Unit,
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
+    /** False while the full-screen or docked player owns playback — see [FavoritesScreen]. */
+    previewEnabled: Boolean,
     modifier: Modifier = Modifier,
     counts: MoreCountsViewModel = koinViewModel(),
     settingsVm: SettingsViewModel = koinViewModel(),
@@ -145,6 +147,7 @@ fun MoreScreen(
             FavoritesScreen(
                 onFullscreen = onFullscreen,
                 onChildFocused = onChildFocused,
+                previewEnabled = previewEnabled,
                 onBack = { page = MorePage.ROOT },
                 modifier = modifier,
             )
@@ -154,6 +157,7 @@ fun MoreScreen(
             HistoryScreen(
                 onFullscreen = onFullscreen,
                 onChildFocused = onChildFocused,
+                previewEnabled = previewEnabled,
                 onBack = { page = MorePage.ROOT },
                 modifier = modifier,
             )

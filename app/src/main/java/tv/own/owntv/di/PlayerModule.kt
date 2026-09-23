@@ -41,6 +41,16 @@ val playerModule = module {
     // already streaming, so a one-session provider isn't locked out by the hero preview (F19d).
     // Resolved lazily inside the lambda to keep this free of a construction-order dependency.
     single { HeroPreviewEngine(androidContext(), get(), get(), streamInUse = { get<OwnTVPlayer>().hasActiveStream }) }
+    // Every engine above, so Home / the screensaver / memory pressure reach all of them in one call —
+    // the Multiview pool included, which the hand-kept list in MainActivity used to miss.
+    single {
+        tv.own.owntv.player.PlaybackEngines(
+            player = get(),
+            livePreview = get(),
+            pool = get(),
+            heroPreview = get(),
+        )
+    }
     // Audio focus (duck-don't-pause) + the system MediaSession, driven by whichever engine is playing.
     single { tv.own.owntv.player.PlaybackSession(androidContext()) }
     // Bridges the playing item to the OpenSubtitles search. Bound here rather than with the rest of
