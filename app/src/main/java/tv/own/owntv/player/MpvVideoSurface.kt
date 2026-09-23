@@ -37,30 +37,8 @@ private class MpvSurfaceView(context: Context, private val player: OwnTVPlayer) 
      *  on surface (re)create. No-op below Android 11, or where the panel can't switch (harmless). */
     fun applyVideoFrameRate(fps: Float) {
         pendingFps = fps
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return
         val surface = holder.surface ?: return
-        if (!surface.isValid) return
-        if (fps <= 0f) {
-            runCatching {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    surface.clearFrameRate()
-                } else {
-                    // clearFrameRate() was added in API 34. On Android 11–13, passing 0 clears the
-                    // previously requested surface frame-rate hint using the original API 30 contract.
-                    @Suppress("DEPRECATION")
-                    surface.setFrameRate(0f, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT)
-                }
-            }
-            return
-        }
-        runCatching {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                surface.setFrameRate(fps, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE, Surface.CHANGE_FRAME_RATE_ALWAYS)
-            } else {
-                @Suppress("DEPRECATION")
-                surface.setFrameRate(fps, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
-            }
-        }
+        SurfaceFrameRate.apply(surface, fps, seamlessOnly = false) // a TV may do a real mode switch
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {

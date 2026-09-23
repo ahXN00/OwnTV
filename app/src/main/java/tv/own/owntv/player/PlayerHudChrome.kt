@@ -176,9 +176,11 @@ internal fun ChannelOsdCard(
     subtitle: String?,
     logoUrl: String?,
     modifier: Modifier = Modifier,
+    /** N3 — now/next under the name on a zap; null (or a channel with no guide) keeps it name-only. */
+    guide: (@Composable () -> Unit)? = null,
 ) {
     Row(
-        modifier = modifier.widthIn(max = 340.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(14.dp),
+        modifier = modifier.widthIn(max = if (guide != null) 420.dp else 340.dp).clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = 0.55f)).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFF004F46)), contentAlignment = Alignment.Center) {
@@ -190,18 +192,19 @@ internal fun ChannelOsdCard(
             subtitle?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            guide?.invoke()
         }
     }
 }
 
 @Composable
-internal fun ChannelCard(player: PlaybackEngine, modifier: Modifier = Modifier) {
+internal fun ChannelCard(player: PlaybackEngine, modifier: Modifier = Modifier, guide: (@Composable () -> Unit)? = null) {
     // Collect the reactive meta so the card refreshes the instant a zap changes the channel.
     val meta by player.currentMeta.collectAsStateWithLifecycle()
     val displayTitle = meta.title?.takeIf { it.isNotBlank() }
         ?: meta.episodeNumber?.let { stringResource(R.string.player_episode_number, it) }
         ?: ""
-    ChannelOsdCard(title = displayTitle, subtitle = meta.localizedSubtitle(), logoUrl = meta.logoUrl, modifier = modifier)
+    ChannelOsdCard(title = displayTitle, subtitle = meta.localizedSubtitle(), logoUrl = meta.logoUrl, modifier = modifier, guide = guide)
 }
 
 /** Direct-tune entry OSD: the number as it's typed, on the same surface (position, radius, scrim) the
@@ -319,6 +322,7 @@ internal fun BottomBar(
     vodOnExo: Boolean?, onToggleVodEngine: (() -> Unit)?,
     onInfo: (() -> Unit)? = null, infoOn: Boolean = false, onReport: (() -> Unit)? = null,
     favorite: Boolean = false, onToggleFavorite: (() -> Unit)? = null,
+    onPreviousChannel: (() -> Unit)? = null,
     onOpenDialog: (HudDialog) -> Unit, onPip: (() -> Unit)?, onAudioMode: (() -> Unit)?,
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
     onBack: () -> Unit, modifier: Modifier = Modifier,
@@ -399,6 +403,10 @@ internal fun BottomBar(
                         PlayerControl.CATCH_UP -> if (onOpenJumpBack != null) {
                             CtrlButton(OwnTVIcon.CATCHUP, label = stringResource(R.string.player_tool_catchup)) { onOpenJumpBack() }
                         }
+                        // N2 — back to the channel watched before; present only once there is one.
+                        PlayerControl.PREVIOUS_CHANNEL -> if (onPreviousChannel != null) {
+                            CtrlButton(OwnTVIcon.HISTORY, label = stringResource(R.string.player_previous_channel)) { onPreviousChannel() }
+                        }
                         // Belongs to the tools cluster; `clusterFor` never hands them to this loop.
                         PlayerControl.BRIGHTNESS, PlayerControl.CHANNEL_LIST, PlayerControl.ENGINE,
                         PlayerControl.ASPECT, PlayerControl.MINI_PLAYER, PlayerControl.AUDIO_ONLY,
@@ -478,7 +486,8 @@ internal fun BottomBar(
                         // Belongs to the media cluster; `clusterFor` never hands them to this loop.
                         PlayerControl.GO_LIVE, PlayerControl.VOLUME, PlayerControl.BRIGHTNESS,
                         PlayerControl.SPEED, PlayerControl.SUBTITLES, PlayerControl.AUDIO,
-                        PlayerControl.FAVOURITE, PlayerControl.CATCH_UP, PlayerControl.CHANNEL_LIST,
+                        PlayerControl.FAVOURITE, PlayerControl.CATCH_UP, PlayerControl.PREVIOUS_CHANNEL,
+                        PlayerControl.CHANNEL_LIST,
                         -> Unit
                     }
                 }

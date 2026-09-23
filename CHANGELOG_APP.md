@@ -13,12 +13,19 @@
 
 ### ✨ New features
 
+- **👄 Audio sync on every player**
+- **⏮️ Previous channel**
+- **📰 The channel banner shows what's on**
+- **🧹 Reset live player choices, forget learned stream fixes**
+- **🕒 Catch-up time zone in quarter hours**
 - **🎚️ Four more settings per playlist**
 - **🔗 Referer for a playlist that needs one**
 - **🗣️ The player remembers your audio and subtitle language**
 
 ### 🩹 Fixes
 
+- **🎞️ Deinterlacing is automatic**
+- **🌈 HDR says it is mpv only**
 - **🧰 Player memory moved into the app's database**
 - **⏱️ "Give up on a channel after" shows plain seconds**
 - **🎬 Catch-up in an external player opens like it does inside the app**

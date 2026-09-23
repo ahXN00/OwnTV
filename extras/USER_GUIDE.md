@@ -90,6 +90,7 @@ About. Its right-hand panel *describes* each row before you open it — it never
 | **Left ×2** | full-screen live | All Live TV categories — switch folder without stopping the stream |
 | **Right** | full-screen live | The last 30 channels you watched |
 | **CH+ / CH−** | full-screen live | Next / previous channel. Wraps around. Always works |
+| **Last channel** key | full-screen live | Back to the channel you watched before (press again to flip back). Also the clock button on the player bar |
 | **Up / Down** | full-screen live, controls hidden | Same as CH+/CH− |
 | **0–9** | full-screen live | Type a channel number to tune. OK submits, Back cancels |
 | **CH+ / CH−** | any browse list | Page by 10 items. **Long-press** jumps to first/last |
@@ -97,7 +98,7 @@ About. Its right-hand panel *describes* each row before you open it — it never
 | **OK** | full-screen player | Shows / hides the controls |
 
 **Want different keys?** **Settings → Content → Remote Shortcuts** maps spare colour, number, channel
-and media keys to 25 actions. D-pad, Back, OK, volume, Home and power stay protected.
+and media keys to 26 actions — **Previous channel** among them. D-pad, Back, OK, volume, Home and power stay protected.
 
 ---
 
@@ -458,7 +459,8 @@ yourself is **remembered** for that channel, film or series (subtitles off too),
 
 ### 🎚️ A/V sync
 **Where:** player → Audio → **A/V sync**
-Nudge until lips match, then **Remember this delay** to keep it for that item.
+Nudge until lips match, then **Remember this delay** to keep it for that item. Works on both players,
+including sound sent as-is to a soundbar.
 
 ### 🔊 Surround sound
 **Where:** Settings → Video player → **Surround sound**
@@ -545,14 +547,15 @@ right there in the list.
 | **Live latency** | Video player → Live TV | How close to the live edge to play. Lower = less delay, more stutter risk |
 | **Pre-buffer live streams** | Video player → Live TV | Collect a few seconds first on a flaky provider |
 | **Give up on a channel after** | Video player → Live TV | 30 s default — bounds how long a dead channel can spin (+ per playlist) |
-| **Catch-up time zone per playlist** | Sources & guide | One provider's archive on a different clock |
+| **Catch-up time zone per playlist** | Sources & guide | One provider's archive on a different clock (quarter-hour zones such as +05:30 included) |
 | **Hardware decoder** | Video player | On for smooth 4K; off only to diagnose |
-| **HDR** | Video player | Use HDR output when the video and TV support it |
+| **HDR (mpv only)** | Video player | Use HDR output when the video and TV support it. ExoPlayer always passes HDR through |
 | **Auto frame rate** | Video player | Match the TV's refresh rate to the content. Off by default |
-| **Deinterlacing** | Video player | Smooths comb lines on some SD channels. Off by default |
 | **Seek step / Live rewind step** | Video player | How far the skip buttons jump |
 | **Default volume** | Video player | 0–150%, where everything starts |
 | **Reset saved player choices / zoom / volume** | Video player | Forget everything the player remembered per item |
+| **Reset saved live TV player choices** | Video player | Every channel follows the Live TV player setting again |
+| **Forget learned stream fixes** | Video player | For a provider that has fixed its streams. Catch-up lessons also expire after 14 days |
 | **Custom DNS** | Network → DNS | System, Google, Cloudflare, Quad9, or DNS-over-HTTPS |
 | **External player** | Video player | Separate switches for Live TV, Movies and Series |
 | **Weather** | Appearance → Weather | The top-bar chip, with a custom location and °C/°F |

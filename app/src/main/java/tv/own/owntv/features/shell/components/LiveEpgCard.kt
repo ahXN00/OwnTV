@@ -169,6 +169,55 @@ fun LiveEpgCard(
     }
 }
 
+/**
+ * N3 — the guide lines under the channel-change banner: what is on now, how far through it is, and what
+ * comes next. The same labels, time formats and progress bar as [LiveEpgCard], packed to fit the
+ * banner's width. Draws nothing for a channel without a guide, so the banner stays name and number.
+ */
+@Composable
+fun ZapGuideLines(epg: EpgNowNext?, modifier: Modifier = Modifier) {
+    if (epg == null || (epg.now == null && epg.next == null)) return
+    val colors = OwnTVTheme.colors
+    val formatTime = rememberSystemTimeFormatter()
+    // The banner is up for a few seconds, so the moment it opened is precise enough.
+    val nowMs = remember(epg) { System.currentTimeMillis() }
+    Column(modifier.padding(top = 8.dp)) {
+        epg.now?.let { entry ->
+            SlotLabel(stringResource(R.string.content_live_now), colors.primary)
+            Text(entry.title, style = MaterialTheme.typography.bodyMedium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val remaining = ((entry.stopMs - nowMs) / 60_000L).toInt()
+            Text(
+                if (remaining in 1..600) stringResource(R.string.content_live_time_remaining, formatTime(entry.stopMs), remaining)
+                else stringResource(R.string.content_live_time_range, formatTime(entry.startMs), formatTime(entry.stopMs)),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val span = (entry.stopMs - entry.startMs).toFloat()
+            if (span > 0f) {
+                val progress = ((nowMs - entry.startMs) / span).coerceIn(0f, 1f)
+                Spacer(Modifier.height(5.dp))
+                Box(Modifier.fillMaxWidth().height(2.dp).clip(RoundedCornerShape(1.dp)).background(Color.White.copy(alpha = 0.18f))) {
+                    Box(Modifier.fillMaxWidth(progress).height(2.dp).clip(RoundedCornerShape(1.dp)).background(colors.primary))
+                }
+            }
+        }
+        epg.next?.let { entry ->
+            Spacer(Modifier.height(8.dp))
+            SlotLabel(stringResource(R.string.content_live_next), Color.White.copy(alpha = 0.45f))
+            Text(entry.title, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.72f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                stringResource(R.string.content_live_time_range, formatTime(entry.startMs), formatTime(entry.stopMs)),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.4f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 @Composable
 private fun SlotLabel(text: String, color: Color) {
     Text(

@@ -1434,6 +1434,7 @@ fun SettingsScreen(
             mode = catchupTz,
             offsetMinutes = catchupOffset,
             offsetRange = settingsVm.catchupOffsetRangeMinutes,
+            offsetStep = settingsVm.catchupOffsetStepMinutes,
             onSetMode = settingsVm::setCatchupTimezone,
             onAdjustOffset = settingsVm::adjustCatchupOffset,
             player = catchupPlayer,
@@ -1458,13 +1459,12 @@ fun SettingsScreen(
     }
     if (showCatchupSourceValue) {
         val src = playlistSources.firstOrNull { it.id == catchupSource?.id } ?: catchupSource
-        val range = settingsVm.catchupOffsetRangeMinutes
         tv.own.owntv.features.settings.PickerDialog(
             title = src?.name ?: stringResource(R.string.settings_catchup_timezone_per_playlist),
             options = listOf(
                 CATCHUP_FOLLOW to stringResource(R.string.settings_live_preroll_follow),
                 SettingsRepository.CatchupTimezone.DEVICE.name to stringResource(R.string.settings_catchup_timezone_device),
-            ) + (range.first..range.last step 60).map { "$CATCHUP_MANUAL_PREFIX$it" to utcOffsetLabel(it) },
+            ) + settingsVm.catchupOffsetChoicesMinutes.map { "$CATCHUP_MANUAL_PREFIX$it" to utcOffsetLabel(it) },
             selected = when (src?.catchupTimezone) {
                 null -> CATCHUP_FOLLOW
                 SettingsRepository.CatchupTimezone.MANUAL.name -> "$CATCHUP_MANUAL_PREFIX${src?.catchupOffsetMin ?: 0}"
@@ -4028,6 +4028,8 @@ private fun CatchupTimeDialog(
     offsetRange: IntRange,
     onSetMode: (SettingsRepository.CatchupTimezone) -> Unit,
     onAdjustOffset: (Int) -> Unit,
+    /** One −/+ press, in minutes (N20: a quarter hour). */
+    offsetStep: Int,
     player: SettingsRepository.CatchupPlayer,
     onSetPlayer: (SettingsRepository.CatchupPlayer) -> Unit,
     onDismiss: () -> Unit,
@@ -4072,7 +4074,7 @@ private fun CatchupTimeDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     // Dimmed, never disabled — a disabled button leaves the focus graph and the D-pad
                     // then walks straight out of the dialog.
-                    StepButton(stringResource(R.string.settings_decrease), dimmed = offsetMinutes <= offsetRange.first) { onAdjustOffset(-60) }
+                    StepButton(stringResource(R.string.settings_decrease), dimmed = offsetMinutes <= offsetRange.first) { onAdjustOffset(-offsetStep) }
                     Text(
                         utcOffsetLabel(offsetMinutes),
                         style = MaterialTheme.typography.headlineMedium,
@@ -4080,7 +4082,7 @@ private fun CatchupTimeDialog(
                         modifier = Modifier.width(150.dp),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
-                    StepButton(stringResource(R.string.settings_increase), dimmed = offsetMinutes >= offsetRange.last) { onAdjustOffset(60) }
+                    StepButton(stringResource(R.string.settings_increase), dimmed = offsetMinutes >= offsetRange.last) { onAdjustOffset(offsetStep) }
                 }
             }
             // Which player takes an archive programme. Archives are the streams the in-app engines

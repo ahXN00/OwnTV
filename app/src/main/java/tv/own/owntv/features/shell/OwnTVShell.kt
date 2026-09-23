@@ -231,10 +231,16 @@ fun OwnTVShell(
     // up/down (CH+/CH-). Guide tunes start through LiveViewModel too (they set zapSource = LIVE_TV), so
     // there is exactly ONE zap path: liveVm's. The Guide keeps its own EpgViewModel only for the grid.
     val liveVm = org.koin.androidx.compose.koinViewModel<LiveViewModel>()
+    // N2 — "previous" from the system media controls on a live channel goes back a channel.
+    DisposableEffect(playbackSession, liveVm) {
+        playbackSession.livePrevious = { liveVm.previousChannel() }
+        onDispose { playbackSession.livePrevious = null }
+    }
     val epgVm = org.koin.androidx.compose.koinViewModel<tv.own.owntv.features.epg.EpgViewModel>()
     val liveCanZap by liveVm.canZap.collectAsStateWithLifecycle()
     // Full-screen is running on the ExoPlayer engine (a promoted Live preview) rather than mpv.
     val liveOnExo by liveVm.liveOnExo.collectAsStateWithLifecycle()
+    val previousLiveChannel by liveVm.previousChannelTarget.collectAsStateWithLifecycle()
     // A catch-up archive programme is playing (Guide "Watch from start" or the Live TV catch-up picker)
     // rather than the live stream — the HUD swaps live-only controls for the VOD ones.
     val catchupActive by liveVm.catchupActive.collectAsStateWithLifecycle()
@@ -655,6 +661,7 @@ fun OwnTVShell(
             RemoteShortcutAction.ENTER_AUDIO_MODE -> if (playerMode == PlayerMode.FULLSCREEN || playerMode == PlayerMode.MINI) toAudioMode()
             RemoteShortcutAction.PLAY_PAUSE -> if (playerMode != PlayerMode.NONE) dockedEngine.togglePlayPause()
             RemoteShortcutAction.RETURN_TO_LIVE -> if (playerMode != PlayerMode.NONE && zapSource == MainSection.LIVE_TV && timeshifted) liveVm.goToLive()
+            RemoteShortcutAction.PREVIOUS_CHANNEL -> if (playerMode != PlayerMode.NONE && zapSource == MainSection.LIVE_TV) liveVm.previousChannel()
             RemoteShortcutAction.PAGE_TOWARD_FIRST,
             RemoteShortcutAction.PAGE_TOWARD_LAST,
             RemoteShortcutAction.JUMP_TO_FIRST,
@@ -1427,6 +1434,7 @@ fun OwnTVShell(
                     liveProgrammes = if (isTunedLive && canRewindLive) timelineProgrammes else emptyList(),
                     jumpBackOptions = if (isTunedLive && canRewindLive) liveVm::currentJumpOptions else null,
                     onJumpBack = if (isTunedLive && canRewindLive) liveVm::jumpBackTo else null,
+                    onPreviousChannel = if (isTunedLive && previousLiveChannel != null) liveVm::previousChannel else null,
                     jumpBackWindowSec = if (isTunedLive && canRewindLive) liveVm::currentCatchupWindowSec else null,
                     // Non-null only while an archive is on screen, so movies, episodes and live TV get
                     // the single real clock and catch-up gets the pair.
@@ -1459,6 +1467,13 @@ fun OwnTVShell(
                     // In-stream favorite toggle for the current channel/movie/series.
                     favorite = favActive,
                     onToggleFavorite = favToggle,
+                    // N3 — the zap banner's now/next. Collected inside the slot, so only the banner redraws.
+                    zapGuide = if (isLiveChannel) {
+                        {
+                            val guide by liveVm.zapGuide.collectAsStateWithLifecycle()
+                            tv.own.owntv.features.shell.components.ZapGuideLines(guide)
+                        }
+                    } else null,
                     // Guide card for the playing channel (nowNext follows previewChannel = what's playing).
                     liveEpgCard = if (isLiveChannel) {
                         {

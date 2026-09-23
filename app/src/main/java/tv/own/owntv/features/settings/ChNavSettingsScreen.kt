@@ -363,6 +363,7 @@ private fun remoteButtonLabel(keyCode: Int): String = when {
     AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> stringResource(R.string.settings_remote_button_fast_forward)
     AndroidKeyEvent.KEYCODE_MEDIA_PREVIOUS -> stringResource(R.string.settings_remote_button_previous)
     AndroidKeyEvent.KEYCODE_MEDIA_NEXT -> stringResource(R.string.settings_remote_button_next)
+    AndroidKeyEvent.KEYCODE_LAST_CHANNEL -> stringResource(R.string.settings_remote_button_last_channel)
     AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
     AndroidKeyEvent.KEYCODE_MEDIA_PLAY,
     AndroidKeyEvent.KEYCODE_MEDIA_PAUSE,
@@ -389,6 +390,7 @@ private fun remoteButtonIcon(keyCode: Int, fallbackAction: RemoteShortcutAction)
         AndroidKeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> OwnTVIcon.FORWARD
         AndroidKeyEvent.KEYCODE_MEDIA_PREVIOUS -> OwnTVIcon.SKIP_PREVIOUS
         AndroidKeyEvent.KEYCODE_MEDIA_NEXT -> OwnTVIcon.SKIP_NEXT
+        AndroidKeyEvent.KEYCODE_LAST_CHANNEL -> OwnTVIcon.HISTORY
         AndroidKeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
         AndroidKeyEvent.KEYCODE_MEDIA_PLAY,
         -> OwnTVIcon.PLAY
@@ -438,6 +440,7 @@ private fun remoteActionLabel(action: RemoteShortcutAction): String = stringReso
         RemoteShortcutAction.JUMP_TO_FIRST -> R.string.settings_remote_action_jump_first
         RemoteShortcutAction.JUMP_TO_LAST -> R.string.settings_remote_action_jump_last
         RemoteShortcutAction.RETURN_TO_LIVE -> R.string.player_go_live
+        RemoteShortcutAction.PREVIOUS_CHANNEL -> R.string.player_previous_channel
         RemoteShortcutAction.OPEN_SUBTITLE_CONTROLS -> R.string.player_tool_subtitles
         RemoteShortcutAction.OPEN_AUDIO_CONTROLS -> R.string.player_tool_audio
         RemoteShortcutAction.OPEN_ASPECT_CONTROLS -> R.string.player_tool_aspect
@@ -466,6 +469,7 @@ private fun remoteActionIcon(action: RemoteShortcutAction): OwnTVIcon = when (ac
     RemoteShortcutAction.OPEN_SUBTITLE_CONTROLS -> OwnTVIcon.SUBTITLE
     RemoteShortcutAction.OPEN_ASPECT_CONTROLS -> OwnTVIcon.ASPECT
     RemoteShortcutAction.TOGGLE_PLAYBACK_INFO -> OwnTVIcon.INFO
+    RemoteShortcutAction.PREVIOUS_CHANNEL -> OwnTVIcon.HISTORY
 }
 
 private const val CAPTURE_LONG_PRESS_MS = 600L

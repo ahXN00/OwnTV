@@ -98,7 +98,8 @@ Each engine is chosen automatically by content type, with fallback between them.
   stereo when the sink accepts a format it cannot actually play. On ExoPlayer that recovery recreates
   the surface and resumes at the same position rather than mistaking an audio problem for a video one.
 - **Volume boost to 150%** with a soft limiter.
-- **A/V sync nudge** in 25 ms steps, optionally remembered per item.
+- **A/V sync nudge** in 25 ms steps on both engines, optionally remembered per item.
+- **Previous channel** — a player-bar button, the remote's Last-channel key and the media controls' "previous".
 - **Audio-only items are labelled, not failed** — a radio channel shows an *Audio only* plate, so
   sound with no picture is never mistaken for a fault. Distinct from **Audio Mode**, which is the
   user switching the picture off.

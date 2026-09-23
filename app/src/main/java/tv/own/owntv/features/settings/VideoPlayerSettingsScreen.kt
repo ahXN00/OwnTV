@@ -117,16 +117,17 @@ internal val SUBTITLE_APPEARANCE_SEARCH_ROWS: List<Int> = listOf(
 /** Every row of this screen that can be pinned to Quick, in the order the sections show them. */
 internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_hw", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_hardware_decoding, R.string.settings_hardware_decoding_description),
-    VideoQuickRef("vp_deinterlace", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_deinterlace, R.string.settings_deinterlace_description),
     VideoQuickRef("vp_hdr", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_quick_hdr, R.string.settings_hdr_description),
     VideoQuickRef("vp_afr", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_auto_frame_rate, R.string.settings_auto_frame_rate_description),
     VideoQuickRef("vp_multiview", SECTION_ENGINE, OwnTVIcon.LIST_GRID, R.string.settings_multiview, R.string.settings_multiview_description),
     VideoQuickRef("vp_multiview_tiles", SECTION_ENGINE, OwnTVIcon.LIST_GRID, R.string.settings_multiview_tiles_max, R.string.settings_multiview_description),
     VideoQuickRef("vp_live_engine", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_live_tv_player, R.string.settings_live_player_description),
     VideoQuickRef("vp_live_engine_sources", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_live_engine_per_playlist, R.string.settings_live_engine_per_playlist_description),
+    VideoQuickRef("vp_reset_live_pins", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_reset_live_player_choices, R.string.settings_reset_live_player_choices_description),
     VideoQuickRef("vp_vod_engine", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_movies_series_player, R.string.settings_movies_player_description),
     VideoQuickRef("vp_vod_engine_sources", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_vod_engine_per_playlist, R.string.settings_vod_engine_per_playlist_description),
     VideoQuickRef("vp_reset_pins", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_reset_player_choices, R.string.settings_reset_player_choices_description),
+    VideoQuickRef("vp_forget_fixes", SECTION_ENGINE, OwnTVIcon.REFRESH, R.string.settings_forget_stream_fixes, R.string.settings_forget_stream_fixes_description),
     VideoQuickRef("vp_external", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_external_player, R.string.settings_external_player_row_description),
     VideoQuickRef("vp_zoom", SECTION_ENGINE, OwnTVIcon.ASPECT, R.string.settings_default_zoom, R.string.settings_default_zoom_description),
     VideoQuickRef("vp_reset_zoom", SECTION_ENGINE, OwnTVIcon.ASPECT, R.string.settings_reset_saved_zoom, R.string.settings_reset_saved_zoom_description),
@@ -194,10 +195,6 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
             val on by vm.hwDecoding.collectAsStateWithLifecycle()
             toggle(onOff(on), on) { vm.setHwDecoding(!on) }
         }
-        "vp_deinterlace" -> {
-            val on by vm.deinterlace.collectAsStateWithLifecycle()
-            toggle(if (on) stringResource(R.string.settings_auto) else stringResource(R.string.common_off), on) { vm.setDeinterlace(!on) }
-        }
         "vp_hdr" -> {
             val on by vm.hdrEnabled.collectAsStateWithLifecycle()
             toggle(onOff(on), on) { vm.setHdrEnabled(!on) }
@@ -243,6 +240,11 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
             val pins by vm.vodEnginePinCount.collectAsStateWithLifecycle()
             link(saved(pins), pins > 0)
         }
+        "vp_reset_live_pins" -> {
+            val pins by vm.livePinCount.collectAsStateWithLifecycle()
+            link(saved(pins), pins > 0)
+        }
+        "vp_forget_fixes" -> link(null)
         "vp_external" -> {
             val live by vm.externalPlayerLive.collectAsStateWithLifecycle()
             val movies by vm.externalPlayerMovies.collectAsStateWithLifecycle()
@@ -459,13 +461,13 @@ fun VideoPlayerSettingsScreen(
     val vodEngine by vm.vodEnginePreference.collectAsStateWithLifecycle()
     val liveEngine by vm.liveEnginePreference.collectAsStateWithLifecycle()
     val enginePins by vm.vodEnginePinCount.collectAsStateWithLifecycle()
+    val livePins by vm.livePinCount.collectAsStateWithLifecycle()
     val defaultVolume by vm.defaultVolume.collectAsStateWithLifecycle()
     val savedZoom by vm.savedZoomCount.collectAsStateWithLifecycle()
     val savedVolume by vm.savedVolumeCount.collectAsStateWithLifecycle()
     val savedAudioDelay by vm.savedAudioDelayCount.collectAsStateWithLifecycle()
     val seekStep by vm.seekStepSec.collectAsStateWithLifecycle()
     val liveRewindStep by vm.liveRewindStepSec.collectAsStateWithLifecycle()
-    val deinterlace by vm.deinterlace.collectAsStateWithLifecycle()
     val measuredStats by vm.measuredStreamStats.collectAsStateWithLifecycle()
     val detailedDiagnostics by vm.detailedDiagnostics.collectAsStateWithLifecycle()
     val directTune by vm.directTune.collectAsStateWithLifecycle()
@@ -778,14 +780,6 @@ fun VideoPlayerSettingsScreen(
             onClick = { vm.setHwDecoding(!hw) },
         )
         Row2(
-            quickKey = "vp_deinterlace",
-            icon = OwnTVIcon.VIDEO, title = stringResource(R.string.settings_deinterlace),
-            desc = stringResource(R.string.settings_deinterlace_description),
-            chip = if (deinterlace) stringResource(R.string.settings_auto) else stringResource(R.string.common_off),
-            primaryChip = deinterlace,
-            onClick = { vm.setDeinterlace(!deinterlace) },
-        )
-        Row2(
             quickKey = "vp_hdr",
             icon = OwnTVIcon.VIDEO, title = stringResource(R.string.settings_quick_hdr),
             desc = stringResource(R.string.settings_hdr_description),
@@ -850,6 +844,18 @@ fun VideoPlayerSettingsScreen(
             )
         }
         Row2(
+            quickKey = "vp_reset_live_pins",
+            icon = OwnTVIcon.PLAY, title = stringResource(R.string.settings_reset_live_player_choices),
+            desc = stringResource(R.string.settings_reset_live_player_choices_description),
+            chip = if (livePins == 0) stringResource(R.string.settings_reset_player_choices_none)
+            else pluralStringResource(R.plurals.settings_reset_player_choices_count, livePins, livePins),
+            primaryChip = livePins > 0,
+            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.RESET_LIVE_PINS)),
+            // Opens the confirmation even with nothing pinned, as the films row does: a row that
+            // swallows OK is a dead end on a remote.
+            onClick = { savedScroll = scrollState.value; dialog = Dialog.RESET_LIVE_PINS },
+        )
+        Row2(
             quickKey = "vp_vod_engine",
             icon = OwnTVIcon.PLAY, title = stringResource(R.string.settings_movies_series_player),
             desc = stringResource(R.string.settings_movies_player_description),
@@ -886,6 +892,13 @@ fun VideoPlayerSettingsScreen(
             // press is a dead end on a remote, and the chip already says whether there is anything
             // to reset.
             onClick = { savedScroll = scrollState.value; dialog = Dialog.RESET_PINS },
+        )
+        Row2(
+            quickKey = "vp_forget_fixes",
+            icon = OwnTVIcon.REFRESH, title = stringResource(R.string.settings_forget_stream_fixes),
+            desc = stringResource(R.string.settings_forget_stream_fixes_description),
+            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.FORGET_FIXES)),
+            onClick = { savedScroll = scrollState.value; dialog = Dialog.FORGET_FIXES },
         )
         Row2(
             quickKey = "vp_external",
@@ -1542,6 +1555,18 @@ fun VideoPlayerSettingsScreen(
             onConfirm = { vm.clearVodEnginePins(); dialog = Dialog.NONE },
             onCancel = { dialog = Dialog.NONE },
         )
+        Dialog.RESET_LIVE_PINS -> ConfirmResetDialog(
+            title = stringResource(R.string.settings_reset_live_player_choices_confirm),
+            description = stringResource(R.string.settings_reset_live_player_choices_confirm_description),
+            onConfirm = { vm.clearLivePins(); dialog = Dialog.NONE },
+            onCancel = { dialog = Dialog.NONE },
+        )
+        Dialog.FORGET_FIXES -> ConfirmResetDialog(
+            title = stringResource(R.string.settings_forget_stream_fixes_confirm),
+            description = stringResource(R.string.settings_forget_stream_fixes_confirm_description),
+            onConfirm = { vm.forgetStreamFixes(); dialog = Dialog.NONE },
+            onCancel = { dialog = Dialog.NONE },
+        )
         Dialog.VOLUME -> StepperDialog(
             title = stringResource(R.string.settings_default_volume),
             // The same 0–150 range and 5% step the player's own volume dialog uses, so a level found
@@ -1705,6 +1730,8 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     "vp_vod_engine" -> Dialog.VOD_ENGINE
     "vp_vod_engine_sources" -> Dialog.VOD_ENGINE_SOURCES
     "vp_reset_pins" -> Dialog.RESET_PINS
+    "vp_reset_live_pins" -> Dialog.RESET_LIVE_PINS
+    "vp_forget_fixes" -> Dialog.FORGET_FIXES
     "vp_external" -> Dialog.EXTERNAL_PLAYER
     "vp_zoom" -> Dialog.ZOOM
     "vp_reset_zoom" -> Dialog.RESET_SAVED_ZOOM
@@ -1729,7 +1756,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     else -> null
 }
 
-private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, AFR_WARNING, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
+private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
 
 /**
  * Label for one engine preference — "ExoPlayer, then mpv", "mpv only", and so on.

@@ -359,12 +359,25 @@ class LiveViewModel(
     val watchingWallMs: StateFlow<Long?> = timeshift.watchingWallMs
 
 
-    /** Now/next for the focused channel — fetched (debounced) from the Xtream `get_short_epg` API. */
-    val nowNext: StateFlow<EpgNowNext?> = combine(_previewChannel, epgRefresh) { ch, tick -> ch to tick }
+    /** Now/next for the focused channel, fetched (debounced) — each answer with the id of the channel it
+     *  was looked up for, so [zapGuide] can tell a stale one. [nowNext] is the answer alone. */
+    private val keyedNowNext: StateFlow<Pair<Long?, EpgNowNext?>> = combine(_previewChannel, epgRefresh) { ch, tick -> ch to tick }
         .debounce(350)
         .distinctUntilChanged { a, b -> a.first?.id == b.first?.id && a.second == b.second }
-        .mapLatest { (ch, _) -> ch?.let { epgReader.nowNext(it, custom.value, epgOffset.value) } }
+        .mapLatest { (ch, _) -> ch?.id to ch?.let { epgReader.nowNext(it, custom.value, epgOffset.value) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to null)
+
+    val nowNext: StateFlow<EpgNowNext?> = keyedNowNext.map { it.second }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * N3 — now/next for the channel-change banner. Null until the answer is for the channel actually on
+     * screen: [nowNext] is debounced, so for a moment after a zap it still holds the previous channel's
+     * programme, and the banner would otherwise name the new channel over the old one's show.
+     */
+    val zapGuide: StateFlow<EpgNowNext?> = combine(keyedNowNext, _previewChannel) { (id, epg), ch ->
+        epg.takeIf { id != null && id == ch?.id }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /**
      * "PLAYING / THEN" — what was on air at the moment being replayed. Null unless an archive is on
@@ -1313,6 +1326,27 @@ class LiveViewModel(
         // Same while rewound into the live archive: swapping engines re-opens the channel at the edge.
         if (timeshift.isRewound) return
         live.toggleEngine()
+    }
+
+    /**
+     * N2 — tune the channel watched before this one (the remote's "last channel" key). Re-read by id, so
+     * a channel removed by a sync is skipped, and only from a playlist this profile has active;
+     * [playChannel] applies the adult filter. It is a deliberate pick, so it opens at once.
+     */
+    /** [previousChannel]'s target when it belongs to this profile's active playlists — the HUD button
+     *  shows only while this is non-null. */
+    val previousChannelTarget: StateFlow<ChannelEntity?> = combine(live.previousChannel, ctx) { p, c ->
+        p?.takeIf { it.sourceId in c.sourceIds }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun previousChannel() {
+        val previous = live.previousChannel.value ?: return
+        viewModelScope.launch {
+            val channel = withContext(Dispatchers.IO) { channelDao.getById(previous.id) } ?: return@launch
+            if (channel.sourceId !in ctx.value.sourceIds) return@launch
+            zapList.armFor(channel)
+            ensurePlaying(custom.value.itemNames[CustomizeKeys.channel(channel)]?.let { channel.copy(name = it) } ?: channel)
+        }
     }
 
     fun ensurePlayingById(channelId: Long) {

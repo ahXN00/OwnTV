@@ -85,6 +85,8 @@ class SettingsViewModel(
     private val sourceTester: tv.own.owntv.core.repository.SourceTester,
     private val companion: tv.own.owntv.core.companion.CompanionController,
     private val vodEngineStore: tv.own.owntv.core.player.VodEngineStore,
+    private val forceMpvStore: tv.own.owntv.core.player.ForceMpvStore,
+    private val archiveDecodeStore: tv.own.owntv.core.player.ArchiveDecodeStore,
     private val playbackPrefs: tv.own.owntv.core.player.PlaybackPrefsStore,
     private val connectionLimits: tv.own.owntv.core.live.ConnectionLimits,
     // The measurement opens streams, so whatever is playing has to stop first — on a
@@ -344,6 +346,8 @@ class SettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     val catchupOffsetRangeMinutes: IntRange = settings.catchupOffsetRangeMinutes
+    val catchupOffsetStepMinutes: Int = settings.catchupOffsetStepMinutes
+    val catchupOffsetChoicesMinutes: List<Int> = settings.catchupOffsetChoicesMinutes
 
     val catchupPlayer: StateFlow<SettingsRepository.CatchupPlayer> = settings.catchupPlayer
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.CatchupPlayer.INTERNAL)
@@ -435,6 +439,17 @@ class SettingsViewModel(
      *  those are stored identically to the user's own, so they can only be cleared wholesale. */
     fun clearVodEnginePins() { viewModelScope.launch { vodEngineStore.clearAll() } }
 
+    /** N15 — how many channels are pinned to one engine (either direction), for the live reset row. */
+    val livePinCount: StateFlow<Int> =
+        combine(forceMpvStore.urls, forceMpvStore.exoUrls) { mpv, exo -> mpv.size + exo.size }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /** N15 — every channel follows the Live TV player setting again; films' pins are kept. */
+    fun clearLivePins() { viewModelScope.launch { forceMpvStore.clearAll() } }
+
+    /** N15 — forget the stream lessons of this session and the stored catch-up decode list. */
+    fun forgetStreamFixes() { viewModelScope.launch { tv.own.owntv.player.LiveStreamQuirks.forgetLearned(archiveDecodeStore) } }
+
     /** Volume every item starts at, before any per-item value the player remembered. */
     val defaultVolume: StateFlow<Int> = settings.defaultVolume.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 100)
     fun setDefaultVolume(percent: Int) { viewModelScope.launch { settings.setDefaultVolume(percent) } }
@@ -467,8 +482,6 @@ class SettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), tv.own.owntv.core.settings.SeekSteps.DEFAULT_LIVE_REWIND_STEP_SEC)
     fun setLiveRewindStepSec(seconds: Int) { viewModelScope.launch { settings.setLiveRewindStepSec(seconds) } }
 
-    val deinterlace: StateFlow<Boolean> = settings.deinterlace.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-    fun setDeinterlace(enabled: Boolean) { viewModelScope.launch { settings.setDeinterlace(enabled) } }
 
     val measuredStreamStats: StateFlow<Boolean> = settings.measuredStreamStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.measuredStreamStatsDefault)
     fun setMeasuredStreamStats(enabled: Boolean) { viewModelScope.launch { settings.setMeasuredStreamStats(enabled) } }
