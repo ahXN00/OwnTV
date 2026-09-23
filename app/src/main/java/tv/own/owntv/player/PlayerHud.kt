@@ -28,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -60,6 +59,7 @@ import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.components.OwnTVSpinner
 import tv.own.owntv.ui.components.displayText // PlayerFailureReason.displayText, for the error overlay
 import tv.own.owntv.ui.theme.LocalActionSurface
+import tv.own.owntv.ui.theme.gradientWash
 
 /**
  * The full-screen player HUD. This file owns the HUD's STATE — visibility, direct tune, the dialog the
@@ -590,17 +590,19 @@ fun PlayerHud(
             // so those washed out on bright scenes; a hard-edged band would instead draw a visible seam
             // across the picture. The colour stops give the panel first, then the feather.
             Box(Modifier.align(Alignment.TopStart).fillMaxWidth().height(210.dp)
-                .background(Brush.verticalGradient(
+                .gradientWash(
+                    vertical = true,
                     0.0f to Color.Black.copy(alpha = 0.72f),
                     0.5f to Color.Black.copy(alpha = 0.68f),
                     1.0f to Color.Transparent,
-                )))
+                ))
             Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(260.dp)
-                .background(Brush.verticalGradient(
+                .gradientWash(
+                    vertical = true,
                     0.0f to Color.Transparent,
                     0.45f to Color.Black.copy(alpha = 0.68f),
                     1.0f to Color.Black.copy(alpha = 0.78f),
-                )))
+                ))
 
             // The active engine (MPV/EXO) leads the mini chips so users can always tell which player is on.
             // One unified strip: back · logo · chips-over-channel-name · Now/Next guide. The channel name

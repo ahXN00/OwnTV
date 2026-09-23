@@ -21,6 +21,8 @@ import tv.own.owntv.core.theme.GlassSurface
 import tv.own.owntv.core.theme.OwnTVPalette
 import tv.own.owntv.ui.theme.LocalGlass
 import tv.own.owntv.ui.theme.OwnTVTheme
+import tv.own.owntv.ui.theme.drawRadialGlow
+import tv.own.owntv.ui.theme.drawVerticalFade
 import tv.own.owntv.ui.theme.glass
 
 // Per-region colour identity from the established shell design. The three roles remain distinct in
@@ -130,8 +132,8 @@ fun Modifier.roundedPanel(
 
 /**
  * Cached solid-material lighting: one broad accent reflection, a restrained lower depth tone, and
- * the existing top-edge lift. These are plain brush draws inside the panel clip—no blur, shadow
- * layer, animation, or per-frame brush allocation.
+ * the existing top-edge lift. The reflection and the depth tone cover most of the panel, so they are
+ * drawn from cached gradient images (see GradientTextures.kt); the 2 dp edge stays a brush.
  */
 private fun Modifier.solidPanelMaterial(
     edgeColor: Color,
@@ -143,29 +145,22 @@ private fun Modifier.solidPanelMaterial(
         colors = listOf(edgeColor.copy(alpha = 0.42f), Color.Transparent),
         endY = edgeHeight,
     )
-    val ambient = Brush.radialGradient(
-        colors = listOf(
-            accent.copy(alpha = if (isDark) 0.055f else 0.032f),
-            Color.Transparent,
-        ),
-        center = Offset(
-            x = minOf(size.width * 0.16f, 120.dp.toPx()),
-            y = -minOf(size.height * 0.08f, 20.dp.toPx()),
-        ),
-        radius = maxOf(size.minDimension * 1.45f, 260.dp.toPx()),
+    val ambientColors = listOf(
+        accent.copy(alpha = if (isDark) 0.055f else 0.032f),
+        Color.Transparent,
     )
-    val depth = Brush.verticalGradient(
-        colors = listOf(
-            Color.Transparent,
-            Color.Black.copy(alpha = if (isDark) 0.045f else 0.018f),
-        ),
-        startY = size.height * 0.58f,
-        endY = size.height,
+    val ambientCenter = Offset(
+        x = minOf(size.width * 0.16f, 120.dp.toPx()),
+        y = -minOf(size.height * 0.08f, 20.dp.toPx()),
     )
+    val ambientRadius = maxOf(size.minDimension * 1.45f, 260.dp.toPx())
+    val depthAlpha = if (isDark) 0.045f else 0.018f
     onDrawWithContent {
-        drawRect(brush = ambient)
-        drawRect(brush = depth)
+        drawRadialGlow(ambientColors, ambientCenter, ambientRadius)
+        drawVerticalFade(DepthShade, size.height * 0.58f, size.height, alpha = depthAlpha)
         drawContent()
         drawRect(brush = edge, size = Size(size.width, edgeHeight))
     }
 }
+
+private val DepthShade = listOf(Color.Transparent, Color.Black)

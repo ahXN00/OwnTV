@@ -641,13 +641,25 @@ private class GlassPositionNode(
     }
 }
 
+/**
+ * The light layer of one glass surface. The large radial lens and the lower shade are drawn from cached
+ * gradient images (see GradientTextures.kt — a gradient brush over a whole panel is the single most
+ * expensive thing low-end TV GPUs draw); only the small focus sweep stays a brush.
+ */
 private data class LuminousBody(
-    val radial: Brush,
-    val darkRadial: Brush,
+    val lensPeak: Float,
+    val lensCenter: Offset,
+    val lensRadius: Float,
     val focusSweep: Brush?,
     val darkFocusSweep: Brush?,
-    val shade: Brush,
+    val shadeAlpha: Float,
+    val shadeStartY: Float,
+    val shadeEndY: Float,
 )
+
+private val WhiteLens = listOf(Color.White, Color.White.copy(alpha = 0f))
+private val BlackLens = listOf(Color.Black, Color.Black.copy(alpha = 0f))
+private val BlackShade = listOf(Color.Transparent, Color.Black)
 
 private data class LuminousRim(
     val edgeBrush: Brush,
@@ -698,16 +710,9 @@ private fun CacheDrawScope.createLuminousBody(
         size.maxDimension * 0.72f
     }
     return LuminousBody(
-        radial = Brush.radialGradient(
-            colors = listOf(Color.White.copy(alpha = peak), Color.White.copy(alpha = 0f)),
-            center = origin,
-            radius = radius,
-        ),
-        darkRadial = Brush.radialGradient(
-            colors = listOf(Color.Black.copy(alpha = peak * 0.70f), Color.Black.copy(alpha = 0f)),
-            center = origin,
-            radius = radius,
-        ),
+        lensPeak = peak,
+        lensCenter = origin,
+        lensRadius = radius,
         focusSweep = if (focused) {
             Brush.linearGradient(
                 colorStops = arrayOf(
@@ -739,11 +744,9 @@ private fun CacheDrawScope.createLuminousBody(
             null
         },
         // A restrained lower/right shade implies material thickness without blackening the whole pane.
-        shade = Brush.verticalGradient(
-            colors = listOf(Color.Transparent, Color.Black.copy(alpha = if (tonal) 0.10f else 0.07f)),
-            startY = size.height * 0.58f,
-            endY = size.height,
-        ),
+        shadeAlpha = if (tonal) 0.10f else 0.07f,
+        shadeStartY = size.height * 0.58f,
+        shadeEndY = size.height,
     )
 }
 
@@ -756,15 +759,15 @@ private fun DrawScope.drawLuminousBody(
     val dark = darkLensMix.coerceIn(0f, 1f)
     translate(glintOffset.x, glintOffset.y) {
         if (dark < 1f) {
-            drawRect(brush = body.radial, alpha = 1f - dark)
+            drawRadialGlow(WhiteLens, body.lensCenter, body.lensRadius, alpha = body.lensPeak.coerceAtMost(1f) * (1f - dark))
             body.focusSweep?.let { drawRect(brush = it, alpha = 1f - dark) }
         }
         if (dark > 0f) {
-            drawRect(brush = body.darkRadial, alpha = dark)
+            drawRadialGlow(BlackLens, body.lensCenter, body.lensRadius, alpha = (body.lensPeak * 0.70f).coerceAtMost(1f) * dark)
             body.darkFocusSweep?.let { drawRect(brush = it, alpha = dark) }
         }
     }
-    drawRect(brush = body.shade)
+    drawVerticalFade(BlackShade, body.shadeStartY, body.shadeEndY, alpha = body.shadeAlpha)
 }
 
 /** Two-edged perimeter: dark separation under a short bright glint from the light source. */

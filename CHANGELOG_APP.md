@@ -34,6 +34,7 @@
 - **💾 Backups keep Multiview and recording settings**
 - **🌐 Custom DNS actually works — and all three presets pass**
 - **🐢 Lighter on 2 GB televisions**
+- **🏎️ Scrolling is two to five times quicker on low-end TVs**
 
 ## v5.0.2 — 2026-09-21
 

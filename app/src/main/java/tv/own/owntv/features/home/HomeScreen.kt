@@ -65,7 +65,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -122,6 +121,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.compose.foundation.layout.widthIn
 import java.util.Calendar
+import tv.own.owntv.ui.theme.gradientWash
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -718,18 +718,15 @@ private fun TrendingHeroSection(
                 )
             }
             Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.horizontalGradient(
-                        0f to colors.surfaceContainerLowest.copy(alpha = 0.98f),
-                        0.58f to colors.surfaceContainerLowest.copy(alpha = 0.68f),
-                        1f to Color.Transparent,
-                    ),
+                modifier = Modifier.fillMaxSize().gradientWash(
+                    vertical = false,
+                    0f to colors.surfaceContainerLowest.copy(alpha = 0.98f),
+                    0.58f to colors.surfaceContainerLowest.copy(alpha = 0.68f),
+                    1f to Color.Transparent,
                 ),
             )
             Box(
-                modifier = Modifier.fillMaxSize().background(
-                    Brush.verticalGradient(0.58f to Color.Transparent, 1f to colors.surfaceContainerLowest),
-                ),
+                modifier = Modifier.fillMaxSize().gradientWash(vertical = true, 0.58f to Color.Transparent, 1f to colors.surfaceContainerLowest),
             )
 
             Row(
@@ -1470,13 +1467,12 @@ private fun HeroRowSection(
                         Box(
                             Modifier
                                 .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color.Transparent,
-                                            Color.Transparent,
-                                            Color.Black.copy(alpha = 0.86f),
-                                        ),
+                                .gradientWash(
+                                    vertical = true,
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.86f),
                                     ),
                                 ),
                         )

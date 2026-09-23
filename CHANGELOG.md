@@ -117,6 +117,14 @@ redrawn. On a 2 GB TV the preview pane plays at most 720p (full quality once you
 category you browsed are kept in their own small file instead of the settings file. With Animations
 off, the equaliser, the live dot and the channel-number cursor stand still.
 
+#### 🏎️ Scrolling is two to five times quicker on low-end TVs
+
+The soft light and shade on every panel, the Home and film-page washes and the player's top and bottom
+shading were redrawn from scratch on every frame, which low-end TV graphics chips are very slow at. Each
+is now drawn once and reused — it looks exactly the same. On a 2 GB TCL, moving through Live TV went
+from about 180 ms per step to about 85 ms, Home from about 200 ms to under 40 ms, and Settings from
+about 130 ms to under 50 ms, with Glass Effect on or off.
+
 ## v5.0.2 — 2026-09-21
 
 ### 🩹 Fixes

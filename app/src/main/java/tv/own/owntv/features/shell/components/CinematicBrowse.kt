@@ -28,12 +28,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.alpha
 import kotlinx.coroutines.delay
 import tv.own.owntv.ui.theme.animationsOn
+import tv.own.owntv.ui.theme.gradientWash
 import tv.own.owntv.ui.theme.ownTvTween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -103,26 +103,24 @@ fun CinematicBrowse(
         }
         // Left wash — keeps the rail and the detail text legible over any artwork.
         Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to wash.copy(alpha = 0.96f),
-                    0.34f to wash.copy(alpha = 0.86f),
-                    0.66f to wash.copy(alpha = 0.30f),
-                    1f to wash.copy(alpha = 0.10f),
-                ),
+            Modifier.fillMaxSize().gradientWash(
+                vertical = false,
+                0f to wash.copy(alpha = 0.96f),
+                0.34f to wash.copy(alpha = 0.86f),
+                0.66f to wash.copy(alpha = 0.30f),
+                1f to wash.copy(alpha = 0.10f),
             ),
         )
         // Vertical wash — dark at the very top for the shell's top bar, opening up across the
         // artwork, then closing down hard so the poster grid has a settled floor to sit on.
         Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0f to wash.copy(alpha = 0.55f),
-                    0.26f to wash.copy(alpha = 0.10f),
-                    0.58f to wash.copy(alpha = 0.55f),
-                    0.82f to wash.copy(alpha = 0.94f),
-                    1f to wash.copy(alpha = 0.98f),
-                ),
+            Modifier.fillMaxSize().gradientWash(
+                vertical = true,
+                0f to wash.copy(alpha = 0.55f),
+                0.26f to wash.copy(alpha = 0.10f),
+                0.58f to wash.copy(alpha = 0.55f),
+                0.82f to wash.copy(alpha = 0.94f),
+                1f to wash.copy(alpha = 0.98f),
             ),
         )
         content()

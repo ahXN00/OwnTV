@@ -11,17 +11,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import tv.own.owntv.ui.theme.LocalGlass
 import tv.own.owntv.ui.theme.OwnTVTheme
+import tv.own.owntv.ui.theme.drawRadialGlow
 
 /**
  * Setup-wizard-style radiance for the solid shell. It is a single lightweight Canvas overlay: no
- * blur, bitmap, or per-card work. Glass mode already gets depth from its wallpaper/frost and skips
- * this layer entirely.
+ * blur or per-card work; the glow itself is one small cached gradient image. Glass mode already gets
+ * depth from its wallpaper/frost and skips this layer entirely.
  */
 @Composable
 fun SolidAmbientBackdrop(
@@ -59,18 +59,16 @@ fun SolidAmbientBackdrop(
     Canvas(modifier = modifier) {
         val center = Offset(size.width * 0.54f, size.height * 0.45f)
         val glowRadius = size.minDimension * 0.46f
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    primary.copy(alpha = 0.14f),
-                    primary.copy(alpha = 0.052f),
-                    Color.Transparent,
-                ),
-                center = center,
-                radius = glowRadius,
+        // A cached gradient image, not a brush: a screen-sized gradient is the costliest draw on
+        // low-end TV GPUs, and the pulse below redraws this every frame (see GradientTextures.kt).
+        drawRadialGlow(
+            colors = listOf(
+                primary.copy(alpha = 0.14f),
+                primary.copy(alpha = 0.052f),
+                Color.Transparent,
             ),
-            radius = glowRadius,
             center = center,
+            radius = glowRadius,
         )
         if (pulseEnabled) {
             drawCircle(
