@@ -168,9 +168,9 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 initial = src,
                 initialAutoRefresh = playlistAutoRefresh[src.id] ?: PlaylistRefresh.OFF,
                 initialIsDefault = src.id == defaultId,
-                onStartXtream = { n, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
+                onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
                     vm.updateSource(
-                        src.id, n, server, u, p, ua, epg, autoRefresh, isDefault,
+                        src.id, n, server, u, p, ua, epg, autoRefresh, isDefault, httpReferer = ref,
                         syncLive = live != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         syncMovies = movies != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         syncSeries = series != tv.own.owntv.core.sync.SyncScopeChoice.Off,
@@ -178,10 +178,10 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     editingSource = null
                 },
-                onStartM3u = { n, url, ua, epg, autoRefresh, isDefault -> vm.updateSource(src.id, n, url, "", "", ua, epg, autoRefresh, isDefault); editingSource = null },
-                onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, autoRefresh, isDefault, live, movies, series ->
+                onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.updateSource(src.id, n, url, "", "", ua, epg, autoRefresh, isDefault, httpReferer = ref); editingSource = null },
+                onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series ->
                     vm.updateSource(
-                        src.id, n, url, "", "", ua, "", autoRefresh, isDefault, mac = mac,
+                        src.id, n, url, "", "", ua, "", autoRefresh, isDefault, mac = mac, httpReferer = ref,
                         stalkerSerialNumber = serialNumber, stalkerDeviceId = deviceId,
                         stalkerDeviceId2 = deviceId2, stalkerSignature = signature,
                         syncLive = live != tv.own.owntv.core.sync.SyncScopeChoice.Off,
@@ -213,14 +213,14 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         modifier = Modifier,
                     )
                     AddMode.MANUAL -> AddSourceScreen(
-                        onStartXtream = { n, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
-                            vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls)
+                        onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
+                            vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, httpReferer = ref)
                         },
-                        onStartM3u = { n, url, ua, epg, autoRefresh, isDefault -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault) },
-                        onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, autoRefresh, isDefault, live, movies, series ->
+                        onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault, httpReferer = ref) },
+                        onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series ->
                             vm.addStalker(
                                 n.ifBlank { defaultPortalName }, url, mac, serialNumber, deviceId,
-                                deviceId2, signature, ua, autoRefresh, isDefault, live, movies, series,
+                                deviceId2, signature, ua, autoRefresh, isDefault, live, movies, series, httpReferer = ref,
                             )
                         },
                         // Submissions from the Remote screen land here pre-filled (type + fields).

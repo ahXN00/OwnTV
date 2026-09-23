@@ -11,8 +11,18 @@
 
 ## Unreleased
 
+### ✨ New features
+
+- **🎚️ Four more settings per playlist**
+- **🔗 Referer for a playlist that needs one**
+- **🗣️ The player remembers your audio and subtitle language**
+
 ### 🩹 Fixes
 
+- **🧰 Player memory moved into the app's database**
+- **⏱️ "Give up on a channel after" shows plain seconds**
+- **🎬 Catch-up in an external player opens like it does inside the app**
+- **🌐 Older language codes match**
 - **🔐 Restoring a backup from another device keeps this TV's picture and sound setup**
 - **👥 A restore never hands one person's data to another profile**
 - **🧱 One bad value no longer stops a restore**

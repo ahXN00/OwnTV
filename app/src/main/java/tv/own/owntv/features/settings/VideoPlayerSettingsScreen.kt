@@ -119,6 +119,7 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_live_engine", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_live_tv_player, R.string.settings_live_player_description),
     VideoQuickRef("vp_live_engine_sources", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_live_engine_per_playlist, R.string.settings_live_engine_per_playlist_description),
     VideoQuickRef("vp_vod_engine", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_movies_series_player, R.string.settings_movies_player_description),
+    VideoQuickRef("vp_vod_engine_sources", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_vod_engine_per_playlist, R.string.settings_vod_engine_per_playlist_description),
     VideoQuickRef("vp_reset_pins", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_reset_player_choices, R.string.settings_reset_player_choices_description),
     VideoQuickRef("vp_external", SECTION_ENGINE, OwnTVIcon.PLAY, R.string.settings_external_player, R.string.settings_external_player_row_description),
     VideoQuickRef("vp_zoom", SECTION_ENGINE, OwnTVIcon.ASPECT, R.string.settings_default_zoom, R.string.settings_default_zoom_description),
@@ -131,6 +132,7 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_latency_sources", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_live_latency_per_playlist, R.string.settings_live_latency_per_playlist_description),
     VideoQuickRef("vp_preroll", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_live_preroll, R.string.settings_live_preroll_description),
     VideoQuickRef("vp_tune_timeout", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_live_tune_timeout, R.string.settings_live_tune_timeout_description),
+    VideoQuickRef("vp_tune_timeout_sources", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_live_tune_timeout_per_playlist, R.string.settings_live_tune_timeout_per_playlist_description),
     VideoQuickRef("vp_preroll_sources", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_live_preroll_per_playlist, R.string.settings_live_preroll_per_playlist_description),
     VideoQuickRef("vp_channel_numbers", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_channel_numbers, R.string.settings_channel_numbers_description),
     VideoQuickRef("vp_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_default_volume, R.string.settings_default_volume_description),
@@ -226,6 +228,11 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
             val engine by vm.vodEnginePreference.collectAsStateWithLifecycle()
             link(engineLabel(engine), engine != EnginePreference.MPV_FIRST)
         }
+        "vp_vod_engine_sources" -> {
+            val sources by vm.sources.collectAsStateWithLifecycle()
+            val count = sources.count { it.vodEnginePreference != null }
+            link(overrides(count), count > 0)
+        }
         "vp_reset_pins" -> {
             val pins by vm.vodEnginePinCount.collectAsStateWithLifecycle()
             link(saved(pins), pins > 0)
@@ -281,7 +288,12 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
         }
         "vp_tune_timeout" -> {
             val secs by vm.liveTuneTimeoutSecs.collectAsStateWithLifecycle()
-            link(if (secs <= 0) stringResource(R.string.common_never) else stringResource(R.string.settings_video_seconds, secs), secs > 0)
+            link(if (secs <= 0) stringResource(R.string.common_never) else stringResource(R.string.settings_live_buffer_seconds, secs), secs > 0)
+        }
+        "vp_tune_timeout_sources" -> {
+            val sources by vm.sources.collectAsStateWithLifecycle()
+            val count = sources.count { it.liveTuneTimeoutSecs != null }
+            link(overrides(count), count > 0)
         }
         "vp_preroll_sources" -> {
             val sources by vm.sources.collectAsStateWithLifecycle()
@@ -487,6 +499,8 @@ fun VideoPlayerSettingsScreen(
     var prerollSource by remember { mutableStateOf<tv.own.owntv.core.database.entity.SourceEntity?>(null) }
     // Same, for the per-playlist Live TV engine and Live latency overrides.
     var engineSource by remember { mutableStateOf<tv.own.owntv.core.database.entity.SourceEntity?>(null) }
+    var vodEngineSource by remember { mutableStateOf<tv.own.owntv.core.database.entity.SourceEntity?>(null) }
+    var tuneTimeoutSource by remember { mutableStateOf<tv.own.owntv.core.database.entity.SourceEntity?>(null) }
     var latencySource by remember { mutableStateOf<tv.own.owntv.core.database.entity.SourceEntity?>(null) }
     // Low-latency acknowledgement popup (shown for "Low latency" and below-Balanced custom values).
     // First lambda runs on "I understand", second on "Cancel".
@@ -566,6 +580,8 @@ fun VideoPlayerSettingsScreen(
                 // The per-playlist value picker belongs to the playlist row that opened it.
                 Dialog.LIVE_PREROLL_SOURCE -> Dialog.LIVE_PREROLL_SOURCES
                 Dialog.LIVE_ENGINE_SOURCE -> Dialog.LIVE_ENGINE_SOURCES
+                Dialog.VOD_ENGINE_SOURCE -> Dialog.VOD_ENGINE_SOURCES
+                Dialog.LIVE_TUNE_TIMEOUT_SOURCE -> Dialog.LIVE_TUNE_TIMEOUT_SOURCES
                 Dialog.LIVE_LATENCY_SOURCE, Dialog.LIVE_LATENCY_CUSTOM_SOURCE -> Dialog.LIVE_LATENCY_SOURCES
                 else -> dialog
             }
@@ -633,8 +649,8 @@ fun VideoPlayerSettingsScreen(
         OwnTVIcon.SUBTITLE, OwnTVIcon.SKIP_NEXT, OwnTVIcon.INFO,
     )
     val sectionCounts = listOf(
-        13 + if (perPlaylist) 1 else 0,
-        5 + (if (livePreview) 1 else 0) + (if (perPlaylist) 2 else 0),
+        13 + if (perPlaylist) 2 else 0,
+        5 + (if (livePreview) 1 else 0) + (if (perPlaylist) 3 else 0),
         6, 2, 3, 2,
     )
     var sheetFocused by remember { mutableStateOf(false) }
@@ -836,6 +852,22 @@ fun VideoPlayerSettingsScreen(
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.VOD_ENGINE)),
             onClick = { savedScroll = scrollState.value; dialog = Dialog.VOD_ENGINE },
         )
+        if (sources.isNotEmpty()) {
+            Row2(
+                quickKey = "vp_vod_engine_sources",
+                icon = OwnTVIcon.PLAY,
+                title = stringResource(R.string.settings_vod_engine_per_playlist),
+                desc = stringResource(R.string.settings_vod_engine_per_playlist_description),
+                chip = sources.count { it.vodEnginePreference != null }.let { count ->
+                    if (count == 0) stringResource(R.string.common_off)
+                    else pluralStringResource(R.plurals.settings_live_preroll_overrides, count, count)
+                },
+                primaryChip = sources.any { it.vodEnginePreference != null },
+                chevron = true,
+                modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.VOD_ENGINE_SOURCES)),
+                onClick = { savedScroll = scrollState.value; dialog = Dialog.VOD_ENGINE_SOURCES },
+            )
+        }
         Row2(
             quickKey = "vp_reset_pins",
             icon = OwnTVIcon.PLAY, title = stringResource(R.string.settings_reset_player_choices),
@@ -1066,13 +1098,29 @@ fun VideoPlayerSettingsScreen(
             chip = if (liveTuneTimeout <= 0) {
                 stringResource(R.string.common_never)
             } else {
-                stringResource(R.string.settings_video_seconds, liveTuneTimeout)
+                stringResource(R.string.settings_live_buffer_seconds, liveTuneTimeout)
             },
             primaryChip = liveTuneTimeout > 0,
             chevron = true,
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.LIVE_TUNE_TIMEOUT)),
             onClick = { savedScroll = scrollState.value; dialog = Dialog.LIVE_TUNE_TIMEOUT },
         )
+        if (sources.isNotEmpty()) {
+            Row2(
+                quickKey = "vp_tune_timeout_sources",
+                icon = OwnTVIcon.LIVE_TV,
+                title = stringResource(R.string.settings_live_tune_timeout_per_playlist),
+                desc = stringResource(R.string.settings_live_tune_timeout_per_playlist_description),
+                chip = sources.count { it.liveTuneTimeoutSecs != null }.let { count ->
+                    if (count == 0) stringResource(R.string.common_off)
+                    else pluralStringResource(R.plurals.settings_live_preroll_overrides, count, count)
+                },
+                primaryChip = sources.any { it.liveTuneTimeoutSecs != null },
+                chevron = true,
+                modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.LIVE_TUNE_TIMEOUT_SOURCES)),
+                onClick = { savedScroll = scrollState.value; dialog = Dialog.LIVE_TUNE_TIMEOUT_SOURCES },
+            )
+        }
         if (sources.isNotEmpty()) {
             Row2(
                 quickKey = "vp_preroll_sources",
@@ -1271,7 +1319,7 @@ fun VideoPlayerSettingsScreen(
         Dialog.LIVE_TUNE_TIMEOUT -> PickerDialog(
             title = stringResource(R.string.settings_live_tune_timeout),
             options = tv.own.owntv.player.LiveLadder.BUDGET_CHOICES_SECS.map {
-                it.toString() to if (it <= 0) stringResource(R.string.common_never) else stringResource(R.string.settings_video_seconds, it)
+                it.toString() to if (it <= 0) stringResource(R.string.common_never) else stringResource(R.string.settings_live_buffer_seconds, it)
             },
             selected = liveTuneTimeout.toString(),
             onSelect = { vm.setLiveTuneTimeoutSecs(it.toIntOrNull() ?: 0); dialog = Dialog.NONE },
@@ -1324,6 +1372,65 @@ fun VideoPlayerSettingsScreen(
             // shown. Closing both levels stranded the user on the row two steps above what they opened,
             // and made configuring a second playlist a fresh trip from the top.
             onDismiss = { dialog = Dialog.LIVE_ENGINE_SOURCES },
+        )
+        // --- per-playlist Movies & Series engine: pick the playlist, then its value ---
+        Dialog.VOD_ENGINE_SOURCES -> PickerDialog(
+            title = stringResource(R.string.settings_live_preroll_playlist_picker),
+            options = sources.map { src ->
+                val value = src.vodEnginePreference
+                    ?.let { name -> EnginePreference.entries.firstOrNull { it.name == name } }
+                    ?.let { engineLabel(it) }
+                    ?: stringResource(R.string.settings_live_preroll_follow)
+                src.id.toString() to "${src.name}  ·  $value"
+            },
+            selected = vodEngineSource?.id?.toString() ?: "",
+            onSelect = { id ->
+                vodEngineSource = sources.firstOrNull { it.id.toString() == id }
+                dialog = if (vodEngineSource != null) Dialog.VOD_ENGINE_SOURCE else Dialog.NONE
+            },
+            onDismiss = { vodEngineSource = null; dialog = Dialog.NONE },
+        )
+        Dialog.VOD_ENGINE_SOURCE -> PickerDialog(
+            title = vodEngineSource?.name ?: stringResource(R.string.settings_movies_series_player),
+            options = listOf(FOLLOW_GLOBAL to stringResource(R.string.settings_live_preroll_follow)) +
+                EnginePreference.entries.map { it.name to engineLabel(it) },
+            selected = vodEngineSource?.vodEnginePreference ?: FOLLOW_GLOBAL,
+            onSelect = { value ->
+                vodEngineSource?.let { vm.setSourceVodEngine(it.id, value.takeIf { v -> v != FOLLOW_GLOBAL }) }
+                dialog = Dialog.VOD_ENGINE_SOURCES
+            },
+            onDismiss = { dialog = Dialog.VOD_ENGINE_SOURCES },
+        )
+        // --- per-playlist "Give up after": pick the playlist, then its value ---
+        Dialog.LIVE_TUNE_TIMEOUT_SOURCES -> PickerDialog(
+            title = stringResource(R.string.settings_live_preroll_playlist_picker),
+            options = sources.map { src ->
+                val value = when (val secs = src.liveTuneTimeoutSecs) {
+                    null -> stringResource(R.string.settings_live_preroll_follow)
+                    0 -> stringResource(R.string.common_never)
+                    else -> stringResource(R.string.settings_live_buffer_seconds, secs)
+                }
+                src.id.toString() to "${src.name}  ·  $value"
+            },
+            selected = tuneTimeoutSource?.id?.toString() ?: "",
+            onSelect = { id ->
+                tuneTimeoutSource = sources.firstOrNull { it.id.toString() == id }
+                dialog = if (tuneTimeoutSource != null) Dialog.LIVE_TUNE_TIMEOUT_SOURCE else Dialog.NONE
+            },
+            onDismiss = { tuneTimeoutSource = null; dialog = Dialog.NONE },
+        )
+        Dialog.LIVE_TUNE_TIMEOUT_SOURCE -> PickerDialog(
+            title = tuneTimeoutSource?.name ?: stringResource(R.string.settings_live_tune_timeout),
+            options = listOf(FOLLOW_GLOBAL to stringResource(R.string.settings_live_preroll_follow)) +
+                tv.own.owntv.player.LiveLadder.BUDGET_CHOICES_SECS.map {
+                    it.toString() to if (it <= 0) stringResource(R.string.common_never) else stringResource(R.string.settings_live_buffer_seconds, it)
+                },
+            selected = tuneTimeoutSource?.liveTuneTimeoutSecs?.toString() ?: FOLLOW_GLOBAL,
+            onSelect = { value ->
+                tuneTimeoutSource?.let { vm.setSourceTuneTimeout(it.id, value.toIntOrNull()) }
+                dialog = Dialog.LIVE_TUNE_TIMEOUT_SOURCES
+            },
+            onDismiss = { dialog = Dialog.LIVE_TUNE_TIMEOUT_SOURCES },
         )
         // --- per-playlist Live latency: pick the playlist, then its value (Custom opens the stepper) ---
         Dialog.LIVE_LATENCY_SOURCES -> PickerDialog(
@@ -1590,6 +1697,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     "vp_live_engine" -> Dialog.LIVE_ENGINE
     "vp_live_engine_sources" -> Dialog.LIVE_ENGINE_SOURCES
     "vp_vod_engine" -> Dialog.VOD_ENGINE
+    "vp_vod_engine_sources" -> Dialog.VOD_ENGINE_SOURCES
     "vp_reset_pins" -> Dialog.RESET_PINS
     "vp_external" -> Dialog.EXTERNAL_PLAYER
     "vp_zoom" -> Dialog.ZOOM
@@ -1601,6 +1709,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     "vp_latency_sources" -> Dialog.LIVE_LATENCY_SOURCES
     "vp_preroll" -> Dialog.LIVE_PREROLL
     "vp_tune_timeout" -> Dialog.LIVE_TUNE_TIMEOUT
+    "vp_tune_timeout_sources" -> Dialog.LIVE_TUNE_TIMEOUT_SOURCES
     "vp_preroll_sources" -> Dialog.LIVE_PREROLL_SOURCES
     "vp_volume" -> Dialog.VOLUME
     "vp_reset_volume" -> Dialog.RESET_SAVED_VOLUME
@@ -1614,7 +1723,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     else -> null
 }
 
-private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, AFR_WARNING, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
+private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, AFR_WARNING, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
 
 /**
  * Label for one engine preference — "ExoPlayer, then mpv", "mpv only", and so on.

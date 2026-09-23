@@ -178,7 +178,7 @@ class EpgViewModel(
                     channel = channel,
                     programme = programme,
                     source = source,
-                    timeZone = settings.resolveCatchupTimeZone(),
+                    timeZone = settings.resolveCatchupTimeZone(source),
                     xtream = xtream,
                 )
                 return@launch
@@ -556,13 +556,13 @@ class EpgViewModel(
                 _matchSummary.value = EpgMatchSummary.CatchupUnavailable
                 return@launch
             }
-            val sourceUa = withContext(kotlinx.coroutines.Dispatchers.IO) { sourceDao.getById(channel.sourceId)?.userAgent }
+            val source = withContext(kotlinx.coroutines.Dispatchers.IO) { sourceDao.getById(channel.sourceId) }
             externalPlayerLauncher.launch(
                 url = url,
                 title = channel.name,
                 subtitle = programme.title,
-                userAgent = sourceUa,
-                httpHeaders = channel.httpHeaders,
+                userAgent = source?.userAgent,
+                httpHeaders = tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(channel.httpHeaders, source),
             )
         }
     }
@@ -579,7 +579,7 @@ class EpgViewModel(
                     .getOrNull()
             }
         }
-        return CatchupUrl.forSource(channel, programme, source, settings.resolveCatchupTimeZone(), xtream)
+        return CatchupUrl.forSource(channel, programme, source, settings.resolveCatchupTimeZone(source), xtream)
     }
 
     /** True when a programme can be played from the archive: a catch-up channel, already started, and

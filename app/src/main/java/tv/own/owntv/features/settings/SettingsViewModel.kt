@@ -828,6 +828,21 @@ class SettingsViewModel(
         viewModelScope.launch { sourceDao.updateLiveEnginePreference(sourceId, preference) }
     }
 
+    /** Per-playlist Movies & Series engine override; `null` = follow the global setting. */
+    fun setSourceVodEngine(sourceId: Long, preference: String?) {
+        viewModelScope.launch { sourceDao.updateVodEnginePreference(sourceId, preference) }
+    }
+
+    /** Per-playlist "Give up after" override in seconds (0 = never); `null` = follow the global setting. */
+    fun setSourceTuneTimeout(sourceId: Long, secs: Int?) {
+        viewModelScope.launch { sourceDao.updateLiveTuneTimeout(sourceId, secs) }
+    }
+
+    /** Per-playlist catch-up time zone override; `null` mode = follow the global setting. */
+    fun setSourceCatchupTimezone(sourceId: Long, mode: String?, offsetMin: Int?) {
+        viewModelScope.launch { sourceDao.updateCatchupTimezone(sourceId, mode, offsetMin) }
+    }
+
     /** Per-playlist Live latency override; `null` mode = follow the global setting. */
     fun setSourceLiveLatency(sourceId: Long, mode: String?, customSecs: Int) {
         viewModelScope.launch { sourceDao.updateLiveLatency(sourceId, mode, customSecs) }
@@ -935,6 +950,7 @@ class SettingsViewModel(
         syncMovies: Boolean = true,
         syncSeries: Boolean = true,
         preferHls: Boolean = false,
+        httpReferer: String = "",
     ) {
         viewModelScope.launch {
             val existing = sourceDao.getById(id) ?: return@launch
@@ -957,6 +973,7 @@ class SettingsViewModel(
                 stalkerDeviceId2 = stalkerDeviceId2.trim().takeIf { it.isNotBlank() },
                 stalkerSignature = stalkerSignature.trim().takeIf { it.isNotBlank() },
                 userAgent = userAgent.trim().takeIf { it.isNotBlank() },
+                httpReferer = httpReferer.trim().takeIf { it.isNotEmpty() },
                 epgUrl = epgUrl.trim().takeIf { it.isNotBlank() },
                 syncLive = syncLive,
                 syncMovies = syncMovies,
@@ -1053,12 +1070,13 @@ class SettingsViewModel(
         series: SyncScopeChoice = SyncScopeChoice.Now,
         isDefault: Boolean = false,
         preferHls: Boolean = false,
+        httpReferer: String = "",
     ) = runImport {
         importer.xtream(
             name = name, server = server, username = user, password = pass,
             userAgent = userAgent, epgUrl = epgUrl, autoRefresh = autoRefresh,
             live = live, movies = movies, series = series,
-            preferHls = preferHls, makeDefault = isDefault,
+            preferHls = preferHls, makeDefault = isDefault, httpReferer = httpReferer,
         )
     }
 
@@ -1159,17 +1177,19 @@ class SettingsViewModel(
         live: SyncScopeChoice = SyncScopeChoice.Now,
         movies: SyncScopeChoice = SyncScopeChoice.Later,
         series: SyncScopeChoice = SyncScopeChoice.Later,
+        httpReferer: String = "",
     ) = runImport {
         importer.stalker(
             name = name, portalUrl = portalUrl, mac = mac,
             serialNumber = serialNumber, deviceId = deviceId, deviceId2 = deviceId2,
             signature = signature, userAgent = userAgent, autoRefresh = autoRefresh,
             live = live, movies = movies, series = series, makeDefault = isDefault,
+            httpReferer = httpReferer,
         )
     }
 
-    fun addM3u(name: String, url: String, userAgent: String = "", epgUrl: String = "", autoRefresh: PlaylistRefresh = PlaylistRefresh.OFF, isDefault: Boolean = false) = runImport {
-        importer.m3u(name, url, userAgent, epgUrl, autoRefresh, makeDefault = isDefault)
+    fun addM3u(name: String, url: String, userAgent: String = "", epgUrl: String = "", autoRefresh: PlaylistRefresh = PlaylistRefresh.OFF, isDefault: Boolean = false, httpReferer: String = "") = runImport {
+        importer.m3u(name, url, userAgent, epgUrl, autoRefresh, makeDefault = isDefault, httpReferer = httpReferer)
     }
 
     /**

@@ -284,10 +284,13 @@ class HomeViewModel(
      * a Referer had a home screen that 403'd on every preview while the item itself played fine.
      */
     suspend fun startPreview(hero: HeroItem) {
-        val ua = withContext(Dispatchers.IO) {
-            runCatching { sourceDao.getById(hero.sourceId)?.userAgent }.getOrNull()
+        val source = withContext(Dispatchers.IO) {
+            runCatching { sourceDao.getById(hero.sourceId) }.getOrNull()
         }
-        heroPreviewEngine.play(hero.streamUrl, hero.seekToMs, ua, hero.httpHeaders)
+        heroPreviewEngine.play(
+            hero.streamUrl, hero.seekToMs, source?.userAgent,
+            tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(hero.httpHeaders, source),
+        )
     }
 
     /**

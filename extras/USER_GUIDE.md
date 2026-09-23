@@ -107,6 +107,8 @@ and media keys to 25 actions. D-pad, Back, OK, volume, Home and power stay prote
 **Where:** Settings → Manage sources → Add source
 First choose **Remote** or **Manual** (below), then fill the form: **Xtream** (server + user +
 password), **M3U** (URL or a local file), or **Stalker/Ministra** (portal URL + MAC).
+Under **User-Agent** there is an optional **Referer** — leave it empty unless your provider asks
+for one; it is then sent with every stream of that playlist.
 
 ### 📱 Remote — fill the form on your phone
 **Where:** Settings → Manage sources → Add source → **Remote**
@@ -175,11 +177,13 @@ If a channel stutters, shows artifacts or won't open, one press flips it to the 
 **Where:** Settings → Video player → **Live TV player**
 **ExoPlayer, then mpv** (default) · **mpv, then ExoPlayer** · **ExoPlayer only** · **mpv only**. The
 "only" choices switch off the automatic handover, which costs a few seconds of black each time it
-happens. **Live TV player per playlist** right below applies a different choice to one provider.
+happens. **Live TV player per playlist** right below applies a different choice to one provider;
+**Movies & Series player per playlist** does the same for films and episodes.
 
 > **A channel that won't play is worked through every combination** — up to four: each engine on each
 > stream format, each tried once. Then it stops and tells you, rather than spinning for ever.
-> **Settings → Video player → Give up on a channel after** sets how long that may take (30 s default).
+> **Settings → Video player → Give up on a channel after** sets how long that may take (30 s default);
+> **Give up after, per playlist** gives one provider its own time.
 
 ### ⏳ "Too many connections"
 The spinner stays up with a live countdown and OwnTV retries by itself. Don't press Retry — just
@@ -449,7 +453,8 @@ Nudge earlier or later in 0.1 s and 0.5 s steps.
 
 ### 🗣️ Preferred languages
 **Where:** Settings → Video player → **Preferred audio / subtitle language**
-Picks the right track automatically when a stream carries several.
+Picks the right track automatically when a stream carries several. A track or subtitle you pick
+yourself is **remembered** for that channel, film or series (subtitles off too), per profile.
 
 ### 🎚️ A/V sync
 **Where:** player → Audio → **A/V sync**
@@ -539,7 +544,8 @@ right there in the list.
 | **Multiview** | Video player | Watch up to four channels at once. Off by default; also sets the tile ceiling |
 | **Live latency** | Video player → Live TV | How close to the live edge to play. Lower = less delay, more stutter risk |
 | **Pre-buffer live streams** | Video player → Live TV | Collect a few seconds first on a flaky provider |
-| **Give up on a channel after** | Video player → Live TV | 30 s default — bounds how long a dead channel can spin |
+| **Give up on a channel after** | Video player → Live TV | 30 s default — bounds how long a dead channel can spin (+ per playlist) |
+| **Catch-up time zone per playlist** | Sources & guide | One provider's archive on a different clock |
 | **Hardware decoder** | Video player | On for smooth 4K; off only to diagnose |
 | **HDR** | Video player | Use HDR output when the video and TV support it |
 | **Auto frame rate** | Video player | Match the TV's refresh rate to the content. Off by default |

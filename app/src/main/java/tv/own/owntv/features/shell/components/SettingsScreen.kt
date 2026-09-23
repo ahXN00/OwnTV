@@ -224,6 +224,10 @@ fun SettingsScreen(
     var showFocusHighlight by remember { mutableStateOf(false) }
     var showUpdate by remember { mutableStateOf(false) }
     var showCatchupTime by remember { mutableStateOf(false) }
+    // Per-playlist catch-up time zone: the playlist list, then the value picker for [catchupSource].
+    var showCatchupSources by remember { mutableStateOf(false) }
+    var showCatchupSourceValue by remember { mutableStateOf(false) }
+    var catchupSource by remember { mutableStateOf<tv.own.owntv.core.database.entity.SourceEntity?>(null) }
     var showEpgOffset by remember { mutableStateOf(false) }
     var showAnimations by remember { mutableStateOf(false) }
     var showVodLayout by remember { mutableStateOf(false) }
@@ -262,6 +266,7 @@ fun SettingsScreen(
     val fontCustomizationRowFocus = remember { FocusRequester() }
     val updateRowFocus = remember { FocusRequester() }
     val catchupRowFocus = remember { FocusRequester() }
+    val catchupSourcesRowFocus = remember { FocusRequester() }
     val epgOffsetRowFocus = remember { FocusRequester() }
     val animationsRowFocus = remember { FocusRequester() }
     val vodLayoutRowFocus = remember { FocusRequester() }
@@ -284,13 +289,13 @@ fun SettingsScreen(
         savedIndex = listState.firstVisibleItemIndex
         savedOffset = listState.firstVisibleItemScrollOffset
     }
-    val anyDialogOpen = showZoom || showPopupSize || showFontCustomization || showTheme || showAccent || showUpdate || showCatchupTime || showEpgOffset || showAnimations || showStartup || showStartupChannelPicker || showAfrWarning || showLivePreviewPanelWarning || showBgImageChooser || showBgPicker || showAmbientGlow || showBrowsing || showFocusHighlight || showBgRemote || showVodLayout
+    val anyDialogOpen = showZoom || showPopupSize || showFontCustomization || showTheme || showAccent || showUpdate || showCatchupTime || showCatchupSources || showCatchupSourceValue || showEpgOffset || showAnimations || showStartup || showStartupChannelPicker || showAfrWarning || showLivePreviewPanelWarning || showBgImageChooser || showBgPicker || showAmbientGlow || showBrowsing || showFocusHighlight || showBgRemote || showVodLayout
     // When a dialog closes, restore focus to the row that opened it. NOTE: this restore crosses
     // INTO the root focus group from outside (the dialog), but onEnter does NOT fire for programmatic
     // requestsFocus (only for directional entry) — so dialogReturn must be cleared HERE, not in onEnter.
     // If it's left set, the next directional entry (e.g. sidebar→here) would re-route to a stale row.
     var dialogReturn by remember { mutableStateOf<FocusRequester?>(null) }
-    LaunchedEffect(showZoom, showPopupSize, showFontCustomization, showTheme, showAccent, showUpdate, showCatchupTime, showEpgOffset, showAnimations, showStartup, showStartupChannelPicker, showAfrWarning, showLivePreviewPanelWarning, showBgImageChooser, showBgPicker, showAmbientGlow, showBrowsing, showFocusHighlight, showBgRemote, showVodLayout) {
+    LaunchedEffect(showZoom, showPopupSize, showFontCustomization, showTheme, showAccent, showUpdate, showCatchupTime, showCatchupSources, showCatchupSourceValue, showEpgOffset, showAnimations, showStartup, showStartupChannelPicker, showAfrWarning, showLivePreviewPanelWarning, showBgImageChooser, showBgPicker, showAmbientGlow, showBrowsing, showFocusHighlight, showBgRemote, showVodLayout) {
         if (!anyDialogOpen) {
             // Focus back on the opener row, with the scroll offset held still the whole way — see
             // [restoreAfterDialogClose] for why doing those two in sequence made the highlight travel.
@@ -317,6 +322,8 @@ fun SettingsScreen(
     val epgOffset by settingsVm.epgOffsetMinutes.collectAsStateWithLifecycle()
     val catchupChannels by settingsVm.catchupChannelCount.collectAsStateWithLifecycle()
     val catchupPlayer by settingsVm.catchupPlayer.collectAsStateWithLifecycle()
+    val playlistSources by settingsVm.sources.collectAsStateWithLifecycle()
+    val catchupOverrides = playlistSources.count { it.catchupTimezone != null }
     val accent by settingsVm.accent.collectAsStateWithLifecycle()
     val customAccent by settingsVm.customAccent.collectAsStateWithLifecycle()
     val focusHighlight by settingsVm.focusHighlight.collectAsStateWithLifecycle()
@@ -547,6 +554,16 @@ fun SettingsScreen(
             focus = catchupRowFocus,
             onClick = { saveScroll(); dialogReturn = catchupRowFocus; showCatchupTime = true },
         ),
+        if (playlistSources.isNotEmpty()) RootRow(
+            "catchup_sources", TileTone.SECONDARY, OwnTVIcon.CATCHUP,
+            title = stringResource(R.string.settings_catchup_timezone_per_playlist),
+            desc = stringResource(R.string.settings_catchup_timezone_per_playlist_description),
+            chip = if (catchupOverrides == 0) stringResource(R.string.common_off)
+                else pluralStringResource(R.plurals.settings_live_preroll_overrides, catchupOverrides, catchupOverrides),
+            chipTone = if (catchupOverrides > 0) TileTone.PRIMARY else TileTone.SECONDARY,
+            focus = catchupSourcesRowFocus,
+            onClick = { saveScroll(); dialogReturn = catchupSourcesRowFocus; showCatchupSources = true },
+        ) else null,
         RootGroup("group_appearance", stringResource(R.string.settings_appearance_group), OwnTVIcon.PALETTE, stringResource(R.string.settings_group_summary_appearance)),
         RootRow(
             "theme", TileTone.PRIMARY, OwnTVIcon.THEME,
@@ -1054,6 +1071,10 @@ fun SettingsScreen(
                     SettingsRepository.CatchupTimezone.DEVICE -> stringResource(R.string.settings_device)
                     SettingsRepository.CatchupTimezone.MANUAL -> utcOffsetLabel(catchupOffset)
                 }) { saveScroll(); dialogReturn = searchFieldFocus; showCatchupTime = true },
+            if (playlistSources.isNotEmpty()) SettingsSearchEntry(stringResource(R.string.settings_group_sources), stringResource(R.string.settings_catchup_timezone_per_playlist), stringResource(R.string.settings_search_keywords_catchup), OwnTVIcon.CATCHUP, TileTone.SECONDARY,
+                chip = if (catchupOverrides == 0) stringResource(R.string.common_off)
+                    else pluralStringResource(R.plurals.settings_live_preroll_overrides, catchupOverrides, catchupOverrides),
+                chipTone = if (catchupOverrides > 0) TileTone.PRIMARY else TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showCatchupSources = true } else null,
             SettingsSearchEntry(stringResource(R.string.settings_group_playback), stringResource(R.string.settings_video_player), stringResource(R.string.settings_search_keywords_video), OwnTVIcon.VIDEO, TileTone.TERTIARY) { open(SettingsTab.VIDEO) },
             // Four screens that had no entry at all, so nothing on them could be found by name.
             SettingsSearchEntry(stringResource(R.string.settings_group_playback), stringResource(R.string.recording_settings_group), stringResource(R.string.settings_search_keywords_recording), OwnTVIcon.LIVE_TV, TileTone.TERTIARY) { open(SettingsTab.RECORDING) },
@@ -1398,6 +1419,53 @@ fun SettingsScreen(
             onSetPlayer = settingsVm::setCatchupPlayer,
             onDismiss = { showCatchupTime = false },
         ) }
+    }
+    if (showCatchupSources) {
+        tv.own.owntv.features.settings.PickerDialog(
+            title = stringResource(R.string.settings_live_preroll_playlist_picker),
+            options = playlistSources.map { src ->
+                src.id.toString() to "${src.name}  ·  ${catchupOverrideLabel(src)}"
+            },
+            selected = catchupSource?.id?.toString() ?: "",
+            onSelect = { id ->
+                catchupSource = playlistSources.firstOrNull { it.id.toString() == id }
+                showCatchupSourceValue = catchupSource != null
+                showCatchupSources = false
+            },
+            onDismiss = { catchupSource = null; showCatchupSources = false },
+        )
+    }
+    if (showCatchupSourceValue) {
+        val src = playlistSources.firstOrNull { it.id == catchupSource?.id } ?: catchupSource
+        val range = settingsVm.catchupOffsetRangeMinutes
+        tv.own.owntv.features.settings.PickerDialog(
+            title = src?.name ?: stringResource(R.string.settings_catchup_timezone_per_playlist),
+            options = listOf(
+                CATCHUP_FOLLOW to stringResource(R.string.settings_live_preroll_follow),
+                SettingsRepository.CatchupTimezone.DEVICE.name to stringResource(R.string.settings_catchup_timezone_device),
+            ) + (range.first..range.last step 60).map { "$CATCHUP_MANUAL_PREFIX$it" to utcOffsetLabel(it) },
+            selected = when (src?.catchupTimezone) {
+                null -> CATCHUP_FOLLOW
+                SettingsRepository.CatchupTimezone.MANUAL.name -> "$CATCHUP_MANUAL_PREFIX${src?.catchupOffsetMin ?: 0}"
+                else -> src?.catchupTimezone ?: CATCHUP_FOLLOW
+            },
+            onSelect = { value ->
+                src?.let {
+                    when {
+                        value == CATCHUP_FOLLOW -> settingsVm.setSourceCatchupTimezone(it.id, null, null)
+                        value.startsWith(CATCHUP_MANUAL_PREFIX) -> settingsVm.setSourceCatchupTimezone(
+                            it.id, SettingsRepository.CatchupTimezone.MANUAL.name,
+                            value.removePrefix(CATCHUP_MANUAL_PREFIX).toIntOrNull() ?: 0,
+                        )
+                        else -> settingsVm.setSourceCatchupTimezone(it.id, value, null)
+                    }
+                }
+                showCatchupSources = true
+                showCatchupSourceValue = false
+            },
+            // Back goes back one level, to the playlist list — same as the Video player overrides.
+            onDismiss = { showCatchupSources = true; showCatchupSourceValue = false },
+        )
     }
     if (showEpgOffset) {
         tv.own.owntv.ui.components.OwnTVPopup(onDismissRequest = { showEpgOffset = false }) { EpgOffsetSettingDialog(
@@ -3910,6 +3978,19 @@ private fun GlassSurfacesDialog(
     }
     }
 }
+
+/** Per-playlist catch-up picker keys: follow the global setting, or a UTC offset in minutes. */
+private const val CATCHUP_FOLLOW = ""
+private const val CATCHUP_MANUAL_PREFIX = "MANUAL:"
+
+/** A playlist's own catch-up time zone as the playlist list shows it. */
+@Composable
+private fun catchupOverrideLabel(source: tv.own.owntv.core.database.entity.SourceEntity): String =
+    when (source.catchupTimezone) {
+        null -> stringResource(R.string.settings_live_preroll_follow)
+        SettingsRepository.CatchupTimezone.MANUAL.name -> utcOffsetLabel(source.catchupOffsetMin ?: 0)
+        else -> stringResource(R.string.settings_device)
+    }
 
 /** "UTC", "UTC+05:00", "UTC-03:30" — labels a UTC offset (in minutes) for catch-up. */
 private fun utcOffsetLabel(minutes: Int): String {

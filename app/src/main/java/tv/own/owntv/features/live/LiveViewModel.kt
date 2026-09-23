@@ -79,6 +79,7 @@ import tv.own.owntv.core.model.SourceType
 import tv.own.owntv.core.parser.XtEpgEntry
 import tv.own.owntv.core.parser.XtreamClient
 import tv.own.owntv.core.repository.activeProfileSources
+import tv.own.owntv.core.settings.SourceOverrides
 import tv.own.owntv.core.settings.LiveBuffer
 import tv.own.owntv.core.settings.LiveLatency
 import tv.own.owntv.core.settings.SettingsRepository
@@ -911,7 +912,7 @@ class LiveViewModel(
             userAgent = sourceUaMap[channel.sourceId],
             prerollSecsOverride = prerollFor(channel.sourceId),
             liveBufferOverride = liveBufferFor(channel.sourceId),
-            httpHeaders = channel.httpHeaders,
+            httpHeaders = headersFor(channel),
             drmConfig = channel.drmConfig,
             manifestType = channel.manifestType,
             directSource = channel.directSource,
@@ -939,6 +940,10 @@ class LiveViewModel(
     /** The playlist a channel came from, so a caller can ask what it allows (Multiview's tile budget). */
     fun sourceOf(channel: ChannelEntity): SourceEntity? = sourceById[channel.sourceId]
 
+    /** The channel's own headers plus its playlist's Referer, unless the channel names one itself. */
+    private fun headersFor(channel: ChannelEntity): String? =
+        SourceOverrides.headersWithReferer(channel.httpHeaders, sourceById[channel.sourceId])
+
     /**
      * Tune [channel] into a Multiview tile's own engine.
      *
@@ -965,7 +970,7 @@ class LiveViewModel(
                     url, muted = muted, meta = meta, userAgent = sourceUaMap[channel.sourceId],
                     prerollSecsOverride = prerollFor(channel.sourceId),
                     liveBufferOverride = liveBufferFor(channel.sourceId),
-                    httpHeaders = channel.httpHeaders, drmConfig = channel.drmConfig,
+                    httpHeaders = headersFor(channel), drmConfig = channel.drmConfig,
                     manifestType = channel.manifestType, directSource = channel.directSource,
                 )
             }
@@ -976,7 +981,7 @@ class LiveViewModel(
             userAgent = sourceUaMap[channel.sourceId],
             prerollSecsOverride = prerollFor(channel.sourceId),
             liveBufferOverride = liveBufferFor(channel.sourceId),
-            httpHeaders = channel.httpHeaders, drmConfig = channel.drmConfig,
+            httpHeaders = headersFor(channel), drmConfig = channel.drmConfig,
             manifestType = channel.manifestType, directSource = channel.directSource,
         )
     }
@@ -1009,7 +1014,7 @@ class LiveViewModel(
                 userAgent = source.userAgent,
                 prerollSecsOverride = prerollFor(channel.sourceId),
                 liveBufferOverride = liveBufferFor(channel.sourceId),
-                httpHeaders = channel.httpHeaders,
+                httpHeaders = headersFor(channel),
                 drmConfig = channel.drmConfig,
                 manifestType = channel.manifestType,
                 directSource = channel.directSource,
@@ -1407,7 +1412,7 @@ class LiveViewModel(
                 url = url,
                 title = channel.name,
                 userAgent = source?.userAgent,
-                httpHeaders = channel.httpHeaders,
+                httpHeaders = SourceOverrides.headersWithReferer(channel.httpHeaders, source),
             )
             recordLiveHistory(channel, immediate = true)
         }
@@ -1599,7 +1604,7 @@ class LiveViewModel(
                 userAgent = sourceUaMap[channel.sourceId] ?: source?.userAgent,
                 prerollSecsOverride = prerollFor(channel.sourceId),
                 liveBufferOverride = liveBufferFor(channel.sourceId),
-                httpHeaders = channel.httpHeaders,
+                httpHeaders = headersFor(channel),
                 drmConfig = channel.drmConfig,
                 manifestType = channel.manifestType,
                 directSource = channel.directSource,
@@ -1632,7 +1637,7 @@ class LiveViewModel(
                 userAgent = source.userAgent,
                 prerollSecsOverride = prerollFor(channel.sourceId),
                 liveBufferOverride = liveBufferFor(channel.sourceId),
-                httpHeaders = channel.httpHeaders,
+                httpHeaders = headersFor(channel),
                 drmConfig = channel.drmConfig,
                 manifestType = channel.manifestType,
                 directSource = channel.directSource,
@@ -1748,14 +1753,19 @@ class LiveViewModel(
      *  is a new chance, including for a channel that ended the last one on its final rung. */
     private suspend fun armLadder(channel: ChannelEntity, preference: tv.own.owntv.core.player.EnginePreference) {
         forceTsForExo = null
+        armedBudgetMs = SourceOverrides.liveTuneTimeoutSecsOf(sourceById[channel.sourceId])?.let { it * 1000L }
+            ?: ladderBudgetMs.value
         ladder.arm(
             channel.streamUrl,
             preference,
-            budgetMs = ladderBudgetMs.value,
+            budgetMs = armedBudgetMs,
             nowMs = android.os.SystemClock.elapsedRealtime(),
         ) { hasHlsAlternative(channel) }
         startLadderDeadline(channel)
     }
+
+    /** The budget [armLadder] chose for the tune on screen — the playlist's own, else the global one. */
+    private var armedBudgetMs: Long = LiveLadder.DEFAULT_BUDGET_SECS * 1000L
 
     /** The alarm that ends a tune which never opened. Cancelled the moment a channel does open. */
     private var ladderDeadlineJob: Job? = null
@@ -1789,7 +1799,7 @@ class LiveViewModel(
             // then may be showing a film. It may only ever act on the channel still on screen.
             if (!ladder.owns(channel.streamUrl)) return@launch
             if (!isStill(channel) && !isStillOnMpv(channel)) return@launch
-            val detail = "no picture within ${ladderBudgetMs.value / 1000}s of tuning"
+            val detail = "no picture within ${armedBudgetMs / 1000}s of tuning"
             engineLog("'${channel.name}' — giving up: $detail")
             recordLadderEvent(tv.own.owntv.player.PlayerFailureReason.LIVE_NO_FALLBACK, channel, detail)
             exoOutcomeJob?.cancel()
@@ -1841,7 +1851,7 @@ class LiveViewModel(
         val outOfTime = ladder.expired(nowMs)
         val next = ladder.advance(failureWasAboutFormat = !isRequestRefusal(reason), nowMs = nowMs) ?: run {
             val detail = if (outOfTime) {
-                "$reason — gave up after ${ladderBudgetMs.value / 1000}s"
+                "$reason — gave up after ${armedBudgetMs / 1000}s"
             } else {
                 reason
             }
@@ -1954,7 +1964,7 @@ class LiveViewModel(
             if (_previewChannel.value?.streamUrl != channel.streamUrl) return // zapped away while resolving
             // C-3: mpv is now the active engine — install/clear the reconnect provider to match.
             setStalkerReconnect(if (isStalker) channel.streamUrl else null)
-            player.play(url, title = channel.name, subtitle = channelNumberLabel(channel), logoUrl = channel.displayLogoUrl, isLive = true, muted = false, userAgent = source?.userAgent, httpHeaders = channel.httpHeaders, contentKey = mpvPinKey(channel), livePrerollSecsOverride = prerollFor(channel.sourceId), liveBufferOverride = liveBufferFor(channel.sourceId))
+            player.play(url, title = channel.name, subtitle = channelNumberLabel(channel), logoUrl = channel.displayLogoUrl, isLive = true, muted = false, userAgent = source?.userAgent, httpHeaders = headersFor(channel), contentKey = mpvPinKey(channel), livePrerollSecsOverride = prerollFor(channel.sourceId), liveBufferOverride = liveBufferFor(channel.sourceId))
             watchMpvOutcome(channel)
         } else {
             // The only way out of this function that leaves the shell on mpv's surface with nothing
@@ -2077,7 +2087,13 @@ class LiveViewModel(
                 return@launch
             }
             Log.i(ENGINE_TAG, "catch-up external '${ch.name}' prog='${programme.title}'")
-            externalPlayerLauncher.launch(url, ch.name, programme.title)
+            // The same identity the in-app catch-up opens with: playlist User-Agent, the channel's own
+            // headers and the playlist's Referer — a provider that checks them checks the archive too.
+            externalPlayerLauncher.launch(
+                url, ch.name, programme.title,
+                userAgent = sourceById[ch.sourceId]?.userAgent,
+                httpHeaders = headersFor(ch),
+            )
             recordLiveHistory(ch, immediate = true)
         }
     }
@@ -2106,7 +2122,7 @@ class LiveViewModel(
             playingCatchupProgramme = programme // …and the anchor auto-play continues from
             clearLiveOnExo() // catch-up is a VOD-style archive on mpv, not the live ExoPlayer channel
             // isLive=false → seekable archive; isArchive → mid-GOP tolerant (hardware first, software rescue).
-            player.play(url, title = ch.name, subtitle = programme.title, logoUrl = ch.displayLogoUrl, isLive = false, isArchive = true, userAgent = sourceUa, httpHeaders = ch.httpHeaders)
+            player.play(url, title = ch.name, subtitle = programme.title, logoUrl = ch.displayLogoUrl, isLive = false, isArchive = true, userAgent = sourceUa, httpHeaders = headersFor(ch))
             // The picture is this programme's own airtime, not the present — drive the "watching" clock
             // from its start, exactly as the rewind path does from the archive's start. The offset stays
             // null: a fixed programme is not the live rewind, so the HUD keeps its VOD chrome.
@@ -2235,9 +2251,9 @@ class LiveViewModel(
      * was being resolved.
      */
     private suspend fun loadArchiveStream(ch: ChannelEntity, startMs: Long, offsetSec: Int): Boolean {
-        val tz = withContext(Dispatchers.IO) { settings.resolveCatchupTimeZone() }
         val (url, sourceUa) = withContext(Dispatchers.IO) {
             val source = sourceDao.getById(ch.sourceId) ?: return@withContext null
+            val tz = settings.resolveCatchupTimeZone(source)
             archiveUrls.forTimeshift(ch, source, startMs, offsetSec, tz)?.let { it to source.userAgent }
         } ?: run {
             // The rewind hands back to the live edge from here (see LiveTimeshift.scheduleLoad), which
@@ -2256,7 +2272,7 @@ class LiveViewModel(
             logoUrl = ch.displayLogoUrl,
             isArchive = true,
             userAgent = sourceUa,
-            httpHeaders = ch.httpHeaders,
+            httpHeaders = headersFor(ch),
             rewindStartMs = startMs,
         )
         return true

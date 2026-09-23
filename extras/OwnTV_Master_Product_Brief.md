@@ -54,6 +54,10 @@ Each engine is chosen automatically by content type, with fallback between them.
   VOD on mpv. Overridable **per playlist**.
 - **Per-item toggle** — the **⇄ MPV/EXO** pill pins a channel or a film to the other engine and
   remembers it, in both directions. A pin always outranks the setting.
+- **Track memory** — the audio and subtitle language picked in the player is remembered per
+  channel, film and series (per profile), on both engines.
+- **Per-playlist provider quirks** — catch-up time zone, "give up after" time and an HTTP Referer
+  can be set for one playlist without touching the others.
 - **The fallback ladder** — a failing live channel walks up to four rungs, each tried once:
   `ExoPlayer+HLS → ExoPlayer+TS → mpv+HLS → mpv+TS`, or the same list led by mpv. **Give up on a
   channel after** (15/30/60 s or Never, default 30 s) bounds the whole tune; provider-requested

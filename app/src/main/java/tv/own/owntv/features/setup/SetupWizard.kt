@@ -176,16 +176,16 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                 onBack = { vm.stopRemoteListener(); step = Step.ADD_SOURCE_CHOOSER },
             )
             Step.ADD_SOURCE -> AddSourceScreen(
-                onStartXtream = { name, server, user, pass, ua, epg, refresh, live, movies, series, _, preferHls ->
-                    vm.startXtream(name.ifBlank { defaultIptvName }, server, user, pass, ua, epg, refresh, live, movies, series, preferHls)
+                onStartXtream = { name, server, user, pass, ua, ref, epg, refresh, live, movies, series, _, preferHls ->
+                    vm.startXtream(name.ifBlank { defaultIptvName }, server, user, pass, ua, epg, refresh, live, movies, series, preferHls, httpReferer = ref)
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING
                 },
-                onStartM3u = { name, url, ua, epg, refresh, _ -> vm.startM3u(name.ifBlank { defaultPlaylistName }, url, ua, epg, refresh); importOrigin = Step.ADD_SOURCE; step = Step.IMPORTING },
-                onStartStalker = { name, portalUrl, mac, serialNumber, deviceId, deviceId2, signature, ua, refresh, _, live, movies, series ->
+                onStartM3u = { name, url, ua, ref, epg, refresh, _ -> vm.startM3u(name.ifBlank { defaultPlaylistName }, url, ua, epg, refresh, httpReferer = ref); importOrigin = Step.ADD_SOURCE; step = Step.IMPORTING },
+                onStartStalker = { name, portalUrl, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, refresh, _, live, movies, series ->
                     vm.startStalker(
                         name.ifBlank { defaultPortalName }, portalUrl, mac, serialNumber, deviceId,
-                        deviceId2, signature, ua, refresh, live, movies, series,
+                        deviceId2, signature, ua, refresh, live, movies, series, httpReferer = ref,
                     )
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING

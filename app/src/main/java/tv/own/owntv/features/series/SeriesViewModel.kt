@@ -921,10 +921,6 @@ class SeriesViewModel(
         }
     }
 
-    /** The source User-Agent behind an episode — the external player needs it as an intent extra. */
-    private suspend fun episodeSourceUa(episode: EpisodeEntity): String? =
-        seriesDao.getSeriesById(episode.seriesId)?.let { sourceDao.getById(it.sourceId) }?.userAgent
-
     fun playEpisodeExternal(episode: EpisodeEntity) {
         _lastPlayedEpisodeId.value = episode.id
         viewModelScope.launch {
@@ -933,12 +929,13 @@ class SeriesViewModel(
             if (pid != null && !tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, show.categoryId, profileDao, categoryDao)) return@launch
             Log.d(TAG, "playEpisodeExternal episodeId=${episode.id}")
             val url = resolvedEpisodeUrlOrNull(episode) ?: return@launch
+            val source = sourceDao.getById(show.sourceId)
             externalPlayerLauncher.launch(
                 url = url,
                 title = episode.name.takeIf { it.isNotBlank() },
                 subtitle = show.name,
-                userAgent = episodeSourceUa(episode),
-                httpHeaders = episode.httpHeaders,
+                userAgent = source?.userAgent,
+                httpHeaders = tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(episode.httpHeaders, source),
             )
             if (pid != null) {
                 runCatching {
@@ -975,12 +972,13 @@ class SeriesViewModel(
             if (settings.externalPlayerSeries.first() && episode.drmConfig == null) {
                 Log.d(TAG, "playEpisodeQueue seriesId=${show.id} episodeId=${episode.id} -> external player")
                 val url = resolvedEpisodeUrlOrNull(episode) ?: return@launch
+                val source = sourceDao.getById(show.sourceId)
                 externalPlayerLauncher.launch(
                     url = url,
                     title = episode.name.takeIf { it.isNotBlank() },
                     subtitle = show.name,
-                    userAgent = sourceDao.getById(show.sourceId)?.userAgent,
-                    httpHeaders = episode.httpHeaders,
+                    userAgent = source?.userAgent,
+                    httpHeaders = tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(episode.httpHeaders, source),
                 )
                 if (pid != null) {
                     runCatching {
@@ -1017,11 +1015,13 @@ class SeriesViewModel(
                             // P6 — engine pins key on this, not on the URL: for Stalker the queue's
                             // stored URL is the shared season cmd and the played URL is minted per item.
                             contentKey = tv.own.owntv.core.player.enginePinKey(show.sourceId, "EPISODE", ep.remoteId),
+                            // v44 — audio/subtitle choices are remembered per series (owner decision 11).
+                            trackKey = tv.own.owntv.core.player.enginePinKey(show.sourceId, "SERIES", show.remoteId),
                         ),
                         resolveUrl = if (needsResolve && source != null) {
                             { streamUrlResolver.resolve(source, ep.streamUrl, vod = true, episode = ep.episodeNumber) }
                         } else null,
-                        httpHeaders = ep.httpHeaders,
+                        httpHeaders = tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(ep.httpHeaders, source),
                         drmConfig = ep.drmConfig,
                         manifestType = ep.manifestType,
                     )
@@ -1029,6 +1029,7 @@ class SeriesViewModel(
                 startIndex = startIndex,
                 startPositionMs = startPositionMs,
                 userAgent = sourceUa,
+                vodEngineOverride = tv.own.owntv.core.settings.SourceOverrides.vodEngineOf(source),
             )
             // Enable the player's OpenSubtitles search for this episode (subtitle plan §4). The parent
             // series' TMDB id gives the strongest episode match (review R7) when metadata is available.

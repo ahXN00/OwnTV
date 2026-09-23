@@ -73,6 +73,7 @@ import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.core.live.LiveKey
 import tv.own.owntv.core.live.parseLiveKey
 import tv.own.owntv.core.live.serialize
+import tv.own.owntv.core.settings.SourceOverrides
 
 class MovieViewModel(
     private val movieDao: MovieDao,
@@ -581,11 +582,12 @@ class MovieViewModel(
             if (pid != null && !tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao)) return@launch
             Log.d(TAG, "playExternal movieId=${movie.id}")
             val url = resolvedUrlOrNull(movie) ?: return@launch
+            val source = sourceDao.getById(movie.sourceId)
             externalPlayerLauncher.launch(
                 url = url,
                 title = movie.name,
-                userAgent = sourceDao.getById(movie.sourceId)?.userAgent,
-                httpHeaders = movie.httpHeaders,
+                userAgent = source?.userAgent,
+                httpHeaders = SourceOverrides.headersWithReferer(movie.httpHeaders, source),
             )
             if (pid != null) {
                 runCatching {
@@ -609,11 +611,12 @@ class MovieViewModel(
             if (settings.externalPlayerMovies.first() && movie.drmConfig == null) {
                 Log.d(TAG, "play movieId=${movie.id} -> external player")
                 val url = resolvedUrlOrNull(movie) ?: return@launch
+                val source = sourceDao.getById(movie.sourceId)
                 externalPlayerLauncher.launch(
                     url = url,
                     title = movie.name,
-                    userAgent = sourceDao.getById(movie.sourceId)?.userAgent,
-                    httpHeaders = movie.httpHeaders,
+                    userAgent = source?.userAgent,
+                    httpHeaders = SourceOverrides.headersWithReferer(movie.httpHeaders, source),
                 )
                 if (pid != null) {
                     runCatching {
@@ -645,7 +648,8 @@ class MovieViewModel(
                 isLive = false,
                 startPositionMs = startPositionMs,
                 userAgent = sourceUa,
-                httpHeaders = movie.httpHeaders,
+                httpHeaders = SourceOverrides.headersWithReferer(movie.httpHeaders, source),
+                vodEngineOverride = SourceOverrides.vodEngineOf(source),
                 drmConfig = movie.drmConfig,
                 manifestType = movie.manifestType,
                 // P6 — engine pins key on this, not on playUrl (a Stalker playUrl is minted per play).

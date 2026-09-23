@@ -2,7 +2,48 @@
 
 ## Unreleased
 
+### ✨ New features
+
+#### 🎚️ Four more settings per playlist
+
+Each playlist can now keep its own **catch-up time zone** (Settings → Sources & guide, next to
+Catch-up), its own **Movies & Series player** and its own **Give up on a channel after** time
+(Settings → Video player, under the global rows). A playlist left on "Follow setting" behaves exactly
+as before.
+
+#### 🔗 Referer for a playlist that needs one
+
+The Add / Edit playlist form — first-run setup included — has an optional **Referer** box under
+User-Agent. Some providers only answer streams that say which site they come from; whatever you
+enter is sent with that playlist's channels, films, episodes, catch-up and the external player. A
+stream that names its own Referer keeps it.
+
+#### 🗣️ The player remembers your audio and subtitle language
+
+Pick an audio track or a subtitle in the player and that channel, film or whole series opens on the
+same language next time — turning subtitles off is remembered too. Each profile keeps its own
+choices, and it works on both players.
+
 ### 🩹 Fixes
+
+#### 🧰 Player memory moved into the app's database
+
+Channel and film player choices, sound-only marks and audio delays now live in the database instead
+of separate files, move over by themselves on the first start, travel in backups, and are deleted
+together with the playlist they belong to. Nothing to do on your side.
+
+#### ⏱️ "Give up on a channel after" shows plain seconds
+
+It read "30s of video", as if it were an amount of video.
+
+#### 🎬 Catch-up in an external player opens like it does inside the app
+
+It now carries the playlist's User-Agent, the channel's own headers and the playlist's Referer.
+
+#### 🌐 Older language codes match
+
+A track tagged "ger" or "fre" now counts as German or French, both for your preferred language and
+for the remembered one.
 
 #### 🔐 Restoring a backup from another device keeps this TV's picture and sound setup
 

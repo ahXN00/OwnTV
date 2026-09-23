@@ -111,6 +111,7 @@ fun AddSourceScreen(
         user: String,
         pass: String,
         userAgent: String,
+        referer: String,
         epgUrl: String,
         autoRefresh: PlaylistRefresh,
         live: SyncScopeChoice,
@@ -119,7 +120,7 @@ fun AddSourceScreen(
         isDefault: Boolean,
         preferHls: Boolean,
     ) -> Unit,
-    onStartM3u: (name: String, url: String, userAgent: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean) -> Unit,
+    onStartM3u: (name: String, url: String, userAgent: String, referer: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean) -> Unit,
     // The last submission from the Remote companion screen, retained as a StateFlow so it survives the
     // Remote → Manual hand-off (this screen mounts after the remote browser posted). When present, the matching
     // type is selected and the fields pre-filled; the user then presses Start Import. Consumed once via
@@ -142,6 +143,7 @@ fun AddSourceScreen(
         deviceId2: String,
         signature: String,
         userAgent: String,
+        referer: String,
         autoRefresh: PlaylistRefresh,
         isDefault: Boolean,
         live: SyncScopeChoice,
@@ -174,6 +176,7 @@ fun AddSourceScreen(
     var showUaPresetPicker by remember { mutableStateOf(false) }
     var epgUrl by remember(initial) { mutableStateOf(initial?.epgUrl ?: "") }
     var userAgent by remember(initial) { mutableStateOf(initial?.userAgent ?: "") }
+    var referer by remember(initial) { mutableStateOf(initial?.httpReferer ?: "") }
     var autoRefresh by remember(initialAutoRefresh) { mutableStateOf(initialAutoRefresh) }
     var isDefault by remember(initialIsDefault) { mutableStateOf(initialIsDefault) }
     var preferHls by remember(initial) { mutableStateOf(initial?.preferHls == true) }
@@ -248,14 +251,15 @@ fun AddSourceScreen(
     fun formSource(): SourceEntity {
         fun opt(value: String) = value.trim().takeIf { it.isNotBlank() }
         val ua = opt(userAgent)
+        val ref = opt(referer)
         return when (kind) {
             SourceKind.XTREAM -> SourceEntity(
                 id = initial?.id ?: 0L, name = name, type = SourceType.XTREAM,
-                url = server.trim(), username = username.trim(), password = password, userAgent = ua,
+                url = server.trim(), username = username.trim(), password = password, userAgent = ua, httpReferer = ref,
             )
             SourceKind.M3U -> SourceEntity(
                 id = initial?.id ?: 0L, name = name, type = SourceType.M3U,
-                url = m3uUrl.trim(), userAgent = ua,
+                url = m3uUrl.trim(), userAgent = ua, httpReferer = ref,
             )
             SourceKind.STALKER -> SourceEntity(
                 id = initial?.id ?: 0L, name = name, type = SourceType.STALKER,
@@ -265,6 +269,7 @@ fun AddSourceScreen(
                 stalkerDeviceId2 = opt(stalkerDeviceId2),
                 stalkerSignature = opt(stalkerSignature),
                 userAgent = ua,
+                httpReferer = ref,
             )
         }
     }
@@ -512,6 +517,8 @@ fun AddSourceScreen(
             // Xtream server the guide URL is still derived automatically; M3U EPG can be added there.
             Spacer(Modifier.height(14.dp))
             OwnTVTextField(userAgent, { userAgent = it }, label = stringResource(R.string.setup_user_agent_optional), placeholder = stringResource(R.string.setup_user_agent_example), modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            OwnTVTextField(referer, { referer = it }, label = stringResource(R.string.setup_referer_optional), placeholder = stringResource(R.string.setup_referer_example), modifier = Modifier.fillMaxWidth())
 
             Spacer(Modifier.height(10.dp))
             OwnTVButton(
@@ -628,11 +635,11 @@ fun AddSourceScreen(
                     label = if (editing) stringResource(R.string.setup_update_source_save) else stringResource(R.string.setup_start_import),
                     onClick = {
                         when (kind) {
-                            SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls)
-                            SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, epgUrl, autoRefresh, isDefault)
+                            SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, referer, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls)
+                            SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, referer, epgUrl, autoRefresh, isDefault)
                             SourceKind.STALKER -> onStartStalker?.invoke(
                                 name, portalUrl, mac, stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2,
-                                stalkerSignature, userAgent, autoRefresh, isDefault, syncLive, syncMovies, syncSeries,
+                                stalkerSignature, userAgent, referer, autoRefresh, isDefault, syncLive, syncMovies, syncSeries,
                             )
                         }
                     },
