@@ -30,6 +30,10 @@
 - **📺 The Live preview stops when you leave Live TV**
 - **🎬 Favourites and History no longer stop a docked film**
 - **🧠 Kinder to memory on 2 GB televisions**
+- **🔎 Settings search finds the rows inside screens**
+- **💾 Backups keep Multiview and recording settings**
+- **🌐 Custom DNS actually works — and all three presets pass**
+- **🐢 Lighter on 2 GB televisions**
 
 ## v5.0.2 — 2026-09-21
 

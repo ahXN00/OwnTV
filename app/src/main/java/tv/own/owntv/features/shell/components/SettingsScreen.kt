@@ -1109,6 +1109,15 @@ fun SettingsScreen(
         // them means a row added there is searchable the day it exists, instead of the day someone
         // remembers to type it out here a second time.
         val videoKeywords = stringResource(R.string.settings_search_keywords_video)
+        // Volume, audio sync and audio language: "lip sync" or "loud" is what someone types for these.
+        val audioKeywords = stringResource(R.string.settings_search_keywords_audio)
+        fun jumpTo(ref: tv.own.owntv.features.settings.VideoQuickRef): () -> Unit = {
+            lastTab = null
+            deepReturnKey = ref.key
+            videoSection = ref.section
+            videoRowKey = ref.key
+            tab = SettingsTab.VIDEO
+        }
         val videoEntries = tv.own.owntv.features.settings.VIDEO_QUICK_ROWS
             .filterNot { it.key in bespokeVideoKeys }
             .map { ref ->
@@ -1117,17 +1126,11 @@ fun SettingsScreen(
                 val binding = androidx.compose.runtime.key(ref.key) {
                     tv.own.owntv.features.settings.videoQuickBinding(ref.key, settingsVm)
                 }
-                val jump = {
-                    lastTab = null
-                    deepReturnKey = ref.key
-                    videoSection = ref.section
-                    videoRowKey = ref.key
-                    tab = SettingsTab.VIDEO
-                }
+                val jump = jumpTo(ref)
                 SettingsSearchEntry(
                     videoPlayerGroup,
                     stringResource(ref.titleRes),
-                    videoKeywords,
+                    if (ref.section == tv.own.owntv.features.settings.SECTION_SOUND) audioKeywords else videoKeywords,
                     ref.icon,
                     TileTone.TERTIARY,
                     chip = binding?.chip,
@@ -1136,8 +1139,26 @@ fun SettingsScreen(
                     onClick = binding?.onToggle ?: jump,
                 )
             }
+        // The rows inside hand-written screens and popups, by their own titles — before, only the
+        // screen's name found them ("font" found nothing, although the subtitle popup has a Font row).
+        // Each list sits beside its screen's rows. The result opens the screen that holds the row.
+        @Composable fun rowsOf(group: String, titles: List<Int>, keywords: Int, icon: OwnTVIcon, onClick: () -> Unit) =
+            titles.map { SettingsSearchEntry(group, stringResource(it), stringResource(keywords), icon, TileTone.TERTIARY, onClick = onClick) }
+        val subStyleRef = tv.own.owntv.features.settings.VIDEO_QUICK_ROWS.first { it.key == "vp_sub_style" }
+        val screenRowEntries =
+            rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_playback), stringResource(R.string.recording_settings_group)),
+                tv.own.owntv.features.settings.RECORDING_SEARCH_ROWS, R.string.settings_search_keywords_recording, OwnTVIcon.LIVE_TV) { open(SettingsTab.RECORDING) } +
+            rowsOf(stringResource(R.string.settings_breadcrumb, videoPlayerGroup, stringResource(R.string.settings_subtitle_appearance)),
+                tv.own.owntv.features.settings.SUBTITLE_APPEARANCE_SEARCH_ROWS, R.string.settings_search_keywords_subtitle_appearance, OwnTVIcon.SUBTITLE, jumpTo(subStyleRef)) +
+            rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_network), stringResource(R.string.common_proxy)),
+                tv.own.owntv.features.settings.PROXY_SEARCH_ROWS, R.string.settings_search_keywords_proxy, OwnTVIcon.NETWORK) { open(SettingsTab.NETWORK) } +
+            rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_network), stringResource(R.string.settings_dns)),
+                tv.own.owntv.features.settings.DNS_SEARCH_ROWS, R.string.settings_search_keywords_dns, OwnTVIcon.DNS) { open(SettingsTab.DNS) } +
+            // The Catch-up popup's second row; its first (the time zone) is the Catch-up entry above.
+            rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_sources), stringResource(R.string.settings_catchup)),
+                listOf(R.string.settings_catchup_player), R.string.settings_search_keywords_catchup, OwnTVIcon.CATCHUP) { saveScroll(); dialogReturn = searchFieldFocus; showCatchupTime = true }
         val tokens = searchQuery.trim().lowercase().split(" ").filter { it.isNotBlank() }
-        (entries + videoEntries).filter { e -> tokens.all { t -> e.haystack.contains(t) } }
+        (entries + videoEntries + screenRowEntries).filter { e -> tokens.all { t -> e.haystack.contains(t) } }
     }
     Column(
         modifier = modifier

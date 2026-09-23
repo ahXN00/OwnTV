@@ -39,6 +39,10 @@ import tv.own.owntv.ui.components.OwnTVTextField
 import tv.own.owntv.ui.components.roundedPanel
 import tv.own.owntv.ui.theme.OwnTVTheme
 
+/** This screen's rows as Settings search finds them. */
+internal val DNS_SEARCH_ROWS: List<Int> =
+    listOf(R.string.settings_dns_use_custom, R.string.settings_dns_server, R.string.settings_dns_test)
+
 @Composable
 fun DnsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val colors = OwnTVTheme.colors

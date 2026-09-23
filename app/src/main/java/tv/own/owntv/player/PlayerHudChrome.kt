@@ -51,6 +51,7 @@ import tv.own.owntv.core.player.ControlCluster
 import tv.own.owntv.ui.components.OwnTVButton
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.theme.OwnTVTheme
+import tv.own.owntv.ui.theme.animationsOn
 
 /**
  * The HUD's chrome: the top strip, the channel/direct-tune OSD cards, the centre transport and the
@@ -209,12 +210,16 @@ internal fun ChannelCard(player: PlaybackEngine, modifier: Modifier = Modifier) 
  *  visible instead of mysterious. [error] turns it into the failure readout for the same number. */
 @Composable
 internal fun ChannelNumberCard(digits: String, error: String? = null, modifier: Modifier = Modifier) {
-    val caret = rememberInfiniteTransition(label = "tuneCaret")
-    val caretAlpha by caret.animateFloat(
-        initialValue = 1f, targetValue = 0f,
-        animationSpec = infiniteRepeatable(tween(600, easing = LinearEasing), RepeatMode.Reverse),
-        label = "tuneCaretAlpha",
-    )
+    // Animations Off: a steady caret, with no infinite transition started (never a 0 ms one).
+    val caretAlpha = if (!animationsOn) 1f else {
+        val caret = rememberInfiniteTransition(label = "tuneCaret")
+        val blink by caret.animateFloat(
+            initialValue = 1f, targetValue = 0f,
+            animationSpec = infiniteRepeatable(tween(600, easing = LinearEasing), RepeatMode.Reverse),
+            label = "tuneCaretAlpha",
+        )
+        blink
+    }
     val countdown = remember { Animatable(0f) }
     // Captured before the draw lambda: a DrawScope is not a composable, so it can't read the theme.
     val accent = OwnTVTheme.colors.accentOnVideo

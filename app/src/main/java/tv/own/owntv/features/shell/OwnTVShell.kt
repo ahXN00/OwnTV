@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -261,12 +262,17 @@ fun OwnTVShell(
     // just the on/off fact, which changes when the user enters or leaves the rewind and no oftener.
     val timeshiftOffsetState = liveVm.timeshiftOffsetSec.collectAsStateWithLifecycle()
     val watchingWallState = liveVm.watchingWallMs.collectAsStateWithLifecycle()
-    val timelineProgrammes by liveVm.timelineProgrammes.collectAsStateWithLifecycle()
     val timeshifted by remember(liveVm) {
         liveVm.timeshiftOffsetSec.map { it != null }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(false)
     // Which section armed the current fullscreen stream — picks whose channel list CH+/CH- step through.
     var zapSource by remember { mutableStateOf<MainSection?>(null) }
+    // The multi-day guide for the rewind timeline is read only while it can be shown (the same test
+    // the HUD applies below); otherwise its query would re-run on every channel-list focus step.
+    val wantTimeline = playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && !catchupActive && canRewindLive
+    val timelineProgrammes by remember(liveVm, wantTimeline) {
+        if (wantTimeline) liveVm.timelineProgrammes else flowOf(emptyList())
+    }.collectAsStateWithLifecycle(emptyList())
     // In-player channel-list overlay (Left while controls hidden, live only).
     var showChannelList by remember { mutableStateOf(false) }
     // In-player watch-history list (Right while controls hidden, live only).

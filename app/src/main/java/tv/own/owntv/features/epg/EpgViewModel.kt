@@ -130,6 +130,9 @@ class EpgViewModel(
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val customCategoryDao: tv.own.owntv.core.database.dao.CustomCategoryDao,
     private val recordings: tv.own.owntv.core.recording.RecordingManager,
+    /** The provider-guide half of a row, for channels whose stored guide stops short — the app-wide
+     *  reader Live TV uses too (T18), so both screens share one cache. */
+    private val liveEpgReader: tv.own.owntv.core.live.LiveEpgReader,
 ) : ViewModel() {
 
     /** The one candidate set the picker and both auto-match paths read — see [GuideCandidates]. */
@@ -258,11 +261,6 @@ class EpgViewModel(
 
     /** Every windowed guide read this screen makes. The caches around it stay here — what to keep
      *  depends on how the grid scrolls, which is the screen's business, not core's. */
-    /** The provider-guide half of a row, for channels whose stored guide stops short. Built here for
-     *  the same reason LiveViewModel builds its own: it is a plain core reader, not a shared service. */
-    private val liveEpgReader =
-        tv.own.owntv.core.live.LiveEpgReader(epgDao, epgSourceStore, sourceDao, xtream, streamUrlResolver)
-
     private val guideReader =
         tv.own.owntv.core.live.GuideReader(epgDao, epgSourceStore, sourceDao, liveEpgReader)
 

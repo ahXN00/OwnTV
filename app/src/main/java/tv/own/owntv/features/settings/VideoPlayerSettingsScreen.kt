@@ -89,7 +89,7 @@ import tv.own.owntv.ui.theme.asComposeFamily
 // The six sections of this screen, in spine order — the mockup's Video Player Settings model.
 private const val SECTION_ENGINE = 0
 private const val SECTION_LIVE = 1
-private const val SECTION_SOUND = 2
+internal const val SECTION_SOUND = 2
 private const val SECTION_SUBTITLES = 3
 private const val SECTION_EPISODES = 4
 private const val SECTION_DIAGNOSTICS = 5
@@ -106,6 +106,12 @@ internal data class VideoQuickRef(
     val icon: OwnTVIcon,
     val titleRes: Int,
     val descRes: Int? = null,
+)
+
+/** The Subtitle appearance popup's rows as Settings search finds them; they open that popup's row, `vp_sub_style`. */
+internal val SUBTITLE_APPEARANCE_SEARCH_ROWS: List<Int> = listOf(
+    R.string.settings_subtitle_size, R.string.settings_subtitle_font, R.string.settings_subtitle_color_short,
+    R.string.settings_subtitle_position_short, R.string.settings_subtitle_background_transparency,
 )
 
 /** Every row of this screen that can be pinned to Quick, in the order the sections show them. */

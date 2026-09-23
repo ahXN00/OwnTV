@@ -28,6 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -65,7 +69,9 @@ fun MiniPlayer(
     val isPlaying by player.isPlaying.collectAsStateWithLifecycle()
     val meta by player.currentMeta.collectAsStateWithLifecycle()
     val volume by player.volume.collectAsStateWithLifecycle()
-    val position by player.position.collectAsStateWithLifecycle()
+    // Held as State and read only in the hairline's draw lambda, so the once-a-second tick redraws
+    // that line instead of recomposing the whole window.
+    val positionState = player.position.collectAsStateWithLifecycle()
     val duration by player.duration.collectAsStateWithLifecycle()
 
     // Show the title + controls only while the mini-player has D-pad focus; otherwise fade to just the
@@ -93,13 +99,16 @@ fun MiniPlayer(
         // Progress along the TOP edge — the bottom belongs to the pill and its shadow. Live streams
         // have no duration, so the hairline simply isn't there.
         if (duration > 0L) {
-            val frac = (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
             Box(
                 Modifier.align(Alignment.TopStart).fillMaxWidth().height(2.dp)
-                    .background(Color.White.copy(alpha = 0.18f)),
-            ) {
-                Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(accent))
-            }
+                    .background(Color.White.copy(alpha = 0.18f))
+                    .drawBehind {
+                        val frac = (positionState.value.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                        val w = size.width * frac
+                        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - w else 0f
+                        drawRect(accent, topLeft = Offset(x, 0f), size = Size(w, size.height))
+                    },
+            )
         }
 
         Row(

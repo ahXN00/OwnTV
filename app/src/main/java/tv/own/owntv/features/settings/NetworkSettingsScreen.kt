@@ -39,6 +39,9 @@ import tv.own.owntv.ui.components.OwnTVTextField
 import tv.own.owntv.ui.components.roundedPanel
 import tv.own.owntv.ui.theme.OwnTVTheme
 
+/** This screen's rows as Settings search finds them (the host/port fields are found by the proxy keywords). */
+internal val PROXY_SEARCH_ROWS: List<Int> = listOf(R.string.settings_use_proxy, R.string.settings_test_proxy)
+
 /**
  * Network → Proxy: one app-wide HTTP proxy. Enabling it routes all app traffic (playlist,
  * Xtream API, EPG, images, downloads, updates, ExoPlayer) and mpv playback through the proxy.

@@ -38,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -67,6 +69,7 @@ import tv.own.owntv.core.i18n.horizontalDirection
 import tv.own.owntv.ui.components.FocusableSurface
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.theme.OwnTVTheme
+import tv.own.owntv.ui.theme.animationsOn
 import tv.own.owntv.ui.theme.LocalPopupFontFamily
 
 /**
@@ -112,7 +115,9 @@ fun AudioNowPlayingBar(
     val isPlaying by player.isPlaying.collectAsStateWithLifecycle()
     val meta by player.currentMeta.collectAsStateWithLifecycle()
     val volume by player.volume.collectAsStateWithLifecycle()
-    val position by player.position.collectAsStateWithLifecycle()
+    // Held as State and read only by the time label and the hairline's draw lambda, so the
+    // once-a-second tick does not recompose the whole bar.
+    val positionState = player.position.collectAsStateWithLifecycle()
     val duration by player.duration.collectAsStateWithLifecycle()
     val seekStep by player.seekStepMs.collectAsStateWithLifecycle()
 
@@ -261,13 +266,7 @@ fun AudioNowPlayingBar(
                             if (isLive) {
                                 LiveRow(colors.favorite)
                             } else if (hasTime) {
-                                Text(
-                                    stringResource(R.string.player_time_progress, fmtTime(position), fmtTime(duration)),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontFamily = LocalPopupFontFamily.current),
-                                    color = colors.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                TimeLabel({ positionState.value }, duration, colors.onSurfaceVariant)
                             }
                         }
                     }
@@ -306,13 +305,19 @@ fun AudioNowPlayingBar(
             // The progress hairline, drawn over the card's bottom edge in every state rather than laid
             // out below the row — that way the strip at rest is exactly the height it always was.
             if (hasTime) {
-                val frac = (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
                 // A normal fillMaxWidth child makes this wrap-content card request the complete
                 // top-bar width. Match the card after it has been measured so the hairline overlays
                 // its bottom edge without stretching the capsule or pushing other chips off-screen.
-                Box(Modifier.matchParentSize(), contentAlignment = Alignment.BottomStart) {
-                    Box(Modifier.fillMaxWidth(frac).height(1.5.dp).background(colors.primary))
-                }
+                val lineColor = colors.primary
+                Box(
+                    Modifier.matchParentSize().drawBehind {
+                        val frac = (positionState.value.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                        val h = 1.5.dp.toPx()
+                        val w = size.width * frac
+                        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - w else 0f
+                        drawRect(lineColor, topLeft = Offset(x, size.height - h), size = Size(w, h))
+                    },
+                )
             }
         }
 
@@ -338,6 +343,18 @@ fun AudioNowPlayingBar(
     }
 }
 
+/** The elapsed/total label, its own scope so only it recomposes as the position ticks. */
+@Composable
+private fun TimeLabel(position: () -> Long, duration: Long, color: Color) {
+    Text(
+        stringResource(R.string.player_time_progress, fmtTime(position()), fmtTime(duration)),
+        style = MaterialTheme.typography.labelSmall.copy(fontFamily = LocalPopupFontFamily.current),
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
 /** The separator in the station line, drawn rather than typed so it needs no string in 24 languages. */
 @Composable
 private fun StationDot(color: Color) {
@@ -347,16 +364,22 @@ private fun StationDot(color: Color) {
 @Composable
 private fun LiveRow(dotColor: Color) {
     val colors = OwnTVTheme.colors
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        // Animations Off: a steady dot. The pulse is not run at all (never a 0 ms infinite transition).
+        if (animationsOn) PulsingDot(dotColor) else Box(Modifier.size(6.dp).clip(CircleShape).background(dotColor))
+        Text(stringResource(R.string.player_live), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun PulsingDot(dotColor: Color) {
     val transition = rememberInfiniteTransition(label = "liveDot")
     val a by transition.animateFloat(
         initialValue = 0.35f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(700, easing = LinearEasing), RepeatMode.Reverse),
         label = "liveDotAlpha",
     )
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Box(Modifier.size(6.dp).clip(CircleShape).background(dotColor).alpha(a))
-        Text(stringResource(R.string.player_live), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant, fontWeight = FontWeight.Bold)
-    }
+    Box(Modifier.size(6.dp).clip(CircleShape).background(dotColor).alpha(a))
 }
 
 /**
@@ -365,20 +388,33 @@ private fun LiveRow(dotColor: Color) {
  */
 @Composable
 internal fun Equalizer(playing: Boolean, color: Color, modifier: Modifier) {
-    val bars = 5
+    // Paused, or Animations Off: flat bars and no transition running at all (never a 0 ms infinite one).
+    if (playing && animationsOn) DancingEqualizer(color, modifier) else EqualizerBars(color, modifier) { 0.18f }
+}
+
+@Composable
+private fun DancingEqualizer(color: Color, modifier: Modifier) {
     val transition = rememberInfiniteTransition(label = "eq")
-    val heights = (0 until bars).map { i ->
+    val heights = (0 until EQ_BARS).map { i ->
         transition.animateFloat(
             initialValue = 0.25f, targetValue = 1f,
             animationSpec = infiniteRepeatable(tween(420 + i * 90, easing = LinearEasing), RepeatMode.Reverse),
             label = "eqBar$i",
         )
     }
+    EqualizerBars(color, modifier) { heights[it].value }
+}
+
+private const val EQ_BARS = 5
+
+@Composable
+private fun EqualizerBars(color: Color, modifier: Modifier, heightOf: (Int) -> Float) {
+    val bars = EQ_BARS
     Canvas(modifier) {
         val gap = size.width * 0.12f
         val barW = (size.width - gap * (bars - 1)) / bars
         for (i in 0 until bars) {
-            val h = if (playing) heights[i].value else 0.18f
+            val h = heightOf(i)
             val bh = size.height * h
             drawRoundRect(
                 color = color,

@@ -90,6 +90,33 @@ memory pressure does that now, and the full cache comes back with the next chann
 system is critically short of memory, the next live channel — Multiview tiles included — starts with
 a smaller buffer instead of the app being closed.
 
+#### 🔎 Settings search finds the rows inside screens
+
+Searching now finds the rows inside Recording, Subtitle appearance, Proxy, DNS and the Catch-up
+popup by their own names — "font" finds Subtitle font, "catch-up player" finds where catch-up plays.
+Volume, audio sync and audio language are also found by words like "lip sync" or "loud".
+
+#### 💾 Backups keep Multiview and recording settings
+
+Multiview on/off, its tile count and your "I understand" for more than two tiles, and all the
+recording settings (keep a stream free, record what I'm watching, start early, finish late) are now
+in a backup.
+
+#### 🌐 Custom DNS actually works — and all three presets pass
+
+Custom DNS answers were never read correctly, so the app quietly used the TV's normal DNS instead.
+That is fixed, and the Google, Cloudflare and Quad9 presets now all pass their Test (two of them
+used to fail). Lookups are faster too, and a proxy or custom DNS is in force from the very first
+channel after the app starts.
+
+#### 🐢 Lighter on 2 GB televisions
+
+The Live TV list no longer loads the full guide while you browse, and only the rows that change are
+redrawn. On a 2 GB TV the preview pane plays at most 720p (full quality once you go full screen),
+"Measured stream stats" starts off, and the live buffer uses less memory. The last channel and
+category you browsed are kept in their own small file instead of the settings file. With Animations
+off, the equaliser, the live dot and the channel-number cursor stand still.
+
 ## v5.0.2 — 2026-09-21
 
 ### 🩹 Fixes

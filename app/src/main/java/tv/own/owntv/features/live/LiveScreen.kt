@@ -617,6 +617,11 @@ fun LiveScreen(
                     ) { index ->
                         val channel = channels[index]
                         if (channel != null) {
+                            // Only the rows entering or leaving the preview recompose on a focus step,
+                            // instead of every visible row re-reading the previewed channel.
+                            val isPreviewed by remember(channel.id) {
+                                androidx.compose.runtime.derivedStateOf { previewChannel?.id == channel.id }
+                            }
                             ChannelRow(
                                 channel = channel,
                                 isFavorite = favoriteIds.contains(channel.id),
@@ -624,7 +629,7 @@ fun LiveScreen(
                             // already resolved; the channel under the cursor is answered from the
                             // preview ITSELF, so the row and the pane beside it can never disagree and
                             // the line appears at once rather than at the next 60s refresh.
-                            nowTitle = if (channel.id == previewChannel?.id) {
+                            nowTitle = if (isPreviewed) {
                                 nowNext?.now?.title?.takeIf { it.isNotBlank() } ?: nowPlaying[channel.id]
                             } else {
                                 nowPlaying[channel.id]
@@ -634,7 +639,7 @@ fun LiveScreen(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = channel.id, index = index,
                                     contextId = contextChannelId, contextFocus = contextFocus,
-                                    selectedId = previewChannel?.id, selectedFocus = selFocus,
+                                    selectedId = if (isPreviewed) channel.id else null, selectedFocus = selFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
                                 onFocus = { vm.onChannelFocused(channel) },

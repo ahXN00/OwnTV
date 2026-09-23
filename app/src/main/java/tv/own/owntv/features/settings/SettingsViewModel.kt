@@ -470,7 +470,7 @@ class SettingsViewModel(
     val deinterlace: StateFlow<Boolean> = settings.deinterlace.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     fun setDeinterlace(enabled: Boolean) { viewModelScope.launch { settings.setDeinterlace(enabled) } }
 
-    val measuredStreamStats: StateFlow<Boolean> = settings.measuredStreamStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val measuredStreamStats: StateFlow<Boolean> = settings.measuredStreamStats.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), settings.measuredStreamStatsDefault)
     fun setMeasuredStreamStats(enabled: Boolean) { viewModelScope.launch { settings.setMeasuredStreamStats(enabled) } }
 
     val detailedDiagnostics: StateFlow<Boolean> = settings.detailedDiagnostics.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)

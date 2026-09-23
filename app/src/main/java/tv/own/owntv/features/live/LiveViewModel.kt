@@ -123,7 +123,8 @@ class LiveViewModel(
     private val customize: CustomizationStore,
     private val launcherIntegrationRepository: LauncherIntegrationRepository,
     private val epgDao: tv.own.owntv.core.database.dao.EpgDao,
-    private val epgSourceStore: tv.own.owntv.core.epg.EpgSourceStore,
+    /** Shared with the Guide (T18): one now/next cache, so an invalidation reaches both screens. */
+    private val epgReader: LiveEpgReader,
     val player: OwnTVPlayer,
     val previewEngine: tv.own.owntv.player.LivePreviewEngine,
     private val forceMpvStore: tv.own.owntv.core.player.ForceMpvStore,
@@ -374,7 +375,6 @@ class LiveViewModel(
     /** Every guide read this screen makes, and the now/next cache that used to live here — see
      *  [LiveEpgReader]. The shift it applies is passed in at each call, so this view model stays the
      *  single place that knows a customization changed. */
-    private val epgReader = LiveEpgReader(epgDao, epgSourceStore, sourceDao, xtreamClient, streamUrlResolver)
 
     /** The same candidate set the Guide's picker uses — filtered by no source. */
     private val guideCandidates = tv.own.owntv.core.epg.GuideCandidates(epgDao)
@@ -455,7 +455,11 @@ class LiveViewModel(
      * Drives the category chip + genre-dot in the preview pane's metadata row.
      */
     val previewCategoryName: StateFlow<String?> = _previewChannel
-        .mapLatest { ch -> ch?.categoryId?.let { id -> categoryDao.getById(id)?.name } }
+        .mapLatest { ch ->
+            val id = ch?.categoryId ?: return@mapLatest null
+            delay(150) // a quick scroll cancels this before the lookup runs
+            categoryDao.getById(id)?.name
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     /** This profile's hide/rename/reorder customizations for Live TV. */
     private val custom: StateFlow<SectionCustomizations> = ctx
@@ -1118,6 +1122,14 @@ class LiveViewModel(
             }
         }
         viewModelScope.launch { player.archiveEnded.collect { continueAfterCatchup() } }
+        // T17 / decision 5: on a 2 GB TV the preview pane decodes at most 720p — a second full-size
+        // decoder re-tuning on every focus step is the heaviest background cost there. Lifted the moment
+        // the channel goes full-screen, so the promoted stream switches up to its full variant.
+        if (tv.own.owntv.core.player.PlayerBudget.of(appContext).lowSpec) {
+            viewModelScope.launch {
+                _liveOnExo.collect { fullScreen -> previewEngine.setMaxVideoHeight(if (fullScreen) null else PREVIEW_MAX_HEIGHT) }
+            }
+        }
     }
 
     /** Called when anything OTHER than a promoted live channel takes over full-screen (a movie/episode,
@@ -2494,6 +2506,8 @@ class LiveViewModel(
 
         /** How long a channel must stay tuned before it counts as watched — see [recordLiveHistory]. */
         const val HISTORY_DEBOUNCE_MS = 5_000L
+        /** The preview pane's video ceiling on a 2 GB TV (T17). */
+        const val PREVIEW_MAX_HEIGHT = 720
         const val TAG = "OwnTVHome"
         // In-player channel lists: one category is normally far smaller, but cap the uncategorized
         // → All Channels fallback so a huge playlist can't be pulled into memory on every tune.

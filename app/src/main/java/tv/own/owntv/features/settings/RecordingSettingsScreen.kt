@@ -48,6 +48,12 @@ import tv.own.owntv.ui.theme.OwnTVTheme
 
 private enum class RecordingDialog { NONE, PRE_ROLL, POST_ROLL }
 
+/** This screen's rows as Settings search finds them, by their own titles. `SettingsSearchRowsTest` holds it to the rows below. */
+internal val RECORDING_SEARCH_ROWS: List<Int> = listOf(
+    R.string.settings_recording_reserve, R.string.settings_record_watching,
+    R.string.settings_recording_pre_roll, R.string.settings_recording_post_roll,
+)
+
 /**
  * The three things recording can be told, and one thing it has to tell the user.
  *
