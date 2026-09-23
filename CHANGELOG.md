@@ -125,6 +125,33 @@ is now drawn once and reused — it looks exactly the same. On a 2 GB TCL, movin
 from about 180 ms per step to about 85 ms, Home from about 200 ms to under 40 ms, and Settings from
 about 130 ms to under 50 ms, with Glass Effect on or off.
 
+#### 🔁 Quick channel picks always end on the last one
+
+Choosing a channel and then quickly another could let the first one finish loading last and take the
+screen back. The newest choice now always wins. Live TV's channel handling — which player opens a
+channel, the switch to the other player when one fails, "Give up on a channel after" — is now shared
+with the phone app, so both behave the same.
+
+#### ⏪ Catch-up is never interrupted by a live channel
+
+Starting a catch-up programme while a live channel was still loading could let the live stream start
+over it, and the "give up" timer of the live channel could stop a programme that was playing fine.
+Both are gone.
+
+#### ⚙️ The first channel after starting the app uses your settings
+
+A channel opened straight after a cold start (Last channel autoplay) could open with default player
+settings because they had not been read yet. It now waits for yours.
+
+#### 🎬 Films with subtitles off keep the picture clean
+
+A film played on ExoPlayer with subtitles switched off kept an empty subtitle layer over the picture,
+which can make 4K stutter on some TVs. It is only there now while subtitles are on.
+
+#### 🔋 The full-screen player does less work
+
+With the controls hidden, the player no longer redraws its whole overlay every second.
+
 ## v5.0.2 — 2026-09-21
 
 ### 🩹 Fixes

@@ -117,9 +117,12 @@ fun MpvVideoSurface(player: OwnTVPlayer, modifier: Modifier = Modifier, autoFram
         // owns playback — putting ANY view over the SurfaceView (even an empty one) knocks it off the
         // hardware-overlay / direct scan-out path, which stutters 4K to a ~2 fps slideshow under GPU
         // composition. During normal mpv playback this isn't composed, so the surface scans out directly.
+        // T16 — and only while a subtitle track is actually on, as the live path already does with
+        // `subOn`: a film on ExoPlayer with subtitles off would otherwise keep an empty view over it.
         val exoActive by player.exoActiveState.collectAsStateWithLifecycle()
-        val cues by player.exoCues.collectAsStateWithLifecycle()
-        if (exoActive) {
+        val exoSubOn by player.exoSubtitleOn.collectAsStateWithLifecycle()
+        if (exoActive && exoSubOn) {
+            val cues by player.exoCues.collectAsStateWithLifecycle()
             StyledSubtitleView(cues = cues, modifier = viewModifier)
         }
         // Freeze-frame: the last mpv frame, shown over the surface during the mpv→ExoPlayer swap so the

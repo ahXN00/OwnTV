@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -76,14 +77,17 @@ fun ResumeDialog(
  * resources (`player_track_*`), which were byte-identical to these in every locale.
  */
 @Composable
-fun formatTimestamp(ms: Long): String {
+fun formatTimestamp(ms: Long): String = formatTimestamp(LocalResources.current, ms)
+
+/** The same format outside composition — a value read at a button press rather than on every tick. */
+fun formatTimestamp(res: android.content.res.Resources, ms: Long): String {
     val totalSec = ms.coerceAtLeast(0L) / 1000
     val h = totalSec / 3600
     val m = (totalSec % 3600) / 60
     val s = totalSec % 60
     return if (h > 0) {
-        stringResource(R.string.common_timestamp_hours, h, m, s)
+        res.getString(R.string.common_timestamp_hours, h, m, s)
     } else {
-        stringResource(R.string.common_timestamp_minutes, m, s)
+        res.getString(R.string.common_timestamp_minutes, m, s)
     }
 }

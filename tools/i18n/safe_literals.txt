@@ -118,41 +118,14 @@
 2	technical	app/src/main/java/tv/own/owntv/features/live/LiveScreen.kt	−
 5	empty	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	#$it
-1	technical	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	$label — $reason
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	$reason — gave up after ${armedBudgetMs / 1000}s
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	${if (onMpv) "mpv" else "exoplayer"} (pinned)
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	${if (onMpv) "mpv" else "exoplayer"} (setting)
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	'${channel.name}' falling back to $label ($reason)
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	'${channel.name}' opened on mpv
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	'${channel.name}' — giving up: $detail
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	'${channel.name}' — no fallback left ($detail)
-2	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	'${channel.name}': $detail
-1	technical	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	ExoPlayer
-1	technical	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	LIVE
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	LiveEngine
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	OwnTVHome
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	catch-up '${ch.name}' prog='${programme.title}' -> ${tv.own.owntv.core.network.HttpClient.redactUrl(url)}
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	catch-up external '${ch.name}' prog='${programme.title}'
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	engine toggle '${channel.name}' -> ${if (goToMpv) "mpv" else "exoplayer"} (currentlyOnExo=${_liveOnExo.value})
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	engine: $message
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	ensurePlaying history profile=$pid channelId=${channel.id}
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	ensurePlaying history record failed channelId=${channel.id} profile=$pid
-3	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	exoplayer
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	exoplayer (drm)
-4	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	mpv
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	mpv (panel refuses segments)
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	mpv couldn't play it: ${failure.second}
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	mpv never opened it (${MPV_OPEN_TIMEOUT_MS / 1000}s, no picture and no error)
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	multiview resolve failed '${channel.name}'
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	no picture within ${armedBudgetMs / 1000}s of tuning
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	stalker fullscreen resolve failed '${channel.name}'
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	stalker mpv resolve failed '${channel.name}'
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	stalker preview resolve failed '${channel.name}'
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	stalker reconnect re-resolve failed '${channel.name}'
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	stalker resolve failed channelId=${channel.id}
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	tune '${channel.name}' -> $reason [${preference.name}]
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	tuneByNumber($number) failed
-1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	user chose compatibility mode
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveZapList.kt	LiveZapList
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveZapList.kt	direct tune: zap rebuild failed
 1	empty	app/src/main/java/tv/own/owntv/features/more/MoreScreen.kt	\0

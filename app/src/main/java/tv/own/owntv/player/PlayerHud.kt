@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -206,11 +207,13 @@ fun PlayerHud(
     watchingWallMs: (() -> Long?)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val timeshiftOffset = timeshiftOffsetSec?.invoke()
-    val watchingWall = watchingWallMs?.invoke()
+    // T14 — nothing that ticks is read in this root scope: with the controls hidden it used to recompose
+    // the whole HUD once a second for a position nobody could see. The offset, the archive clock and the
+    // position are handed down as lambdas and read by the piece that draws them.
+    val timeshiftOffset: () -> Int? = { timeshiftOffsetSec?.invoke() }
     val layoutDirection = LocalLayoutDirection.current
     val isPlaying by player.isPlaying.collectAsStateWithLifecycle()
-    val position by player.position.collectAsStateWithLifecycle()
+    val position = player.position.collectAsStateWithLifecycle()
     val duration by player.duration.collectAsStateWithLifecycle()
     val buffering by player.buffering.collectAsStateWithLifecycle()
     val error by player.error.collectAsStateWithLifecycle()
@@ -247,10 +250,11 @@ fun PlayerHud(
     var autoNextDismissed by remember { mutableStateOf(false) }
     // Re-arm when the queued next episode changes (i.e. after an advance to a new item).
     LaunchedEffect(nextUpTitle, nav.hasNext) { autoNextDismissed = false }
-    val msToAdvance = if (!isLive && duration > 0L) (duration - 8_000L) - position else Long.MAX_VALUE
+    // Derived, so the root recomposes when the card appears or goes, not on every position tick.
+    val msToAdvance: () -> Long = { if (!isLive && duration > 0L) (duration - 8_000L) - position.value else Long.MAX_VALUE }
+    val nextCardDue by remember(isLive, duration) { derivedStateOf { msToAdvance() in 0L..30_000L } }
     val showNextCard = !isLive && error == null && nav.hasNext && nextUpTitle != null &&
-        msToAdvance in 0L..30_000L && !autoNextDismissed
-    val nextCountdown = ((msToAdvance + 999L) / 1000L).toInt().coerceIn(0, 30)
+        nextCardDue && !autoNextDismissed
 
     var controlsVisible by remember { mutableStateOf(true) }
     var showInfo by remember { mutableStateOf(false) } // stream technical-info overlay
@@ -615,7 +619,7 @@ fun PlayerHud(
                 // Hidden behind an error overlay along with the rest of the chrome: a clock ticking
                 // over a failure message just draws the eye to the wrong thing.
                 centre = if (error == null) {
-                    { PlayerClock(watchingMs = watchingWall) }
+                    { PlayerClock(watchingMs = watchingWallMs?.invoke()) }
                 } else null,
             )
 
@@ -624,15 +628,14 @@ fun PlayerHud(
             if (error == null) {
                 CenterControls(player, nav, isPlaying, isLive, onRewindLive, onForwardLive, timeshiftOffset, playFocus, modifier = Modifier.align(Alignment.Center))
 
-                val reportPosition = formatTime(position)
                 val reportDuration = duration.takeIf { it > 0 }?.let { formatTime(it) }
                 val reportSavedMessage = stringResource(R.string.player_report_saved)
 
                 BottomBar(
-                    player = player, isLive = isLive, position = position, duration = duration,
+                    player = player, isLive = isLive, position = { position.value }, duration = duration,
                     volume = volume, audioCount = audioCount, subCount = subCount, zoomMode = zoomMode,
                     speedLabel = formatSpeed(speed),
-                    onScrubLive = onScrubLive, timeshiftOffsetSec = timeshiftOffset, onGoToLive = onGoToLive,
+                    onScrubLive = onScrubLive, timeshiftOffset = timeshiftOffset, onGoToLive = onGoToLive,
                     liveProgrammes = liveProgrammes,
                     onOpenJumpBack = if (onJumpBack != null) { { dialog = HudDialog.JUMP_BACK } } else null,
                     compatMode = compatMode, onToggleCompatMode = toggleCompat,
@@ -643,6 +646,8 @@ fun PlayerHud(
                         // The readout is gathered on the player's own thread now (A-F2), so the report is
                         // written from a coroutine. The confirmation still flashes immediately — the user
                         // pressed a button and must see it acknowledged.
+                        // Read at the press, not per tick.
+                        val reportPosition = tv.own.owntv.ui.components.formatTimestamp(reportContext.resources, position.value)
                         hudScope.launch {
                             val snapshot = buildString {
                                 appendLine(player.streamInfo().joinToString("\n") { (k, v) -> "  $k: $v" })
@@ -671,7 +676,7 @@ fun PlayerHud(
         // Cancel. Shown independently of the main controls so it appears even after they auto-hide.
         if (showNextCard) {
             NextEpisodeCard(
-                seconds = nextCountdown,
+                seconds = { ((msToAdvance() + 999L) / 1000L).toInt().coerceIn(0, 30) },
                 title = nextUpTitle ?: "",
                 playFocus = nextFocus,
                 onPlayNow = { autoNextDismissed = true; player.next() },

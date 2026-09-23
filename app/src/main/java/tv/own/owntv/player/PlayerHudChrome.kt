@@ -271,11 +271,13 @@ internal fun ChannelNumberCard(digits: String, error: String? = null, modifier: 
 @Composable
 internal fun CenterControls(
     player: PlaybackEngine, nav: NavState, isPlaying: Boolean, isLive: Boolean,
-    onRewindLive: (() -> Unit)?, onForwardLive: (() -> Unit)?, timeshiftOffsetSec: Int?,
+    onRewindLive: (() -> Unit)?, onForwardLive: (() -> Unit)?, timeshiftOffset: () -> Int?,
     playFocus: FocusRequester, modifier: Modifier = Modifier,
 ) {
     val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
     val rewindMode = onRewindLive != null // this is a catch-up-capable Live channel
+    // Read here, not in the HUD root: it ticks every second while rewound (T14).
+    val timeshiftOffsetSec = timeshiftOffset()
     val timeshifting = timeshiftOffsetSec != null
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         if (timeshifting) {
@@ -309,9 +311,9 @@ internal fun CenterControls(
 
 @Composable
 internal fun BottomBar(
-    player: PlaybackEngine, isLive: Boolean, position: Long, duration: Long,
+    player: PlaybackEngine, isLive: Boolean, position: () -> Long, duration: Long,
     volume: Int, audioCount: Int, subCount: Int, zoomMode: ZoomMode, speedLabel: String,
-    onScrubLive: ((Int) -> Unit)?, timeshiftOffsetSec: Int?, onGoToLive: (() -> Unit)?, onOpenJumpBack: (() -> Unit)?,
+    onScrubLive: ((Int) -> Unit)?, timeshiftOffset: () -> Int?, onGoToLive: (() -> Unit)?, onOpenJumpBack: (() -> Unit)?,
     liveProgrammes: List<LiveProgramme> = emptyList(),
     compatMode: Boolean?, onToggleCompatMode: (() -> Unit)?,
     vodOnExo: Boolean?, onToggleVodEngine: (() -> Unit)?,
@@ -321,8 +323,9 @@ internal fun BottomBar(
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
     onBack: () -> Unit, modifier: Modifier = Modifier,
 ) {
-    val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
-    val buffered by player.bufferedMs.collectAsStateWithLifecycle()
+    // Changes only while rewound into the archive. The film position is read lower still, by
+    // [VodTimeline], so the tool buttons do not redraw every second (T14).
+    val timeshiftOffsetSec = timeshiftOffset()
     Dock(modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp)) {
         // Band A — the instrument. The times are the bar's own end caps now; the separate time row is
         // gone, and on live the right cap is the state badge instead of a clock.
@@ -345,15 +348,7 @@ internal fun BottomBar(
                 Spacer(Modifier.height(10.dp))
             }
             !isLive && duration > 0 -> {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TimeCap(formatTime(position), Alignment.Start)
-                    Spacer(Modifier.width(12.dp))
-                    Box(Modifier.weight(1f)) {
-                        SeekBar(positionMs = position, durationMs = duration, bufferedMs = buffered, stepMs = seekStep, onSeek = { player.seekBy(it) })
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    TimeCap(stringResource(R.string.player_time_remaining, formatTime((duration - position).coerceAtLeast(0))), Alignment.End)
-                }
+                VodTimeline(player, position, duration)
                 Spacer(Modifier.height(10.dp))
             }
             // A live channel with no archive has no timeline to scrub, but it still has a state to
@@ -498,11 +493,30 @@ private fun volumeIcon(volume: Int): OwnTVIcon = when {
     else -> OwnTVIcon.VOLUME_HIGH
 }
 
+/** A film's seek bar and its two time caps — the only part of the dock that needs the position, so the
+ *  only part that recomposes as it ticks (T14). */
+@Composable
+private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long) {
+    val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
+    val buffered by player.bufferedMs.collectAsStateWithLifecycle()
+    val pos = position()
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        TimeCap(formatTime(pos), Alignment.Start)
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.weight(1f)) {
+            SeekBar(positionMs = pos, durationMs = duration, bufferedMs = buffered, stepMs = seekStep, onSeek = { player.seekBy(it) })
+        }
+        Spacer(Modifier.width(12.dp))
+        TimeCap(stringResource(R.string.player_time_remaining, formatTime((duration - pos).coerceAtLeast(0))), Alignment.End)
+    }
+}
+
 /** Next-episode countdown card: "Next episode in Ns" + title, with Play now / Cancel. Play now advances
- *  immediately; Cancel suppresses the automatic advance for the current item. */
+ *  immediately; Cancel suppresses the automatic advance for the current item. [seconds] is read inside,
+ *  so the countdown redraws this card rather than the whole HUD. */
 @Composable
 internal fun NextEpisodeCard(
-    seconds: Int,
+    seconds: () -> Int,
     title: String,
     playFocus: FocusRequester,
     onPlayNow: () -> Unit,
@@ -518,7 +532,7 @@ internal fun NextEpisodeCard(
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         Text(
-            stringResource(R.string.player_next_episode, seconds),
+            stringResource(R.string.player_next_episode, seconds()),
             style = MaterialTheme.typography.labelLarge,
             color = colors.accentOnVideo,
             fontWeight = FontWeight.Bold,

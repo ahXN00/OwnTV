@@ -35,6 +35,11 @@
 - **🌐 Custom DNS actually works — and all three presets pass**
 - **🐢 Lighter on 2 GB televisions**
 - **🏎️ Scrolling is two to five times quicker on low-end TVs**
+- **🔁 Quick channel picks always end on the last one**
+- **⏪ Catch-up is never interrupted by a live channel**
+- **⚙️ The first channel after starting the app uses your settings**
+- **🎬 Films with subtitles off keep the picture clean**
+- **🔋 The full-screen player does less work**
 
 ## v5.0.2 — 2026-09-21
 
