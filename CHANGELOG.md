@@ -4,6 +4,26 @@
 
 ### 🩹 Fixes
 
+#### 🔐 Restoring a backup from another device keeps this TV's picture and sound setup
+
+Backups now record which device made them. Restoring one from a phone or another box no longer
+copies over that device's hardware settings — player engines, hardware decoding, frame-rate
+matching, HDR, surround, deinterlacing and per-channel player choices — unless you tick the new
+"Hardware settings from the other device" option. Local sync asks the same way. A backup of this
+same TV restores everything as before.
+
+#### 👥 A restore never hands one person's data to another profile
+
+Home layouts, "hide new categories", the startup screen, Customize PINs, player memory, subtitle
+data and the OpenSubtitles login of a person who is not on this TV are now skipped, instead of
+landing on whoever has the same profile number here. Channel choices for playlists that were not
+restored are dropped rather than attached to a different playlist.
+
+#### 🧱 One bad value no longer stops a restore
+
+A setting in a backup that the app could never have written (a zero seek step, an impossible
+delay) is skipped or brought into range, and the rest of the restore carries on.
+
 #### 🔇 Home during Multiview no longer keeps playing
 
 Pressing Home (or the screensaver starting) with Multiview up left every tile streaming — sound

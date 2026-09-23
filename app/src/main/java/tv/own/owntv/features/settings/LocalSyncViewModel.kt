@@ -186,11 +186,12 @@ class LocalSyncViewModel(
         }
     }
 
-    fun confirm() {
+    /** [deviceSettings]: the other device's hardware settings were ticked on the confirm step. */
+    fun confirm(deviceSettings: Boolean = false) {
         val current = step as? Step.Confirm ?: return
         busy = true
         viewModelScope.launch {
-            sync.apply(current.file, current.sections, current.password)
+            sync.apply(current.file, current.sections, current.password, deviceSettings)
                 .onSuccess { summary ->
                     val sent = current.device != null && current.direction == SyncDirection.MERGE &&
                         sync.send(current.device, current.sections).isSuccess

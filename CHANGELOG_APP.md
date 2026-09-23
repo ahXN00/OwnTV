@@ -13,6 +13,9 @@
 
 ### 🩹 Fixes
 
+- **🔐 Restoring a backup from another device keeps this TV's picture and sound setup**
+- **👥 A restore never hands one person's data to another profile**
+- **🧱 One bad value no longer stops a restore**
 - **🔇 Home during Multiview no longer keeps playing**
 - **📺 The Live preview stops when you leave Live TV**
 - **🎬 Favourites and History no longer stop a docked film**

@@ -1551,18 +1551,12 @@ class LiveViewModel(
      *  setting. Honours pins written by older builds under the stream URL; a legacy hit is rewritten under
      *  the stable key so it survives the next re-sync/Stalker resolve. */
     private fun enginePin(channel: ChannelEntity): Boolean? {
+        // Core's lookup, shared with the phone; read from the warm StateFlows so tuning never waits.
         val key = mpvPinKey(channel)
-        val mpvPins = forceMpvUrls.value
-        val exoPins = forceExoUrls.value
-        if (key != null && key in mpvPins) return true
-        if (key != null && key in exoPins) return false
-        val legacy = when (channel.streamUrl) {
-            in mpvPins -> true
-            in exoPins -> false
-            else -> return null
-        }
-        if (key != null) viewModelScope.launch { forceMpvStore.migrateKey(channel.streamUrl, key) }
-        return legacy
+        val pin = tv.own.owntv.core.player.ForceMpvStore.pinOf(key, channel.streamUrl, forceMpvUrls.value, forceExoUrls.value)
+            ?: return null
+        if (pin.legacy && key != null) viewModelScope.launch { forceMpvStore.migrateKey(channel.streamUrl, key) }
+        return pin.onMpv
     }
 
     /**

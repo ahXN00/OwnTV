@@ -118,6 +118,8 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
     // whole file, so "playlists but not that device's settings" could not be said here.
     var restoreFile by remember { mutableStateOf<java.io.File?>(null) }
     var restoreSections by remember { mutableStateOf<Set<tv.own.owntv.core.backup.BackupManager.Section>?>(null) }
+    // "Hardware settings from the other device" — asked with the sections, carried like them.
+    val restoreDeviceSettings = remember { mutableStateOf(false) }
 
     // Refresh the "existing playlists" availability whenever we land on the add-content step.
     LaunchedEffect(step) { if (step == Step.ADD_CONTENT) existing = runCatching { vm.availableExistingSources() }.getOrDefault(emptyList()) }
@@ -232,7 +234,7 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                 // The same choice, carried across the password question: a sealed file is chosen
                 // from before it can be opened, so the answer has to outlive the prompt.
                 onPassword = { file, pass ->
-                    vm.restoreWithPassword(file, pass, onDone, restoreSections ?: allRestoreSections)
+                    vm.restoreWithPassword(file, pass, onDone, restoreSections ?: allRestoreSections, restoreDeviceSettings.value)
                 },
                 onBack = { vm.reset(); restoreFile = null; restoreSections = null; step = backupOrigin },
             )
@@ -251,9 +253,12 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                 confirmLabel = stringResource(R.string.settings_backup_restore_action),
                 onConfirm = { chosen ->
                     restoreSections = chosen
-                    vm.importBackup(file, onDone, chosen) // restore activates a profile itself
+                    vm.importBackup(file, onDone, chosen, restoreDeviceSettings.value) // restore activates a profile itself
                 },
                 onDismiss = { vm.reset(); restoreFile = null; step = backupOrigin },
+                // Offered whatever the file is: this has not opened it yet. Harmless for a backup of
+                // this very device, whose hardware settings core restores regardless.
+                deviceSettings = restoreDeviceSettings,
             )
         }
         // Semi-auto EPG: after the first playlist imports, ask → sync (live count) → done (overlays "All set!").

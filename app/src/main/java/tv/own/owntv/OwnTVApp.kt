@@ -108,27 +108,13 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             modules(coreModule, appModule, databaseModule, dataModule, playerModule)
         }
         Perf.stamp("koin-started")
-        // Detailed playback logging follows the setting for the WHOLE process. It used to be observed by
-        // the live preview engine, which is a lazy singleton — so nothing wrote to the diagnostics log
-        // until the user happened to open Live TV, and a fault during startup, a VOD open or an EPG sync
-        // produced an empty report from a user who had deliberately turned logging on.
-        appScope.launch {
-            val settings = GlobalContext.get().get<tv.own.owntv.core.settings.SettingsRepository>()
-            settings.detailedDiagnostics.collect { on ->
-                tv.own.owntv.player.LiveDiagnosticsLog.enabled =
-                    on || BuildConfig.DEBUG || BuildConfig.DIAGNOSTIC_BUILD
-            }
-        }
-        // Seed the one persisted playback quirk (panels whose catch-up archive needs a software
-        // decoder) off the main thread. One small DataStore read, fire-and-forget: nothing on the
-        // launch path waits for it, and the value is only consulted when an archive is opened.
-        appScope.launch {
-            val store = GlobalContext.get().get<tv.own.owntv.core.player.ArchiveDecodeStore>()
-            val known = runCatching { store.hosts() }.getOrDefault(emptySet())
-            tv.own.owntv.player.LiveStreamQuirks.installArchivePersistence(known) { host ->
-                appScope.launch { runCatching { store.remember(host) } }
-            }
-        }
+        // Diagnostics switch, the persisted archive-decode quirk and the one-shot settings migrations —
+        // core's, shared with the phone, which used to run none of them.
+        tv.own.owntv.player.PlaybackStartup.start(
+            scope = appScope,
+            settings = GlobalContext.get().get(),
+            archiveStore = GlobalContext.get().get(),
+        )
         // NOTE: cold start does ZERO heavy DB work. Index + ANALYZE maintenance is piggy-backed onto the
         // operation that actually changes the data — ImportFinalizer.finalize() for normal re-syncs, the
         // deferred content-index worker after a fresh import, the EpgRepository refresh after every EPG

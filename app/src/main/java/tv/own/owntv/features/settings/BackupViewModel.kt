@@ -81,6 +81,8 @@ class BackupViewModel(
             val available: Set<BackupManager.Section>,
             val encrypted: Boolean,
             val password: String? = null,
+            /** Written on another device: the picker offers that device's hardware settings (unticked). */
+            val fromOtherDevice: Boolean = false,
         ) : State
         data class Done(
             val kind: DoneKind,
@@ -105,6 +107,8 @@ class BackupViewModel(
             val file: File,
             val sections: Set<BackupManager.Section>?,
             val retry: Boolean = false,
+            /** The picker's "hardware settings from the other device" answer, carried to the import. */
+            val deviceSettings: Boolean = false,
         ) : State {
             /** Whole-file encryption: the password is mandatory and there is nothing to skip to. */
             val sealed: Boolean get() = sections == null
@@ -142,7 +146,7 @@ class BackupViewModel(
                 return@launch
             }
             backup.sectionsIn(file).fold(
-                onSuccess = { _state.value = State.ChooseRestore(file, it.sections, it.encrypted) },
+                onSuccess = { _state.value = State.ChooseRestore(file, it.sections, it.encrypted, fromOtherDevice = it.fromOtherDevice) },
                 onFailure = { _state.value = State.Error(BackupError.READ) }
             )
         }
@@ -153,7 +157,7 @@ class BackupViewModel(
         viewModelScope.launch {
             _state.value = State.Working
             backup.sectionsIn(file, password).fold(
-                onSuccess = { _state.value = State.ChooseRestore(file, it.sections, it.encrypted, password) },
+                onSuccess = { _state.value = State.ChooseRestore(file, it.sections, it.encrypted, password, it.fromOtherDevice) },
                 onFailure = {
                     _state.value = if (it is BackupManager.WrongPasswordException) {
                         State.NeedPassword(file, sections = null, retry = true)
@@ -166,10 +170,10 @@ class BackupViewModel(
     }
 
     /** Step 2 of restore: apply the chosen sections. */
-    fun import(file: File, sections: Set<BackupManager.Section>, backupPassword: String?) {
+    fun import(file: File, sections: Set<BackupManager.Section>, backupPassword: String?, deviceSettings: Boolean = false) {
         viewModelScope.launch {
             _state.value = State.Working
-            backup.import(file, sections, backupPassword).fold(
+            backup.import(file, sections, backupPassword, deviceSettings = deviceSettings).fold(
                 onSuccess = { summary ->
                     _state.value = State.Done(
                         DoneKind.RESTORED,
@@ -181,7 +185,7 @@ class BackupViewModel(
                 },
                 onFailure = {
                     if (it is BackupManager.WrongPasswordException) {
-                        _state.value = State.NeedPassword(file, sections, retry = true)
+                        _state.value = State.NeedPassword(file, sections, retry = true, deviceSettings = deviceSettings)
                     } else {
                         _state.value = State.Error(BackupError.IMPORT)
                     }
@@ -197,11 +201,12 @@ class BackupViewModel(
         sections: Set<BackupManager.Section>,
         encrypted: Boolean,
         password: String? = null,
+        deviceSettings: Boolean = false,
     ) {
         when {
-            password != null -> import(file, sections, password)
-            encrypted -> _state.value = State.NeedPassword(file, sections)
-            else -> import(file, sections, null)
+            password != null -> import(file, sections, password, deviceSettings)
+            encrypted -> _state.value = State.NeedPassword(file, sections, deviceSettings = deviceSettings)
+            else -> import(file, sections, null, deviceSettings)
         }
     }
 

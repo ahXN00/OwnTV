@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -243,13 +244,15 @@ fun BackupScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
     // Restore step 2: the picked file was inspected — choose which of its sections to apply.
     (state as? BackupViewModel.State.ChooseRestore)?.let { choose ->
+        val deviceSettings = remember(choose.file) { mutableStateOf(false) }
         SectionPickerDialog(
             title = stringResource(R.string.settings_backup_what_restore),
             sections = BackupManager.Section.entries.filter { it in choose.available },
             initial = choose.available,
             confirmLabel = stringResource(R.string.settings_backup_restore_action),
-            onConfirm = { chosen -> vm.beginImport(choose.file, chosen, choose.encrypted, choose.password) },
+            onConfirm = { chosen -> vm.beginImport(choose.file, chosen, choose.encrypted, choose.password, deviceSettings.value) },
             onDismiss = { vm.reset() },
+            deviceSettings = deviceSettings.takeIf { choose.fromOtherDevice },
         )
     }
 
@@ -293,9 +296,9 @@ fun BackupScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             skipLabel = if (need.sealed) null else stringResource(R.string.settings_backup_skip_passwords),
             onConfirm = { pass ->
                 val sections = need.sections
-                if (sections == null) vm.unlock(need.file, pass) else vm.import(need.file, sections, pass)
+                if (sections == null) vm.unlock(need.file, pass) else vm.import(need.file, sections, pass, need.deviceSettings)
             },
-            onSkip = { need.sections?.let { vm.import(need.file, it, null) } },
+            onSkip = { need.sections?.let { vm.import(need.file, it, null, need.deviceSettings) } },
             onDismiss = { vm.reset() },
         )
     }
@@ -608,6 +611,13 @@ internal fun SectionPickerDialog(
     confirmLabel: String,
     onConfirm: (Set<BackupManager.Section>) -> Unit,
     onDismiss: () -> Unit,
+    /**
+     * Restore only: offer to take the *other* device's hardware settings too (engine, decoder, frame
+     * rate, HDR, surround). Null hides the row — export, or a backup this device wrote itself, whose
+     * hardware settings core restores anyway. Unticked unless the user ticks it; not part of
+     * "Everything", which is about what the file holds, not about this device.
+     */
+    deviceSettings: MutableState<Boolean>? = null,
 ) {
     OwnTVPopup(onDismissRequest = onDismiss) {
     val colors = OwnTVTheme.colors
@@ -635,6 +645,15 @@ internal fun SectionPickerDialog(
                     desc = stringResource(sectionDescriptionRes(section)),
                     checked = section in selected,
                     onToggle = { selected = if (section in selected) selected - section else selected + section },
+                )
+            }
+            if (deviceSettings != null && BackupManager.Section.SETTINGS in selected) {
+                Spacer(Modifier.height(6.dp))
+                CheckRow(
+                    label = stringResource(R.string.settings_backup_device_settings),
+                    desc = stringResource(R.string.settings_backup_device_settings_desc),
+                    checked = deviceSettings.value,
+                    onToggle = { deviceSettings.value = !deviceSettings.value },
                 )
             }
 

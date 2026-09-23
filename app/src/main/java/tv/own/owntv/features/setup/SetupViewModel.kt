@@ -163,8 +163,10 @@ class SetupViewModel(
         file: File,
         onDone: (Long?) -> Unit,
         sections: Set<BackupManager.Section> = BackupManager.Section.entries.toSet(),
+        /** Take another device's hardware settings too — see [BackupManager.import]. */
+        deviceSettings: Boolean = false,
     ) {
-        viewModelScope.launch { if (importer.importBackup(file, sections)) onRestored(onDone) }
+        viewModelScope.launch { if (importer.importBackup(file, sections, deviceSettings)) onRestored(onDone) }
     }
 
     /** Continue an encrypted restore once the user provides (or skips, password = null) the passphrase. */
@@ -173,8 +175,9 @@ class SetupViewModel(
         password: String?,
         onDone: (Long?) -> Unit,
         sections: Set<BackupManager.Section> = BackupManager.Section.entries.toSet(),
+        deviceSettings: Boolean = false,
     ) {
-        viewModelScope.launch { if (importer.restoreWithPassword(file, password, sections)) onRestored(onDone) }
+        viewModelScope.launch { if (importer.restoreWithPassword(file, password, sections, deviceSettings)) onRestored(onDone) }
     }
 
     // A backup may restore several profiles or a PIN-locked active profile. Restoring data is not

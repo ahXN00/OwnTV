@@ -675,6 +675,8 @@ private fun SectionsBlock(vm: LocalSyncViewModel, step: LocalSyncViewModel.Step.
 private fun ConfirmBlock(vm: LocalSyncViewModel, step: LocalSyncViewModel.Step.Confirm) {
     val colors = OwnTVTheme.colors
     val preview = step.preview
+    // The other device's hardware settings and engine pins: offered only when it sent some, unticked.
+    var deviceSettings by remember(step.file) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(stringResource(R.string.local_sync_confirm_title), style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
         if (preview.isEmpty) {
@@ -694,6 +696,17 @@ private fun ConfirmBlock(vm: LocalSyncViewModel, step: LocalSyncViewModel.Step.C
                 Text(stringResource(R.string.local_sync_change_customize), style = MaterialTheme.typography.bodyMedium, color = colors.onSurface)
             }
         }
+        if (preview.hasDeviceSettings) {
+            Spacer(Modifier.height(6.dp))
+            Row2(
+                icon = OwnTVIcon.BACKUP,
+                title = stringResource(R.string.settings_backup_device_settings),
+                desc = stringResource(R.string.settings_backup_device_settings_desc),
+                chip = stringResource(if (deviceSettings) R.string.common_on else R.string.common_off),
+                primaryChip = deviceSettings,
+                onClick = { deviceSettings = !deviceSettings },
+            )
+        }
         if (step.direction == SyncDirection.MERGE) {
             Text(stringResource(R.string.local_sync_merge_note), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
@@ -701,7 +714,7 @@ private fun ConfirmBlock(vm: LocalSyncViewModel, step: LocalSyncViewModel.Step.C
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OwnTVButton(
                 stringResource(R.string.local_sync_apply),
-                onClick = { if (!preview.isEmpty) vm.confirm() },
+                onClick = { if (!preview.isEmpty) vm.confirm(deviceSettings) },
             )
             OwnTVButton(stringResource(R.string.common_cancel), onClick = vm::cancel, style = OwnTVButtonStyle.SECONDARY)
         }
