@@ -4,6 +4,35 @@
 
 ### ✨ New features
 
+#### 😴 Sleep timer
+
+The player bar has a **Sleep timer** button (moon icon): stop playing in 15, 30, 45, 60 or 90
+minutes, or at the end of the programme on a live channel. The moon turns green while a timer runs.
+When it ends, the player closes and the Live TV preview and Multiview stop too. It follows the real
+clock, and stopping playback yourself cancels it.
+
+#### ⏩ Left and Right seek a film with the controls hidden
+
+While a film or episode plays with the controls hidden, Left and Right skip back and forward by
+your seek step and bring up the seek bar, so holding the key keeps scrubbing. On live channels
+Left and Right still open the channel list and history — or, with the new **Left and right rewind
+live TV** setting (Settings → Video player), rewind and go forward on channels with catch-up.
+
+#### 🎞️ Auto frame rate: pause during the switch, match resolution
+
+Two new rows under **Auto frame rate**, for films only: **Pause during the display switch** (Off to
+5 s) holds the film while the TV goes black to change mode, so its opening is not lost — never for a
+seamless switch; **Match resolution** also switches the TV to the film's resolution (1080p for an HD
+film on a 4K TV), never above the resolution it started on.
+
+#### 📶 Film buffer, network timeout and reconnect attempts
+
+Settings → Video player has **Film buffer** (Auto, 30 s – 5 min), **Network timeout** (Auto, 10–60 s)
+and **Reconnect attempts** (1, 3, 5 or 10) for films, episodes and catch-up. Auto and 1 are what
+the app did before; memory limits are unchanged, so a longer buffer is "up to". A film that loses its
+connection now reopens where it stopped on either player, and a minute of steady playback earns the
+attempts back.
+
 #### 👄 Audio sync on every player
 
 Lip sync (player → Audio → **A/V sync**, and the Settings default) now also works on ExoPlayer —

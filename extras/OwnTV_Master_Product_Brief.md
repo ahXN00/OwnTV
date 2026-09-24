@@ -86,6 +86,8 @@ Each engine is chosen automatically by content type, with fallback between them.
 - **Frame-rate matching** (opt-in) — asks the display for the video's native rate to remove judder.
   When a live stream declares no rate it is measured, and used only when two samples agree. Android
   TV's own *Match content frame rate* preference is honoured above the app's toggle.
+  For films it can also hold playback through a non-seamless switch and match the film's resolution
+  (never above the TV's own) — both opt-in.
 - **Live buffering under user control** — the **Live latency** choice sizes the real buffer on both
   engines, and a separate **Pre-buffer** gate (off / 2 / 5 / 10 s) holds playback until enough video
   is collected. Both overridable per playlist.

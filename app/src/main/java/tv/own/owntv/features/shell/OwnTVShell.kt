@@ -248,6 +248,8 @@ fun OwnTVShell(
     // Auto frame rate: only ever applied to the FULL-SCREEN surface (never the mini-player or the
     // in-pane Live preview) — see FrameRateController.
     val autoFrameRate by settingsRepo.autoFrameRate.collectAsStateWithLifecycle(initialValue = false)
+    val afrMatchResolution by settingsRepo.afrMatchResolution.collectAsStateWithLifecycle(initialValue = false)
+    val afrPauseSecs by settingsRepo.afrPauseSecs.collectAsStateWithLifecycle(initialValue = 0)
     // ...and the one-time suggestion to turn it on, for the 25-fps-on-60-Hz judder the direct render path
     // cannot fix by itself (F13). `true` until the flag is read, so it can never flash on first frame.
     val afrPrompted by settingsRepo.autoFrameRatePrompted.collectAsStateWithLifecycle(initialValue = true)
@@ -286,6 +288,7 @@ fun OwnTVShell(
     // Multiview: the grid, while it is up, and which tile is waiting for a channel to be picked.
     val multiviewEnabled by settingsRepo.multiviewEnabled.collectAsStateWithLifecycle(false)
     val recordWatchingEnabled by settingsRepo.recordWhatImWatching.collectAsStateWithLifecycle(false)
+    val liveLeftRightRewinds by settingsRepo.liveLeftRightRewinds.collectAsStateWithLifecycle(false)
     val multiviewTileCount by settingsRepo.multiviewTiles.collectAsStateWithLifecycle(
         tv.own.owntv.core.live.DEFAULT_MULTIVIEW_TILES,
     )
@@ -545,6 +548,23 @@ fun OwnTVShell(
         }
         liveVm.clearMultiviewSelection()
         state
+    }
+    // N17 — the sleep timer's "stop" on a television. Closing the player alone is not a stop here: a
+    // live channel carries on in the preview pane, and a Multiview grid is not the player at all. So
+    // all three go, in the order Multiview's own Back uses, and the preview last.
+    val sleepTimer = koinInject<tv.own.owntv.player.SleepTimer>()
+    val stopForSleep by rememberUpdatedState {
+        multiview?.let { grid ->
+            grid.releaseAll()
+            multiview = null
+            multiviewPickFor = null
+        }
+        if (playerMode != PlayerMode.NONE) exitPlayer()
+        liveVm.stopPreview()
+    }
+    DisposableEffect(sleepTimer) {
+        sleepTimer.stopPlayback = { stopForSleep() }
+        onDispose { sleepTimer.stopPlayback = null }
     }
     // The kept selection is spent the moment a channel actually starts playing full screen: that
     // press is the "and now open it" the plan describes, and nothing else in the app claims it.
@@ -1333,7 +1353,10 @@ fun OwnTVShell(
                     keepAwake = true, autoFrameRate = isFull && autoFrameRate,
                 )
             } else {
-                MpvVideoSurface(player = player, modifier = Modifier.fillMaxSize(), autoFrameRate = isFull && autoFrameRate)
+                MpvVideoSurface(
+                    player = player, modifier = Modifier.fillMaxSize(), autoFrameRate = isFull && autoFrameRate,
+                    afrMatchResolution = afrMatchResolution, afrHoldSecs = afrPauseSecs,
+                )
             }
             // The item has no video track of its own (a radio channel, a music-only "movie"). Playing it is
             // correct — but a black screen with sound reads as a broken player, so name what is happening.
@@ -1439,6 +1462,9 @@ fun OwnTVShell(
                     // Non-null only while an archive is on screen, so movies, episodes and live TV get
                     // the single real clock and catch-up gets the pair.
                     watchingWallMs = { watchingWallState.value },
+                    // "End of programme" only at the live edge: rewound, the programme on air is not the one being watched.
+                    sleepProgrammeEndMs = if (isTunedLive && !timeshifted) { { liveVm.nowNext.value?.now?.stopMs } } else null,
+                    liveLeftRightRewinds = liveLeftRightRewinds,
                     timeshiftOffsetSec = if (isTunedLive) { { timeshiftOffsetState.value } } else null,
                     onTuneToNumber = if (directTuneEnabled && isTunedLive && isLiveStream && !timeshifted && previewChannel != null) liveVm::tuneByNumber else null,
                     directTuneContextKey = previewChannel?.id ?: 0L,

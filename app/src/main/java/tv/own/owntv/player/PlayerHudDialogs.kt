@@ -235,6 +235,59 @@ internal fun SpeedDialog(current: Double, onSelect: (Double) -> Unit, onDismiss:
     }
 }
 
+/**
+ * The sleep timer's choices (N17), the phone's sheet in the television's dialog: Off while one is
+ * running, the shared minute choices, and "End of programme" only when the guide says when that is.
+ * The title turns into the countdown while a timer runs, so re-opening it says what is set.
+ */
+@Composable
+internal fun SleepTimerDialog(
+    timer: SleepTimer,
+    /** When the programme on air ends; null offers no such row. */
+    programmeEndMs: Long?,
+    onDismiss: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { requestFocusRetrying(focus) }
+    BackHandler { onDismiss() }
+    val remaining by timer.remainingMs.collectAsStateWithLifecycle()
+    val title = remaining?.let {
+        stringResource(R.string.player_sleep_timer_remaining, stringResource(R.string.player_duration_minutes, SleepTimer.minutesLeft(it)))
+    } ?: stringResource(R.string.player_sleep_timer)
+    // Read once, as the dialog opens: the rows must not change under the D-pad while it is up.
+    val running = remember { remaining != null }
+    DialogScaffold(title = title, onDismiss = onDismiss) {
+        if (running) {
+            item {
+                OptionRow(
+                    label = stringResource(R.string.common_off),
+                    selected = false,
+                    modifier = Modifier.focusRequester(focus),
+                    onClick = { timer.cancel(); onDismiss() },
+                )
+            }
+        }
+        items(SleepTimer.CHOICES_MINUTES.size) { index ->
+            val minutes = SleepTimer.CHOICES_MINUTES[index]
+            OptionRow(
+                label = stringResource(R.string.player_duration_minutes, minutes),
+                selected = false,
+                modifier = if (!running && index == 0) Modifier.focusRequester(focus) else Modifier,
+                onClick = { timer.start(minutes * 60_000L); onDismiss() },
+            )
+        }
+        programmeEndMs?.takeIf { it > System.currentTimeMillis() }?.let { endMs ->
+            item {
+                OptionRow(
+                    label = stringResource(R.string.player_sleep_timer_end_of_programme),
+                    selected = false,
+                    onClick = { timer.start(endMs - System.currentTimeMillis()); onDismiss() },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 internal fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismiss: () -> Unit) {
     val focus = remember { FocusRequester() }

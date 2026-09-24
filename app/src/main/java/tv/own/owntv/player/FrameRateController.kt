@@ -8,8 +8,19 @@ import android.view.Display
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import android.hardware.display.DisplayManager
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.core.ui.findActivity
+import kotlin.coroutines.resume
 import kotlin.math.abs
 
 /**
@@ -106,14 +117,15 @@ object FrameRateController {
      * blanking the picture repeatedly on a stream that never changed frame rate at all. [snapFps] removes
      * most of that drift; this collapses whatever is left into one switch.
      */
-    fun apply(activity: Activity, fps: Float) {
+    fun apply(activity: Activity, fps: Float, videoSize: Pair<Int, Int>? = null, matchResolution: Boolean = false) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || fps <= 0f) return
         cancelPendingApply()
         runCatching {
             // The pending reset is cancelled only once a mode is actually going to be requested. Cancelling
             // up front killed the restore-to-default even when nothing matched this item's frame rate — so
             // leaving a 24p film for something the panel has no mode for kept the display at 24Hz.
-            val target = pickMode(activity, fps) ?: return
+            val choice = pickMode(activity, fps, videoSize?.takeIf { matchResolution }) ?: return
+            val target = choice.mode
             cancelPendingReset()
             if (target.modeId == activity.window.attributes.preferredDisplayModeId) return
             val waitMs = MODE_CHANGE_COOLDOWN_MS - (android.os.SystemClock.uptimeMillis() - lastChangeAtMs)
@@ -121,52 +133,119 @@ object FrameRateController {
                 Log.i(TAG, "AFR: ${fps}fps -> mode ${target.modeId} deferred ${waitMs}ms (cooldown)")
                 // Re-resolve on the way out rather than capturing `target`: by then the fps may have moved
                 // again, and the newest reading is the one worth acting on.
-                val task = Runnable { pendingApply = null; apply(activity, fps) }
+                val task = Runnable { pendingApply = null; apply(activity, fps, videoSize, matchResolution) }
                 pendingApply = task
                 handler.postDelayed(task, waitMs)
                 return
             }
             activity.window.attributes = activity.window.attributes.apply { preferredDisplayModeId = target.modeId }
             lastChangeAtMs = android.os.SystemClock.uptimeMillis()
-            Log.i(TAG, "AFR: video ${fps}fps -> display mode ${target.modeId} (${target.refreshRate}Hz)")
+            Log.i(TAG, "AFR: video ${fps}fps -> display mode ${target.modeId} (${target.physicalWidth}x${target.physicalHeight} ${target.refreshRate}Hz, seamless=${choice.seamless})")
+            onModeSwitched?.invoke(choice.seamless)
         }.onFailure { Log.w(TAG, "AFR apply failed: ${it.message}") }
     }
 
     /**
-     * The best display mode for [fps] at the CURRENT resolution, or null when nothing matches.
+     * Told each time a mode change is actually pushed to the window, with whether the panel can make it
+     * without re-syncing HDMI. The full-screen film surface listens, to hold the film through the black
+     * gap (N7); nothing else does, so live TV is never paused by it.
+     */
+    var onModeSwitched: ((seamless: Boolean) -> Unit)? = null
+
+    /**
+     * The resolution the display was on before this playback's first switch — the ceiling resolution
+     * matching never goes above, and what the next film is judged against once the panel has been moved
+     * to 1080p. Captured while the window still asks for the system default; cleared on release.
+     */
+    private var baseWidth = 0
+    private var baseHeight = 0
+
+    private class Choice(val mode: Display.Mode, val seamless: Boolean)
+
+    /**
+     * The best display mode for [fps], or null when nothing matches — the `Display` side of [chooseMode].
      *
      * Shared by [apply] and [betterRefreshRateFor] so the "Auto frame rate would help here" prompt (F13)
      * can never promise a switch [apply] would not make.
-     *
-     * Ordering, highest priority first:
-     *  1. **Seamless** switches (API 31+). A mode listed in the current mode's `alternativeRefreshRates`
-     *     is one the panel can move to without re-handshaking HDMI, i.e. without the black gap that makes
-     *     a live stream look like it paused. Media3's own AFR path is pinned to seamless-only for exactly
-     *     this reason; this one only *prefers* it, because on most TVs 60→50 is not seamless and refusing
-     *     it outright would silently turn AFR off for the content that needs it most.
-     *  2. The lowest refresh-rate multiple (a true 24Hz beats 72Hz).
-     *  3. The closest rate within that multiple.
      */
-    private fun pickMode(activity: Activity, fps: Float): Display.Mode? {
+    private fun pickMode(activity: Activity, fps: Float, videoSize: Pair<Int, Int>? = null): Choice? {
         val display: Display = displayOf(activity) ?: return null
         val current = display.mode ?: return null
-        val wanted = snapFps(fps)
         val systemPreference = systemMatchPreference(activity)
         if (systemPreference == MATCH_NEVER) return null
+        if (activity.window.attributes.preferredDisplayModeId == 0 || baseWidth == 0) {
+            baseWidth = current.physicalWidth
+            baseHeight = current.physicalHeight
+        }
         val seamless = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             current.alternativeRefreshRates.toList()
         } else {
             emptyList()
         }
-        fun isSeamless(mode: Display.Mode) = seamless.any { abs(it - mode.refreshRate) <= TOLERANCE_HZ }
-        return display.supportedModes
-            ?.filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
-            ?.filter { systemPreference != MATCH_SEAMLESS_ONLY || isSeamless(it) }
-            ?.mapNotNull { mode -> multipleOf(mode.refreshRate, wanted)?.let { mode to it } }
-            ?.minByOrNull { (mode, mult) ->
-                (if (isSeamless(mode)) 0f else 1_000_000f) + mult * 1000f + abs(mode.refreshRate - mult * wanted)
+        val modes = display.supportedModes?.toList().orEmpty()
+        val chosen = chooseMode(
+            modes = modes.map { ModeSpec(it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate) },
+            current = ModeSpec(current.modeId, current.physicalWidth, current.physicalHeight, current.refreshRate),
+            baseWidth = baseWidth,
+            baseHeight = baseHeight,
+            seamlessRates = seamless,
+            seamlessOnly = systemPreference == MATCH_SEAMLESS_ONLY,
+            fps = snapFps(fps),
+            video = videoSize,
+        ) ?: return null
+        return Choice(modes.first { it.modeId == chosen.mode.id }, chosen.seamless)
+    }
+
+    /** A display mode reduced to what the choice needs, so [chooseMode] runs without a `Display`. */
+    internal data class ModeSpec(val id: Int, val width: Int, val height: Int, val hz: Float)
+
+    internal data class Chosen(val mode: ModeSpec, val seamless: Boolean)
+
+    /**
+     * The best mode for [fps] (already snapped), or null when nothing matches. Pure, so it is unit-tested.
+     *
+     * Ordering, highest priority first:
+     *  1. **Seamless** switches (API 31+). A mode listed in the current mode's `alternativeRefreshRates`
+     *     — at the current resolution, since only a refresh-rate change can be seamless — is one the
+     *     panel can move to without re-handshaking HDMI, i.e. without the black gap that makes a live
+     *     stream look like it paused. Media3's own AFR path is pinned to seamless-only for exactly this
+     *     reason; this one only *prefers* it, because on most TVs 60→50 is not seamless and refusing it
+     *     outright would silently turn AFR off for the content that needs it most.
+     *  2. The lowest refresh-rate multiple (a true 24Hz beats 72Hz).
+     *  3. The closest rate within that multiple.
+     *
+     * The resolution is the **base** one — where the display was before this playback moved it — so a
+     * 4K output is never switched down to 1080p just to hit a rate. The one exception is [video], passed
+     * only when the user turned on resolution matching for a film (N7): the smallest mode that holds the
+     * whole picture, never above the base, is tried first, and the base resolution is the fallback when
+     * it has no matching rate. A seamless-only system never gets a resolution change: none is seamless.
+     */
+    internal fun chooseMode(
+        modes: List<ModeSpec>,
+        current: ModeSpec,
+        baseWidth: Int,
+        baseHeight: Int,
+        seamlessRates: List<Float>,
+        seamlessOnly: Boolean,
+        fps: Float,
+        video: Pair<Int, Int>?,
+    ): Chosen? {
+        fun isSeamless(mode: ModeSpec) = mode.width == current.width && mode.height == current.height &&
+            seamlessRates.any { abs(it - mode.hz) <= TOLERANCE_HZ }
+        fun bestAt(width: Int, height: Int): ModeSpec? = modes
+            .filter { it.width == width && it.height == height }
+            .filter { !seamlessOnly || isSeamless(it) }
+            .mapNotNull { mode -> multipleOf(mode.hz, fps)?.let { mode to it } }
+            .minByOrNull { (mode, mult) ->
+                (if (isSeamless(mode)) 0f else 1_000_000f) + mult * 1000f + abs(mode.hz - mult * fps)
             }
             ?.first
+        val fitted = video?.takeIf { !seamlessOnly && it.first > 0 && it.second > 0 }?.let { (w, h) ->
+            modes.filter { it.width in w..baseWidth && it.height in h..baseHeight }
+                .minByOrNull { it.width.toLong() * it.height }
+        }
+        val mode = fitted?.let { bestAt(it.width, it.height) } ?: bestAt(baseWidth, baseHeight) ?: return null
+        return Chosen(mode, isSeamless(mode))
     }
 
     /**
@@ -247,6 +326,8 @@ object FrameRateController {
         runCatching {
             if (activity.window.attributes.preferredDisplayModeId == 0) return
             activity.window.attributes = activity.window.attributes.apply { preferredDisplayModeId = 0 }
+            baseWidth = 0
+            baseHeight = 0
             // Playback stopped and the display is back on its default, so the next tune is not a "burst"
             // — it starts with a clean cooldown and switches immediately.
             lastChangeAtMs = 0L
@@ -271,7 +352,7 @@ object FrameRateController {
             val current = display.mode ?: return null
             // Snapped, like the mode choice itself: the prompt must judge the same rate [apply] will act on.
             if (multipleOf(current.refreshRate, snapFps(fps)) != null) return null // already clean
-            pickMode(activity, fps)?.refreshRate
+            pickMode(activity, fps)?.mode?.refreshRate
         }.getOrNull()
     }
 
@@ -298,19 +379,92 @@ object FrameRateController {
  * Applies [FrameRateController] for as long as this composable is in the tree, following [fps] as the
  * player reports it, and releases the display mode on dispose. Mount it from the full-screen video
  * surfaces only — a mini/preview window must not reconfigure the whole display.
+ *
+ * [film] is a FILM on the full-screen surface — the only case the two N7 extras apply to. On live TV a
+ * resolution switch would black the screen on every zap between an SD and an HD channel, and a pause
+ * would put the viewer behind the broadcast for nothing. [videoSize] feeds resolution matching;
+ * [holdSecs] > 0 holds the film paused through a switch the panel cannot make seamlessly.
  */
 @Composable
-fun AutoFrameRateEffect(fps: Float?, enabled: Boolean) {
+fun AutoFrameRateEffect(
+    fps: Float?,
+    enabled: Boolean,
+    film: PlaybackEngine? = null,
+    videoSize: Pair<Int, Int>? = null,
+    matchResolution: Boolean = false,
+    holdSecs: Int = 0,
+) {
     val activity = LocalContext.current.findActivity()
     // Apply on every fps change, but keep the release in its OWN effect keyed only on the activity —
     // keying the disposal on fps too would reset the display to default and re-request on each fps
     // update, i.e. an extra HDMI mode flip per change.
-    LaunchedEffect(activity, enabled, fps) {
+    val sizeForMatch = videoSize.takeIf { film != null && matchResolution }
+    LaunchedEffect(activity, enabled, fps, sizeForMatch) {
         if (activity == null) return@LaunchedEffect
-        if (enabled) FrameRateController.apply(activity, fps ?: 0f) else FrameRateController.reset(activity)
+        if (enabled) {
+            FrameRateController.apply(activity, fps ?: 0f, sizeForMatch, matchResolution = sizeForMatch != null)
+        } else {
+            FrameRateController.reset(activity)
+        }
     }
     DisposableEffect(activity) {
         onDispose { if (activity != null) FrameRateController.reset(activity) }
     }
+    val scope = rememberCoroutineScope()
+    DisposableEffect(activity, film, enabled, holdSecs) {
+        var hold: Job? = null
+        val listener: ((Boolean) -> Unit)? = if (activity != null && film != null && enabled && holdSecs > 0) {
+            { seamless ->
+                // Only a real re-sync blacks the panel; only a playing film has an opening to lose.
+                if (!seamless && film.isPlaying.value) {
+                    hold?.cancel()
+                    hold = scope.launch { holdThroughSwitch(activity, film, holdSecs) }
+                }
+            }
+        } else {
+            null
+        }
+        if (listener != null) FrameRateController.onModeSwitched = listener
+        onDispose {
+            // The slot is shared by every surface; only the one that filled it may empty it.
+            if (listener != null && FrameRateController.onModeSwitched === listener) FrameRateController.onModeSwitched = null
+            hold?.cancel()
+        }
+    }
 }
 
+/** How long the hold waits for the display to report the new mode before counting from the request. */
+private const val DISPLAY_CHANGE_WAIT_MS = 5_000L
+
+/**
+ * Pause [film], wait for the display to finish changing mode, then [holdSecs] more, and resume — unless
+ * the user pressed play or pause in the meantime, in which case playback is left exactly as they set it.
+ * Leaving the player cancels the hold with the surface, and nothing is resumed.
+ */
+private suspend fun holdThroughSwitch(activity: Activity, film: PlaybackEngine, holdSecs: Int) = coroutineScope {
+    if (!film.isPlaying.value) return@coroutineScope
+    film.togglePlayPause()
+    // Our own pause turns isPlaying false first; a true after that is the user resuming by hand.
+    var userResumed = false
+    val watch = launch { film.isPlaying.dropWhile { it }.first { it }; userResumed = true }
+    awaitDisplayChange(activity, DISPLAY_CHANGE_WAIT_MS)
+    delay(holdSecs * 1_000L)
+    watch.cancel()
+    if (!userResumed && !film.isPlaying.value) film.togglePlayPause()
+}
+
+/** Suspends until the display this activity is on reports a change, or [timeoutMs] passes. */
+private suspend fun awaitDisplayChange(activity: Activity, timeoutMs: Long) {
+    val manager = activity.getSystemService(DisplayManager::class.java) ?: return
+    withTimeoutOrNull(timeoutMs) {
+        suspendCancellableCoroutine { cont ->
+            val listener = object : DisplayManager.DisplayListener {
+                override fun onDisplayChanged(displayId: Int) { if (cont.isActive) cont.resume(Unit) }
+                override fun onDisplayAdded(displayId: Int) = Unit
+                override fun onDisplayRemoved(displayId: Int) = Unit
+            }
+            manager.registerDisplayListener(listener, android.os.Handler(android.os.Looper.getMainLooper()))
+            cont.invokeOnCancellation { manager.unregisterDisplayListener(listener) }
+        }
+    }
+}

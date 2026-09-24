@@ -53,6 +53,8 @@ val playerModule = module {
     }
     // Audio focus (duck-don't-pause) + the system MediaSession, driven by whichever engine is playing.
     single { tv.own.owntv.player.PlaybackSession(androidContext()) }
+    // N17 — ends itself when the session detaches; what "stop" means is assigned by the shell.
+    single { tv.own.owntv.player.SleepTimer(active = get<tv.own.owntv.player.PlaybackSession>().active) }
     // Bridges the playing item to the OpenSubtitles search. Bound here rather than with the rest of
     // the subtitle stack because it takes the player; it follows the engine to :player-core.
     single { tv.own.owntv.core.subtitles.SubtitleController(get(), get(), get(), get()) }

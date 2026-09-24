@@ -89,6 +89,8 @@ About. Its right-hand panel *describes* each row before you open it — it never
 | **Left** | full-screen live | Channel list for the folder you came from |
 | **Left ×2** | full-screen live | All Live TV categories — switch folder without stopping the stream |
 | **Right** | full-screen live | The last 30 channels you watched |
+| **Left / Right** | full-screen live, catch-up channel, **Left and right rewind live TV** on | Rewind / go forward instead of the lists (the timeline comes up; hold to scrub) |
+| **Left / Right** | film or episode, controls hidden | Skip back / forward by your seek step; the seek bar comes up, hold to keep scrubbing |
 | **CH+ / CH−** | full-screen live | Next / previous channel. Wraps around. Always works |
 | **Last channel** key | full-screen live | Back to the channel you watched before (press again to flip back). Also the clock button on the player bar |
 | **Up / Down** | full-screen live, controls hidden | Same as CH+/CH− |
@@ -422,6 +424,7 @@ Each profile has its own favourites, history, resume points and layout. Add a **
 | ⓘ **Stream info** | right-most button |
 | **Record** | control bar, live channels, once enabled |
 | **Multiview** | control bar, once enabled |
+| 🌙 **Sleep timer** | control bar, beside Stream info — 15–90 min or end of programme; green while running |
 | Exit | **Back** — there is no exit button |
 
 - **Remote transport keys** work — play/pause, next, previous, from the remote, a headset or a voice
@@ -551,7 +554,10 @@ right there in the list.
 | **Hardware decoder** | Video player | On for smooth 4K; off only to diagnose |
 | **HDR (mpv only)** | Video player | Use HDR output when the video and TV support it. ExoPlayer always passes HDR through |
 | **Auto frame rate** | Video player | Match the TV's refresh rate to the content. Off by default |
+| **Pause during the display switch** · **Match resolution** | Video player, under Auto frame rate | Films only: hold the film while the TV re-syncs (off–5 s); also switch to the film's resolution, never above the TV's own |
 | **Seek step / Live rewind step** | Video player | How far the skip buttons jump |
+| **Left and right rewind live TV** | Video player → Live TV | Off by default — Left/Right open the channel list and history |
+| **Film buffer** · **Network timeout** · **Reconnect attempts** | Video player | Films, episodes and catch-up on a bad line. Auto / 1 = as before |
 | **Default volume** | Video player | 0–150%, where everything starts |
 | **Reset saved player choices / zoom / volume** | Video player | Forget everything the player remembered per item |
 | **Reset saved live TV player choices** | Video player | Every channel follows the Live TV player setting again |

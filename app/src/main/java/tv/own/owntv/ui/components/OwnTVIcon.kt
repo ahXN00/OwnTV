@@ -4,9 +4,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -38,6 +40,8 @@ enum class OwnTVIcon {
     // archive box stood for a paired phone, for "let this one be found", and for "send to it" — three
     // meanings on one screen, and all three already meant "backup" everywhere else in the app.
     PHONE, SEND,
+    // The sleep timer (N17): a crescent moon, the phone's mark for the same button.
+    BEDTIME,
 }
 
 @Composable
@@ -516,6 +520,12 @@ fun OwnTVIcon(
                 // instead of drawing a second line.
                 drawRoundRectStroke(p(5f, 8.5f), p(19f, 20.8f), 1.8f * s, tint, stroke)
                 drawLineStroke(p(9.8f, 12.6f), p(14.2f, 12.6f), tint, stroke)
+            }
+            OwnTVIcon.BEDTIME -> {
+                // A full disc with a smaller one bitten out of its upper right — the crescent.
+                val disc = Path().apply { addOval(Rect(p(3.5f, 3.5f), p(20.5f, 20.5f))) }
+                val bite = Path().apply { addOval(Rect(p(9.5f, 1f), p(23f, 14.5f))) }
+                drawPath(Path.combine(PathOperation.Difference, disc, bite), tint, style = stroke)
             }
             OwnTVIcon.SEND -> {
                 // DOWNLOADS reflected: same shaft, same baseline, arrowhead at the top. Send and

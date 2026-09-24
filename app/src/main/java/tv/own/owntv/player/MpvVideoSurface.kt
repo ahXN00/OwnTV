@@ -65,15 +65,25 @@ private class MpvSurfaceView(context: Context, private val player: OwnTVPlayer) 
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-fun MpvVideoSurface(player: OwnTVPlayer, modifier: Modifier = Modifier, autoFrameRate: Boolean = true) {
+fun MpvVideoSurface(
+    player: OwnTVPlayer,
+    modifier: Modifier = Modifier,
+    autoFrameRate: Boolean = true,
+    // N7 — Auto frame rate's two film extras (Settings → Video player). Ignored on live.
+    afrMatchResolution: Boolean = false,
+    afrHoldSecs: Int = 0,
+) {
     val aspect by player.videoAspect.collectAsStateWithLifecycle()
     val videoSize by player.videoSize.collectAsStateWithLifecycle()
     val zoom by player.zoomMode.collectAsStateWithLifecycle()
     val fps by player.videoFps.collectAsStateWithLifecycle()
 
     // Auto frame rate, mechanism 2: window-level display-mode switch. Complements the per-surface
-    // setFrameRate() hint below, which is a no-op before Android 11 (e.g. Fire OS 7 boxes).
-    AutoFrameRateEffect(fps, autoFrameRate)
+    // setFrameRate() hint below, which is a no-op before Android 11 (e.g. Fire OS 7 boxes). Read per
+    // composition, and a new item always recomposes (its size arrives), so live vs film is current.
+    val engine = androidx.compose.runtime.remember(player) { MpvPlaybackEngine(player) }
+    val film = engine.takeIf { !player.isLiveContent }
+    AutoFrameRateEffect(fps, autoFrameRate, film = film, videoSize = videoSize, matchResolution = afrMatchResolution, holdSecs = afrHoldSecs)
 
     BoxWithConstraints(modifier.background(Color.Black).clipToBounds(), contentAlignment = Alignment.Center) {
         val viewModifier = Modifier.videoZoom(zoom, aspect, videoSize, maxWidth, maxHeight)

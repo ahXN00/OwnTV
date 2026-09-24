@@ -325,11 +325,16 @@ internal fun BottomBar(
     onPreviousChannel: (() -> Unit)? = null,
     onOpenDialog: (HudDialog) -> Unit, onPip: (() -> Unit)?, onAudioMode: (() -> Unit)?,
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
+    /** Given to whichever timeline is drawn, so Left/Right with the controls hidden can land on it (N6). */
+    seekFocus: FocusRequester? = null,
     onBack: () -> Unit, modifier: Modifier = Modifier,
 ) {
     // Changes only while rewound into the archive. The film position is read lower still, by
     // [VodTimeline], so the tool buttons do not redraw every second (T14).
     val timeshiftOffsetSec = timeshiftOffset()
+    // Only whether one runs: the countdown itself ticks every second, and this bar must not (T14).
+    val sleepLeft = org.koin.compose.koinInject<SleepTimer>().remainingMs.collectAsStateWithLifecycle()
+    val sleepRunning by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { sleepLeft.value != null } }
     Dock(modifier = modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp)) {
         // Band A — the instrument. The times are the bar's own end caps now; the separate time row is
         // gone, and on live the right cap is the state badge instead of a clock.
@@ -344,6 +349,7 @@ internal fun BottomBar(
                             programmes = liveProgrammes,
                             liveEdgeMs = System.currentTimeMillis(),
                             onScrub = onScrubLive,
+                            focusRequester = seekFocus,
                         )
                     }
                     Spacer(Modifier.width(12.dp))
@@ -352,7 +358,7 @@ internal fun BottomBar(
                 Spacer(Modifier.height(10.dp))
             }
             !isLive && duration > 0 -> {
-                VodTimeline(player, position, duration)
+                VodTimeline(player, position, duration, seekFocus)
                 Spacer(Modifier.height(10.dp))
             }
             // A live channel with no archive has no timeline to scrub, but it still has a state to
@@ -410,8 +416,8 @@ internal fun BottomBar(
                         // Belongs to the tools cluster; `clusterFor` never hands them to this loop.
                         PlayerControl.BRIGHTNESS, PlayerControl.CHANNEL_LIST, PlayerControl.ENGINE,
                         PlayerControl.ASPECT, PlayerControl.MINI_PLAYER, PlayerControl.AUDIO_ONLY,
-                        PlayerControl.MULTIVIEW, PlayerControl.RECORD, PlayerControl.INFO,
-                        PlayerControl.REPORT,
+                        PlayerControl.MULTIVIEW, PlayerControl.RECORD, PlayerControl.SLEEP_TIMER,
+                        PlayerControl.INFO, PlayerControl.REPORT,
                         -> Unit
                     }
                 }
@@ -467,6 +473,9 @@ internal fun BottomBar(
                                 ),
                             ) { onRecordThis() }
                         }
+                        // N17 — stop after a while; tinted while a countdown is running.
+                        PlayerControl.SLEEP_TIMER ->
+                            CtrlButton(OwnTVIcon.BEDTIME, active = sleepRunning, label = stringResource(R.string.player_sleep_timer)) { onOpenDialog(HudDialog.SLEEP_TIMER) }
                         // Stream technical info (codec/res/HDR/bitrate/decoder/audio/buffer) —
                         // toggles the overlay. Parked at the far right, where the redundant
                         // exit-fullscreen button used to sit (Back already leaves the player, so
@@ -505,7 +514,7 @@ private fun volumeIcon(volume: Int): OwnTVIcon = when {
 /** A film's seek bar and its two time caps — the only part of the dock that needs the position, so the
  *  only part that recomposes as it ticks (T14). */
 @Composable
-private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long) {
+private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long, seekFocus: FocusRequester?) {
     val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
     val buffered by player.bufferedMs.collectAsStateWithLifecycle()
     val pos = position()
@@ -513,7 +522,7 @@ private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: 
         TimeCap(formatTime(pos), Alignment.Start)
         Spacer(Modifier.width(12.dp))
         Box(Modifier.weight(1f)) {
-            SeekBar(positionMs = pos, durationMs = duration, bufferedMs = buffered, stepMs = seekStep, onSeek = { player.seekBy(it) })
+            SeekBar(positionMs = pos, durationMs = duration, bufferedMs = buffered, stepMs = seekStep, onSeek = { player.seekBy(it) }, focusRequester = seekFocus)
         }
         Spacer(Modifier.width(12.dp))
         TimeCap(stringResource(R.string.player_time_remaining, formatTime((duration - pos).coerceAtLeast(0))), Alignment.End)

@@ -492,6 +492,27 @@ class SettingsViewModel(
     val directTune: StateFlow<Boolean> = settings.directTune.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
     fun setDirectTune(enabled: Boolean) { viewModelScope.launch { settings.setDirectTune(enabled) } }
 
+    val liveLeftRightRewinds: StateFlow<Boolean> = settings.liveLeftRightRewinds.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setLiveLeftRightRewinds(enabled: Boolean) { viewModelScope.launch { settings.setLiveLeftRightRewinds(enabled) } }
+
+    // N18 — films' buffer, network timeout and reconnect attempts.
+    val vodBufferChoicesSecs: List<Int> get() = settings.vodBufferChoicesSecs
+    val vodNetworkTimeoutChoicesSecs: List<Int> get() = settings.vodNetworkTimeoutChoicesSecs
+    val vodReconnectChoices: List<Int> get() = settings.vodReconnectChoices
+    val vodBufferSecs: StateFlow<Int> = settings.vodBufferSecs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    fun setVodBufferSecs(secs: Int) { viewModelScope.launch { settings.setVodBufferSecs(secs) } }
+    val vodNetworkTimeoutSecs: StateFlow<Int> = settings.vodNetworkTimeoutSecs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    fun setVodNetworkTimeoutSecs(secs: Int) { viewModelScope.launch { settings.setVodNetworkTimeoutSecs(secs) } }
+    val vodReconnects: StateFlow<Int> = settings.vodReconnects.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 1)
+    fun setVodReconnects(count: Int) { viewModelScope.launch { settings.setVodReconnects(count) } }
+
+    // N7 — Auto frame rate's film extras.
+    val afrPauseMaxSecs: Int get() = settings.afrPauseMaxSecs
+    val afrPauseSecs: StateFlow<Int> = settings.afrPauseSecs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    fun setAfrPauseSecs(secs: Int) { viewModelScope.launch { settings.setAfrPauseSecs(secs) } }
+    val afrMatchResolution: StateFlow<Boolean> = settings.afrMatchResolution.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setAfrMatchResolution(enabled: Boolean) { viewModelScope.launch { settings.setAfrMatchResolution(enabled) } }
+
     // External player is per-section (Live TV / Movies / Series) — the settings row opens a popup with
     // one toggle each rather than a single global On/Off.
     val externalPlayerLive: StateFlow<Boolean> = settings.externalPlayerLive.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)

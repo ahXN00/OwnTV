@@ -118,7 +118,7 @@ private const val PLAYER_SHORTCUT_LONG_PRESS_MS = 600L
 private const val TRACK_POLL_MS = 300L
 private const val TRACK_POLL_TRIES = 20
 
-internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, VOLUME, SUB_TIMING, JUMP_BACK }
+internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, VOLUME, SUB_TIMING, JUMP_BACK, SLEEP_TIMER }
 
 /** What the top-left channel OSD shows for direct tune: the digits being typed, the channel a number
  *  resolved to, or a failure message. All three render as the same card as the channel OSD. */
@@ -209,6 +209,11 @@ fun PlayerHud(
     // the present, and only the real clock shows. Drives the second, framed clock at top centre.
     // Lambda for the same reason as [timeshiftOffsetSec]: this instant advances every second too.
     watchingWallMs: (() -> Long?)? = null,
+    // N17 — when the programme on air ends, read as the sleep timer opens. Null = no "End of programme".
+    sleepProgrammeEndMs: (() -> Long?)? = null,
+    // N6 — Settings → "Left and right rewind live TV": with the controls hidden, Left/Right on a
+    // catch-up channel scrub instead of opening the lists. Films always seek.
+    liveLeftRightRewinds: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // T14 — nothing that ticks is read in this root scope: with the controls hidden it used to recompose
@@ -248,6 +253,9 @@ fun PlayerHud(
     val retryFocus = remember { FocusRequester() }
     val catchFocus = remember { FocusRequester() }
     val nextFocus = remember { FocusRequester() }
+    // The timeline, and whether the next reveal of the controls lands on it rather than Play (N6).
+    val seekFocus = remember { FocusRequester() }
+    var focusSeekOnShow by remember { mutableStateOf(false) }
 
     // Next-episode countdown card (VOD queues only): appears in the last ~30s before the automatic
     // advance (which fires at duration − 8s), counts down to it, and offers Play now / Cancel.
@@ -410,7 +418,14 @@ fun PlayerHud(
         // The next-episode countdown card owns focus while it's up so Play now / Cancel are reachable.
         if (showNextCard) { runCatching { nextFocus.requestFocus() }; return@LaunchedEffect }
         if (controlsVisible) {
-            if (error != null) runCatching { retryFocus.requestFocus() } else runCatching { playFocus.requestFocus() }
+            val toSeek = focusSeekOnShow
+            focusSeekOnShow = false
+            when {
+                error != null -> runCatching { retryFocus.requestFocus() }
+                // Falls back to Play when no timeline is drawn after all (no duration yet, say).
+                toSeek -> runCatching { seekFocus.requestFocus() }.onFailure { runCatching { playFocus.requestFocus() } }
+                else -> runCatching { playFocus.requestFocus() }
+            }
         } else runCatching { catchFocus.requestFocus() }
     }
 
@@ -532,6 +547,26 @@ fun PlayerHud(
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
                 canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(1); true }
                 canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(-1); true }
+                // N6 — Left/Right with the controls hidden: reveal them on the timeline and take the first
+                // step, so the jump is seen and holding the key goes on scrubbing the bar itself. Physical
+                // keys, like the bars: left is back in time in every locale. A film always does this; a
+                // live channel only with its archive and the setting on — otherwise the lists below.
+                // Decided in the bottom bar's own order: a channel with an archive draws the live timeline
+                // even while rewound (when the engine is playing a file and calls it not live), so that
+                // is what the keys scrub; only without one does a film's seek bar apply.
+                !controlsVisible && error == null && (e.key == Key.DirectionLeft || e.key == Key.DirectionRight) &&
+                    (if (onScrubLive != null) liveLeftRightRewinds else !isLive && duration > 0L) -> {
+                    val back = e.key == Key.DirectionLeft
+                    if (onScrubLive != null) {
+                        onScrubLive(if (back) LIVE_SCRUB_STEP_SEC else -LIVE_SCRUB_STEP_SEC)
+                    } else {
+                        val step = player.seekStepMs.value
+                        player.seekBy(if (back) -step else step)
+                    }
+                    focusSeekOnShow = true
+                    controlsVisible = true
+                    true
+                }
                 // The category list lives at logical Start; history lives at logical End.
                 onOpenChannelList != null && !controlsVisible &&
                     e.key.horizontalDirection(layoutDirection) == HorizontalDirection.START -> { onOpenChannelList(); true }
@@ -636,6 +671,7 @@ fun PlayerHud(
                 val reportSavedMessage = stringResource(R.string.player_report_saved)
 
                 BottomBar(
+                    seekFocus = seekFocus,
                     player = player, isLive = isLive, position = { position.value }, duration = duration,
                     volume = volume, audioCount = audioCount, subCount = subCount, zoomMode = zoomMode,
                     speedLabel = formatSpeed(speed),
@@ -849,6 +885,11 @@ fun PlayerHud(
         HudDialog.SPEED -> SpeedDialog(current = speed, onSelect = { player.setSpeed(it); dialog = HudDialog.NONE }, onDismiss = { dialog = HudDialog.NONE })
         HudDialog.ZOOM -> ZoomDialog(current = zoomMode, onSelect = { player.setZoomModeByUser(it); dialog = HudDialog.NONE }, onDismiss = { dialog = HudDialog.NONE })
         HudDialog.VOLUME -> VolumeDialog(player, onDismiss = { dialog = HudDialog.NONE })
+        HudDialog.SLEEP_TIMER -> SleepTimerDialog(
+            timer = org.koin.compose.koinInject(),
+            programmeEndMs = remember { sleepProgrammeEndMs?.invoke() },
+            onDismiss = { dialog = HudDialog.NONE },
+        )
         // "Go back to…". The options are read here, as the list opens, so the clock times shown are
         // relative to the moment the user asked rather than to when the HUD was first composed.
         HudDialog.JUMP_BACK -> {

@@ -13,6 +13,10 @@
 
 ### ✨ New features
 
+- **😴 Sleep timer**
+- **⏩ Left and Right seek a film with the controls hidden**
+- **🎞️ Auto frame rate: pause during the switch, match resolution**
+- **📶 Film buffer, network timeout and reconnect attempts**
 - **👄 Audio sync on every player**
 - **⏮️ Previous channel**
 - **📰 The channel banner shows what's on**
