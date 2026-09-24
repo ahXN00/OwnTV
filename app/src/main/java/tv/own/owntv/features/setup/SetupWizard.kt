@@ -67,6 +67,7 @@ import tv.own.owntv.core.theme.UiZoom
 import tv.own.owntv.features.profiles.ProfileEditorDialog
 import tv.own.owntv.features.settings.SectionPickerDialog
 import tv.own.owntv.features.settings.FirstRunLanguageSelector
+import tv.own.owntv.ui.components.AppIconPicker
 import tv.own.owntv.ui.components.BrandLockup
 import tv.own.owntv.ui.components.BrowseMode
 import tv.own.owntv.ui.components.FocusableSurface
@@ -283,7 +284,7 @@ private fun WelcomeScreen(onNext: () -> Unit) {
             color = OwnTVTheme.colors.primary.copy(alpha = 0.82f),
         )
         Spacer(Modifier.height(19.dp))
-        BrandLockup(markSize = 82, textSize = 62)
+        BrandLockup(markSize = 82, textSize = 62, stacked = true)
         Spacer(Modifier.height(24.dp))
         Text(stringResource(R.string.setup_welcome_tagline), style = MaterialTheme.typography.titleMedium, color = OwnTVTheme.colors.onSurfaceVariant)
         Spacer(Modifier.height(30.dp))
@@ -316,6 +317,7 @@ private fun DisplaySizeScreen(onNext: () -> Unit, onBack: () -> Unit) {
     val vm: DisplaySizeViewModel = koinViewModel()
     val zoom by vm.uiZoomPercent.collectAsStateWithLifecycle()
     val fontSize by vm.fontSizePercent.collectAsStateWithLifecycle()
+    val appIcon by vm.appIcon.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
     val fr = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
@@ -369,6 +371,16 @@ private fun DisplaySizeScreen(onNext: () -> Unit, onBack: () -> Unit) {
             onDecrease = { vm.setFontSize(fontSize - UiFontScale.STEP) },
             onIncrease = { vm.setFontSize(fontSize + UiFontScale.STEP) },
         )
+        Spacer(Modifier.height(18.dp))
+        // No restart prompt here: nothing is on the home screen yet, and the pick applies as soon as
+        // the app is next in the background.
+        Text(
+            stringResource(R.string.settings_app_icon),
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.onSurface,
+        )
+        Spacer(Modifier.height(8.dp))
+        AppIconPicker(selected = appIcon, onPick = vm::setAppIcon)
         Spacer(Modifier.height(22.dp))
         SetupAccentRule()
         Spacer(Modifier.height(18.dp))

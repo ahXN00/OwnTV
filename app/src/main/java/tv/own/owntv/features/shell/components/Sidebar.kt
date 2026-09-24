@@ -52,6 +52,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import tv.own.owntv.ui.components.BrandMark
+import tv.own.owntv.ui.components.rememberAppliedIcon
 import tv.own.owntv.core.nav.MainSection
 import tv.own.owntv.R
 import tv.own.owntv.ui.components.FocusableSurface
@@ -309,24 +311,13 @@ private fun NowPlayingItem(
 }
 
 /**
- * Brand mark at the top of the rail — the cyan play-triangle inside a rounded-square outline, the same
- * geometry as [ic_launcher_foreground] (kept consistent with the planned branded splash). Drawn from
- * [OwnTVIcon.PLAY] (filled) inside an outlined [Box] so it matches the visual weight of the 56dp avatar
- * below. Decorative only: a plain Box is not focusable, so it neither captures D-pad focus nor traps an
- * "up" press. Tints with [OwnTVTheme.colors].primary so it follows the user's accent like the nav icons.
+ * Brand mark at the top of the rail: the flat flip-card mark in the icon colour the launcher shows,
+ * sized like the 56 dp avatar below. Decorative only: an Image is not focusable, so it neither
+ * captures D-pad focus nor traps an "up" press.
  */
 @Composable
 private fun AppLogo(modifier: Modifier = Modifier) {
-    val colors = OwnTVTheme.colors
-    Box(
-        modifier = modifier
-            .size(56.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .border(width = 2.dp, color = colors.primary, shape = RoundedCornerShape(20.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        OwnTVIcon(icon = OwnTVIcon.PLAY, tint = colors.primary, modifier = Modifier.size(26.dp), filled = true)
-    }
+    BrandMark(rememberAppliedIcon(), 56.dp, modifier)
 }
 
 @Composable

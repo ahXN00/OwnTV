@@ -41,7 +41,7 @@ fun PreviewPane(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        BrandLockup(markSize = 56, textSize = 34)
+        BrandLockup(markSize = 56, textSize = 34, stacked = true)
         Spacer(Modifier.height(Dimens.GapMedium))
         Text(
             text = stringResource(R.string.content_preview_player),

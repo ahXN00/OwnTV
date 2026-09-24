@@ -118,6 +118,11 @@ class BackupViewModel(
     private val _state = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = _state.asStateFlow()
 
+    /** The icon colour a finished restore left chosen; the screen offers a restart if the launcher differs. */
+    private val _restoredIcon = MutableStateFlow<tv.own.owntv.core.brand.AppIcon?>(null)
+    val restoredIcon: StateFlow<tv.own.owntv.core.brand.AppIcon?> = _restoredIcon.asStateFlow()
+    fun clearRestoredIcon() { _restoredIcon.value = null }
+
     /** Export with an optional backup passphrase (blank/null = omit secret password fields).
      *  [profileIds] are the PIN-authorized profiles from the picker step. */
     fun export(folder: File, sections: Set<BackupManager.Section>, backupPassword: String?, profileIds: Set<Long>) {
@@ -175,6 +180,7 @@ class BackupViewModel(
             _state.value = State.Working
             backup.import(file, sections, backupPassword, deviceSettings = deviceSettings).fold(
                 onSuccess = { summary ->
+                    _restoredIcon.value = settings.appIcon.first()
                     _state.value = State.Done(
                         DoneKind.RESTORED,
                         items = summary.items,

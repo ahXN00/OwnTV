@@ -1,5 +1,6 @@
 package tv.own.owntv.features.setup
 
+import tv.own.owntv.core.brand.AppIcon
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,6 +43,12 @@ class DisplaySizeViewModel(private val settings: SettingsRepository) : ViewModel
         val current = settings.fontCustomization.first()
         settings.setFontCustomization(current.copy(sizePercent = UiFontScale.clamp(percent)))
     }
+
+    /** The icon colour picked here reaches the launcher once the app is in the background. */
+    val appIcon: StateFlow<AppIcon> = settings.appIcon
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppIcon.DEFAULT)
+
+    fun setAppIcon(icon: AppIcon) = viewModelScope.launch { settings.setAppIcon(icon) }
 
     fun reset() = viewModelScope.launch {
         settings.setUiZoomPercent(UiZoom.DEFAULT)

@@ -67,6 +67,12 @@ fun BackupScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val vm: BackupViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
+    // A restore can bring a different icon colour than the launcher shows: offer the restart.
+    val restoredIcon by vm.restoredIcon.collectAsStateWithLifecycle()
+    val appliedIcon = tv.own.owntv.ui.components.rememberAppliedIcon()
+    restoredIcon?.takeIf { it != appliedIcon }?.let { icon ->
+        tv.own.owntv.ui.components.AppIconRestartDialog(icon, onDismiss = vm::clearRestoredIcon)
+    }
 
     var browser by remember { mutableStateOf(BrowseMode.FOLDER) } // which picker
     var showBrowser by remember { mutableStateOf(false) }

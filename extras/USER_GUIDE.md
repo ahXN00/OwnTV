@@ -25,7 +25,7 @@ Welcome  →  Text size  →  Disclaimer  →  Set up OwnTV  →  Profile
 1. **Welcome** — the language picker is on this screen: one of 26, or keep **System default**.
    Press **Get started**.
 2. **Text size** — set UI Zoom and Font size while a sample sentence resizes, so you judge it from
-   your sofa. Changeable later in Settings → Look & Feel.
+   your sofa, and pick the **App icon** colour. Changeable later in Settings → Look & Feel.
 3. **Disclaimer** — OwnTV is a player; you bring the sources.
 4. **Set up OwnTV** — three ways to begin: **New profile**, **Restore a backup**, or
    **From another device** (copy everything off a TV you already have — see below). A restore asks
@@ -478,6 +478,13 @@ right answer for TV speakers) · **Surround** (send Dolby/DTS to a real receiver
 **Where:** Settings → Appearance
 Dark, AMOLED or Light, plus an accent colour with presets and a full picker. The accent reaches the
 player too — seek bar, active buttons, badges.
+
+### 🃏 App icon
+**Where:** Settings → App → **App icon**
+Eight colours for the OwnTV icon and logo: Petrol, Sunflower, Cobalt, Tomato, Station
+Board, **Eggshell** (default), Olive and Olive on Cream. It changes the app row banner, the launch screen and every
+OwnTV logo in the app. **Restart now** switches at once; **Later** switches when you next leave the
+app. Some launchers take a moment to show the new banner.
 
 ### 🔦 Focus highlight
 **Where:** Settings → **Focus highlight**

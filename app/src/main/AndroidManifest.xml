@@ -38,13 +38,13 @@
     <application
         android:name=".OwnTVApp"
         android:allowBackup="false"
-        android:banner="@drawable/tv_banner"
+        android:banner="@drawable/owntv_banner_eggshell"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/owntv_icon_eggshell"
         android:label="@string/app_name"
         android:requestLegacyExternalStorage="true"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/owntv_icon_eggshell"
         android:supportsRtl="true"
         android:theme="@style/Theme.OwnTV"
         android:usesCleartextTraffic="true"
@@ -73,15 +73,217 @@
                 tools:node="remove" />
         </provider>
 
+        <!-- One launcher activity per icon colour (core's AppIcon); AppIconSwitcher keeps exactly one
+             enabled. MainActivity is the default (Eggshell) and keeps its name, so an icon placed before this change still
+             opens the app. Each carries its own icon, banner and launch-screen theme, and ALL intent
+             filters: a disabled activity resolves nothing, so the owntv:// links always reach the enabled
+             one. LEANBACK_LAUNCHER shows it on TV launchers; LAUNCHER on phone/tablet/box home screens. -->
+        <activity
+            android:name=".MainActivityPetrol"
+            android:banner="@drawable/owntv_banner_petrol"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_petrol"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_petrol"
+            android:theme="@style/Theme.OwnTV.Starting.Petrol"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivitySunflower"
+            android:banner="@drawable/owntv_banner_sunflower"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_sunflower"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_sunflower"
+            android:theme="@style/Theme.OwnTV.Starting.Sunflower"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivityCobalt"
+            android:banner="@drawable/owntv_banner_cobalt"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_cobalt"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_cobalt"
+            android:theme="@style/Theme.OwnTV.Starting.Cobalt"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivityTomato"
+            android:banner="@drawable/owntv_banner_tomato"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_tomato"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_tomato"
+            android:theme="@style/Theme.OwnTV.Starting.Tomato"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivityBoard"
+            android:banner="@drawable/owntv_banner_board"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_board"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_board"
+            android:theme="@style/Theme.OwnTV.Starting.Board"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".MainActivity"
-            android:banner="@drawable/tv_banner"
+            android:banner="@drawable/owntv_banner_eggshell"
+            android:enabled="true"
             android:exported="true"
+            android:icon="@mipmap/owntv_icon_eggshell"
             android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustPan"
-            android:theme="@style/Theme.OwnTV.Starting">
-            <!-- LEANBACK_LAUNCHER shows it on TV launchers; LAUNCHER shows it on phone/tablet/box home
-                 screens (so non-TV devices get an app icon, not just an install). -->
+            android:roundIcon="@mipmap/owntv_icon_eggshell"
+            android:theme="@style/Theme.OwnTV.Starting.Eggshell"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivityOlive"
+            android:banner="@drawable/owntv_banner_olive"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_olive"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_olive"
+            android:theme="@style/Theme.OwnTV.Starting.Olive"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="play"
+                    android:scheme="owntv" />
+                <data
+                    android:host="open"
+                    android:scheme="owntv" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".MainActivityOliveCream"
+            android:banner="@drawable/owntv_banner_olive_cream"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/owntv_icon_olive_cream"
+            android:launchMode="singleTop"
+            android:roundIcon="@mipmap/owntv_icon_olive_cream"
+            android:theme="@style/Theme.OwnTV.Starting.OliveCream"
+            android:windowSoftInputMode="adjustPan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />

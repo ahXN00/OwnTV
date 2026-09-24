@@ -13,6 +13,7 @@
 
 ### ✨ New features
 
+- **🎨 New icon and logo, in eight colours**
 - **😴 Sleep timer that can switch the TV off**
 - **⏩ Left and Right seek a film with the controls hidden**
 - **🎞️ Auto frame rate: pause during the switch, match resolution**

@@ -2,6 +2,7 @@
 
 package tv.own.owntv.features.settings
 
+import tv.own.owntv.core.brand.AppIcon
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -808,6 +809,9 @@ class SettingsViewModel(
 
     val uiZoomPercent: StateFlow<Int> = settings.uiZoomPercent.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiZoom.DEFAULT)
     fun setUiZoom(percent: Int) { viewModelScope.launch { settings.setUiZoomPercent(UiZoom.clamp(percent)) } }
+
+    val appIcon: StateFlow<AppIcon> = settings.appIcon.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppIcon.DEFAULT)
+    fun setAppIcon(icon: AppIcon) { viewModelScope.launch { settings.setAppIcon(icon) } }
 
     // Docked mini-player: size (% of screen width) and screen position.
     val miniPlayerSizePct: StateFlow<Int> =

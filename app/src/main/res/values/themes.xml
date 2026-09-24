@@ -12,13 +12,39 @@
     </style>
 
     <!--
-      Launch theme (audit ST3). The activity starts in this theme so the cold start shows the cyan
-      play-mark on the same window background as Theme.OwnTV — no colour flash at handoff — and
+      Launch theme (audit ST3). The activity starts in this theme so the cold start shows the flip-card
+      mark on the same window background as Theme.OwnTV — no colour flash at handoff — and
       MainActivity switches to Theme.OwnTV via postSplashScreenTheme once a real destination is ready.
+      One child per icon colour, set on that colour's launcher activity in the manifest. Here (API < 31,
+      drawn by the compat library) the icon is the still card; values-v31 swaps in the flip animation
+      and adds the wordmark at the bottom.
     -->
     <style name="Theme.OwnTV.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/owntv_window_bg</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
         <item name="postSplashScreenTheme">@style/Theme.OwnTV</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Petrol">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_petrol</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Sunflower">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_sunflower</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Cobalt">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_cobalt</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Tomato">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_tomato</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Board">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_board</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Eggshell">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_eggshell</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.Olive">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_olive</item>
+    </style>
+    <style name="Theme.OwnTV.Starting.OliveCream">
+        <item name="windowSplashScreenAnimatedIcon">@drawable/owntv_splash_static_olive_cream</item>
     </style>
 </resources>

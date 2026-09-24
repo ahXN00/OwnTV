@@ -4,6 +4,24 @@
 
 ### ✨ New features
 
+#### 🎨 New icon and logo, in eight colours
+
+OwnTV has a new icon: a flip card, the kind that flips over on a station board, with the play
+button split by its hinge. It comes in eight colours: Petrol, Sunflower, Cobalt,
+Tomato, Station Board, **Eggshell** (the default), Olive and Olive on Cream.
+
+- Pick one on the first-run screen where you set the zoom and text size, or later in
+  **Settings → App → App icon**.
+- Changing it asks **Restart OwnTV?** — **Restart now** switches at once; **Later** switches the next
+  time you leave the app. Restoring a backup that holds another colour asks the same question.
+- The colour follows everywhere: the app row banner, the launch screen (the card flips, with the name
+  underneath on Android 12 and later), the Android TV home channel, and the logo on Home, in Setup, in
+  Settings → About, in the sidebar and in the Live TV preview pane. The "OwnTV" name uses your font.
+- Downloads, guide updates and recordings show the OwnTV card in the status bar instead of a stock
+  Android icon.
+- Some launchers take a moment to show the new icon, and a few move it from the home screen to the
+  app list when it changes.
+
 #### 😴 Sleep timer that can switch the TV off
 
 The player bar has a **Sleep timer** button (moon icon): stop playing in 15, 30, 45, 60 or 90

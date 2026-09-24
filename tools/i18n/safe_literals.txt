@@ -506,6 +506,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	accent
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	ambient_glow
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	animations
+1	technical	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	app_icon
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	app_startup
 4	file-path	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	backgrounds
 2	technical	app/src/main/java/tv/own/owntv/features/shell/components/SettingsScreen.kt	bmp

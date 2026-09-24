@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="extras/logo.png" alt="OwnTV" width="360">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="extras/brand/app-logos/logo_eggshell_light.png">
+    <img src="extras/brand/app-logos/logo_eggshell.png" alt="OwnTV" width="360">
+  </picture>
 </p>
 
 <p align="center">
@@ -48,7 +51,7 @@ Questions, ideas, bug reports — **join the OwnTV Telegram group:**
 
 ### 👉 [t.me/owntvplayer](https://t.me/owntvplayer)
 
-<a href="https://t.me/owntvplayer"><img src="extras/telegram_qr_code.jpg" alt="Scan to join the OwnTV Telegram group" width="150"></a>
+<a href="https://t.me/owntvplayer"><img src="extras/qr-codes/telegram_qr_code.jpg" alt="Scan to join the OwnTV Telegram group" width="150"></a>
 
 ---
 
@@ -240,18 +243,18 @@ If your language is already available, contribute interface translations across 
 
 ## 🙏 Credits
 
-<img src="extras/Weblate_logo.svg" alt="Weblate" width="200">
+<img src="extras/partner-logos/Weblate_logo.svg" alt="Weblate" width="200">
 
 OwnTV speaks 26 languages because people translate it on
 [**Weblate**](https://weblate.org/), which hosts the project free of charge for libre software.
 Thank you to Weblate and to every translator who has given the app their language.
 
-<img src="extras/tmdb_logo.svg" alt="TMDB" width="200">
+<img src="extras/partner-logos/tmdb_logo.svg" alt="TMDB" width="200">
 
 Movie & series metadata and trailers are provided by [TMDB](https://www.themoviedb.org/).
 **This product uses the TMDB API but is not endorsed or certified by TMDB.**
 
-<img src="extras/opensubtitles_logo.svg" alt="OpenSubtitles" width="200">
+<img src="extras/partner-logos/opensubtitles_logo.svg" alt="OpenSubtitles" width="200">
 
 Subtitle search & download is powered by [OpenSubtitles.com](https://www.opensubtitles.com/).
 **This product uses the OpenSubtitles API but is not endorsed or certified by OpenSubtitles.** You sign

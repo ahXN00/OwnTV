@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="logo.png" alt="OwnTV" width="300">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="brand/app-logos/logo_eggshell_light.png">
+    <img src="brand/app-logos/logo_eggshell.png" alt="OwnTV" width="300">
+  </picture>
 </p>
 
 <h1 align="center">OwnTV — Master Product Brief</h1>
@@ -316,6 +319,8 @@ path in each result.
 - **Appearance** — theme, any accent colour (preset, palette or hex, generating the whole theme), a
   separate **focus highlight** colour and thickness, UI zoom, and **font customization** (main text
   60–140%, popup text 50–120%, popup geometry 50–120%, six bundled families).
+- **App icon** (in the App group) — the flip-card icon and logo in eight colours (Eggshell by
+  default), changing the app row banner, the launch screen and every in-app logo after a restart.
 - **Glass Effect** — an opt-in, interaction-aware material on its own page with a live preview: six
   clarity presets, 20–100% tint, ten real frost levels, adaptive readability, optional depth and
   parallax, a local or remote wallpaper, and per-surface control. Real frost needs Android 12+ and a

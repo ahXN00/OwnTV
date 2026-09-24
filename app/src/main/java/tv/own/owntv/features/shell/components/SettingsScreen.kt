@@ -217,6 +217,7 @@ fun SettingsScreen(
     // Deep-link from the Guide's "Add EPG" button: jump straight to EPG Sources in add mode.
     var consumeEpgAdd by remember { mutableStateOf(false) }
     var showZoom by remember { mutableStateOf(false) }
+    var showAppIcon by remember { mutableStateOf(false) }
     var showPopupSize by remember { mutableStateOf(false) }
     var showFontCustomization by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
@@ -262,6 +263,7 @@ fun SettingsScreen(
     val accentRowFocus = remember { FocusRequester() }
     val focusHighlightRowFocus = remember { FocusRequester() }
     val zoomRowFocus = remember { FocusRequester() }
+    val appIconRowFocus = remember { FocusRequester() }
     val popupSizeRowFocus = remember { FocusRequester() }
     val fontCustomizationRowFocus = remember { FocusRequester() }
     val updateRowFocus = remember { FocusRequester() }
@@ -304,6 +306,7 @@ fun SettingsScreen(
         }
     }
     val settingsVm: SettingsViewModel = koinViewModel()
+    val appIcon by settingsVm.appIcon.collectAsStateWithLifecycle()
     val languageVm: LanguageSettingsViewModel = koinViewModel()
     val currentLocaleTag by languageVm.currentTag.collectAsStateWithLifecycle()
     val languageChip = languageChipText(currentLocaleTag)
@@ -774,6 +777,13 @@ fun SettingsScreen(
             onClick = { open(SettingsTab.LANGUAGE) },
         ),
         RootRow(
+            "app_icon", TileTone.SECONDARY, OwnTVIcon.PALETTE,
+            title = stringResource(R.string.settings_app_icon), desc = stringResource(R.string.settings_app_icon_summary),
+            chip = stringResource(appIcon.label), chipTone = TileTone.SECONDARY,
+            focus = appIconRowFocus,
+            onClick = { saveScroll(); dialogReturn = appIconRowFocus; showAppIcon = true },
+        ),
+        RootRow(
             "app_startup", TileTone.SECONDARY, OwnTVIcon.POWER,
             title = stringResource(R.string.settings_app_startup), desc = stringResource(R.string.settings_app_startup_description),
             chip = if (startupMode == tv.own.owntv.core.settings.StartupMode.SPECIFIC_CHANNEL) {
@@ -1047,6 +1057,8 @@ fun SettingsScreen(
         ) { saveScroll(); dialogReturn = searchFieldFocus; showPopupSize = true },
         SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_ui_zoom), stringResource(R.string.settings_search_keywords_zoom), OwnTVIcon.ZOOM, TileTone.SECONDARY,
                 chip = stringResource(R.string.common_percent, uiZoomPercent), chipTone = TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showZoom = true },
+        SettingsSearchEntry(stringResource(R.string.settings_group_app), stringResource(R.string.settings_app_icon), stringResource(R.string.settings_app_icon_summary), OwnTVIcon.PALETTE, TileTone.SECONDARY,
+                chip = stringResource(appIcon.label), chipTone = TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showAppIcon = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_animations), stringResource(R.string.settings_search_keywords_animation), OwnTVIcon.MOTION, TileTone.SECONDARY,
                 chip = stringResource(animationLevel.labelRes), chipTone = TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; showAnimations = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_weather), stringResource(R.string.settings_search_keywords_weather), OwnTVIcon.WEATHER, TileTone.SECONDARY,
@@ -1595,6 +1607,13 @@ fun SettingsScreen(
         tv.own.owntv.ui.components.OwnTVPopup(onDismissRequest = { showZoom = false }) {
             ZoomDialog(current = uiZoomPercent, onSet = onSetZoom, onDismiss = { showZoom = false })
         }
+    }
+    if (showAppIcon) {
+        tv.own.owntv.ui.components.AppIconSettingsDialog(
+            chosen = appIcon,
+            onPick = settingsVm::setAppIcon,
+            onDismiss = { showAppIcon = false },
+        )
     }
     if (showPopupSize) {
         PopupSizeDialog(
