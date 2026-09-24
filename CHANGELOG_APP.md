@@ -13,7 +13,7 @@
 
 ### ✨ New features
 
-- **😴 Sleep timer**
+- **😴 Sleep timer that can switch the TV off**
 - **⏩ Left and Right seek a film with the controls hidden**
 - **🎞️ Auto frame rate: pause during the switch, match resolution**
 - **📶 Film buffer, network timeout and reconnect attempts**

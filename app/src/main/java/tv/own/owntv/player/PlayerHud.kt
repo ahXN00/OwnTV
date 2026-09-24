@@ -247,6 +247,8 @@ fun PlayerHud(
     val tuneFailed = stringResource(R.string.player_tune_failed)
 
     val nextUpTitle by player.nextUpTitle.collectAsStateWithLifecycle()
+    // The sleep timer's "End of episode" stops there, so there is no next to count down to.
+    val stopsAtItemEnd by player.stopsAtItemEnd.collectAsStateWithLifecycle()
 
     var dialog by remember { mutableStateOf(HudDialog.NONE) }
     val playFocus = remember { FocusRequester() }
@@ -265,7 +267,7 @@ fun PlayerHud(
     // Derived, so the root recomposes when the card appears or goes, not on every position tick.
     val msToAdvance: () -> Long = { if (!isLive && duration > 0L) (duration - 8_000L) - position.value else Long.MAX_VALUE }
     val nextCardDue by remember(isLive, duration) { derivedStateOf { msToAdvance() in 0L..30_000L } }
-    val showNextCard = !isLive && error == null && nav.hasNext && nextUpTitle != null &&
+    val showNextCard = !isLive && error == null && nav.hasNext && nextUpTitle != null && !stopsAtItemEnd &&
         nextCardDue && !autoNextDismissed
 
     var controlsVisible by remember { mutableStateOf(true) }

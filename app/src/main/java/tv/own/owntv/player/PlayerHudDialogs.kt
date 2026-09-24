@@ -1,6 +1,8 @@
 package tv.own.owntv.player
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
+import org.koin.compose.koinInject
 import tv.own.owntv.R
 import tv.own.owntv.ui.components.FocusableSurface
 import tv.own.owntv.ui.components.OwnTVButton
@@ -237,7 +241,8 @@ internal fun SpeedDialog(current: Double, onSelect: (Double) -> Unit, onDismiss:
 
 /**
  * The sleep timer's choices (N17), the phone's sheet in the television's dialog: Off while one is
- * running, the shared minute choices, and "End of programme" only when the guide says when that is.
+ * running, the shared minute choices, "End of programme" only when the guide says when that is, and
+ * "End of movie / episode" only while one plays.
  * The title turns into the countdown while a timer runs, so re-opening it says what is set.
  */
 @Composable
@@ -256,6 +261,7 @@ internal fun SleepTimerDialog(
     } ?: stringResource(R.string.player_sleep_timer)
     // Read once, as the dialog opens: the rows must not change under the D-pad while it is up.
     val running = remember { remaining != null }
+    val endKind = remember { timer.itemEndKind() }
     DialogScaffold(title = title, onDismiss = onDismiss) {
         if (running) {
             item {
@@ -285,7 +291,42 @@ internal fun SleepTimerDialog(
                 )
             }
         }
+        endKind?.let { kind ->
+            item {
+                OptionRow(
+                    label = stringResource(if (kind == SleepTimer.EndKind.EPISODE) R.string.player_sleep_timer_end_of_episode else R.string.player_sleep_timer_end_of_movie),
+                    selected = false,
+                    onClick = { timer.startUntilItemEnd(); onDismiss() },
+                )
+            }
+        }
+        item { ScreenOffRow() }
     }
+}
+
+/**
+ * "Also turn off the screen": ticked is the system grant itself ([ScreenOff]), so it is re-read after
+ * the system screen answers rather than stored. A set with no such screen says so instead.
+ */
+@Composable
+private fun ScreenOffRow(screenOff: ScreenOff = koinInject()) {
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(screenOff.isAllowed()) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { allowed = screenOff.isAllowed() }
+    OptionRow(
+        label = stringResource(R.string.player_sleep_timer_screen_off),
+        selected = allowed,
+        onClick = {
+            if (allowed) {
+                screenOff.revoke()
+                allowed = false
+            } else {
+                runCatching { ask.launch(screenOff.requestIntent()) }.onFailure {
+                    android.widget.Toast.makeText(context, R.string.player_sleep_timer_screen_off_unavailable, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        },
+    )
 }
 
 @Composable

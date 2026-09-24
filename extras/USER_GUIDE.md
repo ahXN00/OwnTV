@@ -424,7 +424,7 @@ Each profile has its own favourites, history, resume points and layout. Add a **
 | ⓘ **Stream info** | right-most button |
 | **Record** | control bar, live channels, once enabled |
 | **Multiview** | control bar, once enabled |
-| 🌙 **Sleep timer** | control bar, beside Stream info — 15–90 min or end of programme; green while running |
+| 🌙 **Sleep timer** | control bar, beside Stream info — 15–90 min, end of programme (live), or end of movie / episode (the next episode then does not start); green while running. **Also turn off the screen** puts the TV to standby when it ends — Android asks for permission once |
 | Exit | **Back** — there is no exit button |
 
 - **Remote transport keys** work — play/pause, next, previous, from the remote, a headset or a voice

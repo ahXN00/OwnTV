@@ -4,12 +4,20 @@
 
 ### ✨ New features
 
-#### 😴 Sleep timer
+#### 😴 Sleep timer that can switch the TV off
 
 The player bar has a **Sleep timer** button (moon icon): stop playing in 15, 30, 45, 60 or 90
-minutes, or at the end of the programme on a live channel. The moon turns green while a timer runs.
-When it ends, the player closes and the Live TV preview and Multiview stop too. It follows the real
-clock, and stopping playback yourself cancels it.
+minutes, at the end of the programme on a live channel, or at the **end of the movie** or **end of
+the episode**. The moon turns green while a timer runs. When it ends, the player closes and the Live
+TV preview and Multiview stop too. It follows the real clock, and stopping playback yourself cancels
+it.
+
+- **End of movie / episode** follows the film itself, so pausing or seeking moves it too. The next
+  episode does not start, and its countdown card is not shown.
+- **Also turn off the screen** (a tick in the same list) puts the TV to standby when the timer ends.
+  The first time, Android asks you to allow OwnTV to lock the screen; that is all it is used for.
+  Unticking it gives the permission back. While it is allowed, Android asks you to untick it before
+  OwnTV can be uninstalled.
 
 #### ⏩ Left and Right seek a film with the controls hidden
 
