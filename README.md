@@ -208,22 +208,14 @@ https://github.com/ahXN00/OwnTV/releases/latest/download/OwnTV.apk
 > Only if you want to build from source — otherwise just
 > **[install the APK](#-installing-fire-tv--android-tv)**.
 
-**One extra step first: a GitHub token.** Half the app lives in the separate
-[OwnTV_Core](https://github.com/ahXN00/OwnTV_Core) repository and is pulled from GitHub Packages,
-which always asks who you are. Without it, Gradle sync fails with a `401`.
+Half the app lives in the separate [OwnTV_Core](https://github.com/ahXN00/OwnTV_Core) repository;
+Gradle downloads it from OwnTV's public Maven repository by itself — **no account or token needed**.
 
 1. **Get the code** — `git clone https://github.com/ahXN00/OwnTV.git` (or download the ZIP).
-2. **Add a token** — create a [personal access token (classic)](https://github.com/settings/tokens)
-   with the single scope **`read:packages`**, then put it in `~/.gradle/gradle.properties`
-   (`C:\Users\<you>\.gradle\gradle.properties`) — never inside the project:
-   ```properties
-   gpr.user=your-github-username
-   gpr.token=ghp_yourtokenhere
-   ```
-3. **Open it** in [Android Studio](https://developer.android.com/studio) and let Gradle sync.
-4. **Pick the build variant** — `standard` for real devices and arm emulators, `x86_64` for x86_64
+2. **Open it** in [Android Studio](https://developer.android.com/studio) and let Gradle sync.
+3. **Pick the build variant** — `standard` for real devices and arm emulators, `x86_64` for x86_64
    emulators. This matters: the native player only loads on a matching ABI.
-5. **Run** ▶. Minimum **Android 8.0 / API 26**.
+4. **Run** ▶. Minimum **Android 8.0 / API 26**.
 
 Command line: `./gradlew assembleDebug` (`gradlew.bat` on Windows). The APK lands in
 `app/build/outputs/apk/`.

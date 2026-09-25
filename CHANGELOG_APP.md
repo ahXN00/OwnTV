@@ -30,6 +30,7 @@
 - **🔊 Dolby and DTS passthrough, Night mode and Volume leveling**
 - **📺 Maximum video quality and a Quality button**
 - **🧪 Tunneled playback (experimental)**
+- **🎛️ A newer mpv player**
 
 ### 🩹 Fixes
 

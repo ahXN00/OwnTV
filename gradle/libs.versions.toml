@@ -34,8 +34,6 @@ paging = "3.5.1"
 # Two defaults changed here: playback now uses dynamic scheduling instead of a fixed interval, and
 # the default PCM buffer is a fixed 500ms — both are felt by the forced-stereo DefaultAudioSink path.
 media3 = "1.11.1"
-# libmpv (FFmpeg-based) — full codec/track support for IPTV, caching, speed, etc.
-libmpv = "1.0.0"
 
 # Installs the APK's merged baseline profiles (Compose/Media3/library-shipped) into ART at
 # install/boot time. Essential for a sideloaded app: without it, baseline profiles only ever
@@ -159,8 +157,6 @@ androidx-media3-exoplayer-dash = { group = "androidx.media3", name = "media3-exo
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
 
-# libmpv player engine
-libmpv = { group = "dev.jdtech.mpv", name = "libmpv", version.ref = "libmpv" }
 
 # Dependency injection
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koin" }

@@ -421,7 +421,7 @@ Each profile has its own favourites, history, resume points and layout. Add a **
 | Clock (and programme time on a replay) | top centre, always |
 | Engine pill **⇄ MPV/EXO** | control bar |
 | **Go back to…** | control bar, catch-up channels |
-| ⓘ **Stream info** | right-most button |
+| ⓘ **Stream info** | right-most button — codec, resolution, HDR, bitrate, decoder, audio, buffer; on mpv also **Interlacing** (none, deinterlaced by the player or by the TV, or not deinterlaced) |
 | **Record** | control bar, live channels, once enabled |
 | **Multiview** | control bar, once enabled |
 | **Quality** | control bar, beside Aspect — only when the stream offers several picture sizes; Auto or one size for what is playing now |
@@ -476,8 +476,8 @@ right answer for TV speakers) · **Surround** (send Dolby/DTS to a real receiver
 ### 🌙 Night mode, Volume leveling and passthrough
 **Where:** Settings → Video player → Sound
 **Night mode** turns loud scenes down and quiet dialogue up; **Volume leveling** brings every channel
-and film to the same loudness. Both are off by default and work on the ExoPlayer engine (Live TV's
-default), not on mpv. **Dolby and DTS passthrough** (on) sends Dolby/DTS undecoded to the TV or
+and film to the same loudness. Both are off by default and work on both engines, ExoPlayer and mpv.
+**Dolby and DTS passthrough** (on) sends Dolby/DTS undecoded to the TV or
 receiver on ExoPlayer; off, or while Night mode or leveling is on, OwnTV decodes it itself.
 
 ### 📺 Picture quality and tunneled playback

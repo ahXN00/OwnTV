@@ -132,9 +132,9 @@ Settings → Video player → Sound has three new rows:
   volume.
 - **Volume leveling** (off): every channel and film is brought slowly to the same loudness, so
   switching does not jump in volume.
-- Night mode and Volume leveling work on the ExoPlayer engine (Live TV's default). While either is on,
-  ExoPlayer decodes Dolby and DTS itself, because sound sent undecoded cannot be adjusted. On mpv they
-  have no effect: the mpv build OwnTV uses has no sound filters.
+- Night mode and Volume leveling work on both engines, ExoPlayer (Live TV's default) and mpv (films and
+  series). While either is on, ExoPlayer decodes Dolby and DTS itself, because sound sent undecoded
+  cannot be adjusted.
 
 #### 📺 Maximum video quality and a Quality button
 
@@ -150,6 +150,19 @@ together for live TV on ExoPlayer, with less work for the processor. The row onl
 whose decoder supports it, and Multiview never uses it. If a channel fails with it, it switches itself
 off for good on this TV and the row says so; the channel reopens normally within a second. Audio sync
 cannot be nudged while it is on.
+
+#### 🎛️ A newer mpv player
+
+OwnTV now builds its own copy of mpv, the player used for films, series and as Live TV's second
+engine: the newest mpv (from December 2025's 0.41 to the current version) and FFmpeg 9.0.2, checked and
+updated every month.
+
+- Night mode and Volume leveling now work on mpv too (above).
+- Interlaced broadcast channels are deinterlaced when mpv draws the picture itself (Hardware decoding
+  off, or the software fallback), so moving edges no longer show comb lines.
+- **Stream info** has a new **Interlacing** row on mpv: *None (progressive)*, *Interlaced · deinterlaced
+  by the player*, *Interlaced · deinterlaced by the device* (the TV's own chip on the fast path) or
+  *Interlaced · not deinterlaced*.
 
 ### 🩹 Fixes
 

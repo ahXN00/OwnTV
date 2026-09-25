@@ -105,7 +105,7 @@ Each engine is chosen automatically by content type, with fallback between them.
 - **Volume boost to 150%** with a soft limiter.
 - **A/V sync nudge** in 25 ms steps on both engines, optionally remembered per item.
 - **Previous channel** — a player-bar button, the remote's Last-channel key and the media controls' "previous".
-- **Night mode and Volume leveling** (ExoPlayer only — the bundled libmpv has no FFmpeg filters), and a
+- **Night mode and Volume leveling** on both engines, and a
   **Dolby/DTS passthrough** switch; either of the first two makes ExoPlayer decode in the app.
 - **Maximum video quality** plus a per-item **Quality** button; experimental **tunneled playback** for
   live ExoPlayer, offered only where a decoder supports it and switched off after the first failure.
@@ -135,7 +135,7 @@ External subtitles come from **OpenSubtitles** (own account, remote sign-in by Q
 Scrubbable seek bar · previous/next through the episode queue · play/pause · audio, subtitle and
 speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3) · volume
 with mute · favourite the current item · **stream info overlay** (codec, resolution, fps, bit depth,
-HDR type, bitrate, decoder, audio, buffer, dropped frames, masked source URL) · a **clock** in every
+HDR type, interlacing on mpv, bitrate, decoder, audio, buffer, dropped frames, masked source URL) · a **clock** in every
 mode, becoming *Programme time* + *Current time* during a replay · auto-hiding controls, with **Back**
 hiding them first and then exiting.
 
@@ -394,7 +394,7 @@ manual check, and installation on the TV itself.
 | Language | Kotlin 2.4.20 (no `kotlin-android` plugin; the Compose compiler plugin pulls the Kotlin Gradle plugin to this version) |
 | Build | AGP 9.4.0 / Gradle 9.7.1, KSP2 2.3.11 |
 | UI | Jetpack Compose for TV (`androidx.tv:tv-material` 1.1.0), Compose BOM 2026.08.00 |
-| Media | libmpv (FFmpeg) — `dev.jdtech.mpv:libmpv` · ExoPlayer/Media3 1.11.1 |
+| Media | libmpv (FFmpeg) — `tv.own.owntv:libmpv`, OwnTV's own build (newest mpv + FFmpeg 9, monthly) · ExoPlayer/Media3 1.11.1 |
 | Database | Room 2.8.5 + Paging 3.5.1 + FTS4 (WAL) |
 | DI | Koin 4.2.2 |
 | Networking | OkHttp 5 — the panel-facing client is pinned to HTTP/1.1 for flaky IPTV panels, while the image client keeps h2 so poster grids multiplex on one connection |
