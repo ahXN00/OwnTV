@@ -121,7 +121,52 @@ choices, and it works on both players.
   wins.
 - A preferred language now also matches tracks tagged the broadcast way (`ger`, `fre`, `dut` …) on mpv.
 
+#### 🔊 Dolby and DTS passthrough, Night mode and Volume leveling
+
+Settings → Video player → Sound has three new rows:
+
+- **Dolby and DTS passthrough** (on, as before): ExoPlayer sends Dolby and DTS undecoded to the TV,
+  soundbar or receiver when it says it can play them. Off: OwnTV decodes them itself, still as
+  surround where Surround sound allows. mpv always decodes.
+- **Night mode** (off): loud scenes are turned down and quiet dialogue up, for watching at a low
+  volume.
+- **Volume leveling** (off): every channel and film is brought slowly to the same loudness, so
+  switching does not jump in volume.
+- Night mode and Volume leveling work on the ExoPlayer engine (Live TV's default). While either is on,
+  ExoPlayer decodes Dolby and DTS itself, because sound sent undecoded cannot be adjusted. On mpv they
+  have no effect: the mpv build OwnTV uses has no sound filters.
+
+#### 📺 Maximum video quality and a Quality button
+
+- **Settings → Video player → Maximum video quality** (Auto, 2160p, 1080p, 720p, 480p): the highest
+  picture played when a channel or film offers several.
+- The player bar has a **Quality** button whenever the stream offers more than one picture size. A
+  pick applies to what is playing now; the next channel or film starts at Auto again.
+
+#### 🧪 Tunneled playback (experimental)
+
+**Settings → Video player → Tunneled playback** (off) lets the TV's own hardware keep picture and sound
+together for live TV on ExoPlayer, with less work for the processor. The row only appears on a TV
+whose decoder supports it, and Multiview never uses it. If a channel fails with it, it switches itself
+off for good on this TV and the row says so; the channel reopens normally within a second. Audio sync
+cannot be nudged while it is on.
+
 ### 🩹 Fixes
+
+#### ⚙️ Hardware decoding, Stereo only and default zoom apply from the first channel
+
+Right after OwnTV started, the Live TV player could ignore Hardware decoding Off, Stereo only, the
+default zoom, the default volume and the preferred languages until one of them was changed again. It
+now follows them from the first channel.
+
+#### 💯 "Above 100%" shows one percent sign
+
+The Default volume description, the Live TV preview panel description and the Guide and panel width
+help showed "100%%". They now show "100%".
+
+#### 🔢 Video player shows the right number of settings
+
+The Engine & picture and Sound groups now count their new rows.
 
 #### 🎞️ Deinterlacing is automatic
 

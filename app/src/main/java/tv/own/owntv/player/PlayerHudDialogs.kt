@@ -344,6 +344,27 @@ internal fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismi
     }
 }
 
+/** N11 — Auto (Settings → Maximum video quality), then every height this stream offers, highest first. */
+@Composable
+internal fun QualityDialog(heights: List<Int>, current: Int?, onSelect: (Int?) -> Unit, onDismiss: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { requestFocusRetrying(focus) }
+    BackHandler { onDismiss() }
+    val options: List<Int?> = listOf<Int?>(null) + heights
+    val selectedIndex = options.indexOf(current).coerceAtLeast(0)
+    DialogScaffold(title = stringResource(R.string.player_tool_quality), onDismiss = onDismiss) {
+        items(options.size) { index ->
+            val height = options[index]
+            OptionRow(
+                label = if (height == null) stringResource(R.string.settings_auto) else stringResource(R.string.settings_video_quality_lines, height),
+                selected = height == current,
+                modifier = if (index == selectedIndex) Modifier.focusRequester(focus) else Modifier,
+                onClick = { onSelect(height) },
+            )
+        }
+    }
+}
+
 @Composable
 internal fun VolumeDialog(player: PlaybackEngine, onDismiss: () -> Unit) {
     val colors = OwnTVTheme.colors

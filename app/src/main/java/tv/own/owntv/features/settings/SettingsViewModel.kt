@@ -331,6 +331,26 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setSurroundMode(next) }
     }
 
+    // P14 — N8 passthrough, N9 night mode, N10 volume levelling.
+    val audioPassthrough: StateFlow<Boolean> = settings.audioPassthrough.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    fun setAudioPassthrough(enabled: Boolean) { viewModelScope.launch { settings.setAudioPassthrough(enabled) } }
+    val nightMode: StateFlow<Boolean> = settings.nightMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setNightMode(enabled: Boolean) { viewModelScope.launch { settings.setNightMode(enabled) } }
+    val volumeLevelling: StateFlow<Boolean> = settings.volumeLevelling.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setVolumeLevelling(enabled: Boolean) { viewModelScope.launch { settings.setVolumeLevelling(enabled) } }
+
+    // P15 — N11 maximum video quality, N19 tunneled playback (the row exists only where it can work).
+    val maxVideoHeightChoices: List<Int> get() = settings.maxVideoHeightChoices
+    val maxVideoHeight: StateFlow<Int> = settings.maxVideoHeight.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    fun setMaxVideoHeight(height: Int) { viewModelScope.launch { settings.setMaxVideoHeight(height) } }
+    val tunnelingSupported: Boolean get() = tv.own.owntv.player.Tunneling.supported
+    val tunneledPlayback: StateFlow<Boolean> = settings.tunneledPlayback.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val tunnelingFailed: StateFlow<Boolean> = settings.tunnelingFailed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setTunneledPlayback(enabled: Boolean) {
+        if (enabled) tv.own.owntv.player.Tunneling.failedThisSession = false // the user asks for another try
+        viewModelScope.launch { settings.setTunneledPlayback(enabled) }
+    }
+
     val autoPlayNext: StateFlow<Boolean> = settings.autoPlayNext
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 

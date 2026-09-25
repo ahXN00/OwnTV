@@ -88,6 +88,7 @@ import tv.own.owntv.core.i18n.SupportedLocales
 import tv.own.owntv.core.player.SurroundMode
 import tv.own.owntv.features.settings.LocalSyncScreen
 import tv.own.owntv.features.settings.HomeSettingsScreen
+import tv.own.owntv.features.settings.NO_ARGS
 import tv.own.owntv.features.settings.LanguageSettingsScreen
 import tv.own.owntv.features.settings.LanguageSettingsViewModel
 import tv.own.owntv.core.settings.SettingsRepository
@@ -841,7 +842,7 @@ fun SettingsScreen(
             tone = TileTone.TERTIARY,
             icon = ref.icon,
             title = stringResource(ref.titleRes),
-            desc = ref.descRes?.let { stringResource(it) },
+            desc = ref.descRes?.let { stringResource(it, *NO_ARGS) },
             chip = binding?.chip,
             chipTone = if (binding?.primaryChip == true) TileTone.PRIMARY else TileTone.SECONDARY,
             chevron = binding?.onToggle == null,
@@ -2486,7 +2487,7 @@ internal fun LivePreviewPanelHiddenDialog(onDismiss: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                stringResource(R.string.settings_live_preview_panel_hidden_description),
+                stringResource(R.string.settings_live_preview_panel_hidden_description, *NO_ARGS),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
             )

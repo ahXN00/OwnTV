@@ -102,6 +102,13 @@ private const val SECTION_DIAGNOSTICS = 5
  * from — so the catalogue below is what lets the pinned copy appear there and jump back to the real
  * row. Keep an entry in step with its row: the key on the row's `quickKey`, the same icon and title.
  */
+/**
+ * Pass as `stringResource(id, *NO_ARGS)` for a string with a literal `%` and no placeholder. The i18n
+ * validator requires every `%` to be written `%%`, and only the formatting overload turns it back into
+ * one — the plain overload shows "100%%".
+ */
+internal val NO_ARGS: Array<Any> = emptyArray()
+
 internal data class VideoQuickRef(
     val key: String,
     val section: Int,
@@ -120,6 +127,8 @@ internal val SUBTITLE_APPEARANCE_SEARCH_ROWS: List<Int> = listOf(
 internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_hw", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_hardware_decoding, R.string.settings_hardware_decoding_description),
     VideoQuickRef("vp_hdr", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_quick_hdr, R.string.settings_hdr_description),
+    VideoQuickRef("vp_max_quality", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_max_video_quality, R.string.settings_max_video_quality_description),
+    VideoQuickRef("vp_tunneled", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_tunneled_playback, R.string.settings_tunneled_playback_description),
     VideoQuickRef("vp_afr", SECTION_ENGINE, OwnTVIcon.VIDEO, R.string.settings_auto_frame_rate, R.string.settings_auto_frame_rate_description),
     VideoQuickRef("vp_afr_pause", SECTION_ENGINE, OwnTVIcon.PAUSE, R.string.settings_afr_pause, R.string.settings_afr_pause_description),
     VideoQuickRef("vp_afr_resolution", SECTION_ENGINE, OwnTVIcon.ASPECT, R.string.settings_afr_resolution, R.string.settings_afr_resolution_description),
@@ -154,6 +163,9 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_reset_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_reset_saved_volume, R.string.settings_reset_saved_volume_description),
     VideoQuickRef("vp_audio_lang", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_preferred_audio_language, R.string.settings_preferred_audio_language_description),
     VideoQuickRef("vp_surround", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_surround_sound),
+    VideoQuickRef("vp_passthrough", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_audio_passthrough, R.string.settings_audio_passthrough_description),
+    VideoQuickRef("vp_night_mode", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_night_mode, R.string.settings_night_mode_description),
+    VideoQuickRef("vp_volume_leveling", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_volume_leveling, R.string.settings_volume_leveling_description),
     VideoQuickRef("vp_audio_sync", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_audio_sync, R.string.settings_audio_sync_description),
     VideoQuickRef("vp_reset_audio_delay", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_reset_saved_audio_delay, R.string.settings_reset_saved_audio_delay_description),
     VideoQuickRef("vp_sub_style", SECTION_SUBTITLES, OwnTVIcon.SUBTITLE, R.string.settings_subtitle_appearance, R.string.settings_subtitle_appearance_description),
@@ -163,7 +175,8 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_mini", SECTION_EPISODES, OwnTVIcon.PIP, R.string.settings_mini_player_root, R.string.settings_mini_player_root_description),
     VideoQuickRef("vp_measured_stats", SECTION_DIAGNOSTICS, OwnTVIcon.VIDEO, R.string.settings_measured_stats, R.string.settings_measured_stats_description),
     VideoQuickRef("vp_logging", SECTION_DIAGNOSTICS, OwnTVIcon.INFO, R.string.settings_detailed_playback_logging, R.string.settings_detailed_playback_logging_description),
-)
+    // N19 — no row, so nothing to find or pin, on a TV whose decoders cannot tunnel.
+).filter { it.key != "vp_tunneled" || tv.own.owntv.player.Tunneling.supported }
 
 /**
  * What a Video player row pinned to Quick shows and does over there.
@@ -206,6 +219,14 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
         "vp_hdr" -> {
             val on by vm.hdrEnabled.collectAsStateWithLifecycle()
             toggle(onOff(on), on) { vm.setHdrEnabled(!on) }
+        }
+        "vp_max_quality" -> {
+            val height by vm.maxVideoHeight.collectAsStateWithLifecycle()
+            link(videoQualityLabel(height), height > 0)
+        }
+        "vp_tunneled" -> {
+            val on by vm.tunneledPlayback.collectAsStateWithLifecycle()
+            toggle(onOff(on), on) { vm.setTunneledPlayback(!on) }
         }
         "vp_multiview" -> {
             val on by vm.multiviewEnabled.collectAsStateWithLifecycle()
@@ -359,6 +380,18 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
         "vp_surround" -> {
             val mode by vm.surroundMode.collectAsStateWithLifecycle()
             toggle(surroundModeLabel(mode), mode != SurroundMode.STEREO) { vm.cycleSurroundMode() }
+        }
+        "vp_passthrough" -> {
+            val on by vm.audioPassthrough.collectAsStateWithLifecycle()
+            toggle(onOff(on), on) { vm.setAudioPassthrough(!on) }
+        }
+        "vp_night_mode" -> {
+            val on by vm.nightMode.collectAsStateWithLifecycle()
+            toggle(onOff(on), on) { vm.setNightMode(!on) }
+        }
+        "vp_volume_leveling" -> {
+            val on by vm.volumeLevelling.collectAsStateWithLifecycle()
+            toggle(onOff(on), on) { vm.setVolumeLevelling(!on) }
         }
         "vp_audio_sync" -> {
             val delay by vm.audioDelayMs.collectAsStateWithLifecycle()
@@ -528,6 +561,12 @@ fun VideoPlayerSettingsScreen(
     val multiviewTiles by vm.multiviewTiles.collectAsStateWithLifecycle()
     val multiviewWarningAccepted by vm.multiviewWarningAccepted.collectAsStateWithLifecycle()
     val surroundMode by vm.surroundMode.collectAsStateWithLifecycle()
+    val audioPassthrough by vm.audioPassthrough.collectAsStateWithLifecycle()
+    val nightMode by vm.nightMode.collectAsStateWithLifecycle()
+    val volumeLevelling by vm.volumeLevelling.collectAsStateWithLifecycle()
+    val maxVideoHeight by vm.maxVideoHeight.collectAsStateWithLifecycle()
+    val tunneledPlayback by vm.tunneledPlayback.collectAsStateWithLifecycle()
+    val tunnelingFailed by vm.tunnelingFailed.collectAsStateWithLifecycle()
     val autoPlayNext by vm.autoPlayNext.collectAsStateWithLifecycle()
     val livePreview by vm.livePreviewEnabled.collectAsStateWithLifecycle()
     val previewAudio by vm.livePreviewAudio.collectAsStateWithLifecycle()
@@ -687,9 +726,10 @@ fun VideoPlayerSettingsScreen(
         OwnTVIcon.SUBTITLE, OwnTVIcon.SKIP_NEXT, OwnTVIcon.INFO,
     )
     val sectionCounts = listOf(
-        13 + if (perPlaylist) 2 else 0,
+        // + Maximum video quality, and Tunneled playback where a decoder supports it (P15).
+        14 + (if (vm.tunnelingSupported) 1 else 0) + (if (perPlaylist) 2 else 0),
         5 + (if (livePreview) 1 else 0) + (if (perPlaylist) 3 else 0),
-        6, 2, 3, 2,
+        9, 2, 3, 2, // Sound: + passthrough, night mode, volume leveling (P14)
     )
     var sheetFocused by remember { mutableStateOf(false) }
     val spineScroll = rememberScrollState()
@@ -816,6 +856,26 @@ fun VideoPlayerSettingsScreen(
             chip = stringResource(if (hdr) R.string.common_on else R.string.common_off), primaryChip = hdr,
             onClick = { vm.setHdrEnabled(!hdr) },
         )
+        // N11 — the Settings limit; the player's Quality button picks within a stream.
+        Row2(
+            quickKey = "vp_max_quality",
+            icon = OwnTVIcon.VIDEO, title = stringResource(R.string.settings_max_video_quality),
+            desc = stringResource(R.string.settings_max_video_quality_description),
+            chip = videoQualityLabel(maxVideoHeight), primaryChip = maxVideoHeight > 0, chevron = true,
+            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.MAX_QUALITY)),
+            onClick = { savedScroll = scrollState.value; dialog = Dialog.MAX_QUALITY },
+        )
+        // N19 — only where a decoder can tunnel; after a failure it says why it is off.
+        if (vm.tunnelingSupported) {
+            Row2(
+                quickKey = "vp_tunneled",
+                icon = OwnTVIcon.VIDEO, title = stringResource(R.string.settings_tunneled_playback),
+                desc = stringResource(R.string.settings_tunneled_playback_description) +
+                    if (tunnelingFailed && !tunneledPlayback) " " + stringResource(R.string.settings_tunneled_playback_failed) else "",
+                chip = stringResource(if (tunneledPlayback) R.string.common_on else R.string.common_off), primaryChip = tunneledPlayback,
+                onClick = { vm.setTunneledPlayback(!tunneledPlayback) },
+            )
+        }
         Row2(
             quickKey = "vp_afr",
             icon = OwnTVIcon.VIDEO, title = stringResource(R.string.settings_auto_frame_rate),
@@ -1019,7 +1079,7 @@ fun VideoPlayerSettingsScreen(
         Row2(
             quickKey = "vp_volume",
             icon = OwnTVIcon.VOLUME_HIGH, title = stringResource(R.string.settings_default_volume),
-            desc = stringResource(R.string.settings_default_volume_description),
+            desc = stringResource(R.string.settings_default_volume_description, *NO_ARGS),
             chip = stringResource(R.string.player_percent, defaultVolume), chevron = true,
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.VOLUME)),
             onClick = { savedScroll = scrollState.value; dialog = Dialog.VOLUME },
@@ -1052,6 +1112,27 @@ fun VideoPlayerSettingsScreen(
             },
             chip = surroundModeLabel(surroundMode), primaryChip = surroundMode != SurroundMode.STEREO,
             onClick = { vm.cycleSurroundMode() },
+        )
+        Row2(
+            quickKey = "vp_passthrough",
+            icon = OwnTVIcon.AUDIO, title = stringResource(R.string.settings_audio_passthrough),
+            desc = stringResource(R.string.settings_audio_passthrough_description),
+            chip = stringResource(if (audioPassthrough) R.string.common_on else R.string.common_off), primaryChip = audioPassthrough,
+            onClick = { vm.setAudioPassthrough(!audioPassthrough) },
+        )
+        Row2(
+            quickKey = "vp_night_mode",
+            icon = OwnTVIcon.VOLUME_HIGH, title = stringResource(R.string.settings_night_mode),
+            desc = stringResource(R.string.settings_night_mode_description),
+            chip = stringResource(if (nightMode) R.string.common_on else R.string.common_off), primaryChip = nightMode,
+            onClick = { vm.setNightMode(!nightMode) },
+        )
+        Row2(
+            quickKey = "vp_volume_leveling",
+            icon = OwnTVIcon.VOLUME_HIGH, title = stringResource(R.string.settings_volume_leveling),
+            desc = stringResource(R.string.settings_volume_leveling_description),
+            chip = stringResource(if (volumeLevelling) R.string.common_on else R.string.common_off), primaryChip = volumeLevelling,
+            onClick = { vm.setVolumeLevelling(!volumeLevelling) },
         )
         Row2(
             quickKey = "vp_audio_sync",
@@ -1664,6 +1745,13 @@ fun VideoPlayerSettingsScreen(
             onSelect = { vm.setSeekStepSec(it.toIntOrNull() ?: tv.own.owntv.core.settings.SeekSteps.DEFAULT_SEEK_STEP_SEC); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },
         )
+        Dialog.MAX_QUALITY -> PickerDialog(
+            title = stringResource(R.string.settings_max_video_quality),
+            options = vm.maxVideoHeightChoices.map { it.toString() to videoQualityLabel(it) },
+            selected = maxVideoHeight.toString(),
+            onSelect = { vm.setMaxVideoHeight(it.toIntOrNull() ?: 0); dialog = Dialog.NONE },
+            onDismiss = { dialog = Dialog.NONE },
+        )
         Dialog.VOD_BUFFER -> PickerDialog(
             title = stringResource(R.string.settings_vod_buffer),
             options = vm.vodBufferChoicesSecs.map { it.toString() to vodAutoOrSeconds(it) },
@@ -1844,6 +1932,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     "vp_seek_step" -> Dialog.SEEK_STEP
     "vp_afr_pause" -> Dialog.AFR_PAUSE
     "vp_vod_buffer" -> Dialog.VOD_BUFFER
+    "vp_max_quality" -> Dialog.MAX_QUALITY
     "vp_vod_timeout" -> Dialog.VOD_TIMEOUT
     "vp_vod_reconnects" -> Dialog.VOD_RECONNECTS
     "vp_rewind_step" -> Dialog.LIVE_REWIND_STEP
@@ -1866,12 +1955,17 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     else -> null
 }
 
-private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
+private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
 
 /** "Auto" for 0, else seconds ("60s") — the film buffer and network timeout choices (N18). */
 @Composable
 private fun vodAutoOrSeconds(secs: Int): String =
     if (secs <= 0) stringResource(R.string.settings_vod_network_auto) else stringResource(R.string.settings_live_buffer_seconds, secs)
+
+/** "Auto" for 0, else the picture height ("1080p") — Maximum video quality (N11). */
+@Composable
+internal fun videoQualityLabel(height: Int): String =
+    if (height <= 0) stringResource(R.string.settings_auto) else stringResource(R.string.settings_video_quality_lines, height)
 
 /** "Off", or the hold in seconds ("2s"), for the Auto frame rate pause (N7). */
 @Composable

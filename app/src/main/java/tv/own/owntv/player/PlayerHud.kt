@@ -118,7 +118,7 @@ private const val PLAYER_SHORTCUT_LONG_PRESS_MS = 600L
 private const val TRACK_POLL_MS = 300L
 private const val TRACK_POLL_TRIES = 20
 
-internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, VOLUME, SUB_TIMING, JUMP_BACK, SLEEP_TIMER }
+internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, QUALITY, VOLUME, SUB_TIMING, JUMP_BACK, SLEEP_TIMER }
 
 /** What the top-left channel OSD shows for direct tune: the digits being typed, the channel a number
  *  resolved to, or a failure message. All three render as the same card as the channel OSD. */
@@ -886,6 +886,12 @@ fun PlayerHud(
         HudDialog.SUB_TIMING -> SubtitleTimingDialog(player, onDismiss = { dialog = HudDialog.NONE })
         HudDialog.SPEED -> SpeedDialog(current = speed, onSelect = { player.setSpeed(it); dialog = HudDialog.NONE }, onDismiss = { dialog = HudDialog.NONE })
         HudDialog.ZOOM -> ZoomDialog(current = zoomMode, onSelect = { player.setZoomModeByUser(it); dialog = HudDialog.NONE }, onDismiss = { dialog = HudDialog.NONE })
+        HudDialog.QUALITY -> {
+            // Snapshot as it opens, like the track lists above: a live list would rebuild the rows.
+            val heights = remember { player.videoQualities.value }
+            val pick by player.videoQualityPick.collectAsStateWithLifecycle()
+            QualityDialog(heights, pick, onSelect = { player.selectVideoQuality(it); dialog = HudDialog.NONE }, onDismiss = { dialog = HudDialog.NONE })
+        }
         HudDialog.VOLUME -> VolumeDialog(player, onDismiss = { dialog = HudDialog.NONE })
         HudDialog.SLEEP_TIMER -> SleepTimerDialog(
             timer = org.koin.compose.koinInject(),

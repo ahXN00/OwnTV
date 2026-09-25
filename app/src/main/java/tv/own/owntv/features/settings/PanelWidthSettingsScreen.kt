@@ -160,7 +160,7 @@ fun PanelWidthSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) 
             Spacer(Modifier.height(12.dp))
             GroupLabel(stringResource(R.string.settings_how_it_works))
             Text(
-                stringResource(R.string.settings_panel_width_help),
+                stringResource(R.string.settings_panel_width_help, *NO_ARGS),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),

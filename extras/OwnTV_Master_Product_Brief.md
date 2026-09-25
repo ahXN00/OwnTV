@@ -105,6 +105,10 @@ Each engine is chosen automatically by content type, with fallback between them.
 - **Volume boost to 150%** with a soft limiter.
 - **A/V sync nudge** in 25 ms steps on both engines, optionally remembered per item.
 - **Previous channel** — a player-bar button, the remote's Last-channel key and the media controls' "previous".
+- **Night mode and Volume leveling** (ExoPlayer only — the bundled libmpv has no FFmpeg filters), and a
+  **Dolby/DTS passthrough** switch; either of the first two makes ExoPlayer decode in the app.
+- **Maximum video quality** plus a per-item **Quality** button; experimental **tunneled playback** for
+  live ExoPlayer, offered only where a decoder supports it and switched off after the first failure.
 - **Audio-only items are labelled, not failed** — a radio channel shows an *Audio only* plate, so
   sound with no picture is never mistaken for a fault. Distinct from **Audio Mode**, which is the
   user switching the picture off.

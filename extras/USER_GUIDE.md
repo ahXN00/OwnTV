@@ -424,6 +424,7 @@ Each profile has its own favourites, history, resume points and layout. Add a **
 | ⓘ **Stream info** | right-most button |
 | **Record** | control bar, live channels, once enabled |
 | **Multiview** | control bar, once enabled |
+| **Quality** | control bar, beside Aspect — only when the stream offers several picture sizes; Auto or one size for what is playing now |
 | 🌙 **Sleep timer** | control bar, beside Stream info — 15–90 min, end of programme (live), or end of movie / episode (the next episode then does not start); green while running. **Also turn off the screen** puts the TV to standby when it ends — Android asks for permission once |
 | Exit | **Back** — there is no exit button |
 
@@ -471,6 +472,19 @@ including sound sent as-is to a soundbar.
 **Where:** Settings → Video player → **Surround sound**
 **Auto** (recommended — tries surround, falls back to stereo if your TV can't) · **Stereo only** (the
 right answer for TV speakers) · **Surround** (send Dolby/DTS to a real receiver).
+
+### 🌙 Night mode, Volume leveling and passthrough
+**Where:** Settings → Video player → Sound
+**Night mode** turns loud scenes down and quiet dialogue up; **Volume leveling** brings every channel
+and film to the same loudness. Both are off by default and work on the ExoPlayer engine (Live TV's
+default), not on mpv. **Dolby and DTS passthrough** (on) sends Dolby/DTS undecoded to the TV or
+receiver on ExoPlayer; off, or while Night mode or leveling is on, OwnTV decodes it itself.
+
+### 📺 Picture quality and tunneled playback
+**Where:** Settings → Video player → Engine & picture
+**Maximum video quality** caps the picture when a stream offers several sizes; the player's
+**Quality** button picks one for what is playing now. **Tunneled playback** (experimental, off) only
+appears on a TV that supports it, and switches itself off for good if a channel fails with it.
 
 ---
 

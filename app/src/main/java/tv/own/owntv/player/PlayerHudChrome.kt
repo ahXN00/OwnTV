@@ -415,7 +415,7 @@ internal fun BottomBar(
                         }
                         // Belongs to the tools cluster; `clusterFor` never hands them to this loop.
                         PlayerControl.BRIGHTNESS, PlayerControl.CHANNEL_LIST, PlayerControl.ENGINE,
-                        PlayerControl.ASPECT, PlayerControl.MINI_PLAYER, PlayerControl.AUDIO_ONLY,
+                        PlayerControl.ASPECT, PlayerControl.QUALITY, PlayerControl.MINI_PLAYER, PlayerControl.AUDIO_ONLY,
                         PlayerControl.MULTIVIEW, PlayerControl.RECORD, PlayerControl.SLEEP_TIMER,
                         PlayerControl.INFO, PlayerControl.REPORT,
                         -> Unit
@@ -446,6 +446,14 @@ internal fun BottomBar(
                         // itself (see MpvVideoSurface), GL mode scales internally.
                         PlayerControl.ASPECT ->
                             CtrlButton(OwnTVIcon.ASPECT, active = zoomMode != ZoomMode.FIT, label = stringResource(R.string.player_tool_aspect)) { onOpenDialog(HudDialog.ZOOM) }
+                        // N11 — only when this stream offers several; tinted while a pick overrides Auto.
+                        PlayerControl.QUALITY -> {
+                            val qualities by player.videoQualities.collectAsStateWithLifecycle()
+                            val pick by player.videoQualityPick.collectAsStateWithLifecycle()
+                            if (qualities.isNotEmpty()) {
+                                CtrlButton(OwnTVIcon.VIDEO, active = pick != null, label = stringResource(R.string.player_tool_quality)) { onOpenDialog(HudDialog.QUALITY) }
+                            }
+                        }
                         PlayerControl.MINI_PLAYER -> if (onPip != null) {
                             CtrlButton(OwnTVIcon.PIP, label = stringResource(R.string.player_tool_mini)) { onPip() }
                         }

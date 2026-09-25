@@ -27,9 +27,15 @@
 - **🔗 Referer for a playlist that needs one**
 - **🗣️ The player remembers your audio and subtitle language**
 - **🌐 Preferred languages per profile, more languages, and "Original language"**
+- **🔊 Dolby and DTS passthrough, Night mode and Volume leveling**
+- **📺 Maximum video quality and a Quality button**
+- **🧪 Tunneled playback (experimental)**
 
 ### 🩹 Fixes
 
+- **⚙️ Hardware decoding, Stereo only and default zoom apply from the first channel**
+- **💯 "Above 100%" shows one percent sign**
+- **🔢 Video player shows the right number of settings**
 - **🎞️ Deinterlacing is automatic**
 - **🌈 HDR says it is mpv only**
 - **🧰 Player memory moved into the app's database**
