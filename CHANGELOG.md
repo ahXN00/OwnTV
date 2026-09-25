@@ -109,6 +109,18 @@ Pick an audio track or a subtitle in the player and that channel, film or whole 
 same language next time — turning subtitles off is remembered too. Each profile keeps its own
 choices, and it works on both players.
 
+#### 🌐 Preferred languages per profile, more languages, and "Original language"
+
+- **Each profile has its own preferred audio and subtitle language** (Settings → Video player → Sound /
+  Subtitles). A profile that never picked one keeps the language set before, so nothing changes on
+  update. Backups carry each profile's choice.
+- **The language lists are much longer** — 50 languages, named in your own language and sorted by name.
+- **"Original language"** (audio): a film or series plays in the language it was made in — Korean for a
+  Korean film — when the stream carries that track, using the film's information from TMDB. Without it,
+  and on live TV, the stream's own main track plays. A track you picked yourself for that title still
+  wins.
+- A preferred language now also matches tracks tagged the broadcast way (`ger`, `fre`, `dut` …) on mpv.
+
 ### 🩹 Fixes
 
 #### 🎞️ Deinterlacing is automatic

@@ -23,6 +23,7 @@ val playerModule = module {
             vodEngineStore = get(),
             localeStore = get(),
             playbackPrefs = get(), // per-item zoom/volume
+            originalLanguage = get(), // "Original language" audio
         )
     }
     // ExoPlayer engine for the fast Live preview pane (mpv stays the full/fullscreen player).

@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -74,6 +75,7 @@ import tv.own.owntv.features.shell.components.AutoFrameRateWarningDialog
 import tv.own.owntv.features.shell.components.LivePreviewPanelHiddenDialog
 import tv.own.owntv.features.shell.components.surroundModeLabel
 import tv.own.owntv.core.player.SurroundMode
+import tv.own.owntv.core.player.TrackLanguages
 import tv.own.owntv.features.shell.components.LocalSettingsRowTone
 import tv.own.owntv.features.shell.components.colors
 import tv.own.owntv.ui.components.OwnTVIcon
@@ -150,7 +152,7 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_live_left_right", SECTION_LIVE, OwnTVIcon.SEEK_BACK, R.string.settings_live_left_right_rewinds, R.string.settings_live_left_right_rewinds_description),
     VideoQuickRef("vp_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_default_volume, R.string.settings_default_volume_description),
     VideoQuickRef("vp_reset_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_reset_saved_volume, R.string.settings_reset_saved_volume_description),
-    VideoQuickRef("vp_audio_lang", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_preferred_audio_language, R.string.settings_preferred_language_description),
+    VideoQuickRef("vp_audio_lang", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_preferred_audio_language, R.string.settings_preferred_audio_language_description),
     VideoQuickRef("vp_surround", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_surround_sound),
     VideoQuickRef("vp_audio_sync", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_audio_sync, R.string.settings_audio_sync_description),
     VideoQuickRef("vp_reset_audio_delay", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_reset_saved_audio_delay, R.string.settings_reset_saved_audio_delay_description),
@@ -409,8 +411,6 @@ internal class QuickPinScope(
 
 internal val LocalQuickPin = androidx.compose.runtime.staticCompositionLocalOf<QuickPinScope?> { null }
 
-/** Common language codes offered for the audio/subtitle preference. Display names resolve in Compose. */
-private val LANGUAGE_CODES = listOf("", "eng", "spa", "fra", "deu", "ita", "por", "nld", "rus", "ara", "hin", "zho", "jpn", "kor", "tur")
 /** Backdrop for both subtitle previews: a busy-ish frame, because a flat panel makes even a solid box look harmless. */
 private val SUB_PREVIEW_BRUSH = androidx.compose.ui.graphics.Brush.linearGradient(
     listOf(Color(0xFF2E4A6B), Color(0xFF7A5C3E), Color(0xFF3B6B4A)),
@@ -418,26 +418,20 @@ private val SUB_PREVIEW_BRUSH = androidx.compose.ui.graphics.Brush.linearGradien
 private val SUB_SIZES = listOf(0.8f to R.string.settings_subtitle_small, 1.0f to R.string.settings_subtitle_normal, 1.3f to R.string.settings_subtitle_large, 1.6f to R.string.settings_subtitle_extra_large)
 
 @Composable
-private fun langName(code: String): String = stringResource(
-    when (code) {
-        "" -> R.string.settings_none_auto
-        "eng" -> R.string.settings_language_english
-        "spa" -> R.string.settings_language_spanish
-        "fra" -> R.string.settings_language_french
-        "deu" -> R.string.settings_language_german
-        "ita" -> R.string.settings_language_italian
-        "por" -> R.string.settings_language_portuguese
-        "nld" -> R.string.settings_language_dutch
-        "rus" -> R.string.settings_language_russian
-        "ara" -> R.string.settings_language_arabic
-        "hin" -> R.string.settings_language_hindi
-        "zho" -> R.string.settings_language_chinese
-        "jpn" -> R.string.settings_language_japanese
-        "kor" -> R.string.settings_language_korean
-        "tur" -> R.string.settings_language_turkish
-        else -> R.string.settings_none_auto
-    },
-)
+private fun langName(code: String): String = when (code) {
+    "" -> stringResource(R.string.settings_none_auto)
+    TrackLanguages.ORIGINAL -> stringResource(R.string.settings_language_original)
+    else -> TrackLanguages.displayName(code, LocalConfiguration.current.locales[0])
+}
+
+/** No preference first, then (audio only) the title's original language, then every language by name. */
+@Composable
+private fun languageOptions(withOriginal: Boolean): List<Pair<String, String>> {
+    val display = LocalConfiguration.current.locales[0]
+    val codes = listOf("") + listOfNotNull(TrackLanguages.ORIGINAL.takeIf { withOriginal }) +
+        remember(display) { TrackLanguages.sortedFor(display) }
+    return codes.map { it to langName(it) }
+}
 
 private fun nearestSubSize(scale: Float) = SUB_SIZES.minByOrNull { kotlin.math.abs(it.first - scale) } ?: SUB_SIZES[1]
 
@@ -1043,7 +1037,7 @@ fun VideoPlayerSettingsScreen(
         Row2(
             quickKey = "vp_audio_lang",
             icon = OwnTVIcon.AUDIO, title = stringResource(R.string.settings_preferred_audio_language),
-            desc = stringResource(R.string.settings_preferred_language_description),
+            desc = stringResource(R.string.settings_preferred_audio_language_description),
             chip = langName(audioLang), chevron = true,
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.AUDIO_LANG)),
             onClick = { savedScroll = scrollState.value; dialog = Dialog.AUDIO_LANG },
@@ -1338,14 +1332,14 @@ fun VideoPlayerSettingsScreen(
         )
         Dialog.SUB_LANG -> PickerDialog(
             title = stringResource(R.string.settings_preferred_subtitle_language),
-            options = LANGUAGE_CODES.map { it to langName(it) },
+            options = languageOptions(withOriginal = false),
             selected = subLang,
             onSelect = { vm.setPreferredSubLang(it); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },
         )
         Dialog.AUDIO_LANG -> PickerDialog(
             title = stringResource(R.string.settings_preferred_audio_language),
-            options = LANGUAGE_CODES.map { it to langName(it) },
+            options = languageOptions(withOriginal = true),
             selected = audioLang,
             onSelect = { vm.setPreferredAudioLang(it); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },

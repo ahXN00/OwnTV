@@ -26,6 +26,7 @@
 - **🎚️ Four more settings per playlist**
 - **🔗 Referer for a playlist that needs one**
 - **🗣️ The player remembers your audio and subtitle language**
+- **🌐 Preferred languages per profile, more languages, and "Original language"**
 
 ### 🩹 Fixes
 

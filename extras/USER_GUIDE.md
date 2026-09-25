@@ -457,8 +457,10 @@ Nudge earlier or later in 0.1 s and 0.5 s steps.
 
 ### 🗣️ Preferred languages
 **Where:** Settings → Video player → **Preferred audio / subtitle language**
-Picks the right track automatically when a stream carries several. A track or subtitle you pick
-yourself is **remembered** for that channel, film or series (subtitles off too), per profile.
+Picks the right track automatically when a stream carries several. Each **profile** has its own, and
+the list has 50 languages. **Original language** (audio) plays a film or series in the language it
+was made in, when the stream has that track; otherwise the stream's main track. A track or subtitle
+you pick yourself is **remembered** for that channel, film or series (subtitles off too), per profile.
 
 ### 🎚️ A/V sync
 **Where:** player → Audio → **A/V sync**

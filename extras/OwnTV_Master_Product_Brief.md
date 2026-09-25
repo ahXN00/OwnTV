@@ -118,8 +118,9 @@ Each engine is chosen automatically by content type, with fallback between them.
 | Closed captions (CEA-608/708) | Decoded from the video stream into a selectable track |
 
 Independent **font, scale, colour, position and background** across mpv, ExoPlayer and the app-drawn
-overlay; *Default* preserves authored styling. **Preferred audio/subtitle language** selects the
-matching track on both engines. Subtitle size is stored per engine, because the two render the same
+overlay; *Default* preserves authored styling. **Preferred audio/subtitle language** (per profile, 50
+languages, plus **Original language** for audio — TMDB's original language of the film or series,
+else the stream's main track) selects the matching track on both engines. Subtitle size is stored per engine, because the two render the same
 multiplier at visibly different sizes.
 
 External subtitles come from **OpenSubtitles** (own account, remote sign-in by QR + PIN) or a
