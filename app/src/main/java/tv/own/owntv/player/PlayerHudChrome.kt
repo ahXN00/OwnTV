@@ -318,6 +318,7 @@ internal fun BottomBar(
     volume: Int, audioCount: Int, subCount: Int, zoomMode: ZoomMode, speedLabel: String,
     onScrubLive: ((Int) -> Unit)?, timeshiftOffset: () -> Int?, onGoToLive: (() -> Unit)?, onOpenJumpBack: (() -> Unit)?,
     liveProgrammes: List<LiveProgramme> = emptyList(),
+    liveGaps: () -> List<LongRange> = { emptyList() },
     compatMode: Boolean?, onToggleCompatMode: (() -> Unit)?,
     vodOnExo: Boolean?, onToggleVodEngine: (() -> Unit)?,
     onInfo: (() -> Unit)? = null, infoOn: Boolean = false, onReport: (() -> Unit)? = null,
@@ -350,6 +351,7 @@ internal fun BottomBar(
                             liveEdgeMs = System.currentTimeMillis(),
                             onScrub = onScrubLive,
                             focusRequester = seekFocus,
+                            gaps = liveGaps,
                         )
                     }
                     Spacer(Modifier.width(12.dp))

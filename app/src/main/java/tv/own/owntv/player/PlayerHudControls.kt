@@ -456,6 +456,8 @@ internal fun LiveTimelineBar(
     liveEdgeMs: Long,
     onScrub: (Int) -> Unit,
     focusRequester: FocusRequester? = null,
+    /** N4 — wall-clock holes in a saved copy, drawn as dark stretches the rewind jumps over. */
+    gaps: () -> List<LongRange> = { emptyList() },
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -482,6 +484,17 @@ internal fun LiveTimelineBar(
     ) {
         Box(Modifier.fillMaxWidth().height(if (focused) 6.dp else 4.dp).clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = if (focused) 0.4f else 0.22f))) {
             Box(Modifier.fillMaxWidth(frac).fillMaxHeight().clip(RoundedCornerShape(50)).background(OwnTVTheme.colors.accentOnVideo))
+        }
+        // N4 — where the saved copy has no picture (the connection dropped): dark, so a jump over it is
+        // expected rather than a surprise. Read here, where the bar redraws with the ticking offset.
+        liveGapSpans(gaps(), liveEdgeMs).forEach { span ->
+            Box(Modifier.fillMaxWidth(span.endFrac), contentAlignment = Alignment.CenterEnd) {
+                Box(
+                    Modifier.fillMaxWidth((span.endFrac - span.startFrac) / span.endFrac)
+                        .height(if (focused) 6.dp else 4.dp)
+                        .background(Color.Black.copy(alpha = 0.75f)),
+                )
+            }
         }
         // Guide boundaries, so the two hours read as programmes rather than as an undivided smear.
         // The start of the one you are actually watching is brighter — that is the edge you rewind to

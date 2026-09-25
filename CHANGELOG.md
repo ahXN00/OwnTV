@@ -4,6 +4,27 @@
 
 ### ✨ New features
 
+#### ⏸️ Pause and rewind live TV on every channel
+
+Channels without catch-up can now be paused and rewound too. Switch on **Settings → Playback → Video
+Player → Live TV → Pause and rewind live TV** (off by default). While you watch a channel full screen,
+OwnTV saves it on the TV — the one connection to your provider does both — and plays it from that copy,
+so it still looks live.
+
+- **Pause** keeps saving; **Play** continues where you paused. Rewind, forward, the bar, Left/Right and
+  **Go live** work as on a catch-up channel, and the bar says how far behind live you are. A dark
+  stretch on the bar marks a moment the connection dropped; playback jumps over it.
+- **Rewind length**: 15 (default), 30, 45 or 60 minutes, shown once the switch is on. At least 1 GB of
+  the TV's storage always stays free, whatever the length; the oldest part is deleted first.
+- **Leaving the channel**: Back to the Live screen keeps saving (the preview is the same channel).
+  Another channel, Home or anything else stops saving and keeps the copy for **5 minutes** — come back
+  within that and OwnTV asks **Continue where you left off?** (Resume / Go live). After **2 minutes** on
+  another channel, or after 5 minutes, the copy is deleted. Every copy is deleted when OwnTV starts.
+- The **Player engine** button works while rewound; the other player continues at the same moment.
+- Channels with catch-up keep rewinding into the provider's archive, and keep the **Go back to…** button;
+  channels without catch-up do not show it. Encrypted and DRM channels, and streams with separate sound,
+  play as before without a saved copy.
+
 #### 🎨 New icon and logo, in eight colours
 
 OwnTV has a new icon: a flip card, the kind that flips over on a station board, with the play

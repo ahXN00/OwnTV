@@ -351,6 +351,15 @@ class LiveViewModel(
         },
         loadArchive = ::loadArchiveStream,
         onLiveEdge = { goToLive() },
+        // N4 — a channel without catch-up rewinds into its own saved copy. Forwarded, because the
+        // controller is built further down.
+        local = object : LiveTimeshift.Local {
+            override fun windowSec(ch: ChannelEntity): Int? = live.localRewind.windowSec(ch)
+            override fun depthSec(): Int = live.localRewind.depthSec()
+            override fun watchingWallMs(): Long? = live.localRewind.watchingWallMs()
+            override fun liveEdgeWallMs(): Long? = live.localRewind.liveEdgeWallMs()
+            override fun seek(wallMs: Long?) = live.localRewind.seek(wallMs)
+        },
     )
 
     /** "Watching" clock: the wall-clock instant actually on screen. During archive playback the HUD
@@ -1324,7 +1333,8 @@ class LiveViewModel(
         // the user is watching with the channel's CURRENT one. The HUD hides the toggle then too.
         if (_catchupActive.value) return
         // Same while rewound into the live archive: swapping engines re-opens the channel at the edge.
-        if (timeshift.isRewound) return
+        // Not for a copy saved on this device (N4): the other engine continues it at the same moment.
+        if (timeshift.isRewound && live.localTimeshift.value == null) return
         live.toggleEngine()
     }
 
@@ -1531,10 +1541,31 @@ class LiveViewModel(
     /** How far behind live the picture is. Null at the live edge. */
     val timeshiftOffsetSec: StateFlow<Int?> = timeshift.offsetSec
 
-    /** True when the channel on screen records an archive — the HUD then offers "Rewind" on live. */
+    /** True when the channel on screen records an archive, or is saved on this device (N4) — the HUD
+     *  then offers "Rewind" on live. */
     val canRewindLive: StateFlow<Boolean> =
-        _previewChannel.map { it?.catchup == true }
+        combine(_previewChannel, live.localTimeshift) { ch, copy -> ch?.catchup == true || (ch != null && copy != null) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** N4 — the user came back to a channel whose copy was kept: where they were, for "Resume from
+     *  buffer / Go live". Null when there is nothing to offer. */
+    val timeshiftResumeAt: StateFlow<Long?> = live.localTimeshift.map { it?.resumeAtWallMs }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun resumeTimeshift() {
+        val at = timeshiftResumeAt.value ?: return
+        live.dismissResumeOffer()
+        live.seekTimeshift(at)
+    }
+
+    fun dismissTimeshiftResume() = live.dismissResumeOffer()
+
+    /** N4 — the wall-clock holes in the saved copy on screen, for the rewind bar. */
+    fun timeshiftGaps(): List<LongRange> = live.localGaps()
+
+    /** N4 — the channel on screen plays from its saved copy. */
+    val onLocalCopy: StateFlow<Boolean> = live.localTimeshift.map { it != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Settings → Live rewind step (default 30 s), read live so a change applies without a restart. */
     private val rewindStepSec: StateFlow<Int> = settings.liveRewindStepSec
@@ -1560,13 +1591,13 @@ class LiveViewModel(
 
     /** Archive depth of [ch] / of the channel on screen, in seconds — the bound the exact-time picker
      *  clamps its day and HH:MM wheels to. */
-    fun catchupWindowOf(ch: ChannelEntity): Int = if (!ch.catchup) 0 else timeshift.windowSec(ch)
+    fun catchupWindowOf(ch: ChannelEntity): Int = if (!timeshift.canRewind(ch)) 0 else timeshift.windowSec(ch)
     fun currentCatchupWindowSec(): Int = _previewChannel.value?.let { catchupWindowOf(it) } ?: 0
 
     /** Jump the channel already on screen to [offsetSec] behind live. */
     fun jumpBackTo(offsetSec: Int) {
         val ch = _previewChannel.value ?: return
-        if (!ch.catchup) return
+        if (!timeshift.canRewind(ch)) return
         _catchupActive.value = false // a live rewind, not a fixed programme: the HUD keeps its live chrome
         timeshift.beginAt(ch, offsetSec)
     }
@@ -1593,7 +1624,7 @@ class LiveViewModel(
 
     /** Drop every trace of a live rewind. Anything that puts the channel back on a real-time stream has
      *  to call this — see [LiveTimeshift.clear]. */
-    private fun clearTimeshift() = timeshift.clear()
+    private fun clearTimeshift() { timeshift.clear() }
 
     /** Jump back to the real-time live edge (back on the fast ExoPlayer engine). */
     fun goToLive() {

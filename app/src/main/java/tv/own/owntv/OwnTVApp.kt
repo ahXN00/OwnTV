@@ -116,6 +116,7 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // Diagnostics switch, the persisted archive-decode quirk and the one-shot settings migrations —
         // core's, shared with the phone, which used to run none of them.
         tv.own.owntv.player.PlaybackStartup.start(
+            context = this,
             scope = appScope,
             settings = GlobalContext.get().get(),
             archiveStore = GlobalContext.get().get(),

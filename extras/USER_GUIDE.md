@@ -89,7 +89,7 @@ About. Its right-hand panel *describes* each row before you open it — it never
 | **Left** | full-screen live | Channel list for the folder you came from |
 | **Left ×2** | full-screen live | All Live TV categories — switch folder without stopping the stream |
 | **Right** | full-screen live | The last 30 channels you watched |
-| **Left / Right** | full-screen live, catch-up channel, **Left and right rewind live TV** on | Rewind / go forward instead of the lists (the timeline comes up; hold to scrub) |
+| **Left / Right** | full-screen live, a channel you can rewind (catch-up, or saved by **Pause and rewind live TV**), **Left and right rewind live TV** on | Rewind / go forward instead of the lists (the timeline comes up; hold to scrub) |
 | **Left / Right** | film or episode, controls hidden | Skip back / forward by your seek step; the seek bar comes up, hold to keep scrubbing |
 | **CH+ / CH−** | full-screen live | Next / previous channel. Wraps around. Always works |
 | **Last channel** key | full-screen live | Back to the channel you watched before (press again to flip back). Also the clock button on the player bar |
@@ -252,6 +252,24 @@ provider actually keeps.
 **Where:** full-screen player → **Go back to…**
 Offers times counted back from now — `21:30`, `19:00`, `Sun 20:00`. The last row opens a
 day/hour/minute picker. **This works even on channels with no guide at all.**
+
+### ⏸️ Pause and rewind channels without catch-up
+**Where:** **Settings → Playback → Video Player → Live TV → Pause and rewind live TV**
+Off by default. While you watch a channel full screen, OwnTV saves it on this TV and plays it
+from that copy, so it still looks live — and you can **pause**, rewind and go forward on channels
+whose provider keeps no archive. Pause, the rewind/forward buttons, the bar, Left/Right and **Go live** work as on a catch-up channel. A dark stretch on the bar is a moment the connection
+dropped; playback jumps over it.
+
+- **Rewind length:** 15 (default), 30, 45 or 60 minutes. At least **1 GB** of the TV's storage always
+  stays free; the oldest part goes first.
+- **Back to the Live screen is not leaving: the preview is the same channel, so it keeps saving.**
+- **The delete rules:**
+  - Leave the channel and its copy is kept for **5 minutes**. Come back within them and OwnTV asks
+    **Continue where you left off?** — **Resume** plays on from where you left, **Go live** jumps to now.
+  - Watch another channel for **2 minutes** and the copy you left is deleted at once — you have moved on.
+  - After 5 minutes it is deleted anyway, and every copy is deleted when OwnTV starts.
+- Catch-up channels still rewind into the provider's archive. Protected (DRM) and encrypted channels
+  play as before, without a copy.
 
 ### ⏭️ Catch-up plays on
 A finished catch-up programme continues to the next one, and hands over to the live channel once you

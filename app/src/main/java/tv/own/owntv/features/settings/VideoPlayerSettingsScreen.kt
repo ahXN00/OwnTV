@@ -159,6 +159,8 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_preroll_sources", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_live_preroll_per_playlist, R.string.settings_live_preroll_per_playlist_description),
     VideoQuickRef("vp_channel_numbers", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_channel_numbers, R.string.settings_channel_numbers_description),
     VideoQuickRef("vp_live_left_right", SECTION_LIVE, OwnTVIcon.SEEK_BACK, R.string.settings_live_left_right_rewinds, R.string.settings_live_left_right_rewinds_description),
+    VideoQuickRef("vp_timeshift", SECTION_LIVE, OwnTVIcon.REWIND, R.string.settings_timeshift, R.string.settings_timeshift_description),
+    VideoQuickRef("vp_timeshift_window", SECTION_LIVE, OwnTVIcon.REWIND, R.string.settings_timeshift_window, R.string.settings_timeshift_window_description),
     VideoQuickRef("vp_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_default_volume, R.string.settings_default_volume_description),
     VideoQuickRef("vp_reset_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_reset_saved_volume, R.string.settings_reset_saved_volume_description),
     VideoQuickRef("vp_audio_lang", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_preferred_audio_language, R.string.settings_preferred_audio_language_description),
@@ -365,6 +367,14 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
             val on by vm.liveLeftRightRewinds.collectAsStateWithLifecycle()
             toggle(onOff(on), on) { vm.setLiveLeftRightRewinds(!on) }
         }
+        "vp_timeshift" -> {
+            val on by vm.timeshiftEnabled.collectAsStateWithLifecycle()
+            toggle(onOff(on), on) { vm.setTimeshiftEnabled(!on) }
+        }
+        "vp_timeshift_window" -> {
+            val minutes by vm.timeshiftWindowMinutes.collectAsStateWithLifecycle()
+            link(stringResource(R.string.player_duration_minutes, minutes))
+        }
         "vp_volume" -> {
             val volume by vm.defaultVolume.collectAsStateWithLifecycle()
             link(stringResource(R.string.player_percent, volume))
@@ -529,6 +539,8 @@ fun VideoPlayerSettingsScreen(
     val detailedDiagnostics by vm.detailedDiagnostics.collectAsStateWithLifecycle()
     val directTune by vm.directTune.collectAsStateWithLifecycle()
     val liveLeftRightRewinds by vm.liveLeftRightRewinds.collectAsStateWithLifecycle()
+    val timeshiftEnabled by vm.timeshiftEnabled.collectAsStateWithLifecycle()
+    val timeshiftWindowMinutes by vm.timeshiftWindowMinutes.collectAsStateWithLifecycle()
     val afrPauseSecs by vm.afrPauseSecs.collectAsStateWithLifecycle()
     val vodBufferSecs by vm.vodBufferSecs.collectAsStateWithLifecycle()
     val vodNetworkTimeoutSecs by vm.vodNetworkTimeoutSecs.collectAsStateWithLifecycle()
@@ -728,7 +740,8 @@ fun VideoPlayerSettingsScreen(
     val sectionCounts = listOf(
         // + Maximum video quality, and Tunneled playback where a decoder supports it (P15).
         14 + (if (vm.tunnelingSupported) 1 else 0) + (if (perPlaylist) 2 else 0),
-        5 + (if (livePreview) 1 else 0) + (if (perPlaylist) 3 else 0),
+        // + Pause and rewind live TV, and its length while it is on (N4).
+        6 + (if (timeshiftEnabled) 1 else 0) + (if (livePreview) 1 else 0) + (if (perPlaylist) 3 else 0),
         9, 2, 3, 2, // Sound: + passthrough, night mode, volume leveling (P14)
     )
     var sheetFocused by remember { mutableStateOf(false) }
@@ -1322,6 +1335,22 @@ fun VideoPlayerSettingsScreen(
             chip = if (liveLeftRightRewinds) stringResource(R.string.common_on) else stringResource(R.string.common_off), primaryChip = liveLeftRightRewinds,
             onClick = { vm.setLiveLeftRightRewinds(!liveLeftRightRewinds) },
         )
+        Row2(
+            quickKey = "vp_timeshift",
+            icon = OwnTVIcon.REWIND, title = stringResource(R.string.settings_timeshift),
+            desc = stringResource(R.string.settings_timeshift_description),
+            chip = if (timeshiftEnabled) stringResource(R.string.common_on) else stringResource(R.string.common_off), primaryChip = timeshiftEnabled,
+            onClick = { vm.setTimeshiftEnabled(!timeshiftEnabled) },
+        )
+        // The length means nothing while saving is off, so it appears with the switch.
+        if (timeshiftEnabled) Row2(
+            quickKey = "vp_timeshift_window",
+            icon = OwnTVIcon.REWIND, title = stringResource(R.string.settings_timeshift_window),
+            desc = stringResource(R.string.settings_timeshift_window_description),
+            chip = stringResource(R.string.player_duration_minutes, timeshiftWindowMinutes), chevron = true,
+            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.TIMESHIFT_WINDOW)),
+            onClick = { savedScroll = scrollState.value; dialog = Dialog.TIMESHIFT_WINDOW },
+        )
 
                     }
                     else -> {
@@ -1766,6 +1795,15 @@ fun VideoPlayerSettingsScreen(
             onSelect = { vm.setVodNetworkTimeoutSecs(it.toIntOrNull() ?: 0); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },
         )
+        Dialog.TIMESHIFT_WINDOW -> PickerDialog(
+            title = stringResource(R.string.settings_timeshift_window),
+            options = tv.own.owntv.core.timeshift.TimeshiftRules.WINDOW_CHOICES_MINUTES.map {
+                it.toString() to stringResource(R.string.player_duration_minutes, it)
+            },
+            selected = timeshiftWindowMinutes.toString(),
+            onSelect = { choice -> choice.toIntOrNull()?.let { vm.setTimeshiftWindowMinutes(it) }; dialog = Dialog.NONE },
+            onDismiss = { dialog = Dialog.NONE },
+        )
         Dialog.VOD_RECONNECTS -> PickerDialog(
             title = stringResource(R.string.settings_vod_reconnects),
             options = vm.vodReconnectChoices.map { it.toString() to stringResource(R.string.settings_vod_reconnects_value, it) },
@@ -1955,7 +1993,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     else -> null
 }
 
-private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
+private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, TIMESHIFT_WINDOW, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
 
 /** "Auto" for 0, else seconds ("60s") — the film buffer and network timeout choices (N18). */
 @Composable

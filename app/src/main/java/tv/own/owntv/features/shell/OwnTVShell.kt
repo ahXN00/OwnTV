@@ -270,6 +270,7 @@ fun OwnTVShell(
     // just the on/off fact, which changes when the user enters or leaves the rewind and no oftener.
     val timeshiftOffsetState = liveVm.timeshiftOffsetSec.collectAsStateWithLifecycle()
     val watchingWallState = liveVm.watchingWallMs.collectAsStateWithLifecycle()
+    val onLocalCopy by liveVm.onLocalCopy.collectAsStateWithLifecycle()
     val timeshifted by remember(liveVm) {
         liveVm.timeshiftOffsetSec.map { it != null }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(false)
@@ -1455,10 +1456,13 @@ fun OwnTVShell(
                     onScrubLive = if (isTunedLive && canRewindLive) liveVm::scrubLive else null,
                     // Only collected where there is a timeline to draw them on.
                     liveProgrammes = if (isTunedLive && canRewindLive) timelineProgrammes else emptyList(),
-                    jumpBackOptions = if (isTunedLive && canRewindLive) liveVm::currentJumpOptions else null,
-                    onJumpBack = if (isTunedLive && canRewindLive) liveVm::jumpBackTo else null,
+                    liveGaps = liveVm::timeshiftGaps,
+                    // "Go back to…" is the provider archive's: a copy saved on this device (N4) rewinds with the
+                    // bar and the buttons, and must not show a catch-up control on a channel without catch-up.
+                    jumpBackOptions = if (isTunedLive && previewChannel?.catchup == true) liveVm::currentJumpOptions else null,
+                    onJumpBack = if (isTunedLive && previewChannel?.catchup == true) liveVm::jumpBackTo else null,
                     onPreviousChannel = if (isTunedLive && previousLiveChannel != null) liveVm::previousChannel else null,
-                    jumpBackWindowSec = if (isTunedLive && canRewindLive) liveVm::currentCatchupWindowSec else null,
+                    jumpBackWindowSec = if (isTunedLive && previewChannel?.catchup == true) liveVm::currentCatchupWindowSec else null,
                     // Non-null only while an archive is on screen, so movies, episodes and live TV get
                     // the single real clock and catch-up gets the pair.
                     watchingWallMs = { watchingWallState.value },
@@ -1476,7 +1480,9 @@ fun OwnTVShell(
                     // threw the user out of the rewind with the HUD still counting "behind live".
                     // Also hidden for a protected channel (#115): only ExoPlayer can license it, so the
                     // toggle's other position is not a compatibility choice but a guaranteed failure.
-                    onToggleCompatMode = if (isTunedLive && !timeshifted && previewChannel?.drmConfig == null) liveVm::toggleForceMpv else null,
+                    // A copy saved on this device (N4) is the exception: the other engine re-opens the same copy
+                    // at the same moment, so the rewind survives the switch.
+                    onToggleCompatMode = if (isTunedLive && (!timeshifted || onLocalCopy) && previewChannel?.drmConfig == null) liveVm::toggleForceMpv else null,
                     // VOD engine toggle (movies/series only — live and catch-up channels keep their own
                     // engine handling above): flip the current item between mpv and ExoPlayer.
                     vodOnExo = if (!isLiveStream && !isTunedLive) vodExoActive else null,
@@ -1564,6 +1570,14 @@ fun OwnTVShell(
                 val catchupUnavailable = stringResource(R.string.content_epg_catchup_unavailable)
                 LaunchedEffect(liveVm) {
                     liveVm.catchupUnavailable.collect { localSubToast.show(catchupUnavailable) }
+                }
+                // N4 — back on a channel whose saved copy was kept: continue from there, or stay live.
+                val timeshiftResumeAt by liveVm.timeshiftResumeAt.collectAsStateWithLifecycle()
+                if (isFull && timeshiftResumeAt != null) {
+                    tv.own.owntv.ui.components.TimeshiftResumeDialog(
+                        onResume = liveVm::resumeTimeshift,
+                        onGoLive = liveVm::dismissTimeshiftResume,
+                    )
                 }
                 // Left — the playing channel's own provider category.
                 if (showChannelList && isLiveChannel) {

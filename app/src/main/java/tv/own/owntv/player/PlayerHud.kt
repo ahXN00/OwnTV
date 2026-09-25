@@ -164,6 +164,8 @@ fun PlayerHud(
     onScrubLive: ((Int) -> Unit)? = null, // timeline scrub: +sec = back, −sec = toward live
     // The playing channel's guide, for the timeline's programme ticks and the scrub bubble's name.
     liveProgrammes: List<LiveProgramme> = emptyList(),
+    /** N4 — the saved copy's holes, for the rewind bar. */
+    liveGaps: () -> List<LongRange> = { emptyList() },
     // "Go back to…": aim at a point in the archive instead of nudging toward it with rewind. Null =
     // not a catch-up channel. [jumpBackOptions] is read when the list opens so its clock times are
     // computed against the moment the user asked, not the moment the HUD was composed.
@@ -679,6 +681,7 @@ fun PlayerHud(
                     speedLabel = formatSpeed(speed),
                     onScrubLive = onScrubLive, timeshiftOffset = timeshiftOffset, onGoToLive = onGoToLive,
                     liveProgrammes = liveProgrammes,
+                    liveGaps = liveGaps,
                     onOpenJumpBack = if (onJumpBack != null) { { dialog = HudDialog.JUMP_BACK } } else null,
                     onPreviousChannel = onPreviousChannel,
                     compatMode = compatMode, onToggleCompatMode = toggleCompat,

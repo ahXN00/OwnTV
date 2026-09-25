@@ -516,6 +516,14 @@ class SettingsViewModel(
     val liveLeftRightRewinds: StateFlow<Boolean> = settings.liveLeftRightRewinds.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     fun setLiveLeftRightRewinds(enabled: Boolean) { viewModelScope.launch { settings.setLiveLeftRightRewinds(enabled) } }
 
+    // N4 — pause and rewind channels without catch-up, from a copy saved while watching.
+    val timeshiftEnabled: StateFlow<Boolean> = settings.timeshiftEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setTimeshiftEnabled(enabled: Boolean) { viewModelScope.launch { settings.setTimeshiftEnabled(enabled) } }
+    val timeshiftWindowMinutes: StateFlow<Int> = settings.timeshiftWindowMinutes.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000), tv.own.owntv.core.timeshift.TimeshiftRules.DEFAULT_WINDOW_MINUTES,
+    )
+    fun setTimeshiftWindowMinutes(minutes: Int) { viewModelScope.launch { settings.setTimeshiftWindowMinutes(minutes) } }
+
     // N18 — films' buffer, network timeout and reconnect attempts.
     val vodBufferChoicesSecs: List<Int> get() = settings.vodBufferChoicesSecs
     val vodNetworkTimeoutChoicesSecs: List<Int> get() = settings.vodNetworkTimeoutChoicesSecs

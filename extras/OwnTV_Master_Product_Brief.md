@@ -251,6 +251,11 @@ profile: Home, last channel, Live Favorites, or one chosen channel.
   scrubs the live stream on archive-capable channels. **Go back to…** jumps straight to a time, with
   an exact day/hour/minute picker clamped to the archive window — and works with **no guide at all**.
   A **Catch-up category** in Live TV lists every channel that advertises an archive.
+- **Pause and rewind live TV** (local timeshift, opt-in) — a channel without catch-up is saved on the
+  device while it is watched full screen (15–60 min, always ≥ 1 GB free) and played from that copy, so it
+  can be paused and rewound like an archive channel. The copy is the only provider connection; it is kept
+  5 minutes after leaving (Resume / Go live on return), deleted after 2 minutes on another channel, and
+  wiped at every start. Built in core (`TimeshiftManager`, `LiveTuneController`), shared with the phone.
 - **Auto-match EPG** links channels to guide data when `tvg-id` is missing or wrong; confident matches
   apply automatically and the rest go to a review list. Matches are per profile and survive re-syncs.
   A **guide time offset** corrects a feed published in another time zone, globally or per channel.
