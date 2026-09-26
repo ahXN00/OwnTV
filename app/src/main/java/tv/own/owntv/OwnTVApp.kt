@@ -78,6 +78,9 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
     override fun onCreate() {
         Perf.begin() // zero-point for the OwnTVPerf startup timeline (adb logcat -s OwnTVPerf)
         super.onCreate()
+        // "Restart now" after an icon change runs a few milliseconds in a process of its own; nothing
+        // below may start there (core's AppRestartActivity).
+        if (tv.own.owntv.core.brand.AppIconSwitcher.isRestartProcess(this)) return
         // Core has its own BuildConfig, which carries none of this: a library gets no version at all,
         // and the edge key and the maintainer switch are the app's build inputs. Hand them over before
         // the first reader — CrashRecorder, two lines down (see CoreBuildInfo).

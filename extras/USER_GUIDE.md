@@ -517,8 +517,8 @@ player too — seek bar, active buttons, badges.
 **Where:** Settings → App → **App icon**
 Eight colours for the OwnTV icon and logo: Petrol, Sunflower, Cobalt, Tomato, Station
 Board, **Eggshell** (default), Olive and Olive on Cream. It changes the app row banner, the launch screen and every
-OwnTV logo in the app. **Restart now** switches at once; **Later** switches when you next leave the
-app. Some launchers take a moment to show the new banner.
+OwnTV logo in the app. **Restart now** switches at once: OwnTV closes and opens again by itself, on
+Home, with the new colour. **Later** switches when you next leave the app. Some launchers take a moment to show the new banner.
 
 ### 🔦 Focus highlight
 **Where:** Settings → **Focus highlight**
