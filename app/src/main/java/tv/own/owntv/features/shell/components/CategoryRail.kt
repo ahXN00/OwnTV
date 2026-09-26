@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -145,8 +144,6 @@ fun CategoryRail(
 ) {
     val colors = OwnTVTheme.colors
     var hasFocus by remember { mutableStateOf(false) }
-    var focusedRowIndex by remember { mutableIntStateOf(-1) }
-    var focusedSearch by remember { mutableStateOf(false) }
     // Folder search (for big libraries). Filters the rail by name but keeps each folder's ORIGINAL
     // index, so selection highlighting and onSelect still map correctly. Reset when the rail loses
     // focus, so it's fresh every time you open it.
@@ -163,8 +160,6 @@ fun CategoryRail(
         val target = focusRowIndex ?: return@LaunchedEffect
         val pos = visible.indexOf(target)
         if (pos >= 0) {
-            focusedRowIndex = pos
-            focusedSearch = false
             runCatching { rowFocusers[pos].requestFocus() }
         }
         onRowFocused()
@@ -186,10 +181,6 @@ fun CategoryRail(
         if (selectedIndex in categories.indices) {
             val targetPos = visible.indexOf(selectedIndex)
             if (targetPos >= 0) {
-                if (!hasFocus) {
-                    focusedRowIndex = targetPos
-                    focusedSearch = false
-                }
                 val listIndex = targetPos + 1
                 val isVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == listIndex }
                 if (!isVisible) {
@@ -233,25 +224,18 @@ fun CategoryRail(
                     if (it.hasFocus) onFocused() else query = "" // reset the search on leaving
                 }
                 .focusProperties {
+                    // Every entry (from the sidebar OR back from the content) lands on the category
+                    // actually open, never a row that was only browsed; the search box when none is.
                     onEnter = {
-                        val targetRequester = when {
-                            focusedSearch -> searchFocus
-                            focusedRowIndex in rowFocusers.indices -> rowFocusers[focusedRowIndex]
-                            else -> {
-                                val targetPos = visible.indexOf(selectedIndex)
-                                if (targetPos in rowFocusers.indices) rowFocusers[targetPos] else searchFocus
-                            }
-                        }
-                        if (runCatching { targetRequester.requestFocus() }.isFailure) {
-                            val targetIndex = if (focusedSearch) 0 else {
-                                val rowPos = if (focusedRowIndex in rowFocusers.indices) focusedRowIndex else visible.indexOf(selectedIndex)
-                                if (rowPos >= 0) rowPos + 1 else 0
-                            }
+                        val targetPos = visible.indexOf(selectedIndex)
+                        val targetRequester = if (targetPos in rowFocusers.indices) rowFocusers[targetPos] else searchFocus
+                        if (!runCatching { targetRequester.requestFocus() }.getOrDefault(false)) {
+                            val targetIndex = if (targetPos in rowFocusers.indices) targetPos + 1 else 0
                             scope.launch {
                                 runCatching { listState.scrollToItem(targetIndex) }
                                 withFrameNanos { }
                                 repeat(3) {
-                                    if (runCatching { targetRequester.requestFocus() }.isSuccess) return@launch
+                                    if (runCatching { targetRequester.requestFocus() }.getOrDefault(false)) return@launch
                                     withFrameNanos { }
                                 }
                             }
@@ -280,12 +264,6 @@ fun CategoryRail(
                     placeholder = stringResource(tv.own.owntv.R.string.content_search_categories),
                     modifier = Modifier
                         .focusRequester(searchFocus)
-                        .onFocusChanged {
-                            if (it.isFocused) {
-                                focusedSearch = true
-                                focusedRowIndex = -1
-                            }
-                        }
                         .fillMaxWidth()
                         .padding(start = 14.dp, bottom = 4.dp)
                         .then(
@@ -323,10 +301,6 @@ fun CategoryRail(
                         } 
                     },
                     onNavigateRight = onNavigateRight,
-                    onFocused = {
-                        focusedRowIndex = i
-                        focusedSearch = false
-                    },
                     modifier = if (index == selectedIndex) {
                         Modifier.focusRequester(selectedFocus).focusRequester(rowFocusers[i])
                     } else {
@@ -363,14 +337,10 @@ private fun RailPill(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
     onNavigateRight: (() -> Unit)? = null,
-    onFocused: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    LaunchedEffect(focused) {
-        if (focused) onFocused?.invoke()
-    }
     // Box-style corners (8.dp), close to the live-TV channel list item, not an over-rounded pill.
     val shape = if (expanded) RoundedCornerShape(8.dp) else CircleShape
     // Glass effect: when the PANELS surface is glassy, the focused/active highlight renders as a
@@ -389,7 +359,6 @@ private fun RailPill(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .onFocusChanged { if (it.isFocused) onFocused?.invoke() }
             .then(
                 if (onNavigateRight != null) {
                     Modifier.onPreviewKeyEvent { event ->

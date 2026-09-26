@@ -324,6 +324,8 @@ private fun SeriesGrid(
     val selectedLabel = selectedItem?.displayLabel(R.string.content_category_all_series) ?: stringResource(R.string.content_category_all_series)
     val gridSelFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val firstItemFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Right from the rail on an empty list: the list's search box, so a search with no results can be cleared.
+    val listSearchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
@@ -557,13 +559,15 @@ private fun SeriesGrid(
                         withFrameNanos { }
                         repeat(3) {
                             val focused = if (targetId != null) {
-                                runCatching { gridSelFocus.requestFocus() }.isSuccess
+                                runCatching { gridSelFocus.requestFocus() }.getOrDefault(false)
                             } else false
                             if (focused) return@launch
-                            if (runCatching { firstItemFocus.requestFocus() }.isSuccess) return@launch
-                            if (runCatching { gridSelFocus.requestFocus() }.isSuccess) return@launch
+                            if (runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) return@launch
+                            if (runCatching { gridSelFocus.requestFocus() }.getOrDefault(false)) return@launch
                             withFrameNanos { }
                         }
+                    } else {
+                        runCatching { listSearchFocus.requestFocus() }
                     }
                 }
             },
@@ -659,10 +663,10 @@ private fun SeriesGrid(
                 .focusProperties {
                     onEnter = {
                         val focused = if (targetSeriesId != null) {
-                            runCatching { gridSelFocus.requestFocus() }.isSuccess
+                            runCatching { gridSelFocus.requestFocus() }.getOrDefault(false)
                         } else false
                         if (!focused) {
-                            if (runCatching { firstItemFocus.requestFocus() }.isFailure) {
+                            if (!runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) {
                                 runCatching { gridSelFocus.requestFocus() }
                             }
                         }
@@ -738,7 +742,7 @@ private fun SeriesGrid(
                     }
                     .focusGroup(),
             ) {
-                SearchBar(query = searchQuery, onQueryChange = vm::setSearchQuery, placeholder = stringResource(R.string.content_search_series), modifier = Modifier.weight(1f))
+                SearchBar(query = searchQuery, onQueryChange = vm::setSearchQuery, placeholder = stringResource(R.string.content_search_series), modifier = Modifier.weight(1f).focusRequester(listSearchFocus))
                 Spacer(Modifier.width(10.dp))
                 SortChip(mode = sortMode, onToggle = vm::toggleSort, playlistLabel = stringResource(R.string.content_provider))
                 // Cinematic is grid-only, so the toggle would be a button that changes nothing.

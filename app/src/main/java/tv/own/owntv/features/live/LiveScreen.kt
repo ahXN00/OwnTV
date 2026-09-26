@@ -203,6 +203,8 @@ fun LiveScreen(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val selFocus = remember { FocusRequester() }
     val firstItemFocus = remember { FocusRequester() }
+    // Right from the rail on an empty list: the list's search box, so a search with no results can be cleared.
+    val listSearchFocus = remember { FocusRequester() }
 
     // CH+- key paging: shared settings + a hoisted rail state so the same modifier can page both the
     // category rail and this channel list. Channel-list pane focus is tracked separately from rail
@@ -500,13 +502,15 @@ fun LiveScreen(
                         withFrameNanos { }
                         repeat(3) {
                             val focused = if (targetId != null) {
-                                runCatching { selFocus.requestFocus() }.isSuccess
+                                runCatching { selFocus.requestFocus() }.getOrDefault(false)
                             } else false
                             if (focused) return@launch
-                            if (runCatching { firstItemFocus.requestFocus() }.isSuccess) return@launch
-                            if (runCatching { selFocus.requestFocus() }.isSuccess) return@launch
+                            if (runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) return@launch
+                            if (runCatching { selFocus.requestFocus() }.getOrDefault(false)) return@launch
                             withFrameNanos { }
                         }
+                    } else {
+                        runCatching { listSearchFocus.requestFocus() }
                     }
                 }
             },
@@ -600,10 +604,10 @@ fun LiveScreen(
                 .focusProperties {
                     onEnter = {
                         val focused = if (targetChannelId != null) {
-                            runCatching { selFocus.requestFocus() }.isSuccess
+                            runCatching { selFocus.requestFocus() }.getOrDefault(false)
                         } else false
                         if (!focused) {
-                            if (runCatching { firstItemFocus.requestFocus() }.isFailure) {
+                            if (!runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) {
                                 runCatching { selFocus.requestFocus() }
                             }
                         }
@@ -669,7 +673,7 @@ fun LiveScreen(
                     query = searchQuery,
                     onQueryChange = vm::setSearchQuery,
                     placeholder = stringResource(R.string.content_search_channels),
-                    modifier = Modifier.weight(1f).onFocusChanged { if (it.hasFocus && previewEnabled) vm.stopPreview() },
+                    modifier = Modifier.weight(1f).focusRequester(listSearchFocus).onFocusChanged { if (it.hasFocus && previewEnabled) vm.stopPreview() },
                 )
                 Spacer(Modifier.size(10.dp))
                 SortChip(mode = sortMode, onToggle = vm::toggleSort)

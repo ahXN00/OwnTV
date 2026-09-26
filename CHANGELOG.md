@@ -7,6 +7,14 @@
 > Issue numbers that are part of a title are fine; explanatory parentheticals are not. The detail —
 > what, why, files and verification — belongs in the commit message, never here.
 
+## v5.0.4 — 2026-09-26
+
+### 🐛 Fixes
+- **Right from a category no longer gets stuck in Live TV, Movies and Series**
+- **Returning to the categories lands on the open category**
+- **Right from the categories reaches the search box when a list is empty**
+- **Crash on the first launch after an update**
+
 ## v5.0.3 — 2026-09-26
 
 ### ✨ New features

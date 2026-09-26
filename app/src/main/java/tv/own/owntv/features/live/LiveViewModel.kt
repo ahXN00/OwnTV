@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.paging.filter
@@ -443,8 +444,12 @@ class LiveViewModel(
 
     /** Global guide shift (minutes); a per-channel override in [custom] wins over it. Changing it
      *  drops the now/next cache so the details pane reflects the new offset straight away. */
+    // The first value is the stored one, not a change — and it can arrive synchronously during
+    // construction, before nowPlayingCache below exists (a monitor-enter NPE on cold start).
     private val epgOffset: StateFlow<Int> = settings.epgOffsetMinutes
-        .onEach { epgReader.clearCache(); epgRefresh.value++; clearNowPlaying() }
+        .withIndex()
+        .onEach { if (it.index > 0) { epgReader.clearCache(); epgRefresh.value++; clearNowPlaying() } }
+        .map { it.value }
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     /** The user's custom combined categories with live member counts — the "Move to…" dialog's list. */
