@@ -54,3 +54,6 @@ future_work/
 # JVM crash dumps from a Gradle daemon (never worth committing)
 hs_err_pid*.log
 replay_pid*.log
+
+# Local-only archive (old detailed changelogs etc.), never committed
+/archive/

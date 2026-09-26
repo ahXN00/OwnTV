@@ -48,14 +48,6 @@ class EpgSourcesViewModel(
     }
 
     /** EPG sources whose own `<icon src>` logos replace the playlist's channel logos. */
-    /** How many days of upcoming guide to store — one value for every EPG source (guide plan R1). */
-    val guideDaysToKeep: StateFlow<Int> = settings.guideDaysToKeep
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), tv.own.owntv.core.settings.GuideRetention.DEFAULT_DAYS)
-
-    fun setGuideDaysToKeep(days: Int) {
-        viewModelScope.launch { settings.setGuideDaysToKeep(days) }
-    }
-
     val useLogos: StateFlow<Set<Long>> = settings.epgUseLogos
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 

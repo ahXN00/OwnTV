@@ -209,7 +209,11 @@ fun DownloadsScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 color = colors.onSurface,
             )
-            downloadRoot.takeIf { it.isNotBlank() }?.let {
+            // While the chosen folder is missing, name the folder downloads actually go to.
+            val fallbackPath = if (storage?.usingFallback == true) {
+                tv.own.owntv.core.storage.StorageAccess.defaultRoot(androidx.compose.ui.platform.LocalContext.current).absolutePath
+            } else null
+            (fallbackPath ?: downloadRoot).takeIf { it.isNotBlank() }?.let {
                 Text(
                     it,
                     style = MaterialTheme.typography.labelSmall,
@@ -234,6 +238,16 @@ fun DownloadsScreen(
         // share the free space, so showing it per tab would be the same number drawn three times.
         storage?.let {
             StorageBar(it)
+            // The chosen folder is missing (USB stick out): the bar above is the app's own folder,
+            // and new downloads go there until the stick is back.
+            if (it.usingFallback) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(R.string.content_storage_folder_fallback),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.tertiary,
+                )
+            }
             Spacer(Modifier.height(14.dp))
         }
 

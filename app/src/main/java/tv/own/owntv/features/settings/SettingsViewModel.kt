@@ -401,6 +401,14 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setEpgOffsetMinutes(minutes) }
     }
 
+    /** How many days of upcoming guide to store — one value for every EPG source (guide plan R1). */
+    val guideDaysToKeep: StateFlow<Int> = settings.guideDaysToKeep
+        .stateIn(viewModelScope, SharingStarted.Eagerly, tv.own.owntv.core.settings.GuideRetention.DEFAULT_DAYS)
+
+    fun setGuideDaysToKeep(days: Int) {
+        viewModelScope.launch { settings.setGuideDaysToKeep(days) }
+    }
+
     val androidTvHomeEnabled: StateFlow<Boolean> = settings.androidTvHomeEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 

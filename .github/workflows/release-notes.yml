@@ -1,6 +1,6 @@
-name: Release notes from CHANGELOG_APP
+name: Release notes from CHANGELOG
 
-# When a release is published, set its body to that version's section from CHANGELOG_APP.md
+# When a release is published, set its body to that version's section from CHANGELOG.md
 # (the minimal, bullet-only changelog). The in-app updater reads the latest release body, so a
 # user updating from ANY older version sees exactly this version's short notes.
 #
@@ -29,8 +29,8 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
-          if [ ! -f CHANGELOG_APP.md ]; then
-            echo "CHANGELOG_APP.md not found at $TAG — leaving the release body unchanged."
+          if [ ! -f CHANGELOG.md ]; then
+            echo "CHANGELOG.md not found at $TAG — leaving the release body unchanged."
             exit 0
           fi
 
@@ -40,7 +40,7 @@ jobs:
             $0 ~ ("^## " ver "([ \t]|$)") { flag=1; next }
             /^## v/ && flag { flag=0 }
             flag { print }
-          ' CHANGELOG_APP.md > section.md || true
+          ' CHANGELOG.md > section.md || true
 
           # Trim leading/trailing blank lines.
           sed -i -e '/./,$!d' section.md
@@ -48,7 +48,7 @@ jobs:
           mv section.trimmed.md section.md
 
           if [ ! -s section.md ]; then
-            echo "No CHANGELOG_APP.md section found for $TAG — leaving the release body unchanged."
+            echo "No CHANGELOG.md section found for $TAG — leaving the release body unchanged."
             exit 0
           fi
 

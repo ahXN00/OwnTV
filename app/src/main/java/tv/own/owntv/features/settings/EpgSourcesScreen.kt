@@ -45,7 +45,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import tv.own.owntv.R
 import tv.own.owntv.core.epg.EpgSource
-import tv.own.owntv.core.settings.GuideRetention
 import tv.own.owntv.ui.components.DayStepperDialog
 import tv.own.owntv.core.settings.EpgAutoRefresh
 import tv.own.owntv.core.settings.EpgRefresh
@@ -79,16 +78,11 @@ fun EpgSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier, startOnA
     val autoRefreshMap by vm.autoRefresh.collectAsStateWithLifecycle()
     val useLogosIds by vm.useLogos.collectAsStateWithLifecycle()
     val deletingIds by vm.deletingIds.collectAsStateWithLifecycle()
-    // How far ahead the guide is stored. Global rather than per-source: it is one horizon that every
-    // feed is trimmed to, and the grid can only scroll as far as the shortest answer. Collected up
-    // here because the stepper dialog below sits outside the Column that shows the row.
-    val guideDays by vm.guideDaysToKeep.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
 
     var editing by remember { mutableStateOf<EpgSource?>(null) }
     var adding by remember { mutableStateOf(startOnAdd) }
     var confirmDelete by remember { mutableStateOf<EpgSource?>(null) }
-    var editingGuideDays by remember { mutableStateOf(false) }
     val addFocus = remember { FocusRequester() }
 
     // Per-row focus restore (mirrors ManageSourcesScreen / MoviesScreen): track the row the user is
@@ -182,28 +176,6 @@ fun EpgSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier, startOnA
             stringResource(R.string.settings_epg_sources_description),
             style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, modifier = Modifier.widthIn(max = 700.dp),
         )
-        Spacer(Modifier.height(16.dp))
-
-        FocusableSurface(
-            onClick = { editingGuideDays = true },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            contentAlignment = Alignment.CenterStart,
-            surface = GlassSurface.CARDS,
-        ) { _ ->
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    stringResource(R.string.settings_epg_guide_days),
-                    style = MaterialTheme.typography.bodyLarge, color = colors.onSurface,
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    pluralStringResource(R.plurals.settings_epg_guide_days_value, guideDays, guideDays),
-                    style = MaterialTheme.typography.bodyLarge, color = colors.primary,
-                )
-            }
-        }
-
         Spacer(Modifier.height(20.dp))
 
         if (sources.isEmpty()) {
@@ -235,23 +207,6 @@ fun EpgSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier, startOnA
                 }
             }
         }
-    }
-
-    if (editingGuideDays) {
-        DayStepperDialog(
-            title = stringResource(R.string.settings_epg_guide_days),
-            hint = stringResource(
-                R.string.settings_epg_guide_days_hint,
-                GuideRetention.MIN_DAYS,
-                GuideRetention.MAX_DAYS,
-            ),
-            initialDays = guideDays,
-            minDays = GuideRetention.MIN_DAYS,
-            maxDays = GuideRetention.MAX_DAYS,
-            label = { days -> pluralStringResource(R.plurals.settings_epg_guide_days_value, days, days) },
-            onConfirm = { vm.setGuideDaysToKeep(it); editingGuideDays = false },
-            onDismiss = { editingGuideDays = false },
-        )
     }
 
     confirmDelete?.let { s ->

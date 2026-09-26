@@ -258,9 +258,10 @@ fun OwnTVShell(
     // "Prefer EPG logos": start following the setting once, here rather than in Application.onCreate —
     // the store queries nothing at all while the toggle is off, so cold start stays free of EPG reads.
     val epgDaoForLogos = koinInject<tv.own.owntv.core.database.dao.EpgDao>()
+    val customizeForLogos = koinInject<tv.own.owntv.core.customize.CustomizationStore>()
     val logoScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
-        tv.own.owntv.core.epg.EpgLogoStore.start(logoScope, settingsRepo, epgDaoForLogos)
+        tv.own.owntv.core.epg.EpgLogoStore.start(logoScope, settingsRepo, epgDaoForLogos, customizeForLogos)
     }
     // Live rewind / timeshift: whether the live channel supports catch-up, and how far behind live we are.
     val canRewindLive by liveVm.canRewindLive.collectAsStateWithLifecycle()

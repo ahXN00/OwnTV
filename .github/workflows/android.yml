@@ -287,14 +287,13 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-      - name: Extract release notes from CHANGELOG_APP.md
+      - name: Extract release notes from CHANGELOG.md
         if: env.IS_TAG == 'true'
         env:
           TAG: ${{ github.ref_name }}
         run: |
           # The release body is what the in-app updater shows as "What's new", so it must be the
-          # SHORT, bullet-only notes from CHANGELOG_APP.md — never CHANGELOG.md, which is the long
-          # developer/contributor changelog and is read manually on GitHub.
+          # SHORT, bullet-only notes from CHANGELOG.md (the only changelog; detail lives in commits).
           #
           # This runs here rather than only in release-notes.yml because a release published by
           # GITHUB_TOKEN does not trigger other workflows, so that job never fires for tag builds.
@@ -302,12 +301,12 @@ jobs:
           #
           # Take "## <tag>" up to the next "## v" header; the header may carry a date/"unreleased"
           # tail ("## v4.1.5 — 2026-07-26") or nothing at all, so match the version as a whole word.
-          if [ -f CHANGELOG_APP.md ]; then
+          if [ -f CHANGELOG.md ]; then
             awk -v ver="$TAG" '
               $0 ~ ("^## " ver "([ \t]|$)") { flag=1; next }
               /^## v/ && flag { flag=0 }
               flag { print }
-            ' CHANGELOG_APP.md > dist/RELEASE_NOTES.md || true
+            ' CHANGELOG.md > dist/RELEASE_NOTES.md || true
             # Trim leading/trailing blank lines.
             sed -i -e '/./,$!d' dist/RELEASE_NOTES.md
             awk 'NF{p=NR} {a[NR]=$0} END{for(i=1;i<=p;i++) print a[i]}' \
@@ -315,8 +314,8 @@ jobs:
             mv dist/RELEASE_NOTES.trimmed.md dist/RELEASE_NOTES.md
           fi
           if [ ! -s dist/RELEASE_NOTES.md ]; then
-            echo "::warning::No CHANGELOG_APP.md section for $TAG — publishing a placeholder body."
-            echo "See [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/$TAG/CHANGELOG.md) for details." \
+            echo "::warning::No CHANGELOG.md section for $TAG — publishing a placeholder body."
+            echo "See the commits for $TAG for details." \
               > dist/RELEASE_NOTES.md
           fi
           echo "--- Release notes ---"

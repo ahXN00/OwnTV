@@ -74,13 +74,22 @@ fun StorageBrowser(
     // Hosted in a real window: D-pad focus physically cannot escape to the screen behind. An
     // inline overlay loses focus containment when rows are added/removed (the grant-access row
     // after returning from system settings) and Compose reassigns focus outside the trap.
+    // "New folder" is opened beside this popup, never inside it: a popup nested in another inherits the
+    // first one's already-applied popup theme, so it skipped the user's popup font and size settings.
+    var createIn by remember { mutableStateOf<((String) -> Unit)?>(null) }
     OwnTVPopup(
         onDismissRequest = onDismiss,
         dismissOnBackPress = false,
     ) {
         tv.own.owntv.ui.theme.PopupFontTheme(fontScale = 0.72f) {
-            StorageBrowserContent(title, mode, onPick, onDismiss, fileExtensions)
+            StorageBrowserContent(title, mode, onPick, onDismiss, fileExtensions, onNewFolder = { createIn = it })
         }
+    }
+    createIn?.let { create ->
+        NewFolderDialog(
+            onCreate = { name -> create(name); createIn = null },
+            onDismiss = { createIn = null },
+        )
     }
 }
 
@@ -91,6 +100,8 @@ private fun StorageBrowserContent(
     onPick: (File) -> Unit,
     onDismiss: () -> Unit,
     fileExtensions: Set<String>?,
+    /** Ask for a folder name; the lambda creates it in the folder shown now. */
+    onNewFolder: (onCreate: (String) -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
     val colors = OwnTVTheme.colors
@@ -98,7 +109,6 @@ private fun StorageBrowserContent(
     var current by remember { mutableStateOf<File?>(null) } // null = the roots list
     var hasAccess by remember { mutableStateOf(StorageAccess.hasStorageAccess(context)) }
     var refresh by remember { mutableIntStateOf(0) }
-    var showNewFolder by remember { mutableStateOf(false) }
     val firstFocus = remember { FocusRequester() }
 
     // Re-check on resume — the settings screen returns no activity result.
@@ -187,20 +197,14 @@ private fun StorageBrowserContent(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 OwnTVButton(stringResource(R.string.common_cancel), onClick = onDismiss, style = OwnTVButtonStyle.SECONDARY, compact = true)
                 Spacer(Modifier.weight(1f))
-                if (current != null) OwnTVButton(stringResource(R.string.setup_new_folder), onClick = { showNewFolder = true }, style = OwnTVButtonStyle.SECONDARY, icon = OwnTVIcon.ADD, compact = true)
+                if (current != null) OwnTVButton(stringResource(R.string.setup_new_folder), onClick = {
+                    onNewFolder { name ->
+                        current?.let { runCatching { File(it, StorageAccess.sanitize(name)).mkdirs() } }
+                        refresh++
+                    }
+                }, style = OwnTVButtonStyle.SECONDARY, icon = OwnTVIcon.ADD, compact = true)
             }
         }
-    }
-
-    if (showNewFolder) {
-        NewFolderDialog(
-            onCreate = { name ->
-                current?.let { runCatching { File(it, StorageAccess.sanitize(name)).mkdirs() } }
-                showNewFolder = false
-                refresh++
-            },
-            onDismiss = { showNewFolder = false },
-        )
     }
 }
 
@@ -209,8 +213,14 @@ private fun NewFolderDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
     val colors = OwnTVTheme.colors
     var name by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
-    BackHandler { onDismiss() }
+    // A popup window of its own: drawn in the browser's layer, the browser's focus trap kept the cursor
+    // behind this dialog and the name could never be typed. Deferred a beat so the window is attached.
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(120)
+        runCatching { focus.requestFocus() }
+    }
+    OwnTVPopup(onDismissRequest = onDismiss) {
+    tv.own.owntv.ui.theme.PopupFontTheme(fontScale = 0.72f) {
     Box(Modifier.fillMaxSize().modalScrim().trapAllFocusExit().focusGroup(), contentAlignment = Alignment.Center) {
         Column(Modifier.dialogPanel(width = 420.dp, corner = 18.dp, fill = colors.surfaceContainerHighest)) {
             Text(stringResource(R.string.setup_new_folder), style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
@@ -223,6 +233,8 @@ private fun NewFolderDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
                 OwnTVButton(stringResource(R.string.common_create), onClick = { onCreate(name) }, enabled = name.isNotBlank())
             }
         }
+    }
+    }
     }
 }
 
