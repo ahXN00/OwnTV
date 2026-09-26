@@ -538,11 +538,12 @@ fun LiveScreen(
         Spacer(Modifier.width(BrowseColumnGap))
         }
 
-        val targetChannelId = if (rememberLive) {
-            perCategoryChannelIds[selectedKey] ?: previewChannel?.id
-        } else {
-            previewChannel?.id
+        val targetChannelIdState = remember {
+            androidx.compose.runtime.derivedStateOf {
+                if (rememberLive) perCategoryChannelIds[selectedKey] ?: previewChannel?.id else previewChannel?.id
+            }
         }
+        val targetChannelId by targetChannelIdState
 
         // Layer 3 — header + channel list (fixed-width column; the preview pane fills the rest)
         Column(
@@ -697,6 +698,10 @@ fun LiveScreen(
                             val isPreviewed by remember(channel.id) {
                                 androidx.compose.runtime.derivedStateOf { previewChannel?.id == channel.id }
                             }
+                            // Same idea for the focus target (the remembered channel, else the preview).
+                            val isTarget by remember(channel.id) {
+                                androidx.compose.runtime.derivedStateOf { targetChannelIdState.value == channel.id }
+                            }
                             ChannelRow(
                                 channel = channel,
                                 isFavorite = favoriteIds.contains(channel.id),
@@ -714,11 +719,7 @@ fun LiveScreen(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = channel.id, index = index,
                                     contextId = contextChannelId, contextFocus = contextFocus,
-<<<<<<< HEAD
-                                    selectedId = if (isPreviewed) channel.id else null, selectedFocus = selFocus,
-=======
-                                    selectedId = targetChannelId, selectedFocus = selFocus,
->>>>>>> refs/rewritten/Merge-PR-210-steadier-category-navigation-in-Live-TV-Movies-and-Series
+                                    selectedId = if (isTarget) channel.id else null, selectedFocus = selFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
                                 onFocus = {

@@ -7,7 +7,7 @@
 > Issue numbers that are part of a title are fine; explanatory parentheticals are not. The detail —
 > what, why, files and verification — belongs in the commit message, never here.
 
-## Unreleased
+## v5.0.3 — 2026-09-26
 
 ### ✨ New features
 - **🖼️ Match EPG can bring the guide's logo**
@@ -67,6 +67,7 @@
 - **🔎 Settings search finds every setting inside a screen**
 - **📺 Channel logos on the Android TV home row are no longer cropped** (community PR #6 by @quangtruongnb)
 - **📃 Playlists saved with a byte-order mark keep their EPG address** (community PR #7 by @Sekator778)
+- **🧭 Steadier category navigation in Live TV, Movies and Series** (community PR #210 by @tvdev-android)
 
 ## v5.0.2 — 2026-09-21
 
