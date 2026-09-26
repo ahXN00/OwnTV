@@ -14,6 +14,7 @@
 - **Returning to the categories lands on the open category**
 - **Right from the categories reaches the search box when a list is empty**
 - **Crash on the first launch after an update**
+- **Cinematic category panel can go down to 10%**
 
 ## v5.0.3 — 2026-09-26
 

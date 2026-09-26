@@ -153,4 +153,10 @@ class PanelWidthsTest {
             assertEquals(PanelWidthLimits.TOTAL, widths.total)
         }
     }
+
+    @Test
+    fun `cinematic lets the category go down to the minimum`() {
+        assertEquals(PanelShares(10, 90, 0), cinematicWidths(PanelShares(10, 90, 0)))
+        assertEquals(PanelShares(15, 85, 0), cinematicWidths(PanelShares(15, 85, 0)))
+    }
 }

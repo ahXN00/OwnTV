@@ -62,11 +62,12 @@ fun defaultPanelShares(
  *
  * The preview column is gone, so its share goes to the content area — that is where the space
  * physically went. The result is always savable: the two add up to exactly 100 AND each stays inside
- * [PanelWidthLimits.MAX], which is the pair of rules `PanelShares.isValid` enforces. Getting only
+ * its cap (the list may reach [PanelWidthLimits.listMax] with no third panel), which is the pair of
+ * rules `PanelShares.isValid` enforces. Getting only
  * the first one right is what made Okay refuse to save while showing a total of 100%.
  */
 fun cinematicWidths(shares: PanelShares): PanelShares {
-    val category = shares.category.coerceIn(PanelWidthLimits.TOTAL - PanelWidthLimits.MAX, PanelWidthLimits.MAX)
+    val category = shares.category.coerceIn(PanelWidthLimits.TOTAL - PanelWidthLimits.listMax(preview = 0), PanelWidthLimits.MAX)
     return PanelShares(category, PanelWidthLimits.TOTAL - category, 0)
 }
 

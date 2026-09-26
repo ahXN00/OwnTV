@@ -557,7 +557,8 @@ photos — above a wide poster grid.
 ### 📐 Panel widths
 **Where:** Settings → **Panel Width Adjustment**
 How wide the category rail, list and preview pane are, per section. The third panel can be **0%** to
-hide it entirely. Each section must total 100%.
+hide it entirely. Each section must total 100%. The category rail can go as narrow as **10%** — with
+two columns (Cinematic, or the third panel at 0%) the second one may take up to 90% to make room.
 > With **Cinematic** on, Movies and Series have two columns instead of three: the second slider
 > becomes **Content area** and moves opposite the first, and the third becomes **Details height** —
 > shown *below* the Total size line, because it is a height and is not part of that 100%. Lower it
