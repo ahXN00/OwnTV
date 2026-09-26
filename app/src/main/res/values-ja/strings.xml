@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">チャンネルを検索…</string>
+    <string name="content_search_movies">映画を検索…</string>
+    <string name="content_search_series">シリーズを検索…</string>
+</resources>

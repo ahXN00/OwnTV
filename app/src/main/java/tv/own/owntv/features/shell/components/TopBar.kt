@@ -196,7 +196,7 @@ private fun SearchPill(onClick: () -> Unit, visible: Boolean) {
 @Composable
 private fun ContinueChip(label: String, icon: OwnTVIcon, onClick: () -> Unit, visible: Boolean) {
     val colors = OwnTVTheme.colors
-    val alpha by animateFloatAsState(if (visible) 1f else 0f, label = "continueChipAlpha")
+    val alpha by animateFloatAsState(if (visible) 1f else 0f, ownTvTween(160), label = "continueChipAlpha")
     FocusableSurface(
         onClick = onClick,
         modifier = Modifier
@@ -208,8 +208,9 @@ private fun ContinueChip(label: String, icon: OwnTVIcon, onClick: () -> Unit, vi
         glassFrostScale = TopBarFrost,
         glassIdleRimAlpha = 0.18f,
         glassCondensesWithContent = true,
-        focusedContainerColor = colors.primary,
-        unfocusedContainerColor = colors.primaryContainer.copy(alpha = 0.6f),
+        // Neutral when idle; accent fill only when focused (matches SearchPill).
+        focusedContainerColor = colors.primaryContainer,
+        unfocusedContainerColor = colors.surfaceContainer.copy(alpha = 0.6f),
         contentAlignment = Alignment.Center,
     ) { focused ->
         Row(
@@ -217,7 +218,7 @@ private fun ContinueChip(label: String, icon: OwnTVIcon, onClick: () -> Unit, vi
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val fg = if (focused) colors.onPrimary else colors.onPrimaryContainer
+            val fg = if (focused) colors.onPrimaryContainer else colors.onSurfaceVariant
             OwnTVIcon(icon = icon, tint = fg, modifier = Modifier.size(16.dp))
             Text(
                 label,

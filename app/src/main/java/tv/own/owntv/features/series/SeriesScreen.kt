@@ -40,6 +40,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -344,6 +346,7 @@ private fun SeriesGrid(
     // (fixes the cross-category scroll-leak bug).
     val perCategoryGrid = remember { mutableStateMapOf<LiveKey, androidx.compose.foundation.lazy.grid.LazyGridState>() }
     val perCategoryList = remember { mutableStateMapOf<LiveKey, androidx.compose.foundation.lazy.LazyListState>() }
+    val perCategorySeriesIds = remember { mutableStateMapOf<LiveKey, Long>() }
     // NOTE: plain constructors, not remember*State() — these are created lazily inside getOrPut, so a
     // @Composable/rememberSaveable call here would register slots conditionally and corrupt the slot table.
     val effectiveGridState = if (rememberSeries) perCategoryGrid.getOrPut(selectedKey) { androidx.compose.foundation.lazy.grid.LazyGridState() } else gridState
@@ -472,9 +475,19 @@ private fun SeriesGrid(
                 if (lockedKey != null) {
                     Modifier
                 } else if (cinematic) {
-                    Modifier.padding(BrowseContainerPadding)
+                    Modifier.padding(
+                        start = 0.dp,
+                        top = BrowseContainerPadding,
+                        end = BrowseContainerPadding,
+                        bottom = BrowseContainerPadding,
+                    )
                 } else {
-                    Modifier.roundedPanel(fillColor = ContentPanelFill).padding(BrowseContainerPadding)
+                    Modifier.roundedPanel(fillColor = ContentPanelFill).padding(
+                        start = 0.dp,
+                        top = BrowseContainerPadding,
+                        end = BrowseContainerPadding,
+                        bottom = BrowseContainerPadding,
+                    )
                 },
             )
             .onFocusChanged { if (it.hasFocus) onChildFocused() },
@@ -482,14 +495,15 @@ private fun SeriesGrid(
     // Cinematic has no preview column — the detail block above the grid replaces it.
     val previewVisible = !cinematic && panelShares?.preview != 0
     val innerGapTotal = browsePanelGapTotal(previewVisible)
-    val panels = panelShares?.let { computePanelWidths(it, maxWidth, innerGapTotal) }
+    val contentWidth = if (lockedKey == null) maxWidth - BrowseContainerPadding else maxWidth
+    val panels = panelShares?.let { computePanelWidths(it, contentWidth, innerGapTotal) }
     // Cinematic resolves the same three stored numbers differently: two columns, and the third
     // share as the detail block's height. See computeCinematicLayout for why.
     val cine = if (!cinematic) null else {
         computeCinematicLayout(
-            shares = panelShares ?: defaultPanelShares(PanelSection.SERIES, maxWidth),
+            shares = panelShares ?: defaultPanelShares(PanelSection.SERIES, contentWidth),
             detailsPercent = cinematicDetailsPct,
-            totalWidth = maxWidth,
+            totalWidth = contentWidth,
             totalHeight = maxHeight,
         )
     }
@@ -501,7 +515,7 @@ private fun SeriesGrid(
         // their own three tabs above it, so there is no category rail to draw.
         if (lockedKey == null) {
         CategoryRail(
-            width = cine?.category ?: panels?.category ?: Dimens.RailWidthFixed,
+            width = (cine?.category ?: panels?.category ?: Dimens.RailWidthFixed) + BrowseContainerPadding,
             categories = railItems.map {
                 RailCategory(
                     it.displayLabel(R.string.content_category_all_series),
@@ -524,6 +538,35 @@ private fun SeriesGrid(
             },
             listState = catListState,
             focusRequester = railFocus,
+            onNavigateRight = {
+                val targetId = if (rememberSeries) {
+                    perCategorySeriesIds[selectedKey] ?: selectedSeries?.id
+                } else {
+                    selectedSeries?.id
+                }
+                scope.launch {
+                    if (series.itemCount > 0) {
+                        val targetIdx = if (targetId != null) {
+                            series.itemSnapshotList.items.indexOfFirst { it.id == targetId }.takeIf { it >= 0 } ?: 0
+                        } else 0
+                        if (viewMode == SettingsRepository.VodViewMode.LIST) {
+                            runCatching { effectiveListState.scrollToItem(targetIdx) }
+                        } else {
+                            runCatching { effectiveGridState.scrollToItem(targetIdx) }
+                        }
+                        withFrameNanos { }
+                        repeat(3) {
+                            val focused = if (targetId != null) {
+                                runCatching { gridSelFocus.requestFocus() }.isSuccess
+                            } else false
+                            if (focused) return@launch
+                            if (runCatching { firstItemFocus.requestFocus() }.isSuccess) return@launch
+                            if (runCatching { gridSelFocus.requestFocus() }.isSuccess) return@launch
+                            withFrameNanos { }
+                        }
+                    }
+                }
+            },
             // Cinematic floats the category panel on the artwork as its own frosted plate; the
             // Separate layout has the content panel behind it and needs none.
             showPanel = cinematic,
@@ -553,12 +596,21 @@ private fun SeriesGrid(
         Spacer(Modifier.width(BrowseColumnGap))
         }
 
+        val targetSeriesId = if (rememberSeries) {
+            perCategorySeriesIds[selectedKey] ?: selectedSeries?.id
+        } else {
+            selectedSeries?.id
+        }
+
         Column(
             modifier = Modifier
-                // Cinematic is two columns, so the content takes everything the rail leaves.
+                // Cinematic is two columns, so the content takes everything the rail leaves —
+                // the stored list share is a three-way split and would leave the preview's gap empty.
                 .then(if (cine != null) Modifier.width(cine.content) else if (panels != null) Modifier.width(panels.list) else Modifier.weight(1.8f))
                 .fillMaxSize()
                 .onFocusChanged { gridPaneFocused = it.hasFocus }
+                // CH+- key paging for this series list/grid. currentTargetIndex falls back to the
+                // visible top when the selected series isn't in the loaded window (paged data).
                 .chNavPaging(
                     enabled = chNavEnabled,
                     upSkip = chNavUpSkip,
@@ -581,6 +633,9 @@ private fun SeriesGrid(
                         }
                     },
                     onJumpToIndex = { idx ->
+                        // Scroll the target into view (grid or list), then set it as the selected
+                        // series so gridSelFocus binds to it (gridFocusTarget keys on selectedSeries.id),
+                        // and request focus after one frame.
                         scope.launch {
                             val item = series.itemSnapshotList.items.getOrNull(idx)
                             if (viewMode == SettingsRepository.VodViewMode.GRID) {
@@ -603,8 +658,13 @@ private fun SeriesGrid(
                 // from outside (internal moves don't re-trigger it).
                 .focusProperties {
                     onEnter = {
-                        if (runCatching { gridSelFocus.requestFocus() }.isFailure) {
-                            runCatching { firstItemFocus.requestFocus() }
+                        val focused = if (targetSeriesId != null) {
+                            runCatching { gridSelFocus.requestFocus() }.isSuccess
+                        } else false
+                        if (!focused) {
+                            if (runCatching { firstItemFocus.requestFocus() }.isFailure) {
+                                runCatching { gridSelFocus.requestFocus() }
+                            }
                         }
                     }
                 }
@@ -653,13 +713,32 @@ private fun SeriesGrid(
                 )
                 Spacer(Modifier.height(8.dp))
             } else {
-                Text(stringResource(R.string.content_section_category, stringResource(R.string.common_nav_series), selectedLabel), style = MaterialTheme.typography.headlineLarge, color = OwnTVTheme.colors.onSurface)
+                Text(
+                    stringResource(R.string.common_nav_series),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = OwnTVTheme.colors.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(pluralStringResource(R.plurals.content_count_series, count, selectedLabel, count), style = MaterialTheme.typography.titleMedium, color = OwnTVTheme.colors.primary, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SearchBar(query = searchQuery, onQueryChange = vm::setSearchQuery, placeholder = stringResource(R.string.content_search_series, selectedLabel), modifier = Modifier.weight(1f))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .focusProperties {
+                        onEnter = {
+                            if (requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Right ||
+                                requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Left
+                            ) {
+                                cancelFocusChange()
+                            }
+                        }
+                    }
+                    .focusGroup(),
+            ) {
+                SearchBar(query = searchQuery, onQueryChange = vm::setSearchQuery, placeholder = stringResource(R.string.content_search_series), modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(10.dp))
                 SortChip(mode = sortMode, onToggle = vm::toggleSort, playlistLabel = stringResource(R.string.content_provider))
                 // Cinematic is grid-only, so the toggle would be a button that changes nothing.
@@ -702,10 +781,15 @@ private fun SeriesGrid(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = s.id, index = index,
                                     contextId = contextSeriesId, contextFocus = contextFocus,
-                                    selectedId = selectedSeries?.id, selectedFocus = gridSelFocus,
+                                    selectedId = targetSeriesId, selectedFocus = gridSelFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onSeriesFocused(s) },
+                                onFocus = {
+                                    vm.onSeriesFocused(s)
+                                    if (rememberSeries) {
+                                        perCategorySeriesIds[selectedKey] = s.id
+                                    }
+                                },
                                 onClick = { vm.openSeries(s) },
                                 onLongClick = { contextSeries = s; contextSeriesId = s.id; contextSeriesIndex = index },
                             )
@@ -735,10 +819,15 @@ private fun SeriesGrid(
                                 modifier = Modifier.gridFocusTarget(
                                     itemId = s.id, index = index,
                                     contextId = contextSeriesId, contextFocus = contextFocus,
-                                    selectedId = selectedSeries?.id, selectedFocus = gridSelFocus,
+                                    selectedId = targetSeriesId, selectedFocus = gridSelFocus,
                                     firstItemFocus = firstItemFocus,
                                 ),
-                                onFocus = { vm.onSeriesFocused(s) },
+                                onFocus = {
+                                    vm.onSeriesFocused(s)
+                                    if (rememberSeries) {
+                                        perCategorySeriesIds[selectedKey] = s.id
+                                    }
+                                },
                                 onClick = { vm.openSeries(s) },
                                 onLongClick = { contextSeries = s; contextSeriesId = s.id; contextSeriesIndex = index },
                             )

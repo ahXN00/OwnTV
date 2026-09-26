@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="content_search_channels">Rechercher des chaînes…</string>
+    <string name="content_search_movies">Rechercher des films…</string>
+    <string name="content_search_series">Rechercher des séries…</string>
+</resources>
