@@ -104,6 +104,7 @@ val appModule = module {
     // silently mis-wired dependency at runtime.
     viewModel {
         SettingsViewModel(
+            appContext = get(),
             profileDao = get(),
             sourceDao = get(),
             sourceRepository = get(),

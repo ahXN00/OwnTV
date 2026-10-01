@@ -3,4 +3,24 @@
     <string name="content_search_channels">Search channels\u2026</string>
     <string name="content_search_movies">Search movies…</string>
     <string name="content_search_series">Search series…</string>
+    <!-- Bulk server-list import (ManageSourcesScreen + SettingsViewModel.importServerListFile). -->
+    <string name="settings_sources_import_file">Import from file</string>
+    <string name="settings_bulk_import_title">Importing servers… %1$d/%2$d</string>
+    <string name="settings_bulk_import_done">Servers imported</string>
+    <string name="settings_bulk_import_summary">%1$d added · %2$d failed</string>
+    <string name="settings_bulk_import_parse_error">Can’t read server list</string>
+    <string name="settings_bulk_import_parse_error_detail">Reason: %1$s</string>
+    <string name="settings_bulk_import_no_profile">No active profile</string>
+    <string name="settings_bulk_import_empty">No usable servers in this file</string>
+    <string name="settings_bulk_import_unreadable">%1$d unreadable lines, no usable servers</string>
+    <string name="settings_bulk_import_unreadable_file">Could not read %1$s</string>
+    <string name="settings_bulk_import_default_server">Server %1$d</string>
+    <string name="settings_bulk_import_default_portal">Portal %1$d</string>
+    <string name="settings_bulk_import_failure_line">%1$s — %2$s</string>
+    <string name="settings_bulk_import_format_hint">Expected one server per line, e.g. “xtream;Name;http://host:port;user;pass” or “stalker;Name;http://portal;00:1A:79:AA:BB:CC”.</string>
+    <!-- Cross-server failover on interrupted live streams (VideoPlayerSettingsScreen). -->
+    <string name="settings_server_hop">Switch server on interruption</string>
+    <string name="settings_server_hop_description">When a live channel keeps failing, try the same channel on your other servers.</string>
+    <string name="settings_server_hop_retries">Retries before switching server</string>
+    <string name="settings_server_hop_retries_description">Failed attempts on the same stream before the same channel is tried on the next server.</string>
 </resources>

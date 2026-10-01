@@ -30,6 +30,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -78,6 +79,7 @@ import tv.own.owntv.core.player.SurroundMode
 import tv.own.owntv.core.player.TrackLanguages
 import tv.own.owntv.features.shell.components.LocalSettingsRowTone
 import tv.own.owntv.features.shell.components.colors
+import tv.own.owntv.features.live.FailoverPrefs
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.theme.Dimens
 import tv.own.owntv.core.theme.GlassSurface
@@ -152,6 +154,8 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_vod_buffer", SECTION_STREAMING, OwnTVIcon.DOWNLOADS, R.string.settings_vod_buffer, R.string.settings_vod_buffer_description),
     VideoQuickRef("vp_vod_timeout", SECTION_STREAMING, OwnTVIcon.NETWORK, R.string.settings_vod_network_timeout, R.string.settings_vod_network_timeout_description),
     VideoQuickRef("vp_vod_reconnects", SECTION_STREAMING, OwnTVIcon.REFRESH, R.string.settings_vod_reconnects, R.string.settings_vod_reconnects_description),
+    VideoQuickRef("vp_server_hop", SECTION_STREAMING, OwnTVIcon.REFRESH, R.string.settings_server_hop, R.string.settings_server_hop_description),
+    VideoQuickRef("vp_server_hop_retries", SECTION_STREAMING, OwnTVIcon.REFRESH, R.string.settings_server_hop_retries, R.string.settings_server_hop_retries_description),
     VideoQuickRef("vp_channel_numbers", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_channel_numbers, R.string.settings_channel_numbers_description),
     VideoQuickRef("vp_live_preview", SECTION_LIVE, OwnTVIcon.LIVE_TV, R.string.settings_quick_live_preview, R.string.settings_live_preview_description),
     VideoQuickRef("vp_preview_audio", SECTION_LIVE, OwnTVIcon.AUDIO, R.string.settings_preview_audio, R.string.settings_preview_audio_description),
@@ -552,6 +556,11 @@ fun VideoPlayerSettingsScreen(
     val vodBufferSecs by vm.vodBufferSecs.collectAsStateWithLifecycle()
     val vodNetworkTimeoutSecs by vm.vodNetworkTimeoutSecs.collectAsStateWithLifecycle()
     val vodReconnects by vm.vodReconnects.collectAsStateWithLifecycle()
+    // Cross-server failover prefs live in app-local SharedPreferences (see FailoverPrefs), not in
+    // core's settings store, so this screen owns their state directly.
+    val failoverContext = LocalContext.current
+    var hopEnabled by remember { mutableStateOf(FailoverPrefs.isEnabled(failoverContext)) }
+    var hopRetries by remember { mutableIntStateOf(FailoverPrefs.getRetries(failoverContext)) }
     val afrMatchResolution by vm.afrMatchResolution.collectAsStateWithLifecycle()
     val externalLive by vm.externalPlayerLive.collectAsStateWithLifecycle()
     val externalMovies by vm.externalPlayerMovies.collectAsStateWithLifecycle()
@@ -1078,6 +1087,21 @@ fun VideoPlayerSettingsScreen(
             chip = stringResource(R.string.settings_vod_reconnects_value, vodReconnects), primaryChip = vodReconnects > 1, chevron = true,
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.VOD_RECONNECTS)),
             onClick = { savedScroll = scrollState.value; dialog = Dialog.VOD_RECONNECTS },
+        )
+        Row2(
+            quickKey = "vp_server_hop",
+            icon = OwnTVIcon.REFRESH, title = stringResource(R.string.settings_server_hop),
+            desc = stringResource(R.string.settings_server_hop_description),
+            chip = stringResource(if (hopEnabled) R.string.common_on else R.string.common_off), primaryChip = hopEnabled,
+            onClick = { FailoverPrefs.setEnabled(failoverContext, !hopEnabled); hopEnabled = !hopEnabled },
+        )
+        if (hopEnabled) Row2(
+            quickKey = "vp_server_hop_retries",
+            icon = OwnTVIcon.REFRESH, title = stringResource(R.string.settings_server_hop_retries),
+            desc = stringResource(R.string.settings_server_hop_retries_description),
+            chip = hopRetries.toString(), primaryChip = hopRetries != FailoverPrefs.DEFAULT_RETRIES, chevron = true,
+            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.SERVER_HOP_RETRIES)),
+            onClick = { savedScroll = scrollState.value; dialog = Dialog.SERVER_HOP_RETRIES },
         )
                     }
                     SECTION_LIVE -> {
@@ -1845,6 +1869,18 @@ fun VideoPlayerSettingsScreen(
             onSelect = { vm.setVodReconnects(it.toIntOrNull() ?: 1); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },
         )
+        Dialog.SERVER_HOP_RETRIES -> PickerDialog(
+            title = stringResource(R.string.settings_server_hop_retries),
+            subtitle = stringResource(R.string.settings_server_hop_retries_description),
+            options = FailoverPrefs.RETRY_CHOICES.map { it.toString() to it.toString() },
+            selected = hopRetries.toString(),
+            onSelect = {
+                FailoverPrefs.setRetries(failoverContext, it.toIntOrNull() ?: FailoverPrefs.DEFAULT_RETRIES)
+                hopRetries = FailoverPrefs.getRetries(failoverContext)
+                dialog = Dialog.NONE
+            },
+            onDismiss = { dialog = Dialog.NONE },
+        )
         Dialog.AFR_PAUSE -> PickerDialog(
             title = stringResource(R.string.settings_afr_pause),
             options = (0..vm.afrPauseMaxSecs).map { it.toString() to afrPauseLabel(it) },
@@ -2007,6 +2043,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     "vp_max_quality" -> Dialog.MAX_QUALITY
     "vp_vod_timeout" -> Dialog.VOD_TIMEOUT
     "vp_vod_reconnects" -> Dialog.VOD_RECONNECTS
+    "vp_server_hop_retries" -> Dialog.SERVER_HOP_RETRIES
     "vp_rewind_step" -> Dialog.LIVE_REWIND_STEP
     "vp_live_preview" -> Dialog.LIVE_PREVIEW_PANEL
     "vp_live_latency" -> Dialog.LIVE_LATENCY
@@ -2027,7 +2064,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     else -> null
 }
 
-private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, TIMESHIFT_WINDOW, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
+private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, AUDIO_SYNC, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, FORGET_FIXES, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, SERVER_HOP_RETRIES, TIMESHIFT_WINDOW, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
 
 /** "Auto" for 0, else seconds ("60s") — the film buffer and network timeout choices (N18). */
 @Composable

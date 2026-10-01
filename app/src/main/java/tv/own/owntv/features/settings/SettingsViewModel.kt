@@ -3,9 +3,12 @@
 package tv.own.owntv.features.settings
 
 import tv.own.owntv.core.brand.AppIcon
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -58,9 +61,12 @@ import tv.own.owntv.core.settings.SubtitleStyle
 import tv.own.owntv.core.theme.AccentColor
 import tv.own.owntv.core.theme.ThemeMode
 import tv.own.owntv.core.theme.UiZoom
+import tv.own.owntv.R
+import java.io.File
 
 /** Phase 13 — manage IPTV sources (list / add / re-sync / delete) for the active profile. */
 class SettingsViewModel(
+    private val appContext: Context,
     private val profileDao: ProfileDao,
     private val sourceDao: SourceDao,
     private val sourceRepository: SourceRepository,
@@ -1293,6 +1299,116 @@ class SettingsViewModel(
         }
         importJob = job
         job.invokeOnCompletion { if (importJob == job) importJob = null }
+    }
+
+    // ---- Bulk server import from a plain-text file (one Xtream/Stalker server per line) ----
+    //
+    // The `.own` backup already restores many sources at once, but it is a backup container
+    // (JSON + assets, optionally whole-file encrypted, secrets omitted when not), not a server
+    // list. This is the plain-text counterpart: [parseServerList] reads the file, then every
+    // entry goes through core's [SourceImporter] one at a time, so validation, sync and error
+    // handling stay core's. Scopes mirror the single-add defaults (Xtream everything now,
+    // Stalker live now with VOD deferred).
+
+    sealed interface BulkImportUi {
+        data object Idle : BulkImportUi
+        data class Running(val done: Int, val total: Int, val currentName: String) : BulkImportUi
+        data class Done(
+            val succeeded: List<String>,
+            val failed: List<BulkFailure>,
+        ) : BulkImportUi
+        data class ParseError(val message: String) : BulkImportUi
+    }
+
+    data class BulkFailure(
+        val name: String,
+        /** Core's failure when the import ran and reported one; null when it threw before that. */
+        val failure: SourceImporter.SetupFailure?,
+        val detail: String?,
+    )
+
+    private val _bulkImport = MutableStateFlow<BulkImportUi>(BulkImportUi.Idle)
+    val bulkImport: StateFlow<BulkImportUi> = _bulkImport.asStateFlow()
+
+    fun dismissBulkImport() {
+        _bulkImport.value = BulkImportUi.Idle
+    }
+
+    fun cancelBulkImport() {
+        bulkImportJob?.cancel()
+        bulkImportJob = null
+        importer.reset()
+        _bulkImport.value = BulkImportUi.Idle
+    }
+
+    private var bulkImportJob: Job? = null
+
+    fun importServerListFile(file: File) {
+        bulkImportJob?.cancel()
+        bulkImportJob = viewModelScope.launch {
+            val pid = profileDao.resolveExistingProfileId(settings.activeProfileId.first())
+            if (pid == null) {
+                _bulkImport.value = BulkImportUi.ParseError(appContext.getString(R.string.settings_bulk_import_no_profile))
+                return@launch
+            }
+            val text = withContext(Dispatchers.IO) { runCatching { file.readText() }.getOrNull() }
+            if (text == null) {
+                _bulkImport.value = BulkImportUi.ParseError(
+                    appContext.getString(R.string.settings_bulk_import_unreadable_file, file.name),
+                )
+                return@launch
+            }
+            val parsed = parseServerList(
+                text,
+                defaultServerName = { appContext.getString(R.string.settings_bulk_import_default_server, it) },
+                defaultPortalName = { appContext.getString(R.string.settings_bulk_import_default_portal, it) },
+            )
+            if (parsed.entries.isEmpty()) {
+                _bulkImport.value = BulkImportUi.ParseError(
+                    if (parsed.skipped.isEmpty()) appContext.getString(R.string.settings_bulk_import_empty)
+                    else appContext.getString(R.string.settings_bulk_import_unreadable, parsed.skipped.size),
+                )
+                return@launch
+            }
+            importer.useProfile(pid)
+            importer.reset()
+            val succeeded = mutableListOf<String>()
+            val failed = mutableListOf<BulkFailure>()
+            parsed.entries.forEachIndexed { index, entry ->
+                _bulkImport.value = BulkImportUi.Running(index, parsed.entries.size, entry.name)
+                val thrown = runCatching {
+                    when (entry) {
+                        is ServerListEntry.Xtream -> importer.xtream(
+                            name = entry.name, server = entry.server, username = entry.username,
+                            password = entry.password, autoRefresh = PlaylistRefresh.OFF,
+                            live = SyncScopeChoice.Now, movies = SyncScopeChoice.Now,
+                            series = SyncScopeChoice.Now,
+                        )
+                        is ServerListEntry.Stalker -> importer.stalker(
+                            name = entry.name, portalUrl = entry.portalUrl, mac = entry.mac,
+                            serialNumber = entry.serialNumber, deviceId = entry.deviceId,
+                            deviceId2 = entry.deviceId2, signature = entry.signature,
+                            autoRefresh = PlaylistRefresh.OFF, live = SyncScopeChoice.Now,
+                            movies = SyncScopeChoice.Later, series = SyncScopeChoice.Later,
+                        )
+                    }
+                }.exceptionOrNull()
+                // runCatching must not swallow cancellation: cancelling the bulk job has to stop
+                // the loop, not record one more failed server and carry on.
+                if (thrown is CancellationException) throw thrown
+                when (val state = importer.state.value) {
+                    is SourceImporter.ImportState.Success -> succeeded.add(entry.name)
+                    is SourceImporter.ImportState.Failed ->
+                        failed.add(BulkFailure(entry.name, state.failure, thrown?.message))
+                    else -> failed.add(BulkFailure(entry.name, null, thrown?.message ?: state.toString()))
+                }
+                importer.reset()
+            }
+            runCatching { refreshActiveTvHome(allowBrowsableRequest = true) }
+            _bulkImport.value = BulkImportUi.Done(succeeded, failed)
+        }.also { job ->
+            job.invokeOnCompletion { if (bulkImportJob == job) bulkImportJob = null }
+        }
     }
 
     /**

@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -66,6 +68,9 @@ import tv.own.owntv.features.setup.RemoteSetupScreen
 import tv.own.owntv.ui.components.OwnTVButton
 import tv.own.owntv.ui.components.dialogPanel
 import tv.own.owntv.ui.components.modalScrim
+import tv.own.owntv.ui.components.BrowseMode
+import tv.own.owntv.ui.components.StorageBrowser
+import tv.own.owntv.features.setup.displayText as setupFailureText
 import tv.own.owntv.ui.components.OwnTVButtonStyle
 import tv.own.owntv.ui.components.OwnTVSpinner
 import tv.own.owntv.ui.components.roundedPanel
@@ -85,12 +90,15 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val sourceTest by vm.sourceTest.collectAsStateWithLifecycle()
     val deletingIds by vm.deletingSourceIds.collectAsStateWithLifecycle()
     val epgSync by vm.epgSync.collectAsStateWithLifecycle()
+    val bulkImport by vm.bulkImport.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
     val defaultIptvName = stringResource(R.string.setup_default_iptv)
     val defaultPlaylistName = stringResource(R.string.setup_name_default_playlist)
     val defaultPortalName = stringResource(R.string.setup_default_portal)
 
     var showAdd by remember { mutableStateOf(false) }
+    // Bulk server-list import picker (a .txt/.csv of Xtream/Stalker servers, one per line).
+    var showServerFilePicker by remember { mutableStateOf(false) }
     // Within "Add source": null = the Remote|Manual chooser, else the chosen path.
     var addMode by remember { mutableStateOf<AddMode?>(null) }
     var editingSource by remember { mutableStateOf<SourceEntity?>(null) }
@@ -155,6 +163,10 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
     BackHandler {
         when {
+            showServerFilePicker -> showServerFilePicker = false
+            // A bulk import keeps running behind this screen; leaving mid-run would strand it with
+            // no way back to its result, so Back is consumed until it finishes or is cancelled.
+            bulkImport is SettingsViewModel.BulkImportUi.Running -> Unit
             showAdd -> { showAdd = false; addMode = null; vm.stopRemoteListener(); vm.cancelImport() }
             editingSource != null -> editingSource = null
             else -> onBack()
@@ -309,6 +321,8 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.settings_sources_title), style = MaterialTheme.typography.headlineLarge, color = colors.onSurface)
                     Spacer(Modifier.weight(1f))
+                    OwnTVButton(stringResource(R.string.settings_sources_import_file), onClick = { showServerFilePicker = true }, icon = tv.own.owntv.ui.components.OwnTVIcon.PLAYLIST, style = OwnTVButtonStyle.SECONDARY)
+                    Spacer(Modifier.width(12.dp))
                     OwnTVButton(stringResource(R.string.settings_sources_add), onClick = { showAdd = true }, icon = tv.own.owntv.ui.components.OwnTVIcon.ADD, modifier = Modifier.focusRequester(addFocus))
                 }
                 Spacer(Modifier.height(8.dp))
@@ -394,6 +408,46 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 message = stringResource(R.string.settings_sources_delete_message),
                 onConfirm = { vm.delete(src); confirmDelete = null },
                 onDismiss = { confirmDelete = null },
+            )
+        }
+
+        if (showServerFilePicker) {
+            StorageBrowser(
+                title = stringResource(R.string.settings_sources_import_file),
+                mode = BrowseMode.FILE,
+                onPick = { file -> showServerFilePicker = false; vm.importServerListFile(file) },
+                onDismiss = { showServerFilePicker = false },
+                fileExtensions = setOf("txt", "csv"),
+            )
+        }
+
+        when (val bulk = bulkImport) {
+            is SettingsViewModel.BulkImportUi.Idle -> Unit
+            is SettingsViewModel.BulkImportUi.Running -> CenterStatus {
+                OwnTVSpinner(sizeDp = 56)
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.settings_bulk_import_title, bulk.done + 1, bulk.total),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.onSurface,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(bulk.currentName, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+                Spacer(Modifier.height(20.dp))
+                OwnTVButton(stringResource(R.string.common_cancel), onClick = { vm.cancelBulkImport() }, style = OwnTVButtonStyle.SECONDARY)
+            }
+            is SettingsViewModel.BulkImportUi.Done -> BulkImportResultDialog(
+                succeeded = bulk.succeeded,
+                failed = bulk.failed,
+                onDismiss = { vm.dismissBulkImport() },
+            )
+            is SettingsViewModel.BulkImportUi.ParseError -> ConfirmDialog(
+                title = stringResource(R.string.settings_bulk_import_parse_error),
+                message = stringResource(R.string.settings_bulk_import_parse_error_detail, bulk.message) + "\n\n" +
+                    stringResource(R.string.settings_bulk_import_format_hint),
+                onConfirm = { vm.dismissBulkImport() },
+                onDismiss = { vm.dismissBulkImport() },
+                confirmLabel = R.string.common_ok,
             )
         }
     }
@@ -746,6 +800,53 @@ private fun SourceTestReport(result: SourceTestResult, limit: tv.own.owntv.core.
         )
         result.detailLines(res, limit).forEach {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
+        }
+    }
+}
+
+/** Bulk server-list import result: how many playlists were added, and why each failure failed. */
+@Composable
+private fun BulkImportResultDialog(
+    succeeded: List<String>,
+    failed: List<SettingsViewModel.BulkFailure>,
+    onDismiss: () -> Unit,
+) {
+    val colors = OwnTVTheme.colors
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    BackHandler { onDismiss() }
+    tv.own.owntv.ui.components.OwnTVPopup(onDismissRequest = onDismiss) {
+        Box(Modifier.fillMaxSize().modalScrim().trapAllFocusExit().focusGroup(), contentAlignment = Alignment.Center) {
+            Column(Modifier.dialogPanel(width = 460.dp, padding = 28.dp)) {
+                Text(stringResource(R.string.settings_bulk_import_done), style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    stringResource(R.string.settings_bulk_import_summary, succeeded.size, failed.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                if (failed.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(failed, key = { it.name }) { failure ->
+                            val reason = failure.failure?.setupFailureText() ?: failure.detail.orEmpty()
+                            Text(
+                                if (reason.isBlank()) failure.name
+                                else stringResource(R.string.settings_bulk_import_failure_line, failure.name, reason),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(22.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    OwnTVButton(stringResource(R.string.common_ok), onClick = onDismiss, modifier = Modifier.focusRequester(focus))
+                }
+            }
         }
     }
 }

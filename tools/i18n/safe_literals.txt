@@ -126,8 +126,15 @@
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	ensurePlaying history record failed channelId=${channel.id} profile=$pid
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	stalker resolve failed channelId=${channel.id}
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	tuneByNumber($number) failed
+1	compiler	app/src/main/java/tv/own/owntv/features/live/LiveViewModel.kt	unused
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveZapList.kt	LiveZapList
 1	log	app/src/main/java/tv/own/owntv/features/live/LiveZapList.kt	direct tune: zap rebuild failed
+2	empty	app/src/main/java/tv/own/owntv/features/live/ServerFailover.kt	\0
+2	regex	app/src/main/java/tv/own/owntv/features/live/ServerFailover.kt	[^\\p{L}\\p{N}]+
+1	regex	app/src/main/java/tv/own/owntv/features/live/ServerFailover.kt	\\s+
+1	preference-key	app/src/main/java/tv/own/owntv/features/live/ServerFailover.kt	hop_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/live/ServerFailover.kt	owntv_server_failover
+1	preference-key	app/src/main/java/tv/own/owntv/features/live/ServerFailover.kt	stream_retries
 1	empty	app/src/main/java/tv/own/owntv/features/more/MoreScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/more/MoreScreen.kt	dMMM
 1	technical	app/src/main/java/tv/own/owntv/features/more/MoreScreen.kt	dMMMyyyy
@@ -248,7 +255,9 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/LocalSyncScreen.kt	localSyncBusy
 1	technical	app/src/main/java/tv/own/owntv/features/settings/LocalSyncScreen.kt	localSyncBusyAngle
 1	technical	app/src/main/java/tv/own/owntv/features/settings/ManageProfilesScreen.kt	•
-5	empty	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	\0
+6	empty	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	csv
+1	technical	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	txt
 5	empty	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	\0
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	ar
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	bg
@@ -340,6 +349,13 @@
 1	log	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesViewModel.kt	user-info refresh failed: ${it.message}
 1	technical	app/src/main/java/tv/own/owntv/features/settings/PanelWidthSettingsScreen.kt	+
 1	technical	app/src/main/java/tv/own/owntv/features/settings/PanelWidthSettingsScreen.kt	–
+8	empty	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	#
+1	regex	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$
+1	url	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	http://
+1	url	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	https://
+1	protocol	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	stalker
+1	protocol	app/src/main/java/tv/own/owntv/features/settings/ServerListImport.kt	xtream
 32	empty	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	FIT
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	Metadata cache wipe after language change failed: ${it.message}
@@ -402,6 +418,8 @@
 4	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_resume
 4	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_rewind_step
 4	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_seek_step
+2	technical	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_server_hop
+3	technical	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_server_hop_retries
 4	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_sub_lang
 4	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_sub_style
 3	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_surround
