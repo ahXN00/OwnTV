@@ -7,6 +7,16 @@
 > Issue numbers that are part of a title are fine; explanatory parentheticals are not. The detail —
 > what, why, files and verification — belongs in the commit message, never here.
 
+## v5.0.5 — 2026-10-02
+
+### ✨ New features
+- **📥 Import many servers from one text file**
+- **🔀 Failing live channels switch to your other servers**
+
+### 🐛 Fixes
+- **📺 Smoother home hero and lists**
+- **🔋 Less background work when nothing is playing**
+
 ## v5.0.4 — 2026-09-26
 
 ### 🐛 Fixes
