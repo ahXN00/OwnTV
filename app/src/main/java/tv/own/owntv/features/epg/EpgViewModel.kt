@@ -268,18 +268,18 @@ class EpgViewModel(
     // It must be initialized before guideCategories (Kotlin property initializers run top-to-bottom).
     private val custom: StateFlow<SectionCustomizations> = settings.activeProfileId
         .flatMapLatest { pid -> if (pid < 0) flowOf(SectionCustomizations()) else customize.observe(pid, MediaType.LIVE) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SectionCustomizations())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SectionCustomizations())
 
     /** Global guide shift in minutes; a per-channel override in [custom] wins over it. */
     private val epgOffset: StateFlow<Int> = settings.epgOffsetMinutes
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Guide category filter: null = all channels, otherwise a provider/custom stable key. */
     private val _categoryFilter = MutableStateFlow<String?>(null)
     val categoryFilter: StateFlow<String?> = _categoryFilter.asStateFlow()
 
     private val activeSources: StateFlow<ActiveProfileSources> = activeProfileSources(settings, sourceDao)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, ActiveProfileSources(-1L, emptyList()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveProfileSources(-1L, emptyList()))
 
     /** Empty for zero/one active Live source so the Guide stays unchanged for single-playlist users. */
     val providerNames: StateFlow<Map<Long, String>> = activeSources
@@ -291,13 +291,13 @@ class EpgViewModel(
                 .takeIf { it.size > 1 }
                 ?: emptyMap()
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val guideWidthShares: StateFlow<GuideWidthShares?> = combine(
         settings.guideWidthEnabled,
         settings.guideWidthShares,
     ) { enabled, shares -> shares.takeIf { enabled } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Live categories for the active profile — drives the guide's "Category" picker. Applies the
      *  profile's Live customizations like the Live TV rail does: hidden categories stay out of the
@@ -505,7 +505,7 @@ class EpgViewModel(
 
     /** The Guide's current sort, for the header button. */
     val sortGuide: StateFlow<SettingsRepository.GuideSort> = settings.sortGuide
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.GuideSort.LIVE_TV)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.GuideSort.LIVE_TV)
 
     /** Cycle the Guide sort: A–Z → Provider → Live TV → Catch-up → … (Catch-up only when one exists). */
     fun cycleGuideSort() {
@@ -542,7 +542,7 @@ class EpgViewModel(
 
     /** Which player takes a catch-up archive — read by the Guide's programme dialog to route itself. */
     val catchupPlayer: StateFlow<SettingsRepository.CatchupPlayer> = settings.catchupPlayer
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.CatchupPlayer.INTERNAL)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.CatchupPlayer.INTERNAL)
 
     /** Hand an archive programme to an external app (VLC, MX Player) instead of the in-app player. */
     fun playCatchupExternal(channel: ChannelEntity, programme: EpgProgrammeEntity) {

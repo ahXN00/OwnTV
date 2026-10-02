@@ -122,7 +122,7 @@ class DownloadsViewModel(
      *  [play] then re-checks the individual download's own section before branching. */
     val externalPlayerOn: StateFlow<Boolean> =
         kotlinx.coroutines.flow.combine(settings.externalPlayerMovies, settings.externalPlayerSeries) { m, s -> m || s }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Phase B: always play this download in an external player, regardless of the global toggle. */
     fun playExternal(download: DownloadEntity) {

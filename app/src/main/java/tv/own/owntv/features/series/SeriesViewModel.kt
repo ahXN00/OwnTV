@@ -128,11 +128,11 @@ class SeriesViewModel(
             Ctx(aps.profileId, ids, aps.sources.filter { it.id in ids }.associate { it.id to it.name })
         }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, Ctx(-1L, emptyList(), emptyMap()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Ctx(-1L, emptyList(), emptyMap()))
 
     val providerNames: StateFlow<Map<Long, String>> = ctx
         .map { c -> c.sourceNames.takeIf { it.size > 1 } ?: emptyMap() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val folderContextKeys: StateFlow<Map<Long, String>> = ctx
         .flatMapLatest { c ->
@@ -141,7 +141,7 @@ class SeriesViewModel(
                 cats.associateBy({ it.id }, { CustomizeKeys.category(it) })
             }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Contexts that actually have manual-order rows (C3): only those folders pay the
      *  unindexable content_order join-sort; everything else stays on the plain indexed query. */
@@ -150,7 +150,7 @@ class SeriesViewModel(
             if (c.profileId < 0) flowOf(emptySet())
             else contentOrderDao.observeContextKeys(c.profileId, MediaType.SERIES).map { it.toSet() }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** This profile's hide/rename/reorder customizations for Series. */
     private val custom: StateFlow<SectionCustomizations> = ctx
@@ -158,7 +158,7 @@ class SeriesViewModel(
             if (c.profileId < 0) flowOf(SectionCustomizations())
             else customize.observe(c.profileId, MediaType.SERIES)
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SectionCustomizations())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SectionCustomizations())
 
     /** The user's custom combined categories with live member counts — the "Move to…" dialog's list. */
     val moveTargets: StateFlow<List<MoveTarget>> = combine(ctx, custom) { c, cust -> c to cust }
@@ -241,7 +241,7 @@ class SeriesViewModel(
 
     /** List ordering for this section (Provider order vs A–Z), persisted in DataStore. */
     val sortMode: StateFlow<SettingsRepository.SortMode> = settings.sortSeries
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.SortMode.ALPHA)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.SortMode.ALPHA)
 
     fun toggleSort() {
         viewModelScope.launch {
@@ -258,7 +258,7 @@ class SeriesViewModel(
     }
 
     val viewMode: StateFlow<SettingsRepository.VodViewMode> = settings.vodViewMode
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.VodViewMode.GRID)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.VodViewMode.GRID)
 
     fun toggleViewMode() {
         viewModelScope.launch {
@@ -371,7 +371,9 @@ class SeriesViewModel(
         // This is the crash backstop; the real saves are on pause and on leaving the player.
         viewModelScope.launch {
             while (isActive) {
-                delay(10_000)
+                // Full cadence only while a picture is actually moving — same deal as movies: the
+                // pause/exit saves hold the position, so idling here only cost wakeups and writes.
+                delay(if (playingEpisodeRef != null && player.isPlaying.value) PROGRESS_INTERVAL_MS else PROGRESS_IDLE_MS)
                 saveEpisodeProgressNow()
             }
         }
@@ -401,8 +403,9 @@ class SeriesViewModel(
                     val found = runCatching { metadata.cachedSeriesPosters(wanted) }.getOrDefault(emptyMap())
                     if (found.isEmpty()) return@collectLatest
                     // Bounded: a long browse of a huge catalog would otherwise grow this forever.
-                    val base = if (_cachedPosters.value.size > 500) emptyMap() else _cachedPosters.value
-                    _cachedPosters.value = base + found
+                    // Trimmed to the newest, not dropped — see the movies twin for why.
+                    val base = (_cachedPosters.value + found).toList().takeLast(MAX_CACHED_POSTERS).toMap()
+                    _cachedPosters.value = base
                 }
         }
         // In-season advance (auto-next / HUD prev-next) happens inside the player — re-point the
@@ -555,11 +558,11 @@ class SeriesViewModel(
     val favoriteIds: StateFlow<Set<Long>> = ctx
         .flatMapLatest { favoriteDao.observeFavoriteIds(it.profileId, MediaType.SERIES) }
         .map { it.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val episodes: StateFlow<List<EpisodeEntity>> = _openedSeries
         .flatMapLatest { s -> if (s == null) flowOf(emptyList()) else seriesDao.episodesBySeries(s.id) }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Per-episode resume progress for the open series (keyed by episode id). Reactive so the UI's watched
      *  indicators, season counts, "Hide watched" filter, and "Next up" card update the instant a position
@@ -904,7 +907,7 @@ class SeriesViewModel(
     /** Global "External player" toggle — screens must NOT open the fullscreen in-app player when on
      *  (mounting it spins up an mpv instance even though playback branched to the external app). */
     val externalPlayerOn: StateFlow<Boolean> = settings.externalPlayerSeries
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Phase B: long-press "Play with external player" — always external, regardless of the global toggle. */
     /** Stalker episodes resolve to a real URL at play time (create_link, series=<ep>); anything else
@@ -1346,6 +1349,11 @@ class SeriesViewModel(
 
     private companion object {
         const val TAG = "OwnTVHome"
+        // Poster-URL memo, newest kept: dropping the whole table re-fetched the rows on screen.
+        const val MAX_CACHED_POSTERS = 400
+        const val PROGRESS_INTERVAL_MS = 10_000L
+        // Idle cadence (see the saver above): nothing is lost, the pause/exit saves hold it.
+        const val PROGRESS_IDLE_MS = 60_000L
 
         /**
          * How long the user must stay on a season before the grid fetches its stills. Longer than the

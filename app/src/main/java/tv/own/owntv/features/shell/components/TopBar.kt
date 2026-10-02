@@ -242,7 +242,14 @@ private fun ClockChip() {
     val colors = OwnTVTheme.colors
     val context = LocalContext.current
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) { delay(15_000); now = System.currentTimeMillis() } }
+    // Aligned to the minute the chip displays: waking four times a minute to redraw the same
+    // HH:MM text is pure wakeup cost.
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(60_000 - System.currentTimeMillis() % 60_000)
+            now = System.currentTimeMillis()
+        }
+    }
     val formatted = remember(now) { DateFormat.getTimeFormat(context).format(Date(now)) }
     // Display-only (non-focusable) and neutral (no accent), matching the weather chip. Frosts in
     // glass mode (TOPBAR surface) so it reads as glass like the focusable chips.

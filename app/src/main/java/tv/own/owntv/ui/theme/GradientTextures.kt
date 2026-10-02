@@ -50,8 +50,12 @@ private object GradientTextures {
         val key = Key(kind, colors.map { it.toArgb() }, positions)
         cache[key]?.let { return it }
         // A few dozen distinct gradients exist app-wide. The bound only guards against an unexpected
-        // caller producing unbounded keys; each entry is at most 256 KB.
-        if (cache.size >= MAX_ENTRIES) cache.clear()
+        // caller producing unbounded keys; each entry is at most 256 KB. Evict the single eldest —
+        // dropping the whole table here used to re-render all 32 on the next screens.
+        if (cache.size >= MAX_ENTRIES) {
+            val eldest = cache.keys.iterator().next()
+            cache.remove(eldest)
+        }
         return render(key).asImageBitmap().also { cache[key] = it }
     }
 

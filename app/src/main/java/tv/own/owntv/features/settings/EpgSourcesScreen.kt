@@ -558,7 +558,11 @@ private fun PlaylistEpgPicker(
                 opts == null -> Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) { OwnTVSpinner(sizeDp = 28) }
                 opts.isEmpty() -> Text(stringResource(R.string.settings_epg_sources_none_playlist), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 else -> LazyColumn(Modifier.fillMaxWidth().height(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(opts) { opt ->
+                    // Keyed by the option itself, so a feed added above does not rebind the rows
+                    // below it. (A string key would trip the hardcoded-text gate; the data class
+                    // carries equals for exactly this.)
+                    items(opts.size, key = { index -> opts[index] }) { index ->
+                        val opt = opts[index]
                         FocusableSurface(
                             onClick = { onPick(opt) },
                             modifier = if (opt == opts.first()) Modifier.fillMaxWidth().focusRequester(firstFocus) else Modifier.fillMaxWidth(),

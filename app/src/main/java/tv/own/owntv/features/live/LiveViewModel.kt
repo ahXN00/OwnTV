@@ -236,11 +236,11 @@ class LiveViewModel(
     val categoryMoveState: StateFlow<CategoryMove?> = _categoryMoveState.asStateFlow()
 
     val livePreviewEnabled: StateFlow<Boolean> = settings.livePreviewEnabled
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     /** List ordering for this section (Playlist order vs A–Z), persisted in DataStore. */
     val sortMode: StateFlow<SettingsRepository.SortMode> = settings.sortLive
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.SortMode.PLAYLIST)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.SortMode.PLAYLIST)
 
     fun toggleSort() {
         viewModelScope.launch {
@@ -252,13 +252,13 @@ class LiveViewModel(
     }
 
     private val livePreviewAudio: StateFlow<Boolean> = settings.livePreviewAudio
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Settings → "Channel numbers": shows the provider number in the lists and the player, and enables
      *  typing one to tune. Off hides every number without touching the stored data. Eager so a playback
      *  path can read [StateFlow.value] synchronously when building its [tv.own.owntv.player.MediaMeta]. */
     val showChannelNumbers: StateFlow<Boolean> = settings.directTune
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     /** The "#123" the player shows under the channel name, in the top bar and on the channel card.
      *  Gating it here rather than at each call site means every playback path — Exo, mpv, Stalker —
@@ -289,12 +289,12 @@ class LiveViewModel(
             )
         }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, Ctx(-1L, emptyList(), emptyMap()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Ctx(-1L, emptyList(), emptyMap()))
 
     /** Empty for zero/one active Live source so single-playlist layouts stay unchanged. */
     val providerNames: StateFlow<Map<Long, String>> = ctx
         .map { c -> c.sourceNames.takeIf { it.size > 1 } ?: emptyMap() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val folderContextKeys: StateFlow<Map<Long, String>> = ctx
         .flatMapLatest { c ->
@@ -303,7 +303,7 @@ class LiveViewModel(
                 cats.associateBy({ it.id }, { CustomizeKeys.category(it) })
             }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Contexts that actually have manual-order rows (C3): only those folders pay the
      *  unindexable content_order join-sort; everything else stays on the plain indexed query. */
@@ -312,7 +312,7 @@ class LiveViewModel(
             if (c.profileId < 0) flowOf(emptySet())
             else contentOrderDao.observeContextKeys(c.profileId, MediaType.LIVE).map { it.toSet() }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val _selected = MutableStateFlow<LiveKey>(LiveKey.All)
     val selectedKey: StateFlow<LiveKey> = _selected.asStateFlow()
@@ -440,7 +440,7 @@ class LiveViewModel(
             if (c.profileId < 0) flowOf(SectionCustomizations())
             else customize.observe(c.profileId, MediaType.LIVE)
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SectionCustomizations())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SectionCustomizations())
 
     /** Global guide shift (minutes); a per-channel override in [custom] wins over it. Changing it
      *  drops the now/next cache so the details pane reflects the new offset straight away. */
@@ -450,7 +450,7 @@ class LiveViewModel(
         .withIndex()
         .onEach { if (it.index > 0) { epgReader.clearCache(); epgRefresh.value++; clearNowPlaying() } }
         .map { it.value }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** The user's custom combined categories with live member counts — the "Move to…" dialog's list. */
     val moveTargets: StateFlow<List<MoveTarget>> = combine(ctx, custom) { c, cust -> c to cust }
@@ -717,7 +717,7 @@ class LiveViewModel(
     val favoriteIds: StateFlow<Set<Long>> = ctx
         .flatMapLatest { favoriteDao.observeFavoriteIds(it.profileId, MediaType.LIVE) }
         .map { it.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     val recentlyWatched: StateFlow<List<ChannelEntity>> = ctx
         .flatMapLatest { channelDao.recentlyWatched(it.profileId, 20) }
@@ -1348,7 +1348,7 @@ class LiveViewModel(
     /** "External player" is on for Live TV — the screen must NOT open the fullscreen in-app player
      *  (mounting it spins up an engine even though the channel went to the external app). */
     val externalPlayerOn: StateFlow<Boolean> = settings.externalPlayerLive
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Hand [channel] to an external app (VLC, MX Player). Used by the Live TV long-press menu, and by
      *  [playChannel] when Live TV's external-player default is on. Stalker channels store a portal
@@ -1520,7 +1520,7 @@ class LiveViewModel(
 
     /** Which player takes a catch-up archive — read by the UI so "Watch from start" can route itself. */
     val catchupPlayer: StateFlow<SettingsRepository.CatchupPlayer> = settings.catchupPlayer
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.CatchupPlayer.INTERNAL)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.CatchupPlayer.INTERNAL)
 
     /**
      * No archive URL could be built for what the user just picked.
@@ -1661,7 +1661,7 @@ class LiveViewModel(
     /** Settings → Live rewind step (default 30 s), read live so a change applies without a restart. */
     private val rewindStepSec: StateFlow<Int> = settings.liveRewindStepSec
         .stateIn(
-            viewModelScope, SharingStarted.Eagerly,
+            viewModelScope, SharingStarted.WhileSubscribed(5_000),
             tv.own.owntv.core.settings.SeekSteps.DEFAULT_LIVE_REWIND_STEP_SEC,
         )
 
