@@ -209,6 +209,9 @@ class SettingsViewModel(
     private val expiryCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
     val sourceExpiry: StateFlow<Map<Long, String>> = sources
         .map { list ->
+            // Bound to the sources on screen: one entry per source, and stragglers from removed
+            // playlists go with them.
+            expiryCache.keys.retainAll(list.map { it.id }.toSet())
             val out = HashMap<Long, String>()
             for (s in list) {
                 if (s.type != tv.own.owntv.core.model.SourceType.XTREAM &&
@@ -259,24 +262,24 @@ class SettingsViewModel(
 
     /** The source marked as default/active (shown in the sidebar). */
     val defaultSourceId: StateFlow<Long> = settings.defaultSourceId
-        .stateIn(viewModelScope, SharingStarted.Eagerly, -1L)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), -1L)
 
     fun setDefaultSource(id: Long) {
         viewModelScope.launch { settings.setDefaultSource(id) }
     }
 
     val livePreviewEnabled: StateFlow<Boolean> = settings.livePreviewEnabled
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     val livePreviewPanelActive: StateFlow<Boolean> = settings.livePreviewPanelActive
-        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     fun setLivePreviewEnabled(enabled: Boolean) {
         viewModelScope.launch { settings.setLivePreviewEnabled(enabled) }
     }
 
     val livePreviewAudio: StateFlow<Boolean> = settings.livePreviewAudio
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun setLivePreviewAudio(enabled: Boolean) {
         viewModelScope.launch { settings.setLivePreviewAudio(enabled) }
@@ -370,7 +373,7 @@ class SettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.CatchupTimezone.DEVICE)
 
     val catchupOffsetMinutes: StateFlow<Int> = settings.catchupOffsetMinutes
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val catchupOffsetRangeMinutes: IntRange = settings.catchupOffsetRangeMinutes
     val catchupOffsetStepMinutes: Int = settings.catchupOffsetStepMinutes
@@ -394,7 +397,7 @@ class SettingsViewModel(
 
     /** Global guide shift in minutes (0 = off). Per-channel overrides live in the channel menu. */
     val epgOffsetMinutes: StateFlow<Int> = settings.epgOffsetMinutes
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val epgOffsetRangeMinutes: IntRange = settings.epgOffsetRangeMinutes
 
@@ -409,7 +412,7 @@ class SettingsViewModel(
 
     /** How many days of upcoming guide to store — one value for every EPG source (guide plan R1). */
     val guideDaysToKeep: StateFlow<Int> = settings.guideDaysToKeep
-        .stateIn(viewModelScope, SharingStarted.Eagerly, tv.own.owntv.core.settings.GuideRetention.DEFAULT_DAYS)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), tv.own.owntv.core.settings.GuideRetention.DEFAULT_DAYS)
 
     fun setGuideDaysToKeep(days: Int) {
         viewModelScope.launch { settings.setGuideDaysToKeep(days) }
@@ -785,10 +788,10 @@ class SettingsViewModel(
     fun setSubSearchLanguages(codes: String) { viewModelScope.launch { settings.setSubSearchLanguages(codes) } }
 
     // --- Personalization (theme / accent / UI zoom) ---
-    val themeMode: StateFlow<ThemeMode> = settings.themeMode.stateIn(viewModelScope, SharingStarted.Eagerly, ThemeMode.DARK)
+    val themeMode: StateFlow<ThemeMode> = settings.themeMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ThemeMode.DARK)
     fun setThemeMode(mode: ThemeMode) { viewModelScope.launch { settings.setThemeMode(mode) } }
 
-    val accent: StateFlow<AccentColor> = settings.accent.stateIn(viewModelScope, SharingStarted.Eagerly, AccentColor.TEAL)
+    val accent: StateFlow<AccentColor> = settings.accent.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccentColor.TEAL)
     fun setAccent(accent: AccentColor) { viewModelScope.launch { settings.setAccent(accent) } }
 
     /** Custom accent hex ("#52DBC8"); blank = the preset is in effect. */

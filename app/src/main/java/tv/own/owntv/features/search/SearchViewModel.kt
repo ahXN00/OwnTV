@@ -66,14 +66,14 @@ class SearchViewModel(
 
     /** Global "External player" toggle — the screen must NOT open the fullscreen in-app player when on. */
     val externalPlayerOn: kotlinx.coroutines.flow.StateFlow<Boolean> = settings.externalPlayerMovies
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     // Observe the active profile's sources reactively so adding/removing a playlist refreshes Search
     // immediately (was read once at startup, so a new playlist showed nothing until app restart).
     // Per-section Off flags split the id sets so an Off section never surfaces in results.
     private val ctx: StateFlow<ActiveProfileSources> = activeProfileSources(settings, sourceDao)
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, ActiveProfileSources(-1L, emptyList()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActiveProfileSources(-1L, emptyList()))
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()

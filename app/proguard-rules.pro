@@ -22,3 +22,10 @@
 #     EpgAutoRefresh, PlaylistAutoRefresh, ...) round-trip through Enum.name/valueOf.
 #     Renaming a constant would silently reset settings and break old backups. ---
 -keep enum tv.own.owntv.** { *; }
+
+# --- Release log stripping: Log.d/i carry no diagnostics value in a shipped build (warnings,
+#     errors and wtf stay). R8 deletes the calls and their argument computation. ---
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** i(...);
+}

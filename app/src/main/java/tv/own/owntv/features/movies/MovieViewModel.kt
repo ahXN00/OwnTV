@@ -122,11 +122,11 @@ class MovieViewModel(
             Ctx(aps.profileId, ids, aps.sources.filter { it.id in ids }.associate { it.id to it.name })
         }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, Ctx(-1L, emptyList(), emptyMap()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Ctx(-1L, emptyList(), emptyMap()))
 
     val providerNames: StateFlow<Map<Long, String>> = ctx
         .map { c -> c.sourceNames.takeIf { it.size > 1 } ?: emptyMap() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val folderContextKeys: StateFlow<Map<Long, String>> = ctx
         .flatMapLatest { c ->
@@ -135,7 +135,7 @@ class MovieViewModel(
                 cats.associateBy({ it.id }, { CustomizeKeys.category(it) })
             }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Contexts that actually have manual-order rows (C3): only those folders pay the
      *  unindexable content_order join-sort; everything else stays on the plain indexed query. */
@@ -144,7 +144,7 @@ class MovieViewModel(
             if (c.profileId < 0) flowOf(emptySet())
             else contentOrderDao.observeContextKeys(c.profileId, MediaType.MOVIE).map { it.toSet() }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** This profile's hide/rename/reorder customizations for Movies. */
     private val custom: StateFlow<SectionCustomizations> = ctx
@@ -152,7 +152,7 @@ class MovieViewModel(
             if (c.profileId < 0) flowOf(SectionCustomizations())
             else customize.observe(c.profileId, MediaType.MOVIE)
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SectionCustomizations())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SectionCustomizations())
 
     /** The user's custom combined categories with live member counts — the "Move to…" dialog's list. */
     val moveTargets: StateFlow<List<MoveTarget>> = combine(ctx, custom) { c, cust -> c to cust }
@@ -235,7 +235,7 @@ class MovieViewModel(
 
     /** List ordering for this section (Provider order vs A–Z), persisted in DataStore. */
     val sortMode: StateFlow<SettingsRepository.SortMode> = settings.sortMovies
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.SortMode.ALPHA)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.SortMode.ALPHA)
 
     fun toggleSort() {
         viewModelScope.launch {
@@ -252,7 +252,7 @@ class MovieViewModel(
     }
 
     val viewMode: StateFlow<SettingsRepository.VodViewMode> = settings.vodViewMode
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.VodViewMode.GRID)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsRepository.VodViewMode.GRID)
 
     fun toggleViewMode() {
         viewModelScope.launch {
@@ -344,7 +344,10 @@ class MovieViewModel(
         // backstop; the real saves happen on pause (below) and on leaving the player.
         viewModelScope.launch {
             while (isActive) {
-                delay(10_000)
+                // Full cadence only while a picture is actually moving. Paused, stopped or never
+                // played, the pause/exit saves already hold the position — waking every 10 s for
+                // it cost a DB write per wake once anything had played (the ref is never cleared).
+                delay(if (playingRef != null && player.isPlaying.value) PROGRESS_INTERVAL_MS else PROGRESS_IDLE_MS)
                 saveProgressNow()
             }
         }
@@ -369,8 +372,10 @@ class MovieViewModel(
                     val found = runCatching { metadata.cachedMoviePosters(wanted) }.getOrDefault(emptyMap())
                     if (found.isEmpty()) return@collectLatest
                     // Bounded: a session spent browsing a 170k catalog would otherwise grow this forever.
-                    val base = if (_cachedPosters.value.size > 500) emptyMap() else _cachedPosters.value
-                    _cachedPosters.value = base + found
+                    // Trimmed to the newest, not dropped — clearing the whole table re-fetched
+                    // everything on the rows still on screen.
+                    val base = (_cachedPosters.value + found).toList().takeLast(MAX_CACHED_POSTERS).toMap()
+                    _cachedPosters.value = base
                 }
         }
     }
@@ -448,7 +453,7 @@ class MovieViewModel(
     val favoriteIds: StateFlow<Set<Long>> = ctx
         .flatMapLatest { favoriteDao.observeFavoriteIds(it.profileId, MediaType.MOVIE) }
         .map { it.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** Resume/watched progress for the visible movies, keyed by movie id — drives the ✓ tick and the
      *  in-progress bar on posters/list rows. Only started/finished movies have a row, so this is small. */
@@ -560,7 +565,7 @@ class MovieViewModel(
     /** Global "External player" toggle — screens must NOT open the fullscreen in-app player when on
      *  (mounting it spins up an mpv instance even though play() branched to the external app). */
     val externalPlayerOn: StateFlow<Boolean> = settings.externalPlayerMovies
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** Stalker movies resolve to a real URL at play time; anything else returns streamUrl as-is.
      *  Null = resolve failed (portal/auth error) — the caller should not start playback. */
@@ -1015,6 +1020,11 @@ class MovieViewModel(
 
     private companion object {
         const val TAG = "OwnTVHome"
+        const val PROGRESS_INTERVAL_MS = 10_000L
+        // Idle cadence (see the saver above): nothing is lost, the pause/exit saves hold it.
+        const val PROGRESS_IDLE_MS = 60_000L
+        // Poster-URL memo, newest kept: dropping the whole table re-fetched the rows on screen.
+        const val MAX_CACHED_POSTERS = 400
         val defaultRail = listOf(
             LiveRailItem(LiveKey.Favorites, icon = OwnTVIcon.FAVORITE),
             LiveRailItem(LiveKey.History, icon = OwnTVIcon.HISTORY),

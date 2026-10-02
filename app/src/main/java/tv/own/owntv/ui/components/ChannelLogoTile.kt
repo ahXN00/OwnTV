@@ -64,9 +64,12 @@ fun ChannelLogoTile(
         val measured = withContext(Dispatchers.Default) {
             if (bitmap.isRecycled) LOGO_INK_NONE else bitmap.measureInk()
         }
-        // One int per logo, but a catalog can hold six figures of them. Start over rather than grow
-        // without limit; re-measuring a logo the user scrolls back to costs a fraction of a frame.
-        if (logoInk.size > MAX_MEASURED_LOGOS) logoInk.clear()
+        // One int per logo, but a catalog can hold six figures of them. Shed half rather than
+        // grow without limit; re-measuring a logo the user scrolls back to costs a fraction of a
+        // frame, while dropping the whole table re-measured everything on the next screens.
+        if (logoInk.size > MAX_MEASURED_LOGOS) {
+            logoInk.keys.take(logoInk.size / 2).forEach { logoInk.remove(it) }
+        }
         logoInk[url] = measured
         ink = measured
         pending = null
