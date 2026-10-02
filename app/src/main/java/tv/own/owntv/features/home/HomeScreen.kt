@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -84,6 +85,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import tv.own.owntv.R
@@ -639,28 +641,31 @@ private fun TrendingHeroSection(
     var manuallyPaused by remember { mutableStateOf(false) }
     var actionButtonsFocused by remember { mutableStateOf(false) }
     var resetClock by remember { mutableIntStateOf(0) }
-    var progress by remember { mutableFloatStateOf(0f) }
+    // Held as State, not a value: the rotation driver below rewrites it ~12 times a second, and
+    // only the thin progress bar at the bottom reads it — a `by` here recomposes the whole hero
+    // (backdrop, poster, badges, buttons) on every tick.
+    val progressState = remember { mutableFloatStateOf(0f) }
     val intervalMs = 10_000L
 
     fun navigate(delta: Int) {
         if (items.isEmpty()) return
         onNavigate((activeIndex + delta + items.size) % items.size)
-        progress = 0f
+        progressState.floatValue = 0f
         resetClock++
     }
 
     LaunchedEffect(activeIndex, manuallyPaused, actionButtonsFocused, resetClock, items.size) {
         if (manuallyPaused || actionButtonsFocused || items.size < 2) return@LaunchedEffect
-        val startProgress = progress.coerceIn(0f, 1f)
+        val startProgress = progressState.floatValue.coerceIn(0f, 1f)
         val duration = (intervalMs * (1f - startProgress)).toLong().coerceAtLeast(1L)
         val startedAt = System.nanoTime()
         while (true) {
             val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000L
-            progress = (startProgress + (1f - startProgress) * elapsedMs.toFloat() / duration).coerceIn(0f, 1f)
+            progressState.floatValue = (startProgress + (1f - startProgress) * elapsedMs.toFloat() / duration).coerceIn(0f, 1f)
             if (elapsedMs >= duration) break
             kotlinx.coroutines.delay(80L)
         }
-        progress = 0f
+        progressState.floatValue = 0f
         onNavigate((activeIndex + 1) % items.size)
     }
 
@@ -911,18 +916,24 @@ private fun TrendingHeroSection(
             TrendingControlButton(if (manuallyPaused) OwnTVIcon.PLAY else OwnTVIcon.PAUSE, if (manuallyPaused) resumeLabel else pauseLabel, onContainerDown) {
                 manuallyPaused = !manuallyPaused
                 if (!manuallyPaused) {
-                    progress = 0f
+                    progressState.floatValue = 0f
                     resetClock++
                 }
             }
             Spacer(Modifier.width(12.dp))
             TrendingControlButton(OwnTVIcon.SKIP_NEXT, nextLabel, onContainerDown) { navigate(1) }
         }
-        Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(colors.surfaceContainerHigh)) {
-            Box(
-                modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(3.dp).background(colors.primary),
-            )
-        }
+        HeroProgressBar(progress = progressState)
+    }
+}
+
+/** The rotation countdown, alone in its own composable so its ~12 fps ticks move only this bar. */
+@Composable
+private fun HeroProgressBar(progress: MutableFloatState) {
+    Box(modifier = Modifier.fillMaxWidth().height(3.dp).background(OwnTVTheme.colors.surfaceContainerHigh)) {
+        Box(
+            modifier = Modifier.fillMaxWidth(progress.floatValue.coerceIn(0f, 1f)).height(3.dp).background(OwnTVTheme.colors.primary),
+        )
     }
 }
 
@@ -1278,8 +1289,16 @@ private fun HeroRowSection(
                                     val cardImageUrl = expandedImageUrl ?: imageUrl
                                     if (!cardImageUrl.isNullOrBlank()) {
                                         if (item is HeroItem.LiveHero) {
+                                            // Decodes a thumbnail, not the full picture: the 20 dp blur
+                                            // erases all detail anyway, and this same URL is decoded
+                                            // again below for the crisp logo.
+                                            val bgContext = LocalContext.current
+                                            val bgRequest = remember(cardImageUrl) {
+                                                ImageRequest.Builder(bgContext)
+                                                    .data(cardImageUrl).size(320, 180).build()
+                                            }
                                             AsyncImage(
-                                                model = cardImageUrl,
+                                                model = bgRequest,
                                                 contentDescription = null,
                                                 modifier = Modifier.fillMaxSize().blur(20.dp),
                                                 contentScale = ContentScale.Crop,
@@ -1327,8 +1346,14 @@ private fun HeroRowSection(
                                     ) {
                                         if (!imageUrl.isNullOrBlank()) {
                                             if (item is HeroItem.LiveHero) {
+                                                // Thumbnail decode, like the expanded card above.
+                                                val bgContext = LocalContext.current
+                                                val bgRequest = remember(imageUrl) {
+                                                    ImageRequest.Builder(bgContext)
+                                                        .data(imageUrl).size(320, 180).build()
+                                                }
                                                 AsyncImage(
-                                                    model = imageUrl,
+                                                    model = bgRequest,
                                                     contentDescription = null,
                                                     modifier = Modifier.fillMaxSize().blur(20.dp),
                                                     contentScale = ContentScale.Crop,
