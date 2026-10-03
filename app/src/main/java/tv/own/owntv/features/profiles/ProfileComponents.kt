@@ -165,7 +165,10 @@ internal fun ProfileEditorDialog(
         Text(stringResource(R.string.profiles_avatar), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            items((-1 until OwnTVAvatars.COUNT).toList()) { id -> // Phase 7 — includes "no avatar" (-1)
+            // Count + key instead of a materialized range: no list per recomposition, and an
+            // avatar keeps its composition across avatar-count changes. -1 is "no avatar", first.
+            items(count = OwnTVAvatars.COUNT + 1, key = { it - 1 }) { index ->
+                val id = index - 1 // Phase 7 — includes "no avatar" (-1)
                 FocusableSurface(
                     onClick = { avatarId = id },
                     modifier = Modifier.size(60.dp),

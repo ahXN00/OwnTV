@@ -475,16 +475,19 @@ fun EpgScreen(
             else -> {
                 // Time axis (shares hScroll with the rows below).
                 val formatTime = rememberSystemTimeFormatter()
-                val slots = ((state.windowEnd - state.windowStart) / (GuideGridDefaults.SlotMin * 60_000L)).toInt()
+                // Labels built once per window/locale — not on every scroll or revision recomposition.
+                val slotLabels = remember(state.windowStart, state.windowEnd, formatTime) {
+                    val n = ((state.windowEnd - state.windowStart) / (GuideGridDefaults.SlotMin * 60_000L)).toInt()
+                    List(n) { i -> formatTime(state.windowStart + i * GuideGridDefaults.SlotMin * 60_000L) }
+                }
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     Row {
                         Spacer(Modifier.width(guideChannelWidth))
                         Box(Modifier.horizontalScroll(hScroll)) {
                             Row {
-                                for (i in 0 until slots) {
-                                    val slotMs = state.windowStart + i * GuideGridDefaults.SlotMin * 60_000L
+                                slotLabels.forEach { label ->
                                     Text(
-                                        formatTime(slotMs),
+                                        label,
                                         style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Content),
                                         color = colors.onSurfaceVariant,
                                         fontWeight = FontWeight.SemiBold,

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
@@ -821,7 +822,12 @@ private fun BulkImportResultDialog(
                 Text(stringResource(R.string.settings_bulk_import_done), style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    stringResource(R.string.settings_bulk_import_summary, succeeded.size, failed.size),
+                    pluralStringResource(R.plurals.settings_bulk_import_added, succeeded.size, succeeded.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                Text(
+                    pluralStringResource(R.plurals.settings_bulk_import_failed, failed.size, failed.size),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant,
                 )

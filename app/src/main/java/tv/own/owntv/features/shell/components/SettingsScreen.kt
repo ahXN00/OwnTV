@@ -2381,7 +2381,10 @@ internal fun PlaybackErrorLogDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(list) { e ->
+                    // Index-keyed: the log is append-only, so a refresh binds new rows in place
+                    // instead of rebuilding the list and dropping the scroll position.
+                    items(list.size, key = { it }) { index ->
+                        val e = list[index]
                         FocusableSurface(
                             onClick = {},
                             modifier = Modifier.fillMaxWidth(),

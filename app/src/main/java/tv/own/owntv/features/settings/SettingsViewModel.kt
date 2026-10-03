@@ -613,7 +613,9 @@ class SettingsViewModel(
     val startupChannelResults: StateFlow<List<tv.own.owntv.core.database.entity.ChannelEntity>> =
         combine(
             settings.activeProfileId,
-            _startupChannelQuery.debounce(180),
+            // Debounced like the guide's own search: every keystroke otherwise costs an FTS query
+            // over the whole live catalogue for a prefix the user has already moved past.
+            _startupChannelQuery.debounce(300),
             startupChannelRefresh,
         ) { profileId, query, _ -> profileId to query }
             .mapLatest { (profileId, query) -> loadStartupChannelResults(profileId, query) }
@@ -1369,7 +1371,7 @@ class SettingsViewModel(
             if (parsed.entries.isEmpty()) {
                 _bulkImport.value = BulkImportUi.ParseError(
                     if (parsed.skipped.isEmpty()) appContext.getString(R.string.settings_bulk_import_empty)
-                    else appContext.getString(R.string.settings_bulk_import_unreadable, parsed.skipped.size),
+                    else appContext.resources.getQuantityString(R.plurals.settings_bulk_import_unreadable, parsed.skipped.size, parsed.skipped.size),
                 )
                 return@launch
             }

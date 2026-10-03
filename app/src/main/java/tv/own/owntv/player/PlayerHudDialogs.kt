@@ -121,7 +121,7 @@ internal fun TrackDialog(
                 OptionRow(label = stringResource(R.string.common_off), selected = selectedIndex < 0, modifier = if (focusOff) Modifier.focusRequester(focus) else Modifier, onClick = onOff)
             }
         }
-        items(tracks.size) { index ->
+        items(tracks.size, key = { it }) { index ->
             val track = tracks[index]
             val focusThis = index == selectedIndex || (selectedIndex < 0 && onOff == null && index == 0)
             if (focusThis) LaunchedEffect(Unit) { androidx.compose.runtime.withFrameNanos {}; runCatching { focus.requestFocus() } }
@@ -227,7 +227,7 @@ internal fun SpeedDialog(current: Double, onSelect: (Double) -> Unit, onDismiss:
     BackHandler { onDismiss() }
     val selectedIndex = SPEEDS.indexOfFirst { kotlin.math.abs(it - current) < 0.01 }.coerceAtLeast(0)
     DialogScaffold(title = stringResource(R.string.settings_playback_speed), onDismiss = onDismiss) {
-        items(SPEEDS.size) { index ->
+        items(SPEEDS.size, key = { it }) { index ->
             val speed = SPEEDS[index]
             OptionRow(
                 label = if (speed == 1.0) stringResource(R.string.player_speed_normal) else stringResource(R.string.player_speed, localizedDecimal(speed)),
@@ -273,7 +273,7 @@ internal fun SleepTimerDialog(
                 )
             }
         }
-        items(SleepTimer.CHOICES_MINUTES.size) { index ->
+        items(SleepTimer.CHOICES_MINUTES.size, key = { it }) { index ->
             val minutes = SleepTimer.CHOICES_MINUTES[index]
             OptionRow(
                 label = stringResource(R.string.player_duration_minutes, minutes),
@@ -337,7 +337,7 @@ internal fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismi
     // Land focus on the current mode (not always the first row) so re-opening starts on your selection.
     val selectedIndex = ZoomMode.entries.indexOf(current).coerceAtLeast(0)
     DialogScaffold(title = stringResource(R.string.settings_player_zoom), onDismiss = onDismiss) {
-        items(ZoomMode.entries.size) { index ->
+        items(ZoomMode.entries.size, key = { it }) { index ->
             val mode = ZoomMode.entries[index]
             OptionRow(label = stringResource(mode.labelRes), selected = mode == current, modifier = if (index == selectedIndex) Modifier.focusRequester(focus) else Modifier, onClick = { onSelect(mode) })
         }
@@ -353,7 +353,7 @@ internal fun QualityDialog(heights: List<Int>, current: Int?, onSelect: (Int?) -
     val options: List<Int?> = listOf<Int?>(null) + heights
     val selectedIndex = options.indexOf(current).coerceAtLeast(0)
     DialogScaffold(title = stringResource(R.string.player_tool_quality), onDismiss = onDismiss) {
-        items(options.size) { index ->
+        items(options.size, key = { it }) { index ->
             val height = options[index]
             OptionRow(
                 label = if (height == null) stringResource(R.string.settings_auto) else stringResource(R.string.settings_video_quality_lines, height),

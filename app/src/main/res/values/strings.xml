@@ -7,12 +7,22 @@
     <string name="settings_sources_import_file">Import from file</string>
     <string name="settings_bulk_import_title">Importing servers… %1$d/%2$d</string>
     <string name="settings_bulk_import_done">Servers imported</string>
-    <string name="settings_bulk_import_summary">%1$d added · %2$d failed</string>
+    <plurals name="settings_bulk_import_added">
+        <item quantity="one">%1$d added</item>
+        <item quantity="other">%1$d added</item>
+    </plurals>
+    <plurals name="settings_bulk_import_failed">
+        <item quantity="one">%1$d failed</item>
+        <item quantity="other">%1$d failed</item>
+    </plurals>
     <string name="settings_bulk_import_parse_error">Can’t read server list</string>
     <string name="settings_bulk_import_parse_error_detail">Reason: %1$s</string>
     <string name="settings_bulk_import_no_profile">No active profile</string>
     <string name="settings_bulk_import_empty">No usable servers in this file</string>
-    <string name="settings_bulk_import_unreadable">%1$d unreadable lines, no usable servers</string>
+    <plurals name="settings_bulk_import_unreadable">
+        <item quantity="one">%1$d unreadable line, no usable servers</item>
+        <item quantity="other">%1$d unreadable lines, no usable servers</item>
+    </plurals>
     <string name="settings_bulk_import_unreadable_file">Could not read %1$s</string>
     <string name="settings_bulk_import_default_server">Server %1$d</string>
     <string name="settings_bulk_import_default_portal">Portal %1$d</string>
