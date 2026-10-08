@@ -999,12 +999,22 @@ fun StageFieldRow(
                         textStyle = stageText(15.5f, 500).copy(color = if (focused || editing) FocusedDesc else StageColors.Text),
                         singleLine = true,
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(a.accent),
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                        // A password row gets the password keyboard: the text one auto-corrects and
+                        // capitalises, which turned a correct backup password into a wrong one.
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = if (password && keyboardType == androidx.compose.ui.text.input.KeyboardType.Text) androidx.compose.ui.text.input.KeyboardType.Password else keyboardType,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                            autoCorrectEnabled = if (password) false else null,
+                        ),
                         keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { stop() }),
                         visualTransformation = if (password && !shown) androidx.compose.ui.text.input.PasswordVisualTransformation()
                             else androidx.compose.ui.text.input.VisualTransformation.None,
                     )
                 }
+            }
+            // Without a settings panel (the setup wizard) nothing else tells the user ▶ shows the password.
+            if (password && lit && !editing && panel == null) {
+                Text("▶ " + stringResource(if (shown) R.string.common_hide else R.string.common_show), style = stageText(18, 700), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (lit && !editing) Text(stringResource(R.string.common_edit), style = stageText(18, 700), color = a.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

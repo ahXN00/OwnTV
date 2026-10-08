@@ -18,6 +18,13 @@
 - **Customize no longer keeps a removed item's actions on screen**
 - **🎞️ Catch-up plays on the hardware decoder and freezes on its first frame less often (#229)**
 - **📡 A catch-up of a programme still on air switches to live instead of freezing**
+- **🎬 Films keep playing when the TV changes picture mode or the remote wakes up (#9)**
+- **🔔 The update notice no longer reappears during a session**
+- **🎬 An automatic playlist or guide refresh waits until playback stops**
+- **💾 A first-run backup restore finishes before the app opens, even after Back**
+- **🔄 Restored playlists download straight away after a restore**
+- **🔑 Password fields use the password keyboard and show a Show button in setup**
+- **⚠️ First-run restore warns when Sources is unticked**
 
 ## v5.1.0 — 2026-10-04
 

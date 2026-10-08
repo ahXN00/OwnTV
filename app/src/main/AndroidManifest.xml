@@ -77,13 +77,18 @@
              enabled. MainActivity is the default (Eggshell) and keeps its name, so an icon placed before this change still
              opens the app. Each carries its own icon, banner and launch-screen theme, and ALL intent
              filters: a disabled activity resolves nothing, so the owntv:// links always reach the enabled
-             one. LEANBACK_LAUNCHER shows it on TV launchers; LAUNCHER on phone/tablet/box home screens. -->
+             one. LEANBACK_LAUNCHER shows it on TV launchers; LAUNCHER on phone/tablet/box home screens.
+             configChanges: a remote waking up (keyboard/navigation), an HDR or frame-rate mode switch
+             (uiMode/colorMode/screen*) or a density change must not rebuild the Activity mid-film — that
+             closed the player and re-ran the startup popups. locale|layoutDirection are left out on
+             purpose: a script-family language switch still needs its one recreate (LocalizedContent). -->
         <activity
             android:name=".MainActivityPetrol"
             android:banner="@drawable/owntv_banner_petrol"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_petrol"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_petrol"
             android:theme="@style/Theme.OwnTV.Starting.Petrol"
@@ -112,6 +117,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_sunflower"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_sunflower"
             android:theme="@style/Theme.OwnTV.Starting.Sunflower"
@@ -140,6 +146,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_cobalt"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_cobalt"
             android:theme="@style/Theme.OwnTV.Starting.Cobalt"
@@ -168,6 +175,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_tomato"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_tomato"
             android:theme="@style/Theme.OwnTV.Starting.Tomato"
@@ -196,6 +204,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_board"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_board"
             android:theme="@style/Theme.OwnTV.Starting.Board"
@@ -224,6 +233,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_eggshell"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_eggshell"
             android:theme="@style/Theme.OwnTV.Starting.Eggshell"
@@ -252,6 +262,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_olive"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_olive"
             android:theme="@style/Theme.OwnTV.Starting.Olive"
@@ -280,6 +291,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_olive_cream"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_olive_cream"
             android:theme="@style/Theme.OwnTV.Starting.OliveCream"
@@ -309,6 +321,7 @@
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/owntv_icon_pixel"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
             android:roundIcon="@mipmap/owntv_icon_pixel"
             android:theme="@style/Theme.OwnTV.Starting.Pixel"

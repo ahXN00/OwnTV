@@ -640,6 +640,8 @@ internal fun SectionPickerDialog(
      * "Everything", which is about what the file holds, not about this device.
      */
     deviceSettings: MutableState<Boolean>? = null,
+    /** First-run restore: say so when Sources is unticked, because the device then has no playlists. */
+    warnWithoutSources: Boolean = false,
 ) {
     var selected by remember { mutableStateOf(initial) }
     val firstFocus = remember { FocusRequester() }
@@ -675,6 +677,14 @@ internal fun SectionPickerDialog(
                 desc = stringResource(R.string.settings_backup_device_settings_desc),
                 checked = deviceSettings.value,
                 onToggle = { deviceSettings.value = !deviceSettings.value },
+            )
+        }
+        if (warnWithoutSources && selected.isNotEmpty() && BackupManager.Section.SOURCES !in selected) {
+            Text(
+                stringResource(R.string.settings_backup_no_sources_warning),
+                style = stageText(17, 600),
+                color = StageColors.Warn,
+                modifier = Modifier.padding(top = 10.mpx),
             )
         }
     }

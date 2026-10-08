@@ -487,7 +487,7 @@
 5	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	·
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	▲ ▼
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	▶
+2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	▶
 3	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	◀ ▶
 32	empty	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	FIT
@@ -680,12 +680,6 @@
 8	technical	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	\0
 1	log	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	OwnTVHome
 1	log	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	activeProfileChanged profile=$pid androidTvHomeEnabled=${settings.androidTvHomeEnabled.first()}
-2	technical	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	auto_refresh
-1	log	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	checkAutoRefresh epg sourceId=${src.id} mode=$mode — enqueuing
-1	log	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	checkAutoRefresh playlist sourceId=${source.id} mode=$mode — enqueuing
-1	log	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	epgRefill check failed
-1	log	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	epgRefill sourceId=${src.id} — synced before but guide is empty, re-fetching
-1	technical	app/src/main/java/tv/own/owntv/features/shell/ShellViewModel.kt	migration_refill
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/AvatarPickerDialog.kt	\0
 2	empty	app/src/main/java/tv/own/owntv/features/shell/components/CategoryRail.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/CategoryRail.kt	__rail_search__

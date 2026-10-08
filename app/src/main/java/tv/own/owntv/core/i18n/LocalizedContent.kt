@@ -60,11 +60,12 @@ fun LocalizedContent(
     // AppLocale.wrap() is correct for attachBaseContext, but its ContextImpl result is not a safe
     // Compose LocalContext: it loses the Activity wrapper. Keep the Activity as the base while
     // delegating resources/assets to the localized configuration context.
-    // Include the host locale list in the key as well as the selected tag. The manifest currently
-    // recreates the Activity for configuration changes, but this keeps the wrapper correct if a
-    // future configChanges declaration allows the host Activity to survive a device-locale change.
-    val hostLocaleKey = LocalConfiguration.current.locales.toLanguageTags()
-    val wrapped = remember(hostContext, tag, hostLocaleKey) { AppLocale.wrapForCompose(hostContext, tag) }
+    // Keyed on the whole host configuration, not only the tag: the manifest's configChanges keep the
+    // Activity alive across uiMode/density/screen changes, and wrap() copies the configuration at
+    // call time — so without this key the screens would keep the old dark/light mode and density.
+    val hostConfig = LocalConfiguration.current
+    val hostLocaleKey = hostConfig.locales.toLanguageTags()
+    val wrapped = remember(hostContext, tag, hostConfig) { AppLocale.wrapForCompose(hostContext, tag) }
     val layoutDirection = remember(tag, hostLocaleKey) {
         if (wrapped.resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL) {
             LayoutDirection.Rtl

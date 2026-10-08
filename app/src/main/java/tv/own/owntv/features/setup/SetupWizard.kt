@@ -248,6 +248,7 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                 state = importState,
                 wizardStep = if (backupOrigin == Step.SETUP_CHOICE) WizardStep.PROFILE else WizardStep.PLAYLIST,
                 onPick = { file -> restoreSections = null; restoreFile = file },
+                fileChosen = restoreFile != null,
                 // The same choice, carried across the password question: a sealed file is chosen
                 // from before it can be opened, so the answer has to outlive the prompt.
                 onPassword = { file, pass ->
@@ -272,6 +273,7 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                 },
                 onDismiss = { vm.reset(); restoreFile = null; step = backupOrigin },
                 deviceSettings = restoreDeviceSettings,
+                warnWithoutSources = firstRun,
             )
         }
         // Semi-auto EPG: after the first playlist imports, ask → sync (live count) → done (overlays "All set!").
@@ -571,6 +573,8 @@ private fun ImportBackupStep(
     state: SourceImporter.ImportState,
     wizardStep: WizardStep,
     onPick: (java.io.File) -> Unit,
+    /** A file is picked: the browser closes, so it is not left behind the restore dialog. */
+    fileChosen: Boolean,
     onPassword: (java.io.File, String?) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -614,7 +618,7 @@ private fun ImportBackupStep(
             next = WizardAction(stringResource(R.string.common_back), onBack, rememberFirstFocus()),
             onBack = onBack,
         )
-        else -> StorageBrowser(
+        else -> if (!fileChosen) StorageBrowser(
             title = stringResource(R.string.setup_pick_backup_file),
             mode = BrowseMode.FILE,
             // `.own` containers plus pre-4.2 `.json` backups.

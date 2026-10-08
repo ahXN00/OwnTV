@@ -33,7 +33,10 @@ for that step shown in the corner.
 4. **Set up OwnTV** — three ways to begin: **New profile**, **Restore a backup**, or
    **From another device** (copy everything off a TV you already have — see below). A restore asks
    which parts of the backup to bring back before it applies anything, so you can take the playlists
-   and leave the old box's settings behind.
+   and leave the old box's settings behind. Untick **Sources** and it warns you: the TV then gets no
+   playlists. The app opens only once the whole restore is done, and starts downloading the restored
+   playlists straight away. An encrypted backup asks for its
+   password; press ▶ on the field to see what you typed.
 5. **Profile** — name it, pick an avatar, and optionally make it a **Kids** profile or give it a PIN.
 6. **Add a playlist** — four cards: **Remote** (fill it in on your phone), **Type it here** (type it
    with the remote: M3U, Xtream or Stalker), **Import** a backup file, or **Existing** (only shown

@@ -56,6 +56,10 @@ val appModule = module {
     singleOf(::GuideReader)
     singleOf(::SearchReader)
     singleOf(::HomeFeedReader)
+    // Process-long scope for work that must outlive the screen that started it (a first-run restore).
+    single<kotlinx.coroutines.CoroutineScope> {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+    }
     viewModelOf(::HomeViewModel)
     viewModelOf(::SetupViewModel)
     viewModelOf(::DisplaySizeViewModel)

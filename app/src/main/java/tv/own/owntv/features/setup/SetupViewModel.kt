@@ -2,11 +2,13 @@ package tv.own.owntv.features.setup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import tv.own.owntv.core.database.entity.SourceEntity
 import tv.own.owntv.core.backup.BackupManager
 import tv.own.owntv.core.setup.SourceImporter
@@ -28,6 +30,9 @@ class SetupViewModel(
     private val epgRepository: tv.own.owntv.core.repository.EpgRepository,
     private val epgSourceStore: tv.own.owntv.core.epg.EpgSourceStore,
     private val companion: tv.own.owntv.core.companion.CompanionController,
+    /** A restore runs here, not in [viewModelScope]: Back while it runs leaves the app, and a restore
+     *  cancelled half way leaves a profile with some of its data and none of the rest. */
+    private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
 
     // ---- Remote (companion) add-source: a LAN web form fills the Add Source screen from another device. ----
@@ -168,7 +173,11 @@ class SetupViewModel(
         /** Take another device's hardware settings too — see [BackupManager.import]. */
         deviceSettings: Boolean = false,
     ) {
-        viewModelScope.launch { if (importer.importBackup(file, sections, deviceSettings)) onRestored(onDone) }
+        appScope.launch {
+            if (importer.importBackup(file, sections, deviceSettings)) {
+                withContext(Dispatchers.Main) { onRestored(onDone) }
+            }
+        }
     }
 
     /** Continue an encrypted restore once the user provides (or skips, password = null) the passphrase. */
@@ -179,7 +188,11 @@ class SetupViewModel(
         sections: Set<BackupManager.Section> = BackupManager.Section.entries.toSet(),
         deviceSettings: Boolean = false,
     ) {
-        viewModelScope.launch { if (importer.restoreWithPassword(file, password, sections, deviceSettings)) onRestored(onDone) }
+        appScope.launch {
+            if (importer.restoreWithPassword(file, password, sections, deviceSettings)) {
+                withContext(Dispatchers.Main) { onRestored(onDone) }
+            }
+        }
     }
 
     // A backup may restore several profiles or a PIN-locked active profile. Restoring data is not

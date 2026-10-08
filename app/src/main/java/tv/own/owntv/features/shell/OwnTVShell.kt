@@ -110,7 +110,7 @@ import androidx.compose.ui.text.style.TextOverflow
 private enum class ShellLayer { SIDEBAR, RAIL, CONTENT }
 
 /** Player presentation: hidden, fullscreen, docked mini-player, or audio-only now-playing bar. */
-private enum class PlayerMode { NONE, FULLSCREEN, MINI, AUDIO }
+internal enum class PlayerMode { NONE, FULLSCREEN, MINI, AUDIO }
 
 /**
  * The MD3 shell: a fixed navigation panel (Layer 1) plus the active destination. Settings is a
@@ -169,7 +169,10 @@ fun OwnTVShell(
     var showAvatarFilePicker by remember { mutableStateOf(false) }
     var showAvatarRemote by remember { mutableStateOf(false) }
     var showPlaylistPicker by remember { mutableStateOf(false) }
-    var playerMode by remember { mutableStateOf(PlayerMode.NONE) }
+    // Held by the Activity-scoped ShellViewModel, so a recreation (a script-family language switch)
+    // does not close a film that is playing.
+    val shellVm = org.koin.androidx.compose.koinViewModel<ShellViewModel>()
+    var playerMode by shellVm.playerMode
     // Deep-link: the Guide's "Add EPG" button switches to Settings and opens EPG Sources → add.
     var openEpgAdd by remember { mutableStateOf(false) }
     // Setup's "Add a TV guide" (P10B-W9) lands on the same page once the shell is up.
@@ -310,7 +313,7 @@ fun OwnTVShell(
         liveVm.timeshiftOffsetSec.map { it != null }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(false)
     // Which section armed the current fullscreen stream — picks whose channel list CH+/CH- step through.
-    var zapSource by remember { mutableStateOf<MainSection?>(null) }
+    var zapSource by shellVm.zapSource
     // The multi-day guide for the rewind timeline is read only while it can be shown (the same test
     // the HUD applies below); otherwise its query would re-run on every channel-list focus step.
     val wantTimeline = playerMode == PlayerMode.FULLSCREEN && zapSource == MainSection.LIVE_TV && !catchupActive && canRewindLive
@@ -1932,8 +1935,10 @@ fun OwnTVShell(
         val settingsRepo = koinInject<tv.own.owntv.core.settings.SettingsRepository>()
         val updateCheckOnStart by settingsRepo.updateCheckOnStart.collectAsStateWithLifecycle(initialValue = false)
         LaunchedEffect(updateCheckOnStart) {
-            if (updateCheckOnStart && !showStartupToast) {
+            // Once per launch: a rebuilt shell must not bring the "latest version" card back.
+            if (updateCheckOnStart && !showStartupToast && !shellVm.startupUpdateCheckDone) {
                 kotlinx.coroutines.delay(5_000)
+                shellVm.startupUpdateCheckDone = true
                 showStartupToast = true
                 updateManager.check()
             }
