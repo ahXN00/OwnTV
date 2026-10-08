@@ -70,6 +70,7 @@ import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.MovieEntity
 import tv.own.owntv.core.database.entity.SeriesEntity
 import tv.own.owntv.core.epg.displayLogoUrl
+import tv.own.owntv.core.metadata.HeadlineTitle
 import tv.own.owntv.features.live.LivePlate
 import tv.own.owntv.features.live.LiveStagePane
 import tv.own.owntv.features.live.LiveViewModel
@@ -609,7 +610,7 @@ private fun PosterPanel(info: VodTitleInfo, series: Boolean, modifier: Modifier 
                 )
             } else {
                 Text(
-                    info.title, style = stageText(44, 800, (-1).mpxSp), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    HeadlineTitle.of(info.title), style = stageText(44, 800, (-1).mpxSp), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.align(Alignment.BottomStart).padding(start = 26.mpx, bottom = 20.mpx, end = 26.mpx),
                 )
             }

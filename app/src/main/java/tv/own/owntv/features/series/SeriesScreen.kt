@@ -3,6 +3,7 @@
 package tv.own.owntv.features.series
 
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.graphicsLayer
@@ -90,6 +91,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -191,8 +193,13 @@ fun SeriesScreen(
 
     // Track leaving a show so the grid can put focus back on the poster you came from (the episode
     // view that held focus is unmounted on Back — focus would otherwise die and land on the sidebar).
-    var returnFromShow by remember { mutableStateOf(false) }
-    LaunchedEffect(openedSeries) { if (openedSeries != null) returnFromShow = true }
+    // The show itself, not "the selected one": the grid's way in can focus the first poster before
+    // the opened one is laid out, and that makes the first poster the selected show.
+    var returnToShowId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(openedSeries) { openedSeries?.let { returnToShowId = it.id } }
+    // Where that show sat in the titles, when it was opened from them: the list reloads from its
+    // first page on the way back, so a show further down is found only after scrolling there again.
+    var returnToIndex by remember { mutableIntStateOf(-1) }
 
     if (openedSeries != null) {
         EpisodeView(
@@ -210,8 +217,10 @@ fun SeriesScreen(
         SeriesGrid(
             vm = vm,
             onChildFocused = onChildFocused,
-            restoreSelected = returnFromShow,
-            onRestoredSelected = { returnFromShow = false },
+            restoreShowId = returnToShowId,
+            restoreShowIndex = returnToIndex,
+            onOpenAt = { returnToIndex = it },
+            onRestoredSelected = { returnToShowId = null; returnToIndex = -1 },
             lockedKey = lockedKey,
             onEntryHook = onEntryHook,
             modifier = modifier,
@@ -223,7 +232,9 @@ fun SeriesScreen(
 private fun SeriesGrid(
     vm: SeriesViewModel,
     onChildFocused: () -> Unit,
-    restoreSelected: Boolean = false,
+    restoreShowId: Long? = null,
+    restoreShowIndex: Int = -1,
+    onOpenAt: (Int) -> Unit = {},
     onRestoredSelected: () -> Unit = {},
     /** Non-null while this grid is a More screen's stage — see [SeriesScreen]. */
     lockedKey: LiveKey? = null,
@@ -237,6 +248,7 @@ private fun SeriesGrid(
     val selectedKey by vm.selectedKey.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val favoriteIds by vm.favoriteIds.collectAsStateWithLifecycle()
+    val seriesProgress by vm.seriesProgress.collectAsStateWithLifecycle()
     val searchQuery by vm.searchQuery.collectAsStateWithLifecycle()
     val sortMode by vm.sortMode.collectAsStateWithLifecycle()
     val storedViewMode by vm.viewMode.collectAsStateWithLifecycle()
@@ -349,29 +361,51 @@ private fun SeriesGrid(
     // Back from a show's episodes: scroll the grid to the poster you opened, then focus it. It may be
     // far down and not composed, so without scrolling the focus request fails and focus falls to the
     // sidebar (the same scroll-then-focus fix Movies uses).
-    LaunchedEffect(restoreSelected, series.itemCount) {
-        if (restoreSelected && series.itemCount > 0) {
-            val sel = selectedSeries
-            val idx = if (sel != null) series.itemSnapshotList.items.indexOfFirst { it.id == sel.id } else -1
-            if (idx >= 0) {
-                // Scroll the layout that is actually on screen. Scrolling only the grid state left the
-                // LIST view unscrolled, so a show further down was never composed, the focus request
-                // failed, and focus fell out to the CategoryRail instead of the show you came back from.
-                scrollToIndex(idx)
-                // The shell is switching the canvas back from the episodes page at the same time, and a
-                // single attempt lost focus to the category column. Keep watching for about 0.7 s and
-                // take focus back to the show whenever the titles do not hold it.
-                repeat(40) {
-                    if (!gridPaneFocused && !runCatching { gridSelFocus.requestFocus() }.getOrDefault(false)) {
-                        runCatching { firstItemFocus.requestFocus() }
-                    }
+    LaunchedEffect(restoreShowId, series.itemCount) {
+        val showId = restoreShowId ?: return@LaunchedEffect
+        if (series.itemCount == 0) return@LaunchedEffect
+        // By position, placeholders included: `items` drops pages not loaded yet and shifts the index.
+        var idx = series.itemSnapshotList.indexOfFirst { it?.id == showId }
+        if (idx < 0 && restoreShowIndex in 0 until series.itemCount) {
+            // Its page is not loaded yet: scrolling to where it sat loads it; wait up to about a second.
+            scrollToIndex(restoreShowIndex)
+            repeat(60) {
+                if (idx < 0) {
                     withFrameNanos { }
+                    idx = series.itemSnapshotList.indexOfFirst { it?.id == showId }
                 }
-            } else {
-                runCatching { firstItemFocus.requestFocus() }
             }
-            onRestoredSelected()
         }
+        val show = series.itemSnapshotList.getOrNull(idx)
+        if (show != null) {
+            // Scroll the layout that is actually on screen. Scrolling only the grid state left the
+            // LIST view unscrolled, so a show further down was never composed, the focus request
+            // failed, and focus fell out to the CategoryRail instead of the show you came back from.
+            scrollToIndex(idx)
+            // The shell is switching the canvas back from the episodes page at the same time, and its
+            // way in may already have put focus on the first poster and made that the selected show.
+            // Make this show the selected one again (gridSelFocus follows it), then keep taking focus
+            // back to it for about 0.7 s, the first poster standing in only while it is not laid out.
+            var landed = false
+            repeat(40) {
+                if (!landed) {
+                    if (selectedSeries?.id != show.id) vm.onSeriesFocused(show)
+                    if (rememberSeries) perCategorySeriesIds[selectedKey] = show.id
+                    // A stand-in brings itself into view, scrolling this show out of the layout again.
+                    if (it > 0) scrollToIndex(idx)
+                }
+                withFrameNanos { }
+                if (!landed || !gridPaneFocused) {
+                    // Landed only on this show: a stand-in focused meanwhile has made itself the selected
+                    // show, and gridSelFocus then points at it — the next frame selects this one again.
+                    landed = runCatching { gridSelFocus.requestFocus() }.getOrDefault(false) && selectedSeries?.id == show.id
+                    if (!landed && !gridPaneFocused) runCatching { firstItemFocus.requestFocus() }
+                }
+            }
+        } else {
+            runCatching { firstItemFocus.requestFocus() }
+        }
+        onRestoredSelected()
     }
     // Closing the long-press context menu must return focus inside this pane, never the CategoryRail.
     //   - Item still present (Favourite toggle / Download / Cancel): re-focus the same item by id.
@@ -649,7 +683,8 @@ private fun SeriesGrid(
                                         title = show.name,
                                         rating = show.rating?.takeIf { it > 0 }?.let(::vodRating),
                                         width = 196.mpx, height = 294.mpx,
-                                        onClick = { vm.openSeries(show) },
+                                        progress = seriesProgress[show.id],
+                                        onClick = { onOpenAt(index); vm.openSeries(show) },
                                         onLongClick = { openMenu(show, index) },
                                         modifier = Modifier
                                             .gridFocusTarget(
@@ -762,9 +797,9 @@ private fun SeriesGrid(
                                     line = vodLine(show.year, show.rating, null),
                                     posterUrl = posterOf(show),
                                     placeholder = OwnTVIcon.SERIES,
-                                    progress = null,
+                                    progress = seriesProgress[show.id],
                                     mark = playlistMarks[show.sourceId],
-                                    onClick = { vm.openSeries(show) },
+                                    onClick = { onOpenAt(index); vm.openSeries(show) },
                                     onLongClick = { openMenu(show, index) },
                                     modifier = Modifier
                                         .gridFocusTarget(
@@ -812,7 +847,8 @@ private fun SeriesGrid(
                                     rating = show.rating?.takeIf { it > 0 }?.let(::vodRating),
                                     width = posterW, height = posterW * 1.5f,
                                     compact = true,
-                                    onClick = { vm.openSeries(show) },
+                                    progress = seriesProgress[show.id],
+                                    onClick = { onOpenAt(index); vm.openSeries(show) },
                                     onLongClick = { openMenu(show, index) },
                                     modifier = Modifier
                                         .gridFocusTarget(
@@ -1389,11 +1425,9 @@ private fun EpisodeView(
             }
         }
         Column(Modifier.padding(start = fx(84), top = 104.mpx).width(fx(980))) {
-            Text(
-                series.name,
-                style = stageText(92, 800, (-2.5).mpxSp).copy(lineHeight = 92.mpxSp),
-                color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
+            // At most 170 high, the room the films' hero gives its title, so two lines shrink rather than
+            // push the episodes down.
+            tv.own.owntv.features.shell.components.VodHeroTitle(series.name, Modifier.heightIn(max = 170.mpx))
             VodMeta(
                 parts = listOfNotNull(
                     info.year?.toString(),
@@ -1886,7 +1920,7 @@ internal fun seriesTitleInfo(
 @Composable
 private fun EpisodesBackdrop(url: String?, modifier: Modifier = Modifier) {
     val wash = Color(5, 8, 10)
-    Box(modifier.fillMaxWidth(1400f / 1920f).aspectRatio(2f).dissolveEdges(left = 0.34f, bottom = 0.38f)) {
+    Box(modifier.fillMaxWidth(1400f / 1920f).aspectRatio(2f).dissolveEdges(start = 0.34f, bottom = 0.38f)) {
         if (!url.isNullOrBlank()) {
             AsyncImage(
                 model = url, contentDescription = null, contentScale = ContentScale.Crop,

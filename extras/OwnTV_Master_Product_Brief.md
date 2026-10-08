@@ -201,7 +201,8 @@ List or Guide.
 Library / Organise / Details). A **series page** carries the backdrop, Resume/Play, Favourite,
 **Download season** and series options, season tabs with counts (Specials last and uncounted),
 Grid | List and an Episode order menu (oldest/newest, hide watched); episode titles are cleaned of
-"Show – S01E03 –" prefixes, with TMDB's title filling a gap. **Trailers** play in an in-app player
+"Show – S01E03 –" prefixes, with TMDB's title filling a gap. Page and hero headlines drop a leading
+provider tag such as "|MULTI|"; poster labels keep the provider's spelling. **Trailers** play in an in-app player
 (OK pauses, ◀ ▶ skip 10 s) that tries the next stored trailer when one is blocked, then offers to open
 YouTube.
 

@@ -8,10 +8,12 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -249,11 +251,13 @@ internal fun SettingsPage(entry: FocusRequester, pinned: Int, onOpenGroup: (Int)
         }
         Column(Modifier.padding(top = 22.mpx), verticalArrangement = Arrangement.spacedBy(20.mpx)) {
             SettingsCards.chunked(3).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
+                // 150 at the default font; a larger app font grows the row rather than cutting the
+                // summary, and the row's cards keep one height.
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
                     row.forEach { card ->
                         val index = SettingsCards.indexOf(card)
                         StageTile(
-                            modifier = Modifier.weight(1f).height(150.mpx).then(if (index == back) Modifier.focusRequester(entry) else Modifier),
+                            modifier = Modifier.weight(1f).heightIn(min = 150.mpx).fillMaxHeight().then(if (index == back) Modifier.focusRequester(entry) else Modifier),
                             onClick = { lastOpenedCard = index; onOpenGroup(index) },
                             padding = 0.mpx,
                         ) { focused ->

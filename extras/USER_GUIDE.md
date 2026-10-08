@@ -408,7 +408,8 @@ Rolls into the next season too. In the last 30 seconds a card counts down, with 
 **Cancel**.
 
 ### ✅ Watched state
-A ✓ once watched to 95%, a progress bar when part-way. Long-press → **Mark as watched /
+A ✓ once watched to 95%, a progress bar when part-way — on episodes and on film posters; a show's
+poster carries the bar of its latest part-watched episode. Long-press → **Mark as watched /
 unwatched** to correct it by hand.
 
 ### ↕️ Episode order & hide watched
@@ -463,7 +464,7 @@ QR + PIN rather than typing it. A self-hosted Cloudflare Worker also works (one 
 **Where:** the top of Home · Settings → Layout → Home screen → **Now trending**
 Current TMDB charts, filtered to titles your provider can actually play — up to 10, refreshed every
 five to eight days; needs TMDB metadata. **Full-bleed** (default) shows one title over its backdrop:
-its rank, **IN YOUR PLAYLIST**, title, year, genres, rating, synopsis, and **Play** (or **Open
+its rank, **IN YOUR PLAYLIST**, title (its title art when TMDB has it), year, genres, rating, synopsis, and **Play** (or **Open
 episodes**), **Trailer**, **All versions** (when your playlist has several copies), details and
 favourite. **Down** reaches the pager under the buttons; **◀ ▶** there change the title. Moving into
 the rows folds the hero small; **Up** from the first row opens it again. **Posters only** shows the

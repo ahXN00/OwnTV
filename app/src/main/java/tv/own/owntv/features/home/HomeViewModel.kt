@@ -62,6 +62,8 @@ data class HomeHeroMetadata(
 data class TrendingExtras(
     val genres: List<String> = emptyList(),
     val versions: Int = 1,
+    /** TMDB title art, shown instead of the text title when there is one (as the films/series hero). */
+    val logoUrl: String? = null,
 )
 
 @Immutable
@@ -268,18 +270,23 @@ class HomeViewModel(
 
     private val resolvingTrendingKeys = mutableSetOf<String>()
 
-    /** Genres from the cached TMDB details, and the count of same-title entries in the active playlists. */
+    /** Genres and title art from the cached TMDB details, and the count of same-title entries in the active playlists. */
     private fun resolveTrendingExtras(item: TrendingHomeItem) {
         val key = item.stableKey
         if (_uiState.value.trendingExtras.containsKey(key) || !resolvingTrendingKeys.add(key)) return
         viewModelScope.launch {
             try {
                 val extras = withContext(Dispatchers.IO) {
-                    val genres = runCatching { resolveTrendingDetails(item).cache?.genresJson }.getOrNull()
+                    val cache = runCatching { resolveTrendingDetails(item).cache }.getOrNull()
+                    val genres = cache?.genresJson
                         ?.let { json -> runCatching { org.json.JSONArray(json) }.getOrNull() }
                         ?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf(String::isNotBlank) } }
                         .orEmpty()
-                    TrendingExtras(genres = genres, versions = runCatching { versionCount(item) }.getOrDefault(1))
+                    TrendingExtras(
+                        genres = genres,
+                        versions = runCatching { versionCount(item) }.getOrDefault(1),
+                        logoUrl = MetadataImages.logo(cache?.logoPath),
+                    )
                 }
                 _uiState.value = _uiState.value.copy(trendingExtras = _uiState.value.trendingExtras + (key to extras))
             } finally {

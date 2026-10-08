@@ -184,7 +184,11 @@ internal fun LiveStageRow(
     }
 }
 
-/** `.plate`: the logo on a white plate, radius 12 (the guide's 10), whatever the logo's own colours. */
+/**
+ * `.plate`: the logo, radius 12 (the guide's 10). Transparent logos keep their transparency; only one
+ * that would be unreadable on the dark UI gets a plate ([ChannelLogoTile]). A white plate under every
+ * logo made white-ink logos (Sky) vanish.
+ */
 @Composable
 internal fun LivePlate(
     logoUrl: String?,
@@ -192,8 +196,8 @@ internal fun LivePlate(
     height: androidx.compose.ui.unit.Dp,
     radius: androidx.compose.ui.unit.Dp = StageRadii.Plate,
 ) {
-    Box(Modifier.size(width, height).clip(RoundedCornerShape(radius)).background(Color.White)) {
-        ChannelLogoTile(logoUrl = logoUrl, modifier = Modifier.fillMaxSize(), fill = Color.Transparent) {
+    Box(Modifier.size(width, height).clip(RoundedCornerShape(radius))) {
+        ChannelLogoTile(logoUrl = logoUrl, modifier = Modifier.fillMaxSize(), fill = StageColors.ControlFill) {
             OwnTVIcon(OwnTVIcon.LIVE_TV, tint = StageColors.Dim, modifier = Modifier.align(Alignment.Center).size(height * 0.5f))
         }
     }

@@ -81,8 +81,8 @@ internal fun LazyListScope.recordingItems(
                 // A recording still being written is not playable here: two readers on one growing file.
                 onClick = if (r.status == RecordingStatus.COMPLETED) ({ onPlay(r) }) else null,
                 art = {
-                    // The channel's logo on the white plate, as everywhere a channel is named.
-                    Box(Modifier.fillMaxSize().background(Color.White).padding(14.mpx), contentAlignment = Alignment.Center) {
+                    // The channel's logo on its plate, as everywhere a channel is named.
+                    Box(Modifier.fillMaxSize().background(Color(0xFF0F1518)).padding(14.mpx), contentAlignment = Alignment.Center) {
                         tv.own.owntv.features.live.LivePlate(r.channelIconUrl, 162.mpx, 79.mpx)
                     }
                 },

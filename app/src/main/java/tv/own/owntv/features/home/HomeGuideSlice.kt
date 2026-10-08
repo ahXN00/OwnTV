@@ -27,18 +27,17 @@ import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.Text
-import coil3.compose.AsyncImage
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.EpgProgrammeEntity
 import tv.own.owntv.core.epg.displayLogoUrl
 import tv.own.owntv.core.home.GuideSliceState
 import tv.own.owntv.core.model.HomeLiveRowMode
+import tv.own.owntv.ui.components.ChannelLogoTile
 import tv.own.owntv.ui.stage.StageFocus
 import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.theme.StageColors
@@ -49,7 +48,7 @@ import tv.own.owntv.ui.theme.stageText
 
 /**
  * A live rail on Home (Favourite channels, Recent channels): one `.oncard` per channel, 336 × 132 —
- * the logo on its white plate, the name, and in "On now" mode the programme, the time left and its
+ * the logo on its plate, the name, and in "On now" mode the programme, the time left and its
  * progress. "Cards" mode is the same card with the name only.
  */
 @Composable
@@ -149,22 +148,21 @@ internal fun OnNowCard(
     }
 }
 
-/** `.plate`: a channel logo fitted on white; the channel's number or initial when it has no logo. */
+/**
+ * `.plate`: a channel logo, transparent unless it would be unreadable ([ChannelLogoTile]); the
+ * channel's number or initial when it has no logo.
+ */
 @Composable
 fun ChannelPlate(channel: ChannelEntity, modifier: Modifier = Modifier) {
-    Box(
-        modifier.clip(RoundedCornerShape(StageRadii.Plate)).background(Color.White),
-        contentAlignment = Alignment.Center,
+    ChannelLogoTile(
+        logoUrl = channel.displayLogoUrl,
+        modifier = modifier.clip(RoundedCornerShape(StageRadii.Plate)),
+        fill = StageColors.ControlFill,
     ) {
-        val logo = channel.displayLogoUrl
-        if (!logo.isNullOrBlank()) {
-            AsyncImage(model = logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
-        } else {
-            Text(
-                channel.number?.toString() ?: channel.name.take(1).uppercase(),
-                style = stageText(18, 800), color = Color(0xFF121A1C), maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Text(
+            channel.number?.toString() ?: channel.name.take(1).uppercase(),
+            style = stageText(18, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

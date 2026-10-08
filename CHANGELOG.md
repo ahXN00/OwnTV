@@ -12,6 +12,8 @@
 ### ✨ New features
 - **↩️ Restore a category, or the playlists shown, to the playlist default** (community PR #235 by @tvdev-android)
 - **🔄 "Stream interrupted. Reconnecting…" while a live channel recovers** (community PR #237 by @tvdev-android)
+- **🖼️ Title art in Home's trending banner**
+- **📊 Progress bars on series posters**
 
 ### 🐛 Fixes
 - **⚡ Opening a channel from its preview goes straight to full screen, no black gap** (community PR #242 by @tvdev-android)
@@ -25,6 +27,19 @@
 - **🔄 Restored playlists download straight away after a restore**
 - **🔑 Password fields use the password keyboard and show a Show button in setup**
 - **⚠️ First-run restore warns when Sources is unticked**
+- **📺 Channel logos with white lettering readable again, no white tile behind logos**
+- **📊 Progress bars and the watched ✓ back on film posters**
+- **⏱️ The seek bar's time no longer cut off at the top or the ends**
+- **🧭 The floating menu no longer flashes open when opening a page**
+- **🧭 Extra-wide menu shows its second line at large font sizes**
+- **🔠 Long film and series titles fit instead of being cut off, and show once in the browse panel**
+- **🇫🇷 Info and favourite buttons on Home's trending banner visible in every language**
+- **📋 The playlist picker scrolls to the last playlist**
+- **🌍 Backdrops fade on the correct side in Arabic and other right-to-left languages**
+- **🏠 Home's trending banner sits higher, showing more rows**
+- **⚙️ Settings cards show their whole text at large font sizes**
+- **↩️ Back from a series page returns to the show you opened**
+- **🏷️ Provider tags such as "|MULTI|" no longer lead film and series titles on their pages**
 
 ## v5.1.0 — 2026-10-04
 

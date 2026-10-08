@@ -570,6 +570,16 @@ class SeriesViewModel(
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    /** Per show, how far into its most recently watched episode this profile is — the bar on the
+     *  show's poster and list row. A finished latest episode has no entry: nothing left to resume. */
+    val seriesProgress: StateFlow<Map<Long, Float>> = ctx
+        .flatMapLatest { c -> if (c.profileId < 0) flowOf(emptyList()) else progressDao.observeLatestEpisodeProgressPerSeries(c.profileId) }
+        .map { rows ->
+            rows.filter { it.durationMs > 0 && it.positionMs < (it.durationMs * 0.95f).toLong() }
+                .associate { it.seriesId to it.positionMs.toFloat() / it.durationMs }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     val episodes: StateFlow<List<EpisodeEntity>> = _openedSeries
         .flatMapLatest { s -> if (s == null) flowOf(emptyList()) else seriesDao.episodesBySeries(s.id) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())

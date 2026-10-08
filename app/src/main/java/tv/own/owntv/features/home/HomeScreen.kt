@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import tv.own.owntv.R
@@ -118,8 +119,12 @@ import java.util.Locale
 /** The row gap; the headings' mockup positions below already include it. */
 private val RowGap = 40.mpx
 
-/** Screen-top to the Keep watching heading under the full hero (`top: 744px`), less the row gap. */
-private val HeroHeight = 744.mpx - RowGap
+/** How far the full hero's text sits above the mockup's (`top: 170px`), and the rows with it: the
+ *  top-left corner is empty, and the rows below are what the screen is short of. */
+private val HeroLift = 60.mpx
+
+/** Screen-top to the Keep watching heading under the full hero (`top: 744px`, less [HeroLift]), less the row gap. */
+private val HeroHeight = 744.mpx - HeroLift - RowGap
 
 /** Screen-top to the first row heading once the hero is folded (`top: 228px`), less the row gap. */
 private val CompactHeroHeight = 228.mpx - RowGap
@@ -652,7 +657,7 @@ private fun TrendingBackdrop(item: TrendingHomeItem, folded: Boolean, modifier: 
                 .fillMaxWidth()
                 .height(height)
                 .alpha(if (folded) 0.55f else 1f)
-                .dissolveEdges(left = 0.34f, bottom = 0.38f),
+                .dissolveEdges(start = 0.34f, bottom = 0.38f),
         ) {
             AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             if (!folded) {
@@ -787,24 +792,39 @@ private fun TrendingHero(
     ) {
         // Never squeezed by the fixed height: a child that did not fit would be measured to nothing.
         Column(
-            Modifier.padding(start = start, top = 170.mpx).width(900.mpx)
+            Modifier.padding(start = start, top = 170.mpx - HeroLift).width(900.mpx)
                 .wrapContentHeight(Alignment.Top, unbounded = true),
         ) {
             TrendingEyebrow(item, withTag = true)
             // 18 in the mockup; Compose's trimmed 112 line box starts its glyphs 10 px lower than
             // Chrome's `line-height: 1` box (measured on the TV against P2-01).
             Spacer(Modifier.height(8.mpx))
-            Text(
-                snapshot.localizedTitle,
-                style = stageText(112, 800, (-3).mpxSp).copy(
-                    lineHeight = 112.mpxSp,
-                    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
-                ),
-                color = StageColors.Text,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                onTextLayout = { titleLines = it.lineCount },
-            )
+            // The title art when TMDB has it, as the films and series hero do; the text title otherwise,
+            // and if the art fails to load. 170 high, the room the films hero gives it.
+            var logoFailed by remember(extras.logoUrl) { mutableStateOf(false) }
+            val showLogo = !extras.logoUrl.isNullOrBlank() && !logoFailed
+            if (showLogo) {
+                AsyncImage(
+                    model = extras.logoUrl,
+                    contentDescription = snapshot.localizedTitle,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.CenterStart,
+                    onState = { if (it is AsyncImagePainter.State.Error) logoFailed = true },
+                    modifier = Modifier.fillMaxWidth().height(170.mpx),
+                )
+            } else {
+                Text(
+                    snapshot.localizedTitle,
+                    style = stageText(112, 800, (-3).mpxSp).copy(
+                        lineHeight = 112.mpxSp,
+                        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+                    ),
+                    color = StageColors.Text,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { titleLines = it.lineCount },
+                )
+            }
             Spacer(Modifier.height(18.mpx))
             Row(horizontalArrangement = Arrangement.spacedBy(16.mpx), verticalAlignment = Alignment.CenterVertically) {
                 val metaStyle = stageText(21, 600)
@@ -830,7 +850,8 @@ private fun TrendingHero(
                     color = Color(0xFFC9D3CF),
                     // Four lines as drawn; a title that needs a second line (112 high) takes three of
                     // them, so the pager still ends above the Keep watching heading.
-                    maxLines = if (titleLines > 1) 1 else 4,
+                    // The title art is 170 high, 58 more than one title line, so it costs two of them.
+                    maxLines = if (titleLines > 1) 1 else if (showLogo) 2 else 4,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = 760.mpx),
                 )
@@ -838,28 +859,33 @@ private fun TrendingHero(
             Spacer(Modifier.height(36.mpx))
             Row(horizontalArrangement = Arrangement.spacedBy(14.mpx), verticalAlignment = Alignment.CenterVertically) {
                 val isMovie = item is TrendingHomeItem.Movie
-                StageButton(
-                    text = stringResource(if (isMovie) R.string.home_trending_play else R.string.home_trending_open_episodes),
-                    onClick = { onActivate(item) },
-                    icon = if (isMovie) OwnTVIcon.PLAY else OwnTVIcon.SERIES,
-                    iconFilled = isMovie,
-                    modifier = Modifier.focusRequester(primaryFocusRequester).tracked(primaryFocusRequester, track),
-                )
-                if (!snapshot.trailerKey.isNullOrBlank()) {
+                // The labelled buttons get what the two round ones leave, as one group: long French or
+                // German labels otherwise took the whole row and Info and ♥ got none (#4). Inside the group
+                // each keeps its own width; only when they do not all fit does the last one shorten to "…".
+                Row(Modifier.weight(1f, fill = false), horizontalArrangement = Arrangement.spacedBy(14.mpx), verticalAlignment = Alignment.CenterVertically) {
                     StageButton(
-                        text = stringResource(R.string.home_trending_trailer),
-                        onClick = { onTrailer(item) },
-                        icon = OwnTVIcon.PLAY_CIRCLE,
-                        modifier = Modifier.focusRequester(trailerFocusRequester).tracked(trailerFocusRequester, track),
+                        text = stringResource(if (isMovie) R.string.home_trending_play else R.string.home_trending_open_episodes),
+                        onClick = { onActivate(item) },
+                        icon = if (isMovie) OwnTVIcon.PLAY else OwnTVIcon.SERIES,
+                        iconFilled = isMovie,
+                        modifier = Modifier.focusRequester(primaryFocusRequester).tracked(primaryFocusRequester, track),
+                    )
+                    if (!snapshot.trailerKey.isNullOrBlank()) {
+                        StageButton(
+                            text = stringResource(R.string.home_trending_trailer),
+                            onClick = { onTrailer(item) },
+                            icon = OwnTVIcon.PLAY_CIRCLE,
+                            modifier = Modifier.focusRequester(trailerFocusRequester).tracked(trailerFocusRequester, track),
+                        )
+                    }
+                    StageButton(
+                        text = stringResource(R.string.home_trending_all_versions),
+                        onClick = { onAllVersions(item) },
+                        icon = OwnTVIcon.LAYERS,
+                        trailing = extras.versions.takeIf { it > 1 }?.toString(),
+                        modifier = Modifier.focusRequester(versionsFocusRequester).tracked(versionsFocusRequester, track),
                     )
                 }
-                StageButton(
-                    text = stringResource(R.string.home_trending_all_versions),
-                    onClick = { onAllVersions(item) },
-                    icon = OwnTVIcon.LAYERS,
-                    trailing = extras.versions.takeIf { it > 1 }?.toString(),
-                    modifier = Modifier.focusRequester(versionsFocusRequester).tracked(versionsFocusRequester, track),
-                )
                 StageButton(
                     text = null,
                     onClick = { onDetails(item) },
@@ -1039,9 +1065,12 @@ private fun StillArtwork(still: HomeStill) {
     when (still) {
         is HomeStill.Picture -> AsyncImage(model = still.url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         is HomeStill.Logo -> Box(Modifier.fillMaxSize().background(Color(0xFF0F1518)), contentAlignment = Alignment.Center) {
-            Box(Modifier.fillMaxSize(0.5f).clip(RoundedCornerShape(12.mpx)).background(Color.White).padding(8.mpx)) {
-                AsyncImage(model = still.url, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
-            }
+            tv.own.owntv.ui.components.ChannelLogoTile(
+                logoUrl = still.url,
+                modifier = Modifier.fillMaxSize(0.5f).clip(RoundedCornerShape(12.mpx)),
+                imageModifier = Modifier.fillMaxSize().padding(8.mpx),
+                fill = Color.Transparent,
+            ) {}
         }
         HomeStill.None -> Box(Modifier.fillMaxSize().background(Color(0xFF0F1518)), contentAlignment = Alignment.Center) {
             OwnTVIcon(OwnTVIcon.PLAY_CIRCLE, tint = StageColors.Dim, modifier = Modifier.size(40.mpx))

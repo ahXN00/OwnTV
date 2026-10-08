@@ -5,7 +5,7 @@ sealed interface HomeStill {
     /** A picture filling the frame, cropped to 16:9 (a poster is cropped too). */
     data class Picture(val url: String) : HomeStill
 
-    /** A channel logo, fitted on a white plate in the middle of the frame. */
+    /** A channel logo, fitted in the middle of the frame. */
     data class Logo(val url: String) : HomeStill
 
     data object None : HomeStill

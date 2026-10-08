@@ -47,6 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.em
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
@@ -61,6 +64,7 @@ import java.util.Locale
 import tv.own.owntv.R
 import tv.own.owntv.core.live.LiveKey
 import tv.own.owntv.core.metadata.CastMember
+import tv.own.owntv.core.metadata.HeadlineTitle
 import tv.own.owntv.core.metadata.MetadataImages
 import tv.own.owntv.core.model.ContentMenu
 import tv.own.owntv.core.settings.SettingsRepository.SortMode
@@ -191,7 +195,7 @@ internal fun VodCinematicBackdrop(url: String?, series: Boolean, modifier: Modif
     val wash = Color(5, 8, 10)
     // object-position 30% 40% (Movies) / 100% 40% (Series), as drawn.
     val focus = BiasAlignment(if (series) 1f else -0.4f, -0.2f)
-    Box(modifier.fillMaxWidth(1400f / 1920f).aspectRatio(1400f / 720f).dissolveEdges(left = 0.34f, bottom = 0.38f)) {
+    Box(modifier.fillMaxWidth(1400f / 1920f).aspectRatio(1400f / 720f).dissolveEdges(start = 0.34f, bottom = 0.38f)) {
         Crossfade(targetState = settled, animationSpec = ownTvTween(420), label = "vodBackdrop") { u ->
             if (!u.isNullOrBlank()) {
                 AsyncImage(model = u, contentDescription = null, contentScale = ContentScale.Crop, alignment = focus, modifier = Modifier.fillMaxSize())
@@ -238,11 +242,7 @@ internal fun VodHero(info: VodTitleInfo, modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
-                Text(
-                    info.title,
-                    style = stageText(92, 800, (-2.5).mpxSp).copy(lineHeight = (92 * 1.02f).mpxSp),
-                    color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+                VodHeroTitle(info.title)
             }
         }
         VodMeta(
@@ -258,6 +258,23 @@ internal fun VodHero(info: VodTitleInfo, modifier: Modifier = Modifier) {
         }
         if (info.cast.isNotEmpty()) VodCast(info.cast, 6, Modifier.padding(top = 20.mpx))
     }
+}
+
+/**
+ * The hero's title when there is no title art: 92/800 at most, shrinking to 48 and wrapping to a second
+ * line so a long name fits instead of running off as "Building the Ban…" (#7.3). Shared with the series
+ * page's header. A leading provider tag ("|MULTI| ") is not part of a headline.
+ */
+@Composable
+internal fun VodHeroTitle(title: String, modifier: Modifier = Modifier) {
+    BasicText(
+        HeadlineTitle.of(title),
+        modifier,
+        style = stageText(92, 800, (-2.5f / 92f).em).copy(lineHeight = 1.02.em, color = StageColors.Text),
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(minFontSize = 48.mpxSp, maxFontSize = 92.mpxSp, stepSize = 4.mpxSp),
+    )
 }
 
 /** `metaHtml`: "2026 • Animation, Family • 1 h 42 min • ★ 8.4 [4K] [HDR]", 600 weight, dots at 40%. */
@@ -354,16 +371,12 @@ internal fun VodDetailsCard(info: VodTitleInfo?, hints: List<Pair<String, String
                             onState = { if (it is AsyncImagePainter.State.Error) logoFailed = true },
                             modifier = Modifier.align(Alignment.BottomStart).padding(start = 18.mpx, bottom = 14.mpx, end = 18.mpx).height(96.mpx).fillMaxWidth(),
                         )
-                    } else {
-                        Text(
-                            info.title, style = stageText(40, 800), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(start = 20.mpx, bottom = 16.mpx, end = 20.mpx),
-                        )
                     }
+                    // No name over the art without title art: the line under it already says it (#7.3).
                 }
                 Column(Modifier.padding(horizontal = 4.mpx)) {
                     Text(
-                        info.title, style = stageText(32, 800), color = StageColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        HeadlineTitle.of(info.title), style = stageText(24, 800), color = StageColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(top = 18.mpx, bottom = 8.mpx),
                     )
                     VodMeta(listOfNotNull(info.year?.toString(), info.runtimeSecs?.let { vodRuntime(it) }), info.rating, info.tags, 17)

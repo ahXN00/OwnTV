@@ -1248,9 +1248,7 @@ private fun ChannelContextMenu(
                     title = listOfNotNull(channel.number?.toString(), ProviderTags.parse(channel.name).name).joinToString(" · "),
                     subtitle = subtitle,
                     leading = {
-                        Box(Modifier.size(70.mpx, 50.mpx).clip(RoundedCornerShape(12.mpx)).background(Color.White)) {
-                            tv.own.owntv.ui.components.ChannelLogoTile(channel.displayLogoUrl, Modifier.fillMaxSize(), fill = Color.Transparent) {}
-                        }
+                        LivePlate(channel.displayLogoUrl, 70.mpx, 50.mpx)
                     },
                 )
                 var previousGroup: Int? = null

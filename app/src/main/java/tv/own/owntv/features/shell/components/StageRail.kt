@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -353,7 +354,9 @@ private fun RailItem(
     StageSurface(
         onClick = onClick,
         radius = r,
-        modifier = modifier.then(if (open) Modifier.fillMaxWidth().height(60.mpx) else Modifier.size(58.mpx)),
+        // At least 60, not exactly: with a large font size the name and its detail line need more, and a
+        // fixed height cut the detail line off (#7.2).
+        modifier = modifier.then(if (open) Modifier.fillMaxWidth().heightIn(min = 60.mpx) else Modifier.size(58.mpx)),
         idle = if (active) Modifier.background(a.accent.copy(alpha = 0.14f), RoundedCornerShape(r)) else Modifier,
         contentAlignment = if (open) Alignment.CenterStart else Alignment.Center,
     ) { focused ->
@@ -368,7 +371,7 @@ private fun RailItem(
             return@StageSurface
         }
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 18.mpx),
+            Modifier.fillMaxWidth().padding(horizontal = 18.mpx, vertical = 6.mpx),
             horizontalArrangement = Arrangement.spacedBy(18.mpx),
             verticalAlignment = Alignment.CenterVertically,
         ) {

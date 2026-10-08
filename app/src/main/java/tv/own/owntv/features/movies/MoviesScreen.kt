@@ -640,10 +640,14 @@ fun MoviesScreen(
                             ) {
                                 items(count = movies.itemCount, key = movies.itemKey { it.id }, contentType = movies.itemContentType { "movie" }) { index ->
                                     val movie = movies[index] ?: return@items
+                                    val prog = movieProgress[movie.id]
+                                    val done = prog?.let { vm.isMovieCompleted(it) } == true
                                     StagePoster(
                                         title = movie.name,
                                         rating = movie.rating?.takeIf { it > 0 }?.let(::vodRating),
                                         width = 196.mpx, height = 294.mpx,
+                                        progress = prog?.takeIf { it.durationMs > 0 }?.let { it.positionMs.toFloat() / it.durationMs },
+                                        watched = done,
                                         onClick = { startMovie(movie) },
                                         onLongClick = { openMenu(movie, index) },
                                         modifier = Modifier
@@ -804,11 +808,15 @@ fun MoviesScreen(
                         ) {
                             items(count = movies.itemCount, key = movies.itemKey { it.id }, contentType = movies.itemContentType { "movie" }) { index ->
                                 val movie = movies[index] ?: return@items
+                                val prog = movieProgress[movie.id]
+                                val done = prog?.let { vm.isMovieCompleted(it) } == true
                                 StagePoster(
                                     title = movie.name,
                                     rating = movie.rating?.takeIf { it > 0 }?.let(::vodRating),
                                     width = posterW, height = posterW * 1.5f,
                                     compact = true,
+                                    progress = prog?.takeIf { it.durationMs > 0 }?.let { it.positionMs.toFloat() / it.durationMs },
+                                    watched = done,
                                     onClick = { startMovie(movie) },
                                     onLongClick = { openMenu(movie, index) },
                                     modifier = Modifier

@@ -773,12 +773,17 @@ fun StagePoster(
     compact: Boolean = false,
     /** More › Favourites: a muted line under the title ("Movie"); the title is then 18/700 white. */
     line: String? = null,
+    /** How far the title has been watched: the 6 px accent bar along the artwork's bottom, as on `.ep`. */
+    progress: Float? = null,
+    /** A finished title: the `.ep` ✓ badge in the top corner instead of a bar. */
+    watched: Boolean = false,
     artwork: @Composable BoxScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val accent = stageAccent
     val r = StageRadii.Poster
+    val badge = Color(8, 12, 14)
     Column(
         modifier
             .width(width)
@@ -801,6 +806,20 @@ fun StagePoster(
         ) {
             artwork()
             if (rating != null) StageRatingChip(rating, Modifier.padding(8.mpx), small = compact)
+            if (watched) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(8.mpx).size(if (compact) 26.mpx else 30.mpx)
+                        .background(badge.copy(alpha = 0.9f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) { StageIcon(OwnTVIcon.CHECK, accent.accent, if (compact) 16.mpx else 18.mpx) }
+            } else if (progress != null && progress > 0f) {
+                Box(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().height(6.mpx)
+                        .background(Color.Black.copy(alpha = 0.55f)),
+                ) {
+                    Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(6.mpx).background(accent.accent))
+                }
+            }
         }
         Spacer(Modifier.height(12.mpx))
         Text(

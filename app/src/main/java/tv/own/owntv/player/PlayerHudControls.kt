@@ -53,8 +53,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import tv.own.owntv.R
@@ -138,10 +141,11 @@ internal fun TransportCapsule(modifier: Modifier = Modifier, content: @Composabl
  */
 @Composable
 internal fun Dock(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    // No clip: the fill and rim already take the shape, and a clip cut off the seek bar's time bubble,
+    // which floats above band A — outside the dock.
     Column(
         modifier
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(22.dp))
             .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(22.dp))
             .padding(horizontal = 18.dp, vertical = 12.dp),
         content = content,
@@ -427,9 +431,10 @@ internal fun SeekBar(positionMs: Long, durationMs: Long, bufferedMs: Long, stepM
             // Time-remaining bubble above the thumb (elapsed is shown at the bar's left, total at the right,
             // so the bubble shows what's LEFT: "-12:34"). Uses a negative offset (not bottom padding) so it
             // floats clear above the 24dp-tall bar — padding can't lift it out of the height-constrained parent.
-            Box(Modifier.fillMaxWidth(frac), contentAlignment = Alignment.CenterEnd) {
+            // Centred on the thumb but held inside the bar, so it never slides off either end.
+            Box(Modifier.fillMaxWidth()) {
                 Box(
-                    Modifier.offset(y = (-32).dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.9f)).padding(horizontal = 8.dp, vertical = 3.dp),
+                    Modifier.atFraction(frac).offset(y = (-32).dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.9f)).padding(horizontal = 8.dp, vertical = 3.dp),
                 ) {
                     Text(
                         stringResource(R.string.player_time_remaining, formatTime((durationMs - positionMs).coerceAtLeast(0))),
@@ -441,6 +446,15 @@ internal fun SeekBar(positionMs: Long, durationMs: Long, bufferedMs: Long, stepM
         }
     }
     }
+}
+
+/** Places the element centred at [fraction] of the parent's width, clamped so it stays fully inside. */
+private fun Modifier.atFraction(fraction: Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(Constraints())
+    val width = constraints.maxWidth
+    val x = (fraction * width - placeable.width / 2f).roundToInt()
+        .coerceIn(0, (width - placeable.width).coerceAtLeast(0))
+    layout(width, placeable.height) { placeable.place(x, 0) }
 }
 
 internal const val LIVE_SCRUB_STEP_SEC = 60     // per Left/Right press (hold to scrub fast); buttons stay 30 s

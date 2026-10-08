@@ -19,6 +19,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -159,6 +160,14 @@ fun OwnTVShell(
 
     val scope = rememberCoroutineScope()
     val sidebarFocus = remember { FocusRequester() }
+    // When focus was last sent to the rail on purpose: ◀ / ▶ from the content, or the app itself
+    // ([focusRail]). A rail visit that follows neither does not open the floating rail (#7.1).
+    var railKeyAt by remember { mutableLongStateOf(0L) }
+    val focusRail = {
+        railKeyAt = android.os.SystemClock.uptimeMillis()
+        runCatching { sidebarFocus.requestFocus() }
+        Unit
+    }
     val contentFocusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val contentLtr = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Ltr
     val homeFirstRowFocus = remember { FocusRequester() }
@@ -555,7 +564,7 @@ fun OwnTVShell(
         subtitleController.clear() // leaving the player drops the OpenSubtitles item context
         if (selectedSection != MainSection.LIVE_TV) liveVm.clearLiveOnExo()
         restoreFocus = true
-        runCatching { sidebarFocus.requestFocus() }
+        focusRail()
         Unit
     }
     /**
@@ -620,7 +629,7 @@ fun OwnTVShell(
         resumeVideo()
         playerMode = PlayerMode.MINI
         restoreFocus = true
-        runCatching { sidebarFocus.requestFocus() }
+        focusRail()
         Unit
     }
     // Switch the current stream to audio-only and surface the now-playing bar in the top bar. Stop the
@@ -629,7 +638,7 @@ fun OwnTVShell(
         (if (liveOnExo) liveVm.previewEngine else mpvEngine).enterAudioOnly()
         playerMode = PlayerMode.AUDIO
         restoreFocus = true
-        runCatching { sidebarFocus.requestFocus() }
+        focusRail()
         Unit
     }
 
@@ -651,7 +660,17 @@ fun OwnTVShell(
     // Focus on a top-right pill (reached from the rail) is not "in the rail": the rail closes, so its
     // scrim never covers the pill that holds focus.
     var clusterFocused by remember { mutableStateOf(false) }
-    val railFocused = focusedLayer == ShellLayer.SIDEBAR && !clusterFocused
+    val railHasFocus = focusedLayer == ShellLayer.SIDEBAR && !clusterFocused
+    // Whether the rail *looks* focused. Focus also lands on the rail by itself — for a moment while a
+    // page swaps, or for as long as a series is still loading and has nothing to focus — and showing
+    // those visits opened the floating rail and restarted its hide delay, so it popped up on every
+    // page (#7.1). So a visit opens it only when it was meant: within [RAIL_KEY_WINDOW_MS] of ◀ / ▶ or
+    // of [focusRail], or once a key is pressed while the rail holds focus.
+    var railFocused by remember { mutableStateOf(false) }
+    // Keyed on [railKeyAt] too: at start-up focus already counts as on the rail before [focusRail] runs.
+    LaunchedEffect(railHasFocus, railKeyAt) {
+        railFocused = railHasFocus && android.os.SystemClock.uptimeMillis() - railKeyAt <= RAIL_KEY_WINDOW_MS
+    }
     LaunchedEffect(railFocused, navStyle, navHideAfterMs) {
         railIdleHidden = false
         if (navStyle == tv.own.owntv.core.settings.SettingsRepository.NavStyle.FLOATING && !railFocused) {
@@ -722,7 +741,7 @@ fun OwnTVShell(
         // to the persistent sidebar after the new destination has rendered.
         scope.launch {
             withFrameNanos { }
-            runCatching { sidebarFocus.requestFocus() }
+            focusRail()
         }
     }
     val dispatchRemoteShortcut: (RemoteShortcutAction) -> Unit = { action ->
@@ -774,7 +793,7 @@ fun OwnTVShell(
     LaunchedEffect(sidebarFocus) {
         tv.own.owntv.core.util.Perf.stamp("shell-composed")
         withFrameNanos { }
-        runCatching { sidebarFocus.requestFocus() }
+        focusRail()
     }
 
     LaunchedEffect(pendingDeepLink, activeProfileId) {
@@ -865,7 +884,7 @@ fun OwnTVShell(
             // Reached from a Search result: Back returns to Search once, its query, tab and row kept.
             searchReturn == selectedSection && focusedLayer != ShellLayer.SIDEBAR -> returnToSearch()
             focusedLayer == ShellLayer.SIDEBAR -> showExit = true
-            else -> runCatching { sidebarFocus.requestFocus() }
+            else -> focusRail()
         }
     }
 
@@ -903,6 +922,11 @@ fun OwnTVShell(
     Box(
         modifier = modifier.fillMaxSize().background(shellBase)
             .onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown) {
+                    if (e.key == Key.DirectionLeft || e.key == Key.DirectionRight) railKeyAt = android.os.SystemClock.uptimeMillis()
+                    // A key pressed on the rail is the user using it, however focus got there.
+                    if (railHasFocus) railFocused = true
+                }
                 if (e.key != Key.Back) return@onPreviewKeyEvent false
                 when (e.type) {
                     KeyEventType.KeyDown -> {
@@ -1105,7 +1129,7 @@ fun OwnTVShell(
                                     val back = if (contentLtr) Key.DirectionLeft else Key.DirectionRight
                                     if (e.key != back || e.type != KeyEventType.KeyDown) return@onKeyEvent false
                                     if (!contentFocusManager.moveFocus(if (contentLtr) androidx.compose.ui.focus.FocusDirection.Left else androidx.compose.ui.focus.FocusDirection.Right)) {
-                                        runCatching { sidebarFocus.requestFocus() }
+                                        focusRail()
                                     }
                                     true
                                 }
@@ -2066,3 +2090,6 @@ private fun railDetail(section: MainSection, d: RailDetails): String? = when (se
     MainSection.MORE -> stringResource(R.string.shell_rail_detail_more)
     else -> null
 }
+
+/** How recently ◀ / ▶ or [focusRail] must have happened for a rail visit to open the rail. */
+private const val RAIL_KEY_WINDOW_MS = 400L

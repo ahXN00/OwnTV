@@ -88,7 +88,7 @@ internal fun SettingsLivePreview() {
                     model = backdropOf(lead),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.align(Alignment.TopEnd).size(1240.mpx, 760.mpx).dissolveEdges(left = 0.45f, bottom = 0.35f),
+                    modifier = Modifier.align(Alignment.TopEnd).size(1240.mpx, 760.mpx).dissolveEdges(start = 0.45f, bottom = 0.35f),
                 )
             }
             // The rail at rest: a glass capsule of icons.
