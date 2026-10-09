@@ -14,6 +14,10 @@
 - **🔄 "Stream interrupted. Reconnecting…" while a live channel recovers** (community PR #237 by @tvdev-android)
 - **🖼️ Title art in Home's trending banner**
 - **📊 Progress bars on series posters**
+- **⏩ Page jumps in the channel list while watching (CH+/CH−, long press for first/last)**
+- **🎞️ Guide video preview on/off switch (Order ▾ › Show)**
+- **🎨 The player's channel list, history and categories in the Stage design**
+- **⭐ Favorites, Recently watched, Catch-up and All channels in the player's category list**
 
 ### 🐛 Fixes
 - **⚡ Opening a channel from its preview goes straight to full screen, no black gap** (community PR #242 by @tvdev-android)

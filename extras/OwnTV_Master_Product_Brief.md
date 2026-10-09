@@ -144,8 +144,9 @@ hiding them first and then exiting.
 **CH+/CH−** always switch channels for the whole Live TV or catch-up session, including while the
 controls are up or playback is starting, wrapping at both ends. **Up/Down** (controls hidden) and the
 media ⏮/⏭ keys do the same. **Left** opens the channel list for the context the channel was opened
-from; **Left again** opens the category browser without leaving full screen. **Right** shows the last
-30 channels. Typing a **channel number** tunes it directly.
+from; **Left again** opens Live TV's own category sheet (Favorites, Recently watched, Catch-up, All
+channels and every group) without leaving full screen. **Right** shows the last 30 channels with when
+each was watched. All three are Stage glass sheets at the screen edge, and CH+/CH− page through them. Typing a **channel number** tunes it directly.
 
 ### 2.7 Resume, auto-play and the mini-player
 
@@ -301,7 +302,8 @@ profile: Home, last channel, Live Favorites, or one chosen channel.
   30-minute steps. Every programme action (Remind me / Watch from start, Record, Watch channel…) is in
   the Hold-OK menu.
 - Order by Provider, A–Z, Catch-up first or Favourites first; the category filter is Live TV's own
-  list; *Show → Channels without guide*.
+  list; *Show → Channels without guide* and *Show → Video preview* (off shows the channel's logo
+  instead of playing it; kept in backups).
 - **Programme reminders** — at the chosen lead time (5 min by default) OwnTV asks to switch, over any
   screen including the player, or switches, or only notifies.
 - The grid reloads only once a guide sync finishes, instead of rebuilding every ~25 s during one.

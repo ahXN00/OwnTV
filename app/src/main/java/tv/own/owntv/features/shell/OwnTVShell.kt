@@ -380,10 +380,13 @@ fun OwnTVShell(
         else -> stringResource(R.string.content_category_all_channels)
     }
     val showCategoryBrowser by liveVm.showCategoryBrowser.collectAsStateWithLifecycle()
-    val browserCategories by liveVm.browserCategories.collectAsStateWithLifecycle()
+    val browserRailItems by liveVm.railItems.collectAsStateWithLifecycle()
+    val browserRailCounts by liveVm.railCounts.collectAsStateWithLifecycle()
     val previewChannel by liveVm.previewChannel.collectAsStateWithLifecycle()
     val playerRecording by liveVm.playerRecording.collectAsStateWithLifecycle()
-    val liveProviderNames by liveVm.providerNames.collectAsStateWithLifecycle()
+    val overlayProgrammes by liveVm.nowProgrammes.collectAsStateWithLifecycle()
+    val overlayFavoriteIds by liveVm.favoriteIds.collectAsStateWithLifecycle()
+    val overlayPlaylistMarks by liveVm.playlistMarks.collectAsStateWithLifecycle()
     // Favorite state for the player HUD's in-stream favorite toggle (live channel / movie / series).
     val liveFavoriteIds by liveVm.favoriteIds.collectAsStateWithLifecycle()
     val playingMovie by movieVm.playingMovie.collectAsStateWithLifecycle()
@@ -438,10 +441,12 @@ fun OwnTVShell(
     }
     // Recently-watched channels for the right-hand history overlay — re-read each time it opens (and
     // after a zap, since tuning writes a new history row) so the newest channel is always on top.
-    val historyChannels by produceState(emptyList<ChannelEntity>(), showHistoryList, previewChannel?.id) {
+    val historyEntries by produceState(emptyList<tv.own.owntv.core.database.dao.ChannelWithWatchedAt>(), showHistoryList, previewChannel?.id) {
         if (!showHistoryList) { value = emptyList(); return@produceState }
         value = runCatching { liveVm.historyChannels() }.getOrDefault(emptyList())
     }
+    val historyChannels = remember(historyEntries) { historyEntries.map { it.channel } }
+    val historyWatchedAt = remember(historyEntries) { historyEntries.associate { it.channel.id to it.watchedAt } }
     val historyNowPlaying = overlayNowPlaying // one shared map; the history rail adds to it below
     LaunchedEffect(historyChannels) { liveVm.ensureNowPlaying(historyChannels) }
     // Batch 7 — the single most-recent resumable item, surfaced as a shared top-bar "Continue" chip.
@@ -1502,7 +1507,8 @@ fun OwnTVShell(
                   // playlist, so a tile can be filled from a playlist the user was not browsing —
                   // which is the whole point of the grid. Back here leaves the picker entirely.
                   tv.own.owntv.features.shell.components.CategoryBrowserOverlay(
-                      categories = browserCategories,
+                      railItems = browserRailItems,
+                      railCounts = browserRailCounts,
                       currentKey = grid.tiles.getOrNull(tile)?.channel?.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) },
                       onSelect = { key -> liveVm.loadChannelsForCategory(key) },
                       onDismiss = { liveVm.hideCategoryBrowser(); multiviewPickFor = null },
@@ -1514,7 +1520,9 @@ fun OwnTVShell(
                       currentId = grid.tiles.getOrNull(tile)?.channel?.id,
                       title = zapOverlayTitle,
                       showNumbers = directTuneEnabled,
-                      providerNames = liveProviderNames,
+                      nowProgrammes = overlayProgrammes,
+                      favoriteIds = overlayFavoriteIds,
+                      playlistMarks = overlayPlaylistMarks,
                       alignEnd = true,
                       // Step two: that category's channels. Back goes up to the categories rather than
                       // out, so a wrong turn costs one press instead of starting again.
@@ -1815,8 +1823,10 @@ fun OwnTVShell(
                     if (showCategoryBrowser) {
                         // Second Left — every Live TV category.
                         tv.own.owntv.features.shell.components.CategoryBrowserOverlay(
-                            categories = browserCategories,
-                            currentKey = previewChannel?.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) },
+                            railItems = browserRailItems,
+                            railCounts = browserRailCounts,
+                            // The list the player zaps in: a built-in rail or custom category when it came from one.
+                            currentKey = zapListKey ?: previewChannel?.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) },
                             onSelect = { key -> liveVm.loadChannelsForCategory(key) },
                             onDismiss = { liveVm.hideCategoryBrowser() },
                             modifier = Modifier.fillMaxSize(),
@@ -1828,12 +1838,14 @@ fun OwnTVShell(
                             channels = zapChannels,
                             currentId = previewChannel?.id,
                             nowPlaying = overlayNowPlaying,
+                            nowProgrammes = overlayProgrammes,
+                            favoriteIds = overlayFavoriteIds,
+                            playlistMarks = overlayPlaylistMarks,
                             title = zapOverlayTitle,
                             showNumbers = directTuneEnabled,
                             onSelect = { liveVm.ensurePlaying(it); showChannelList = false },
                             onDismiss = { showChannelList = false },
-                    onOpenCategories = { liveVm.showCategories() },
-                    providerNames = liveProviderNames,
+                            onOpenCategories = { liveVm.showCategories() },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -1844,8 +1856,11 @@ fun OwnTVShell(
                         channels = historyChannels,
                         currentId = previewChannel?.id,
                         nowPlaying = historyNowPlaying,
-                title = stringResource(R.string.content_history),
-                providerNames = liveProviderNames,
+                        nowProgrammes = overlayProgrammes,
+                        favoriteIds = overlayFavoriteIds,
+                        playlistMarks = overlayPlaylistMarks,
+                        watchedAt = historyWatchedAt,
+                        title = stringResource(R.string.content_category_recently_watched),
                         showNumbers = directTuneEnabled,
                         alignEnd = true,
                         onSelect = { liveVm.ensurePlaying(it); showHistoryList = false },

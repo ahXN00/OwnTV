@@ -1109,7 +1109,7 @@ private fun PreviewTexture(engine: HeroPreviewEngine, modifier: Modifier = Modif
 }
 
 @Composable
-private fun relativeLastWatchedLabel(lastEngagementAt: Long, nowMs: Long): String {
+internal fun relativeLastWatchedLabel(lastEngagementAt: Long, nowMs: Long): String {
     val elapsedMs = nowMs - lastEngagementAt
     if (elapsedMs < 60_000L) return stringResource(R.string.home_last_watched_now)
 

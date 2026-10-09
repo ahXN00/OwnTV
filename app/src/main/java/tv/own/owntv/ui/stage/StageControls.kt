@@ -74,6 +74,8 @@ fun StageSearchField(
     autoEdit: Boolean = false,
     /** Set = OK calls this instead of editing here (a full page's search hands over to Settings search). */
     onActivate: (() -> Unit)? = null,
+    /** Typing started (true) or ended (false) — so a host can leave ◀/▶ to the text cursor meanwhile. */
+    onEditingChange: (Boolean) -> Unit = {},
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pillFocused by interaction.collectIsFocusedAsState()
@@ -88,6 +90,7 @@ fun StageSearchField(
     val imeMetrics = LocalTvImeMetrics.current
     val focus = stageAccent.focus
     LaunchedEffect(editing) {
+        onEditingChange(editing)
         if (editing) {
             imeWatcher?.onImeRequested()
             runCatching { fieldFocus.requestFocus() }

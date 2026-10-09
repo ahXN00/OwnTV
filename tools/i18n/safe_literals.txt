@@ -683,6 +683,10 @@
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/AvatarPickerDialog.kt	\0
 2	empty	app/src/main/java/tv/own/owntv/features/shell/components/CategoryRail.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/CategoryRail.kt	__rail_search__
+1	technical	app/src/main/java/tv/own/owntv/features/shell/components/ChannelListOverlay.kt	CH±
+2	technical	app/src/main/java/tv/own/owntv/features/shell/components/ChannelListOverlay.kt	·
+2	technical	app/src/main/java/tv/own/owntv/features/shell/components/ChannelListOverlay.kt	▶
+1	technical	app/src/main/java/tv/own/owntv/features/shell/components/ChannelListOverlay.kt	◀
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/GlassEffectPage.kt	$l — $d
 2	technical	app/src/main/java/tv/own/owntv/features/shell/components/GlassEffectPage.kt	—
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/GlassEffectPage.kt	◀ ▶

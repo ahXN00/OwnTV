@@ -124,6 +124,7 @@ internal fun LiveHeader(category: String, count: Int, showChevron: Boolean, modi
  * `.chrow`: 84 high, 20 padding, 18 gap — number (50, right-aligned, 20/600 dim), white logo plate
  * 76×54, name 22/700, "programme · time left" 17 muted (the time part at 60%), a 300×4 progress line;
  * then the provider tags, ↺ for catch-up, ♥ when a favourite, and the playlist mark. Focused = FX.
+ * [trailing] replaces that end group (the player's History sheet shows when each was watched).
  */
 @Composable
 internal fun LiveStageRow(
@@ -138,6 +139,7 @@ internal fun LiveStageRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     StageRow(
         onClick = onClick,
@@ -175,7 +177,8 @@ internal fun LiveStageRow(
                 StageProgress(progressOf(now), Modifier.width(300.mpx), flat = true)
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.mpx), verticalAlignment = Alignment.CenterVertically) {
+        if (trailing != null) trailing()
+        else Row(horizontalArrangement = Arrangement.spacedBy(8.mpx), verticalAlignment = Alignment.CenterVertically) {
             name.tags.forEach { StageTag(it) }
             if (channel.catchup) OwnTVIcon(OwnTVIcon.REWIND, StageColors.Dim, Modifier.size(22.mpx))
             if (isFavorite) OwnTVIcon(OwnTVIcon.FAVORITE, stageAccent.accent, Modifier.size(22.mpx), filled = true)
@@ -462,6 +465,8 @@ internal fun LiveCategories(
      *  search for one of 100 categories was gone on return). Null = kept here, for this composition. */
     searchQuery: String? = null,
     onSearchQueryChange: ((String) -> Unit)? = null,
+    /** The category search is being typed in (the player's sheet then leaves ◀ to the text cursor). */
+    onSearchEditingChange: (Boolean) -> Unit = {},
 ) {
     var localQuery by remember { mutableStateOf("") }
     val query = searchQuery ?: localQuery
@@ -556,6 +561,7 @@ internal fun LiveCategories(
                     query = query,
                     onQueryChange = setQuery,
                     placeholder = stringResource(R.string.content_search_categories).trimEnd('…'),
+                    onEditingChange = onSearchEditingChange,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = if (sheet) 8.mpx else 0.mpx, end = if (sheet) 8.mpx else 0.mpx, bottom = if (sheet) 14.mpx else 16.mpx)

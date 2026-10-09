@@ -469,6 +469,14 @@ class EpgViewModel(
         viewModelScope.launch { settings.setGuideShowEmpty(show) }
     }
 
+    /** Order ▾ › Show › Video preview: the focused channel plays in the pane; off shows its logo only. */
+    val guidePreview: StateFlow<Boolean> = settings.guidePreview
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setGuidePreview(show: Boolean) {
+        viewModelScope.launch { settings.setGuidePreview(show) }
+    }
+
     /** The Order menu's choice; remembered, so the guide opens this way next time. */
     fun setGuideSort(sort: SettingsRepository.GuideSort) {
         viewModelScope.launch { settings.setSortGuide(sort) }

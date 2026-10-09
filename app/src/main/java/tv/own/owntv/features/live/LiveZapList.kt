@@ -110,9 +110,11 @@ class LiveZapList(
         }
     }
 
-    /** Load one custom category, picked in the in-player category browser — same contract as
-     *  [armForCategory]. Members come from many provider folders, so there is no single [categoryId]. */
-    fun armForCustom(key: LiveKey.Custom, title: String, load: suspend () -> List<ChannelEntity>, onLoaded: () -> Unit) {
+    /** Load a custom category or a built-in rail (Favorites / History / Catch-up / All), picked in the
+     *  in-player category browser — same contract as [armForCategory]. Members come from many provider
+     *  folders, so there is no single [categoryId]; built-in rails pass no [title] (their names are UI
+     *  strings, chosen from [key]). */
+    fun armForKey(key: LiveKey, title: String?, load: suspend () -> List<ChannelEntity>, onLoaded: () -> Unit) {
         loadJob?.cancel()
         loadJob = scope.launch {
             val loaded = load()

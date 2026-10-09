@@ -117,11 +117,12 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 | **Right** | Live TV channel list | Steps into the schedule beside the preview — what's next and later; OK = Remind me / Record / Watch |
 | **Hold Up / Down** | Live TV, Movies, Series lists | Runs through the list to its ends |
 | **Left** | full-screen live | Channel list for the folder you came from |
-| **Left ×2** | full-screen live | All Live TV categories — switch folder without stopping the stream |
-| **Right** | full-screen live | The last 30 channels you watched |
+| **Left ×2** | full-screen live | All Live TV categories, the same sheet as Live TV's (search, Favorites, Recently watched, Catch-up, All channels, groups) — switch list without stopping the stream |
+| **Right** | full-screen live | The last 30 channels you watched, each with when you watched it |
 | **Left / Right** | full-screen live, a channel you can rewind (catch-up, or saved by **Pause and rewind live TV**), **Left and right rewind live TV** on | Rewind / go forward instead of the lists (the timeline comes up; hold to scrub) |
 | **Left / Right** | film or episode, controls hidden | Skip back / forward by your seek step; the seek bar comes up, hold to keep scrubbing |
 | **CH+ / CH−** | full-screen live | Next / previous channel. Wraps around. Always works |
+| **CH+ / CH−** | the channel, history or all-categories list over the player, Multiview's channel picker | Page by 10 items, like any browse list. **Long-press** jumps to first/last |
 | **Last channel** key | full-screen live | Back to the channel you watched before (press again to flip back). Also the clock button on the player bar |
 | **Up / Down** | full-screen live, controls hidden | Same as CH+/CH− |
 | **0–9** | full-screen live | Type a channel number to tune. OK submits, Back cancels |
@@ -265,6 +266,8 @@ then the grid, opened at now with the now-line about a third of the way across.
 - **Hold OK** on a programme: **Remind me** (upcoming) or **Watch from start** (past), **Record**,
   **Watch channel** and more.
 - **Order:** Provider, A–Z, Catch-up first or Favourites first. **Category** uses Live TV's own list.
+  Its **Show** group: **Channels without guide**, and **Video preview** — off, the top shows the
+  channel's logo instead of playing it (also off whenever Live TV's preview is off).
 
 ### 🔔 Programme reminders
 **Where:** hold OK on an upcoming programme → **Remind me** · Settings → Sources & guide →

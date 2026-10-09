@@ -512,6 +512,8 @@ internal fun GuideOrderMenu(
     onPick: (SettingsRepository.GuideSort) -> Unit,
     showEmpty: Boolean,
     onShowEmpty: (Boolean) -> Unit,
+    showPreview: Boolean,
+    onShowPreview: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val focus = remember { FocusRequester() }
@@ -531,6 +533,11 @@ internal fun GuideOrderMenu(
             text = stringResource(R.string.content_epg_show_empty), icon = OwnTVIcon.EYE_OFF,
             value = stringResource(if (showEmpty) R.string.common_on else R.string.common_off),
             onClick = { onShowEmpty(!showEmpty); onDismiss() },
+        )
+        StageMenuItem(
+            text = stringResource(R.string.content_epg_show_preview), icon = OwnTVIcon.VIDEO,
+            value = stringResource(if (showPreview) R.string.common_on else R.string.common_off),
+            onClick = { onShowPreview(!showPreview); onDismiss() },
         )
     }
 }
