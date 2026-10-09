@@ -166,7 +166,7 @@ fun ChannelListOverlay(
                         style = stageText(18, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(stringResource(R.string.common_nav_live_tv), style = stageText(17, 400), color = StageColors.Muted, maxLines = 1)
+                Text(stringResource(R.string.common_nav_live_tv), style = stageText(17, 400), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             val playing = channels.getOrNull(playingIndex)
             val subLine = when {
@@ -228,6 +228,7 @@ fun ChannelListOverlay(
                                     style = stageText(15, if (isPlaying) 700 else 500),
                                     color = if (isPlaying) accent else StageColors.Dim,
                                     maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         },

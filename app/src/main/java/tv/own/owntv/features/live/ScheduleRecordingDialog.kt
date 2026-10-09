@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.tv.material3.Text
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.RecordingEntity
@@ -111,8 +112,8 @@ internal fun ScheduleRecordingDialog(
             else -> null
         }
         Row(Modifier.fillMaxWidth().padding(top = 10.mpx), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(note.orEmpty(), style = stageText(17, 600), color = StageColors.Warn, maxLines = 2)
-            if (nextDay) Text(stringResource(R.string.recording_schedule_next_day), style = stageText(17, 600), color = StageColors.Muted, maxLines = 1)
+            Text(note.orEmpty(), style = stageText(17, 600), color = StageColors.Warn, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (nextDay) Text(stringResource(R.string.recording_schedule_next_day), style = stageText(17, 600), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -121,7 +122,7 @@ internal fun ScheduleRecordingDialog(
 @Composable
 private fun ClockGroup(label: String, minuteOfDay: Int, nudge: (Int) -> Unit, modifier: Modifier) {
     Column(modifier) {
-        Text(label, style = stageText(16, 700), color = StageColors.Muted, maxLines = 1, modifier = Modifier.padding(bottom = 8.mpx))
+        Text(label, style = stageText(16, 700), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 8.mpx))
         Row(horizontalArrangement = Arrangement.spacedBy(8.mpx), verticalAlignment = Alignment.CenterVertically) {
             TimeWheel(value = twoDigits(minuteOfDay / 60), onUp = { nudge(60) }, onDown = { nudge(-60) }, modifier = Modifier.weight(1f))
             Text(":", style = stageText(30, 800), color = StageColors.Muted)
