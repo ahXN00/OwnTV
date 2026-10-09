@@ -211,7 +211,8 @@ YouTube.
 **Downloads** — Movies / Series / Recordings tabs with counts, the volume's name and free space, and
 the folder each tab saves to; rows grouped Downloading / On this TV with picture, details, full file
 path and live "64% · 12.4 MB/s · 3 min left"; actions appear on the focused row only. A Recordings card
-shows the next scheduled recording.
+shows the next scheduled recording. A channel's menu also schedules a recording by day, start and end
+(no guide needed) and offers **Stop recording** while that channel records.
 
 **Search** — tabs All / Live TV / Movies / Series with counts; a channel result shows Live TV's own
 preview pane, a film or series its poster panel. It is a show-only page: **OK goes to the item** in

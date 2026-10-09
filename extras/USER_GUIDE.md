@@ -356,7 +356,10 @@ time**, with a **Playing / Then** guide row.
 button in the player
 A guide recording follows the programme's times; the others record from now. **Record every showing**
 sets a standing rule for that programme on that channel. Recordings appear in
-**Downloads → Recordings**. **Settings → Watching & recording → Recording** sets the padding
+**Downloads → Recordings**. **Schedule recording…** in a channel's menu records it between a day and
+times you pick — guide or not; an end before the start means the next day, and an overlap with another
+recording on the same playlist is shown before you confirm. While a channel records, its menu offers
+**Stop recording**. **Settings → Watching & recording → Recording** sets the padding
 (**Start early**, **Keep going after the end**) and whether one stream is always kept free.
 
 > A recording costs one of your provider's connections and says so before it starts.

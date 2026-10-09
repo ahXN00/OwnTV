@@ -195,6 +195,35 @@ class LiveViewModel(
         }
     }
 
+    /** Channels with a recording running right now, so their menu offers Stop instead of Record. */
+    val recordingChannelIds: StateFlow<Set<Long>> = recordings.observeRunning()
+        .map { rows -> rows.mapTo(HashSet()) { it.channelId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** Stop the running recording(s) of this channel, keeping what was captured. */
+    fun stopRecordingOn(channel: ChannelEntity) {
+        viewModelScope.launch {
+            recordings.observeRunning().first().filter { it.channelId == channel.id }.forEach { row ->
+                recordings.stop(row)
+                if (_playerRecording.value?.id == row.id) _playerRecording.value = null
+            }
+        }
+    }
+
+    /** What already claims this channel's playlist over the window — the clash the dialog warns about. */
+    suspend fun recordingClashes(channel: ChannelEntity, startMs: Long, stopMs: Long): List<tv.own.owntv.core.database.entity.RecordingEntity> {
+        val window = RecordingSchedule.manualWindow(startMs, stopMs, System.currentTimeMillis()) ?: return emptyList()
+        return recordings.clashesWith(channel.sourceId, window.first, window.last)
+    }
+
+    /** Record [channel] between two picked times (#2); [onScheduled] gets the start once it is saved. */
+    fun scheduleRecording(channel: ChannelEntity, startMs: Long, stopMs: Long, onScheduled: (Long) -> Unit) {
+        viewModelScope.launch {
+            val pid = currentProfileId() ?: return@launch
+            recordings.scheduleManual(pid, channel, startMs, stopMs)?.let { onScheduled(it.programmeStartMs) }
+        }
+    }
+
     private suspend fun startRecordingNow(
         channel: ChannelEntity,
         profileId: Long,

@@ -20,6 +20,8 @@
 - **⭐ Favorites, Recently watched, Catch-up and All channels in the player's category list**
 - **⭐ Favourite movies and series rows on Home**
 - **🔎 Search finds TV programmes by title (On TV)**
+- **⏰ Schedule recording… on a channel: pick the day, start and end (#2)**
+- **⏹️ Stop recording from the channel's menu**
 
 ### 🐛 Fixes
 - **⚡ Opening a channel from its preview goes straight to full screen, no black gap** (community PR #242 by @tvdev-android)
@@ -28,6 +30,7 @@
 - **📡 A catch-up of a programme still on air switches to live instead of freezing**
 - **🎬 Films keep playing when the TV changes picture mode or the remote wakes up (#9)**
 - **🔔 The update notice no longer reappears during a session**
+- **📥 Downloads: the focused tab and Download folder no longer cover the text beside them**
 - **🎬 An automatic playlist or guide refresh waits until playback stops**
 - **💾 A first-run backup restore finishes before the app opens, even after Back**
 - **🔄 Restored playlists download straight away after a restore**
@@ -46,6 +49,7 @@
 - **⚙️ Settings cards show their whole text at large font sizes**
 - **↩️ Back from a series page returns to the show you opened**
 - **🏷️ Provider tags such as "|MULTI|" no longer lead film and series titles on their pages**
+- **⏺️ Recordings of some HLS channels were a few kB and would not play (#243)**
 
 ## v5.1.0 — 2026-10-04
 
