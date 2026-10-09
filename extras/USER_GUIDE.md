@@ -477,6 +477,10 @@ trending titles as the first poster row instead.
 Partly-watched films, episodes and recent channels, newest first, as wide pictures with progress and
 "S1 · E2 · 31 min left". Rest on a card for 3 seconds and it plays a preview inside the card.
 
+### ⭐ Favourite movies · Favourite series
+Your favourited films and shows as poster rows, in your Favorites order. **OK** on a film opens it in
+Movies; on a show, its episodes. A row with no favourites isn't shown.
+
 ### 🧩 Rearrange Home
 **Where:** Settings → Layout → **Home screen** (per profile)
 Show or hide each row, **hold OK** to move a row with Up/Down, choose what Keep watching includes, and
@@ -504,7 +508,9 @@ switch channel rows between **Cards** and **On now** (an inline mini-guide).
 Searches Live, Movies and Series together, with tabs **All / Live TV / Movies / Series** and their
 counts. A channel shows Live TV's preview beside the results; a film or show shows its poster panel.
 **OK takes you to the item** — the channel in its own category, the film in its grid, the series page
-— where play, download and every option live; **Back** returns to Search with your query kept. With
+— where play, download and every option live; **Back** returns to Search with your query kept.
+**On TV** lists programmes from the stored guide whose title matches, on now or within the next 12
+hours, with the channel and time; **OK** goes to that channel. With
 the box empty: **Jump to**, your recent searches, and Continue watching.
 
 ### ⭐ Favourites

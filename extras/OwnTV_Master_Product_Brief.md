@@ -183,7 +183,8 @@ unfolds it. **Posters only** makes the trending titles the first poster row inst
 **Keep watching** follows: partly-watched films, episodes and recent channels as 16:9 stills (TMDB
 backdrop → provider backdrop → poster → channel logo on a plate) with progress and time left; resting
 on a card for 3 s plays a muted preview inside it. Then **Favourite channels** (cards or an On-now
-mini-guide), continue rows for films and series as posters, and an optional **Recent channels** row.
+mini-guide), **Favourite movies** and **Favourite series** poster rows (OK opens the film or the
+show), continue rows for films and series as posters, and an optional **Recent channels** row.
 Home feeds the system **Watch Next** row on stock Android TV launchers.
 
 ### 3.2 Sections
@@ -215,7 +216,8 @@ shows the next scheduled recording.
 **Search** — tabs All / Live TV / Movies / Series with counts; a channel result shows Live TV's own
 preview pane, a film or series its poster panel. It is a show-only page: **OK goes to the item** in
 its own category or page, and Back returns to Search with the query kept. Empty, it offers Jump to,
-recent searches and Continue watching.
+recent searches and Continue watching. An **On TV** group lists stored-guide programmes whose title
+matches, on now or in the next 12 hours, and OK goes to the channel.
 
 **More** — a glass section list with the profile row: Settings, Favourites, History, Backup &
 Restore, Local sync, Error log and About, each an enterable page beside the list.

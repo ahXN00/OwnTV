@@ -1216,6 +1216,16 @@ fun OwnTVShell(
                                     }
                                 }
                             },
+                            onOpenMovie = { movie ->
+                                restoreFocus = false
+                                movieVm.revealMovie(movie)
+                                onSelectSection(MainSection.MOVIES)
+                            },
+                            onOpenSeries = { series ->
+                                seriesVm.openSeries(series)
+                                restoreFocus = true
+                                onSelectSection(MainSection.SERIES)
+                            },
                             onOpenTrendingSearch = { query ->
                                 searchVm.setQuery(query)
                                 trendingSearchActive = true

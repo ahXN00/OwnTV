@@ -18,6 +18,8 @@
 - **🎞️ Guide video preview on/off switch (Order ▾ › Show)**
 - **🎨 The player's channel list, history and categories in the Stage design**
 - **⭐ Favorites, Recently watched, Catch-up and All channels in the player's category list**
+- **⭐ Favourite movies and series rows on Home**
+- **🔎 Search finds TV programmes by title (On TV)**
 
 ### 🐛 Fixes
 - **⚡ Opening a channel from its preview goes straight to full screen, no black gap** (community PR #242 by @tvdev-android)

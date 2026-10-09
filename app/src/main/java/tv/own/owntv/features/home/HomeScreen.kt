@@ -76,6 +76,8 @@ import org.koin.compose.koinInject
 import tv.own.owntv.R
 import tv.own.owntv.core.database.dao.TrendingDao
 import tv.own.owntv.core.database.entity.ChannelEntity
+import tv.own.owntv.core.database.entity.MovieEntity
+import tv.own.owntv.core.database.entity.SeriesEntity
 import tv.own.owntv.core.database.entity.MetadataCacheEntity
 import tv.own.owntv.core.home.HeroItem
 import tv.own.owntv.core.home.TrendingHomeItem
@@ -140,6 +142,8 @@ fun HomeScreen(
     onPlayEpisode: (seriesId: Long, episodeId: Long, positionMs: Long) -> Unit,
     onPlayChannel: (channelId: Long, zapChannels: List<ChannelEntity>) -> Unit,
     onActivateTrending: (TrendingHomeItem, onUnavailable: () -> Unit) -> Unit,
+    onOpenMovie: (MovieEntity) -> Unit,
+    onOpenSeries: (SeriesEntity) -> Unit,
     onOpenTrendingSearch: (String) -> Unit,
     onChildFocused: () -> Unit,
     restoreFocus: Boolean = false,
@@ -279,7 +283,7 @@ fun HomeScreen(
         if (fullBleed) runCatching { listState.scrollToItem(0) }
     }
 
-    LaunchedEffect(orderedRows, state.trendingItems, state.heroItems, state.recentLive, state.favoriteLive, state.recentGuide, state.favoriteGuide, state.continueMovies, state.continueSeries, restoreFocus, restoreTrendingSearchFocus) {
+    LaunchedEffect(orderedRows, state.trendingItems, state.heroItems, state.recentLive, state.favoriteLive, state.recentGuide, state.favoriteGuide, state.continueMovies, state.continueSeries, state.favoriteMovies, state.favoriteSeries, restoreFocus, restoreTrendingSearchFocus) {
         if (orderedRows.isEmpty()) {
             if (restoreFocus) onRestored()
             return@LaunchedEffect
@@ -532,6 +536,34 @@ fun HomeScreen(
                             modifier = rowModifier,
                         )
 
+                        HomeRow.FAVORITE_MOVIES -> FavoritePosterRow(
+                            title = row.displayTitle(),
+                            items = state.favoriteMovies,
+                            key = { it.id },
+                            name = { it.name },
+                            poster = { it.posterUrl },
+                            start = contentStart,
+                            onItemClick = onOpenMovie,
+                            onFocus = onNonHeroFocused,
+                            firstItemFocusRequester = firstItemFocusRequester,
+                            track = track,
+                            modifier = rowModifier,
+                        )
+
+                        HomeRow.FAVORITE_SERIES -> FavoritePosterRow(
+                            title = row.displayTitle(),
+                            items = state.favoriteSeries,
+                            key = { it.id },
+                            name = { it.name },
+                            poster = { it.posterUrl },
+                            start = contentStart,
+                            onItemClick = onOpenSeries,
+                            onFocus = onNonHeroFocused,
+                            firstItemFocusRequester = firstItemFocusRequester,
+                            track = track,
+                            modifier = rowModifier,
+                        )
+
                         HomeRow.CONTINUE_MOVIES -> ContinuePosterRow(
                             title = row.displayTitle(),
                             items = state.continueMovies,
@@ -616,6 +648,8 @@ private fun rowHasData(row: HomeRow, state: HomeUiState): Boolean = when (row) {
         HomeLiveRowMode.CARDS -> state.favoriteLive.isNotEmpty()
         HomeLiveRowMode.ON_NOW -> state.favoriteGuide.hasContent
     }
+    HomeRow.FAVORITE_MOVIES -> state.favoriteMovies.isNotEmpty()
+    HomeRow.FAVORITE_SERIES -> state.favoriteSeries.isNotEmpty()
     HomeRow.CONTINUE_MOVIES -> state.continueMovies.isNotEmpty()
     HomeRow.CONTINUE_SERIES -> state.continueSeries.isNotEmpty()
 }
@@ -1158,6 +1192,46 @@ private fun ContinuePosterRow(
                         .onFocusChanged { if (it.hasFocus) onFocus() },
                 ) {
                     AsyncImage(model = item.posterUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
+            }
+        }
+    }
+}
+
+/** Favourite films or shows, in the user's Favorites order. OK opens the item, not a resume. */
+@Composable
+private fun <T> FavoritePosterRow(
+    title: String,
+    items: List<T>,
+    key: (T) -> Long,
+    name: (T) -> String,
+    poster: (T) -> String?,
+    start: Dp,
+    onItemClick: (T) -> Unit,
+    onFocus: () -> Unit,
+    firstItemFocusRequester: FocusRequester?,
+    track: (FocusRequester) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        HomeRowHeader(title, small = items.size.toString(), start = start)
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(20.mpx),
+            contentPadding = PaddingValues(start = start, end = 64.mpx),
+            modifier = Modifier.focusRestorer().focusGroup(),
+        ) {
+            itemsIndexed(items, key = { _, item -> key(item) }) { index, item ->
+                StagePoster(
+                    title = name(item),
+                    onClick = { onItemClick(item) },
+                    width = 196.mpx,
+                    height = 294.mpx,
+                    modifier = Modifier
+                        .then(if (index == 0 && firstItemFocusRequester != null) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
+                        .tracked(track = track)
+                        .onFocusChanged { if (it.hasFocus) onFocus() },
+                ) {
+                    AsyncImage(model = poster(item), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 }
             }
         }
