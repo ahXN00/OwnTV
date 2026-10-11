@@ -26,10 +26,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -118,7 +121,20 @@ fun SportsScreen(
                 .collect { chips -> if (chips.isNotEmpty()) qualities.record(channel, chips) }
         }
     }
-    BackHandler(enabled = state.search != null) { vm.closeSearch() }
+    // Back closes what is open under a game, one level at a time, and puts the cursor back on what
+    // opened it: a broadcaster search goes back to the game's matches, the matches close the game.
+    var refocus by remember { mutableStateOf<String?>(null) }
+    BackHandler(enabled = state.selected != null) {
+        val search = state.search
+        val selected = state.selected
+        if (search != null) {
+            vm.closeSearch()
+            refocus = searchKey(search)
+        } else if (selected != null) {
+            vm.select(selected)
+            refocus = eventKey(selected)
+        }
+    }
 
     Column(
         modifier.padding(start = contentStart, end = 48.mpx, top = 40.mpx, bottom = 24.mpx),
@@ -158,8 +174,11 @@ fun SportsScreen(
                     else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(6.mpx)) {
                         for (event in events) {
                             val open = event.id == state.selected?.id
-                            item(key = "e:" + event.competition.name + event.id) {
-                                EventRow(event, selected = open, onClick = { vm.select(event) })
+                            item(key = eventKey(event)) {
+                                EventRow(
+                                    event, selected = open, onClick = { vm.select(event) },
+                                    modifier = Modifier.refocusWhen(eventKey(event), refocus) { refocus = null },
+                                )
                             }
                             if (open) {
                                 eventChannels(
@@ -168,7 +187,9 @@ fun SportsScreen(
                                     qualityOf = { ch -> qualityVersion.let { qualities.qualityOf(ch) } },
                                     recordingFor = { match -> vm.recordingFor(match, recordingRows) },
                                     onSearch = vm::searchBroadcaster,
-                                    onCloseSearch = vm::closeSearch,
+                                    onCloseSearch = { name -> vm.closeSearch(); refocus = searchKey(name) },
+                                    refocus = refocus,
+                                    onRefocused = { refocus = null },
                                     onFocusChannel = { previewed = it },
                                     onPlayChannel = onPlayChannel,
                                     onToggleRecording = vm::toggleRecording,
@@ -197,33 +218,36 @@ private fun LazyListScope.eventChannels(
     qualityOf: (ChannelEntity) -> StreamQuality?,
     recordingFor: (SportsChannelMatch) -> RecordingEntity?,
     onSearch: (String) -> Unit,
-    onCloseSearch: () -> Unit,
+    onCloseSearch: (String) -> Unit,
+    refocus: String?,
+    onRefocused: () -> Unit,
     onFocusChannel: (SportsChannelMatch) -> Unit,
     onPlayChannel: (ChannelEntity) -> Unit,
     onToggleRecording: (SportsChannelMatch) -> Unit,
 ) {
     val key = event.competition.name + event.id
     val indent = Modifier.padding(start = CHANNEL_INDENT)
-    if (state.broadcasters.isNotEmpty() || state.search != null) {
-        item(key = "b:$key") {
-            LazyRow(indent.padding(vertical = 4.mpx), horizontalArrangement = Arrangement.spacedBy(10.mpx)) {
-                if (state.search != null) {
-                    item(key = "back") {
-                        StageButton(text = stringResource(R.string.tifo_sports_search_back), onClick = onCloseSearch, height = 56.mpx, textSize = 18)
-                    }
-                }
-                items(state.broadcasters, key = { it }) { name ->
-                    StageButton(
-                        text = stringResource(R.string.tifo_sports_search_broadcaster, name),
-                        onClick = { onSearch(name) },
-                        icon = OwnTVIcon.SEARCH,
-                        tinted = state.search == name,
-                        height = 56.mpx,
-                        textSize = 18,
-                    )
-                }
-            }
+    // The game's own broadcasters, each a search of every channel named after it ("CBS"). Rows
+    // like the channels under them, so the cursor walks onto them the same way.
+    val open = state.search
+    if (open != null) {
+        item(key = "back:$key") {
+            SportsActionRow(
+                text = stringResource(R.string.tifo_sports_search_back),
+                icon = OwnTVIcon.BACK,
+                onClick = { onCloseSearch(open) },
+                modifier = indent,
+            )
         }
+    }
+    items(state.broadcasters, key = { searchKey(it) }) { name ->
+        SportsActionRow(
+            text = stringResource(R.string.tifo_sports_search_broadcaster, name),
+            icon = OwnTVIcon.SEARCH,
+            onClick = { if (open == name) onCloseSearch(name) else onSearch(name) },
+            selected = open == name,
+            modifier = indent.refocusWhen(searchKey(name), refocus, onRefocused),
+        )
     }
 
     val search = state.search
@@ -419,12 +443,12 @@ private fun eventTitle(event: SportsEvent): String {
 }
 
 @Composable
-private fun EventRow(event: SportsEvent, selected: Boolean, onClick: () -> Unit) {
+private fun EventRow(event: SportsEvent, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = stageAccent
     StageRow(
         onClick = onClick,
         height = 96.mpx,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .then(if (selected) Modifier.background(accent.accent.copy(alpha = 0.12f), RoundedCornerShape(StageRadii.Row)) else Modifier),
     ) { focused ->
@@ -497,6 +521,40 @@ private fun TeamLogo(url: String?) {
         AsyncImage(model = url, contentDescription = null, modifier = Modifier.size(36.mpx))
     }
 }
+
+/** "🔍 All CBS channels": an action in the list under a game, as tall as a channel row's text. */
+@Composable
+private fun SportsActionRow(text: String, icon: OwnTVIcon, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
+    val accent = stageAccent
+    StageRow(
+        onClick = onClick,
+        height = 64.mpx,
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (selected) Modifier.background(accent.accent.copy(alpha = 0.12f), RoundedCornerShape(StageRadii.Row)) else Modifier),
+    ) { focused ->
+        val color = if (focused) accent.onAccent else accent.accent
+        OwnTVIcon(icon, color, Modifier.size(22.mpx))
+        Text(text, style = stageText(19, 700), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+    }
+}
+
+/** Focuses this element when [target] names [key], once it is on screen, then calls [onDone]. */
+@Composable
+private fun Modifier.refocusWhen(key: String, target: String?, onDone: () -> Unit): Modifier {
+    val requester = remember { FocusRequester() }
+    LaunchedEffect(target) {
+        if (target != key) return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { requester.requestFocus() }
+        onDone()
+    }
+    return focusRequester(requester)
+}
+
+private fun eventKey(event: SportsEvent): String = "e:" + event.competition.name + event.id
+
+private fun searchKey(broadcaster: String): String = "q:$broadcaster"
 
 @Composable
 private fun ChannelRow(
