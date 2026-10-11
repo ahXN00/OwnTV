@@ -1096,16 +1096,12 @@
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	tennis/atp
 1	locale	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	EEEdMMM
 1	protocol	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	Mbps
-1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	back:$key
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	c:
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	e:
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	h:$key
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	m:$key
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	q:$broadcaster
-1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	r:
-3	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	s:$key
 1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	TifoSports
-1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	broadcaster search failed
 1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	channel matching failed
 1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	scoreboard ${competition.name} failed
 1	empty	app/src/main/java/tv/own/owntv/tifo/sports/StreamQuality.kt	\0

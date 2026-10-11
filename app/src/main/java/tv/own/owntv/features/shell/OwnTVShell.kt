@@ -818,7 +818,12 @@ fun OwnTVShell(
 
     // TifoTV: Sports is not a MainSection (see SportsRailItem); any section change closes it.
     var sportsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(selectedSection) { sportsOpen = false }
+    // TifoTV: Search opened from Sports ("All CBS channels"); Back there goes back to Sports.
+    var sportsSearchReturn by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedSection) {
+        sportsOpen = false
+        if (selectedSection != MainSection.SEARCH) sportsSearchReturn = false
+    }
 
     // Stop a leftover live preview when you leave the Live section or the Guide, which previews through it
     // too (but never while fullscreen/mini plays).
@@ -1122,6 +1127,13 @@ fun OwnTVShell(
                             onPlayChannel = { ch -> guidePlayChannel(ch, emptyList()) },
                             previewEnabled = playerMode == PlayerMode.NONE,
                             contentStart = if (navStyle == tv.own.owntv.core.settings.SettingsRepository.NavStyle.DOCKED) 64.mpx else 150.mpx,
+                            onSearchChannels = { query ->
+                                searchVm.setQuery(query)
+                                trendingSearchActive = false
+                                sportsSearchReturn = true
+                                sportsOpen = false
+                                onSelectSection(MainSection.SEARCH)
+                            },
                             // So Back from Sports goes to its rail item, not to "Exit?", as from any section.
                             modifier = Modifier.fillMaxSize().onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT },
                         )
@@ -1247,12 +1259,18 @@ fun OwnTVShell(
                                 onSelectSection(MainSection.MOVIES)
                             },
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
-                            returnToHomeOnBack = trendingSearchActive,
+                            returnToHomeOnBack = trendingSearchActive || sportsSearchReturn,
                             onReturnToHome = {
-                                trendingSearchActive = false
-                                restoreTrendingSearchFocus = true
-                                restoreFocus = false
-                                onSelectSection(MainSection.HOME)
+                                // TifoTV: back to the Sports game the search was opened from.
+                                if (sportsSearchReturn) {
+                                    sportsSearchReturn = false
+                                    sportsOpen = true
+                                } else {
+                                    trendingSearchActive = false
+                                    restoreTrendingSearchFocus = true
+                                    restoreFocus = false
+                                    onSelectSection(MainSection.HOME)
+                                }
                             },
                             modifier = Modifier.fillMaxSize(),
                         )

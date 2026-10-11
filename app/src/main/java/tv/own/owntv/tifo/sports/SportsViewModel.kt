@@ -24,7 +24,6 @@ import tv.own.owntv.core.database.dao.ChannelDao
 import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.dao.resolveExistingProfileId
-import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.RecordingEntity
 import tv.own.owntv.core.model.RecordingStatus
 import tv.own.owntv.core.recording.RecordingManager
@@ -42,10 +41,6 @@ data class SportsUiState(
     val matches: List<SportsChannelMatch> = emptyList(),
     /** The selected game's own broadcasters ("CBS", "Ligue 1+"), each a search of all channels. */
     val broadcasters: List<String> = emptyList(),
-    /** The broadcaster whose channels are listed instead of the matches, or null. */
-    val search: String? = null,
-    val searching: Boolean = false,
-    val searchResults: List<ChannelEntity> = emptyList(),
 ) {
     val visibleEvents: List<SportsEvent> get() = if (filter == null) events else events.filter { it.competition == filter }
 }
@@ -67,7 +62,13 @@ class SportsViewModel(
     val state: StateFlow<SportsUiState> = _state.asStateFlow()
 
     private var matchJob: Job? = null
-    private var searchJob: Job? = null
+
+    /** Where the cursor goes when the tab comes back: the broadcaster search it left for. */
+    private var returnFocus: String? = null
+
+    fun setReturnFocus(key: String) { returnFocus = key }
+
+    fun takeReturnFocus(): String? = returnFocus.also { returnFocus = null }
 
     /**
      * Keeps the scores fresh while the Sports tab is on screen: every 30 seconds while a game is
@@ -114,16 +115,14 @@ class SportsViewModel(
      */
     fun select(event: SportsEvent) {
         matchJob?.cancel()
-        searchJob?.cancel()
         if (_state.value.selected?.id == event.id) {
-            _state.update { it.copy(selected = null, matching = false, matches = emptyList(), broadcasters = emptyList(), search = null, searchResults = emptyList()) }
+            _state.update { it.copy(selected = null, matching = false, matches = emptyList(), broadcasters = emptyList()) }
             return
         }
         _state.update {
             it.copy(
                 selected = event, matching = true, matches = emptyList(),
                 broadcasters = finder.firstBroadcasters(event),
-                search = null, searching = false, searchResults = emptyList(),
             )
         }
         matchJob = viewModelScope.launch {
@@ -132,24 +131,6 @@ class SportsViewModel(
                 .getOrDefault(emptyList())
             _state.update { if (it.selected?.id == event.id) it.copy(matching = false, matches = matches) else it }
         }
-    }
-
-    /** Lists every channel named after [broadcaster], as ynoTV's broadcaster search does. */
-    fun searchBroadcaster(broadcaster: String) {
-        searchJob?.cancel()
-        _state.update { it.copy(search = broadcaster, searching = true, searchResults = emptyList()) }
-        searchJob = viewModelScope.launch {
-            val found = runCatching { finder.searchBroadcaster(broadcaster) }
-                .onFailure { Log.w(TAG, "broadcaster search failed", it) }
-                .getOrDefault(emptyList())
-            _state.update { if (it.search == broadcaster) it.copy(searching = false, searchResults = found) else it }
-        }
-    }
-
-    /** Back from a broadcaster search to the game's matches. */
-    fun closeSearch() {
-        searchJob?.cancel()
-        _state.update { it.copy(search = null, searching = false, searchResults = emptyList()) }
     }
 
     /** This profile's recordings, so a channel knows whether its game is already set to record. */

@@ -37,7 +37,6 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,6 +88,8 @@ fun SportsScreen(
     modifier: Modifier = Modifier,
     /** False while the full-screen or mini player owns the video, as for Live TV's preview. */
     previewEnabled: Boolean = true,
+    /** Opens the Search tab on [query] ("CBS"); Back there comes back here. */
+    onSearchChannels: (query: String) -> Unit = {},
 ) {
     val vm = org.koin.androidx.compose.koinViewModel<SportsViewModel>()
     // Live TV's view model: its preview player, so there is never a second decoder.
@@ -121,19 +122,13 @@ fun SportsScreen(
                 .collect { chips -> if (chips.isNotEmpty()) qualities.record(channel, chips) }
         }
     }
-    // Back closes what is open under a game, one level at a time, and puts the cursor back on what
-    // opened it: a broadcaster search goes back to the game's matches, the matches close the game.
-    var refocus by remember { mutableStateOf<String?>(null) }
+    // Back closes the open game and puts the cursor back on it. Coming back from a broadcaster
+    // search, the cursor starts on the search it left from.
+    var refocus by remember { mutableStateOf(vm.takeReturnFocus()) }
     BackHandler(enabled = state.selected != null) {
-        val search = state.search
-        val selected = state.selected
-        if (search != null) {
-            vm.closeSearch()
-            refocus = searchKey(search)
-        } else if (selected != null) {
-            vm.select(selected)
-            refocus = eventKey(selected)
-        }
+        val selected = state.selected ?: return@BackHandler
+        vm.select(selected)
+        refocus = eventKey(selected)
     }
 
     Column(
@@ -186,8 +181,10 @@ fun SportsScreen(
                                     state = state,
                                     qualityOf = { ch -> qualityVersion.let { qualities.qualityOf(ch) } },
                                     recordingFor = { match -> vm.recordingFor(match, recordingRows) },
-                                    onSearch = vm::searchBroadcaster,
-                                    onCloseSearch = { name -> vm.closeSearch(); refocus = searchKey(name) },
+                                    onSearch = { name ->
+                                        vm.setReturnFocus(searchKey(name))
+                                        onSearchChannels(name)
+                                    },
                                     refocus = refocus,
                                     onRefocused = { refocus = null },
                                     onFocusChannel = { previewed = it },
@@ -211,14 +208,13 @@ fun SportsScreen(
     }
 }
 
-/** Under the open game: its broadcaster searches, then its matches or a search's results. */
+/** Under the open game: its broadcaster searches, then its matches. */
 private fun LazyListScope.eventChannels(
     event: SportsEvent,
     state: SportsUiState,
     qualityOf: (ChannelEntity) -> StreamQuality?,
     recordingFor: (SportsChannelMatch) -> RecordingEntity?,
     onSearch: (String) -> Unit,
-    onCloseSearch: (String) -> Unit,
     refocus: String?,
     onRefocused: () -> Unit,
     onFocusChannel: (SportsChannelMatch) -> Unit,
@@ -227,54 +223,15 @@ private fun LazyListScope.eventChannels(
 ) {
     val key = event.competition.name + event.id
     val indent = Modifier.padding(start = CHANNEL_INDENT)
-    // The game's own broadcasters, each a search of every channel named after it ("CBS"). Rows
-    // like the channels under them, so the cursor walks onto them the same way.
-    val open = state.search
-    if (open != null) {
-        item(key = "back:$key") {
-            SportsActionRow(
-                text = stringResource(R.string.tifo_sports_search_back),
-                icon = OwnTVIcon.BACK,
-                onClick = { onCloseSearch(open) },
-                modifier = indent,
-            )
-        }
-    }
+    // The game's own broadcasters, each a search of every channel named after it ("CBS") in the
+    // Search tab. Rows like the channels under them, so the cursor walks onto them the same way.
     items(state.broadcasters, key = { searchKey(it) }) { name ->
         SportsActionRow(
             text = stringResource(R.string.tifo_sports_search_broadcaster, name),
             icon = OwnTVIcon.SEARCH,
-            onClick = { if (open == name) onCloseSearch(name) else onSearch(name) },
-            selected = open == name,
+            onClick = { onSearch(name) },
             modifier = indent.refocusWhen(searchKey(name), refocus, onRefocused),
         )
-    }
-
-    val search = state.search
-    if (search != null) {
-        when {
-            state.searching -> item(key = "s:$key") { Box(indent) { Message(stringResource(R.string.tifo_sports_searching)) } }
-            state.searchResults.isEmpty() -> item(key = "s:$key") { Box(indent) { Message(stringResource(R.string.tifo_sports_search_none, search)) } }
-            else -> {
-                item(key = "s:$key") {
-                    Text(
-                        pluralStringResource(R.plurals.tifo_sports_search_count, state.searchResults.size, search, state.searchResults.size),
-                        style = stageText(16, 700), color = StageColors.Dim,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        modifier = indent.padding(top = 4.mpx),
-                    )
-                }
-                items(state.searchResults, key = { "r:" + it.id }) { channel ->
-                    val match = SportsChannelMatch(channel, SEARCH_RESULT, null, null, null)
-                    ChannelRow(
-                        match, quality = qualityOf(channel), recordingSet = false,
-                        onFocused = { onFocusChannel(match) }, onClick = { onPlayChannel(channel) },
-                        modifier = indent,
-                    )
-                }
-            }
-        }
-        return
     }
 
     when {
@@ -524,14 +481,12 @@ private fun TeamLogo(url: String?) {
 
 /** "🔍 All CBS channels": an action in the list under a game, as tall as a channel row's text. */
 @Composable
-private fun SportsActionRow(text: String, icon: OwnTVIcon, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
+private fun SportsActionRow(text: String, icon: OwnTVIcon, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = stageAccent
     StageRow(
         onClick = onClick,
         height = 64.mpx,
-        modifier = modifier
-            .fillMaxWidth()
-            .then(if (selected) Modifier.background(accent.accent.copy(alpha = 0.12f), RoundedCornerShape(StageRadii.Row)) else Modifier),
+        modifier = modifier.fillMaxWidth(),
     ) { focused ->
         val color = if (focused) accent.onAccent else accent.accent
         OwnTVIcon(icon, color, Modifier.size(22.mpx))
@@ -589,18 +544,16 @@ private fun ChannelRow(
         }
         val onAccent = if (focused) accent.onAccent else null
         qualityTags(quality).forEach { StageTag(it, onAccent = onAccent) }
-        if (match.score != SEARCH_RESULT) {
-            StageTag(
-                stringResource(
-                    when {
-                        match.score >= SportsMatching.BEST_MATCH -> R.string.tifo_sports_match_best
-                        match.score > SportsMatching.BROADCASTER -> R.string.tifo_sports_match_likely
-                        else -> R.string.tifo_sports_match_broadcaster
-                    },
-                ),
-                onAccent = onAccent,
-            )
-        }
+        StageTag(
+            stringResource(
+                when {
+                    match.score >= SportsMatching.BEST_MATCH -> R.string.tifo_sports_match_best
+                    match.score > SportsMatching.BROADCASTER -> R.string.tifo_sports_match_likely
+                    else -> R.string.tifo_sports_match_broadcaster
+                },
+            ),
+            onAccent = onAccent,
+        )
     }
 }
 
@@ -618,8 +571,5 @@ private const val PREVIEW_SETTLE_MS = 700L
 
 /** How long a preview is watched for the stream's resolution and frame rate. */
 private const val MEASURE_MS = 30_000L
-
-/** A broadcaster search result: a channel named after it, with no match to rank it by. */
-private const val SEARCH_RESULT = -1
 
 private val CHANNEL_INDENT = 40.mpx

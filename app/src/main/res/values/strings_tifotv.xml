@@ -32,13 +32,6 @@
     <string name="tifo_sports_record_hint">Press right on a channel, then OK, to record the game from its guide.</string>
     <string name="tifo_sports_recording_set">● Recording · %1$s</string>
     <string name="tifo_sports_search_broadcaster">All %1$s channels</string>
-    <string name="tifo_sports_search_back">Back to matches</string>
-    <string name="tifo_sports_searching">Searching your channels…</string>
-    <string name="tifo_sports_search_none">No channel named %1$s in your playlist.</string>
-    <plurals name="tifo_sports_search_count">
-        <item quantity="one">%1$s: %2$d channel</item>
-        <item quantity="other">%1$s: %2$d channels</item>
-    </plurals>
     <string name="tifo_sports_preview_hint">Move onto a channel to preview it here.</string>
     <string name="tifo_sports_play_hint">OK plays it full screen.</string>
     <string name="tifo_sports_quality_from_name">from the channel name</string>
