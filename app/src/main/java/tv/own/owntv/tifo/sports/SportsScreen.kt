@@ -162,7 +162,7 @@ fun SportsScreen(
     // Back on a game (none open) goes up to the open tab; Back there leaves Sports.
     var listFocused by remember { mutableStateOf(false) }
     BackHandler(enabled = state.selected == null && listFocused) {
-        refocus = tabKey(state)
+        refocus = tabKey(state, today, zone)
     }
     BackHandler(enabled = state.selected != null) {
         val selected = state.selected ?: return@BackHandler
@@ -233,6 +233,22 @@ fun SportsScreen(
                 )
             }
         }
+        // All's sub-tabs: the day's live, upcoming and ended games, each grouped by league.
+        if (state.filter == null && !state.myTeams) {
+            val dayGames = state.dayEvents(today, zone)
+            val stage = state.shownStage(dayGames)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.mpx)) {
+                items(Stages, key = { stageKey(it) }) { s ->
+                    StageTab(
+                        label = stringResource(stageLabel(s)),
+                        count = count(dayGames.count { it.state == s }),
+                        selected = s == stage,
+                        onClick = { vm.setStage(s) },
+                        modifier = Modifier.refocusWhen(stageKey(s), refocus) { refocus = null },
+                    )
+                }
+            }
+        }
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(36.mpx)) {
             Box(Modifier.weight(0.56f).fillMaxHeight().onFocusChanged { listFocused = it.hasFocus }) {
                 val events = state.visibleEvents(favoriteKeys, today, zone)
@@ -258,6 +274,7 @@ fun SportsScreen(
                     events.isEmpty() && state.failed -> Message(stringResource(R.string.tifo_sports_failed))
                     events.isEmpty() && state.myTeams && favoriteKeys.isEmpty() -> Message(stringResource(R.string.tifo_sports_my_teams_none))
                     events.isEmpty() && state.myTeams -> Message(stringResource(R.string.tifo_sports_my_teams_no_games))
+                    events.isEmpty() && grouped && state.dayEvents(today, zone).isNotEmpty() -> Message(stringResource(R.string.tifo_sports_stage_empty))
                     events.isEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(12.mpx)) {
                         Message(
                             if (shownDay == today) stringResource(R.string.tifo_sports_no_games)
@@ -277,20 +294,7 @@ fun SportsScreen(
                         }
                     }
                     else -> LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.mpx)) {
-                        // Leagues with a live game first, then those still to play, then those done for the day.
-                        val leagueRank = { c: Competition ->
-                            val states = events.filter { it.competition == c }.map { it.state }
-                            when {
-                                EventState.LIVE in states -> 0
-                                EventState.UPCOMING in states -> 1
-                                else -> 2
-                            }
-                        }
-                        val ordered = if (grouped) {
-                            Competition.entries.sortedBy(leagueRank).flatMap { c -> events.filter { it.competition == c } }
-                        } else {
-                            events
-                        }
+                        val ordered = if (grouped) Competition.entries.flatMap { c -> events.filter { it.competition == c } } else events
                         for ((index, event) in ordered.withIndex()) {
                             if (grouped && (index == 0 || ordered[index - 1].competition != event.competition)) {
                                 item(key = "league:" + event.competition.name) { LeagueHeader(stringResource(event.competition.labelRes)) }
@@ -747,11 +751,21 @@ private fun channelKey(channelId: Long): String = "c:$channelId"
 
 private fun tabKey(competition: Competition): String = "tab:" + competition.name
 
-/** The tab the list under it belongs to. */
-private fun tabKey(state: SportsUiState): String = when {
+/** The tab the list under it belongs to: on All, its open sub-tab. */
+private fun tabKey(state: SportsUiState, today: LocalDate, zone: ZoneId): String = when {
     state.myTeams -> MY_TEAMS_TAB_KEY
-    state.filter == null -> ALL_TAB_KEY
+    state.filter == null -> stageKey(state.shownStage(state.dayEvents(today, zone)))
     else -> tabKey(state.filter)
+}
+
+private val Stages = listOf(EventState.LIVE, EventState.UPCOMING, EventState.FINISHED)
+
+private fun stageKey(stage: EventState): String = "stage:" + stage.name
+
+private fun stageLabel(stage: EventState): Int = when (stage) {
+    EventState.LIVE -> R.string.tifo_sports_stage_live
+    EventState.UPCOMING -> R.string.tifo_sports_stage_upcoming
+    EventState.FINISHED -> R.string.tifo_sports_stage_ended
 }
 
 private const val ALL_TAB_KEY = "tab:all"

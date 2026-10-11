@@ -49,4 +49,8 @@
     <string name="tifo_sports_yesterday">Yesterday</string>
     <string name="tifo_sports_tomorrow">Tomorrow</string>
     <string name="tifo_sports_pick_day">Pick a day to see its games.</string>
+    <string name="tifo_sports_stage_live">Live</string>
+    <string name="tifo_sports_stage_upcoming">Upcoming</string>
+    <string name="tifo_sports_stage_ended">Ended</string>
+    <string name="tifo_sports_stage_empty">No games in this tab for the day.</string>
 </resources>

@@ -24,10 +24,22 @@ class SportsScheduleTest {
         val lateLastNight = event("late", at(today.minusDays(1), 23), EventState.LIVE)
         val tonight = event("tonight", at(today, 21))
         val tomorrow = event("tomorrow", at(today.plusDays(1), 2))
-        val state = SportsUiState(loading = false, events = listOf(lateLastNight, tonight, tomorrow))
+        val state = SportsUiState(loading = false, filter = Competition.NFL, events = listOf(lateLastNight, tonight, tomorrow))
         assertEquals(listOf("late", "tonight"), state.visibleEvents(emptySet(), today, paris).map { it.id })
         val picked = state.copy(day = today.plusDays(1))
         assertEquals(listOf("tomorrow"), picked.visibleEvents(emptySet(), today, paris).map { it.id })
+    }
+
+    @Test
+    fun allOpensOnLiveWhenAGameIsLiveAndSplitsByState() {
+        val live = event("live", at(today, 20), EventState.LIVE)
+        val ended = event("ended", at(today, 13), EventState.FINISHED)
+        val later = event("later", at(today, 22))
+        val all = SportsUiState(loading = false, events = listOf(live, ended, later))
+        assertEquals(listOf("live"), all.visibleEvents(emptySet(), today, paris).map { it.id })
+        assertEquals(listOf("ended"), all.copy(stage = EventState.FINISHED).visibleEvents(emptySet(), today, paris).map { it.id })
+        val quiet = all.copy(events = listOf(ended, later))
+        assertEquals(listOf("later"), quiet.visibleEvents(emptySet(), today, paris).map { it.id })
     }
 
     @Test

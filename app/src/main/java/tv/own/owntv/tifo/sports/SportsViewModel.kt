@@ -49,6 +49,8 @@ data class SportsUiState(
     val day: LocalDate? = null,
     /** A picked day's games are still being fetched. */
     val dayLoading: Boolean = false,
+    /** All's sub-tab: live, upcoming or ended games. Null = live when a game is, else upcoming. */
+    val stage: EventState? = null,
 ) {
     fun shownDay(today: LocalDate): LocalDate = day ?: today
 
@@ -67,7 +69,19 @@ data class SportsUiState(
         myTeams -> events.filter { e ->
             SportsFavorites.isFavorite(favorites, e.competition, e.home) || SportsFavorites.isFavorite(favorites, e.competition, e.away)
         }
-        else -> tabEvents().filter { SportsSchedule.isOn(it, shownDay(today), today, zone) }
+        filter == null -> dayEvents(today, zone).let { day -> day.filter { it.state == shownStage(day) } }
+        else -> dayEvents(today, zone)
+    }
+
+    /** The open tab's games on the [shownDay], whatever their state. */
+    fun dayEvents(today: LocalDate = LocalDate.now(), zone: ZoneId = ZoneId.systemDefault()): List<SportsEvent> =
+        tabEvents().filter { SportsSchedule.isOn(it, shownDay(today), today, zone) }
+
+    /** All's open sub-tab, given the day's [games]. */
+    fun shownStage(games: List<SportsEvent>): EventState = stage ?: when {
+        games.any { it.state == EventState.LIVE } -> EventState.LIVE
+        games.any { it.state == EventState.UPCOMING } || games.none { it.state == EventState.FINISHED } -> EventState.UPCOMING
+        else -> EventState.FINISHED
     }
 }
 
@@ -149,6 +163,8 @@ class SportsViewModel(
     }
 
     fun setFilter(competition: Competition?) = _state.update { it.copy(filter = competition, myTeams = false) }
+
+    fun setStage(stage: EventState) = _state.update { it.copy(stage = stage) }
 
     fun showMyTeams() = _state.update { it.copy(filter = null, myTeams = true) }
 

@@ -47,4 +47,8 @@
     <string name="tifo_sports_yesterday">Hier</string>
     <string name="tifo_sports_tomorrow">Demain</string>
     <string name="tifo_sports_pick_day">Choisissez un jour pour voir ses matchs.</string>
+    <string name="tifo_sports_stage_live">En direct</string>
+    <string name="tifo_sports_stage_upcoming">À venir</string>
+    <string name="tifo_sports_stage_ended">Terminés</string>
+    <string name="tifo_sports_stage_empty">Aucun match dans cet onglet pour ce jour.</string>
 </resources>
