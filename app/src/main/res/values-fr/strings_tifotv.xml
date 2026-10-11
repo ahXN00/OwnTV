@@ -18,7 +18,7 @@
     <string name="tifo_sports_versus">%1$s vs %2$s</string>
     <string name="tifo_sports_loading">Chargement des matchs…</string>
     <string name="tifo_sports_failed">Impossible de charger les matchs. Vérifiez la connexion et réessayez dans un instant.</string>
-    <string name="tifo_sports_no_games">Aucun match dans les prochains jours.</string>
+    <string name="tifo_sports_no_games">Aucun match aujourd\'hui.</string>
     <string name="tifo_sports_pick_game">Choisissez un match pour voir quelles chaînes le diffusent.</string>
     <string name="tifo_sports_channels">Chaînes</string>
     <string name="tifo_sports_matching">Recherche des chaînes…</string>
@@ -42,4 +42,9 @@
     <string name="tifo_sports_my_teams">Mes équipes</string>
     <string name="tifo_sports_my_teams_none">Aucune équipe favorite. Choisissez les vôtres avec le bouton Équipes en haut.</string>
     <string name="tifo_sports_my_teams_no_games">Aucune de vos équipes ne joue dans les prochains jours.</string>
+    <string name="tifo_sports_no_games_on">Aucun match le %1$s.</string>
+    <string name="tifo_sports_next_games">Prochains matchs : %1$s</string>
+    <string name="tifo_sports_yesterday">Hier</string>
+    <string name="tifo_sports_tomorrow">Demain</string>
+    <string name="tifo_sports_pick_day">Choisissez un jour pour voir ses matchs.</string>
 </resources>

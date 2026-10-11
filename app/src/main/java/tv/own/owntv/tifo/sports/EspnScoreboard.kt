@@ -30,12 +30,15 @@ class EspnScoreboard(private val http: OkHttpClient) {
      * Team sports and tournaments: one request per day, yesterday to a week ahead, because ESPN
      * rejects date ranges, and a tennis day answers with a single tournament (Beijing on a day
      * Shanghai is also on). Yesterday to tomorrow is fetched on every call since those scores move;
-     * later days are kept for [FAR_DAY_TTL_MS]. Races: ESPN's current race weekend.
+     * later days are kept for [FAR_DAY_TTL_MS]. [around] is a day picked in the schedule: it and
+     * the days either side are fetched too when they fall outside that week. Races: ESPN's current
+     * race weekend.
      */
-    suspend fun load(competition: Competition, nowMs: Long): List<SportsEvent> = withContext(Dispatchers.IO) {
+    suspend fun load(competition: Competition, nowMs: Long, around: LocalDate? = null): List<SportsEvent> = withContext(Dispatchers.IO) {
         if (competition.kind == SportKind.RACE) return@withContext fetch(competition, null, nowMs)
         val today = Instant.ofEpochMilli(nowMs).atOffset(ZoneOffset.UTC).toLocalDate()
-        val days = (-1L..7L).map { today.plusDays(it) }
+        val picked = around?.let { d -> (-1L..1L).map { d.plusDays(it) } }.orEmpty()
+        val days = ((-1L..7L).map { today.plusDays(it) } + picked).distinct()
         val results = coroutineScope {
             days.map { date ->
                 async {
@@ -122,6 +125,7 @@ private fun parseTournament(competition: Competition, event: JSONObject, nowMs: 
         home = null,
         away = null,
         broadcasts = broadcasts,
+        endMs = endMs,
     )
 }
 

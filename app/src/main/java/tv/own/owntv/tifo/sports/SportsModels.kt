@@ -113,4 +113,6 @@ data class SportsEvent(
     val away: SportsTeam?,
     /** Broadcaster names ESPN lists for the event (mostly US networks). */
     val broadcasts: List<String>,
+    /** A tournament's last day; null for a single game or race. */
+    val endMs: Long? = null,
 )

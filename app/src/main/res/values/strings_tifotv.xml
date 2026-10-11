@@ -20,7 +20,7 @@
     <string name="tifo_sports_versus">%1$s vs %2$s</string>
     <string name="tifo_sports_loading">Loading games…</string>
     <string name="tifo_sports_failed">Couldn\'t load the games. Check the connection and try again in a moment.</string>
-    <string name="tifo_sports_no_games">No games in the next few days.</string>
+    <string name="tifo_sports_no_games">No games today.</string>
     <string name="tifo_sports_pick_game">Pick a game to see which of your channels show it.</string>
     <string name="tifo_sports_channels">Channels</string>
     <string name="tifo_sports_matching">Looking for channels…</string>
@@ -44,4 +44,9 @@
     <string name="tifo_sports_my_teams">My teams</string>
     <string name="tifo_sports_my_teams_none">No favorite team yet. Pick yours with the Teams button at the top.</string>
     <string name="tifo_sports_my_teams_no_games">None of your teams plays in the next few days.</string>
+    <string name="tifo_sports_no_games_on">No games on %1$s.</string>
+    <string name="tifo_sports_next_games">Next games: %1$s</string>
+    <string name="tifo_sports_yesterday">Yesterday</string>
+    <string name="tifo_sports_tomorrow">Tomorrow</string>
+    <string name="tifo_sports_pick_day">Pick a day to see its games.</string>
 </resources>

@@ -45,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Calendar
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.dropWhile
@@ -108,6 +110,10 @@ fun SportsScreen(
     val favorites = remember { SportsFavorites.get(context) }
     val favoriteKeys by favorites.keys.collectAsStateWithLifecycle()
     var settingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var dayPickerOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val zone = ZoneId.systemDefault()
+    val today = LocalDate.now(zone)
+    val shownDay = state.shownDay(today)
     if (settingsOpen) {
         SportsTeamsSettings(
             vm, favorites, contentStart,
@@ -179,12 +185,25 @@ fun SportsScreen(
                 textSize = 18,
                 modifier = Modifier.refocusWhen(TEAMS_BUTTON_KEY, refocus) { refocus = null },
             )
+            // The day the league tabs show. My teams lists every day, so it has none.
+            if (!state.myTeams) {
+                StageButton(
+                    text = dayLabel(shownDay, today),
+                    onClick = { dayPickerOpen = true },
+                    icon = OwnTVIcon.EPG,
+                    trailingIcon = OwnTVIcon.CHEVRON_DOWN,
+                    tinted = state.day != null,
+                    height = 52.mpx,
+                    textSize = 18,
+                    modifier = Modifier.refocusWhen(DAY_BUTTON_KEY, refocus) { refocus = null },
+                )
+            }
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.mpx)) {
             item(key = "all") {
                 StageTab(
                     label = stringResource(R.string.tifo_sports_all),
-                    count = count(state.events.size),
+                    count = count(state.copy(filter = null, myTeams = false).visibleEvents(favoriteKeys, today, zone).size),
                     selected = state.filter == null && !state.myTeams,
                     onClick = { vm.setFilter(null) },
                 )
@@ -200,7 +219,7 @@ fun SportsScreen(
             items(Competition.entries.toList(), key = { it.name }) { c ->
                 StageTab(
                     label = stringResource(c.labelRes),
-                    count = count(state.events.count { it.competition == c }),
+                    count = count(state.copy(filter = c, myTeams = false).visibleEvents(favoriteKeys, today, zone).size),
                     selected = state.filter == c,
                     onClick = { vm.setFilter(c) },
                 )
@@ -208,16 +227,47 @@ fun SportsScreen(
         }
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(36.mpx)) {
             Box(Modifier.weight(0.56f).fillMaxHeight()) {
-                val events = state.visibleEvents(favoriteKeys)
+                val events = state.visibleEvents(favoriteKeys, today, zone)
                 // All lists the games league by league, under the league's name.
                 val grouped = state.filter == null && !state.myTeams
                 val isFavorite = { e: SportsEvent, team: SportsTeam? -> SportsFavorites.isFavorite(favoriteKeys, e.competition, team) }
                 when {
-                    state.loading -> Message(stringResource(R.string.tifo_sports_loading))
+                    dayPickerOpen -> DayPicker(
+                        shown = shownDay,
+                        today = today,
+                        gamesOn = { d -> state.tabEvents().count { SportsSchedule.isOn(it, d, today, zone) } },
+                        onPick = { d ->
+                            vm.setDay(d)
+                            dayPickerOpen = false
+                            refocus = DAY_BUTTON_KEY
+                        },
+                        onClose = {
+                            dayPickerOpen = false
+                            refocus = DAY_BUTTON_KEY
+                        },
+                    )
+                    state.loading || (state.dayLoading && events.isEmpty()) -> Message(stringResource(R.string.tifo_sports_loading))
                     events.isEmpty() && state.failed -> Message(stringResource(R.string.tifo_sports_failed))
                     events.isEmpty() && state.myTeams && favoriteKeys.isEmpty() -> Message(stringResource(R.string.tifo_sports_my_teams_none))
                     events.isEmpty() && state.myTeams -> Message(stringResource(R.string.tifo_sports_my_teams_no_games))
-                    events.isEmpty() -> Message(stringResource(R.string.tifo_sports_no_games))
+                    events.isEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(12.mpx)) {
+                        Message(
+                            if (shownDay == today) stringResource(R.string.tifo_sports_no_games)
+                            else stringResource(R.string.tifo_sports_no_games_on, dayDate(shownDay)),
+                        )
+                        // Straight to the next day with a game, when the schedule knows one.
+                        val next = SportsSchedule.nextDay(state.tabEvents(), shownDay, zone)
+                        if (next != null) {
+                            SportsActionRow(
+                                text = stringResource(R.string.tifo_sports_next_games, dayLabel(next, today)),
+                                icon = OwnTVIcon.EPG,
+                                onClick = {
+                                    vm.setDay(next)
+                                    refocus = FIRST_EVENT_KEY
+                                },
+                            )
+                        }
+                    }
                     else -> LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.mpx)) {
                         val ordered = if (grouped) Competition.entries.flatMap { c -> events.filter { it.competition == c } } else events
                         for ((index, event) in ordered.withIndex()) {
@@ -229,7 +279,9 @@ fun SportsScreen(
                                 EventRow(
                                     event, selected = open, onClick = { vm.select(event) },
                                     isFavorite = { team -> isFavorite(event, team) },
-                                    modifier = Modifier.refocusWhen(eventKey(event), refocus) { refocus = null },
+                                    modifier = Modifier
+                                        .refocusWhen(eventKey(event), refocus) { refocus = null }
+                                        .then(if (index == 0) Modifier.refocusWhen(FIRST_EVENT_KEY, refocus) { refocus = null } else Modifier),
                                 )
                             }
                             if (open) {
@@ -438,6 +490,81 @@ private fun qualityTags(quality: StreamQuality?): List<String> {
 private fun FavoriteStar(focused: Boolean) {
     val accent = stageAccent
     OwnTVIcon(OwnTVIcon.STAR, if (focused) accent.onAccent else accent.accent, Modifier.size(18.mpx), filled = true)
+}
+
+/** "Today", "Tomorrow", or the weekday and date: "Sat 18 Oct". */
+@Composable
+private fun dayLabel(day: LocalDate, today: LocalDate): String = when (day) {
+    today -> stringResource(R.string.tifo_sports_today)
+    today.plusDays(1) -> stringResource(R.string.tifo_sports_tomorrow)
+    today.minusDays(1) -> stringResource(R.string.tifo_sports_yesterday)
+    else -> dayDate(day)
+}
+
+/** The weekday and date: "Sat 18 Oct". */
+@Composable
+private fun dayDate(day: LocalDate): String {
+    val format = rememberBestDateFormatter(DAY_SKELETON)
+    return format(day.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli())
+}
+
+/**
+ * The schedule's days, yesterday to two weeks ahead, in place of the games. OK shows that day's
+ * games, Back keeps the day.
+ */
+@Composable
+private fun DayPicker(
+    shown: LocalDate,
+    today: LocalDate,
+    gamesOn: (LocalDate) -> Int,
+    onPick: (LocalDate) -> Unit,
+    onClose: () -> Unit,
+) {
+    BackHandler(onBack = onClose)
+    val accent = stageAccent
+    val days = remember(today) {
+        (-SportsSchedule.DAYS_BACK..SportsSchedule.DAYS_AHEAD).map { today.plusDays(it) }
+    }
+    val shownRow = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        runCatching { shownRow.requestFocus() }
+    }
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    Column(verticalArrangement = Arrangement.spacedBy(10.mpx)) {
+        Text(
+            stringResource(R.string.tifo_sports_pick_day),
+            style = stageText(18, 500), color = StageColors.Muted,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        LazyColumn(
+            state = rememberLazyListState(days.indexOf(shown).coerceAtLeast(0)),
+            verticalArrangement = Arrangement.spacedBy(6.mpx),
+        ) {
+            items(days, key = { it.toEpochDay() }) { day ->
+                val selected = day == shown
+                StageRow(
+                    onClick = { onPick(day) },
+                    height = 72.mpx,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (selected) Modifier.focusRequester(shownRow).background(accent.accent.copy(alpha = 0.12f), RoundedCornerShape(StageRadii.Row)) else Modifier),
+                ) { focused ->
+                    val text = if (focused) accent.onAccent else StageColors.Text
+                    Text(dayLabel(day, today), style = stageText(21, 700), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    val games = gamesOn(day)
+                    if (games > 0) {
+                        Text(
+                            java.text.NumberFormat.getIntegerInstance(locale).format(games),
+                            style = stageText(18, 700),
+                            color = if (focused) accent.onAccent else accent.accent,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 /** "NFL" above the league's games on the All tab. */
@@ -659,6 +786,12 @@ private const val PREVIEW_SETTLE_MS = 700L
 private const val MEASURE_MS = 30_000L
 
 private val CHANNEL_INDENT = 40.mpx
+
+/** The day button, where the cursor returns when the day picker closes. */
+private const val DAY_BUTTON_KEY = "day"
+
+/** The first game listed, where the cursor goes after "Next games". */
+private const val FIRST_EVENT_KEY = "first"
 
 /** The Teams button, where the cursor returns when the favourites picker closes. */
 private const val TEAMS_BUTTON_KEY = "teams"

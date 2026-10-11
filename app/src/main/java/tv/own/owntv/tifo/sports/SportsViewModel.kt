@@ -3,6 +3,8 @@ package tv.own.owntv.tifo.sports
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -43,14 +45,29 @@ data class SportsUiState(
     val matches: List<SportsChannelMatch> = emptyList(),
     /** The selected game's own broadcasters ("CBS", "Ligue 1+"), each a search of all channels. */
     val broadcasters: List<String> = emptyList(),
+    /** The day the league tabs show; null = today, following midnight. */
+    val day: LocalDate? = null,
+    /** A picked day's games are still being fetched. */
+    val dayLoading: Boolean = false,
 ) {
-    /** The games the open tab lists; [favorites] are [SportsFavorites.keys], for "My teams". */
-    fun visibleEvents(favorites: Set<String>): List<SportsEvent> = when {
+    fun shownDay(today: LocalDate): LocalDate = day ?: today
+
+    /** The open tab's games on every day: [filter]'s, or all of them. */
+    fun tabEvents(): List<SportsEvent> = if (filter == null) events else events.filter { it.competition == filter }
+
+    /**
+     * The games the open tab lists; [favorites] are [SportsFavorites.keys], for "My teams", which
+     * lists every day. The other tabs list the [shownDay] only.
+     */
+    fun visibleEvents(
+        favorites: Set<String>,
+        today: LocalDate = LocalDate.now(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): List<SportsEvent> = when {
         myTeams -> events.filter { e ->
             SportsFavorites.isFavorite(favorites, e.competition, e.home) || SportsFavorites.isFavorite(favorites, e.competition, e.away)
         }
-        filter == null -> events
-        else -> events.filter { it.competition == filter }
+        else -> tabEvents().filter { SportsSchedule.isOn(it, shownDay(today), today, zone) }
     }
 }
 
@@ -110,7 +127,7 @@ class SportsViewModel(
         val results = coroutineScope {
             Competition.entries.map { competition ->
                 async {
-                    runCatching { scoreboard.load(competition, now) }
+                    runCatching { scoreboard.load(competition, now, _state.value.day) }
                         .onFailure { Log.w(TAG, "scoreboard ${competition.name} failed", it) }
                         .getOrNull()
                 }
@@ -122,6 +139,7 @@ class SportsViewModel(
         _state.update { s ->
             s.copy(
                 loading = false,
+                dayLoading = false,
                 failed = results.all { it == null },
                 events = events,
                 // Keep the open game current: its score and status change while it is shown.
@@ -133,6 +151,22 @@ class SportsViewModel(
     fun setFilter(competition: Competition?) = _state.update { it.copy(filter = competition, myTeams = false) }
 
     fun showMyTeams() = _state.update { it.copy(filter = null, myTeams = true) }
+
+    /**
+     * Shows [day]'s games on the league tabs (today when it is today), closing the open game. A day
+     * past the week already loaded is fetched now.
+     */
+    fun setDay(day: LocalDate) {
+        val today = LocalDate.now()
+        val picked = day.takeIf { it != today }
+        if (picked == _state.value.day) return
+        matchJob?.cancel()
+        val known = !day.isBefore(today.minusDays(1)) && !day.isAfter(today.plusDays(LOADED_DAYS_AHEAD))
+        _state.update {
+            it.copy(day = picked, dayLoading = !known, selected = null, matching = false, matches = emptyList(), broadcasters = emptyList())
+        }
+        if (!known) viewModelScope.launch { refresh() }
+    }
 
     private val teamLists = EspnTeams(http)
 
@@ -233,12 +267,15 @@ class SportsViewModel(
         const val LIVE_REFRESH_MS = 30_000L
         const val IDLE_REFRESH_MS = 5 * 60_000L
 
+        /** The days ahead [EspnScoreboard.load] always fetches, less one for time zones. */
+        const val LOADED_DAYS_AHEAD = 6L
+
         /** Finished games stay listed for a day, for the result. */
         const val FINISHED_KEEP_MS = 24 * 60 * 60_000L
 
-        /** Live first, then upcoming soonest first, then results newest first. */
+        /** Live first, then results newest first, then upcoming soonest first. */
         val eventOrder = Comparator<SportsEvent> { a, b ->
-            val rank = { e: SportsEvent -> when (e.state) { EventState.LIVE -> 0; EventState.UPCOMING -> 1; EventState.FINISHED -> 2 } }
+            val rank = { e: SportsEvent -> when (e.state) { EventState.LIVE -> 0; EventState.FINISHED -> 1; EventState.UPCOMING -> 2 } }
             val byState = rank(a).compareTo(rank(b))
             when {
                 byState != 0 -> byState
