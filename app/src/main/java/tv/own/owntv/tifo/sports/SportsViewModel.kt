@@ -1,5 +1,6 @@
 package tv.own.owntv.tifo.sports
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,8 +40,20 @@ data class SportsUiState(
     val selected: SportsEvent? = null,
     val matching: Boolean = false,
     val matches: List<SportsChannelMatch> = emptyList(),
+    /** Set when recordings go to the user's Jellyfin server instead of the TV. */
+    val jellyfin: JellyfinConfig = JellyfinConfig("", ""),
+    /** What Jellyfin has scheduled, read when a game is opened. */
+    val jellyfinTimers: List<JellyfinTimer> = emptyList(),
+    /** A one-line message under the channels: Jellyfin connected, or why it couldn't record. */
+    val notice: SportsNotice? = null,
 ) {
     val visibleEvents: List<SportsEvent> get() = if (filter == null) events else events.filter { it.competition == filter }
+}
+
+sealed interface SportsNotice {
+    data class Connected(val serverName: String) : SportsNotice
+    data object Scheduled : SportsNotice
+    data class Failed(val failure: JellyfinFailure) : SportsNotice
 }
 
 class SportsViewModel(
@@ -51,12 +64,16 @@ class SportsViewModel(
     private val settings: SettingsRepository,
     private val profileDao: ProfileDao,
     private val recordings: RecordingManager,
+    appContext: Context,
 ) : ViewModel() {
+
+    private val jellyfinSettings = JellyfinSettings(appContext)
+    private val jellyfin = JellyfinRecorder(http)
 
     private val scoreboard = EspnScoreboard(http)
     private val finder = SportsChannelFinder(db, channelDao, sourceDao, settings)
 
-    private val _state = MutableStateFlow(SportsUiState())
+    private val _state = MutableStateFlow(SportsUiState(jellyfin = jellyfinSettings.load()))
     val state: StateFlow<SportsUiState> = _state.asStateFlow()
 
     private var matchJob: Job? = null
@@ -102,8 +119,9 @@ class SportsViewModel(
 
     /** Opens [event] on the right and looks for the channels that show it. */
     fun select(event: SportsEvent) {
-        _state.update { it.copy(selected = event, matching = true, matches = emptyList()) }
+        _state.update { it.copy(selected = event, matching = true, matches = emptyList(), notice = null) }
         matchJob?.cancel()
+        viewModelScope.launch { refreshJellyfinTimers() }
         matchJob = viewModelScope.launch {
             val matches = runCatching { finder.find(event, System.currentTimeMillis()) }
                 .onFailure { Log.w(TAG, "channel matching failed", it) }
@@ -134,6 +152,11 @@ class SportsViewModel(
         val title = match.programmeTitle ?: return
         val start = match.programmeStartMs ?: return
         val stop = match.programmeStopMs ?: return
+        val config = _state.value.jellyfin
+        if (config.isSet) {
+            toggleOnJellyfin(config, match, start)
+            return
+        }
         viewModelScope.launch {
             recordingFor(match, recordingRows.value)?.let { recordings.cancel(it); return@launch }
             if (start <= System.currentTimeMillis()) return@launch
@@ -160,6 +183,65 @@ class SportsViewModel(
                     stopMs = window.last,
                 ),
             )
+        }
+    }
+
+    /** The Jellyfin timer already recording [match]'s programme, if there is one. */
+    fun jellyfinTimerFor(match: SportsChannelMatch, timers: List<JellyfinTimer>): JellyfinTimer? {
+        val start = match.programmeStartMs ?: return null
+        return timers.firstOrNull { JellyfinRecorder.covers(it, match.channel.name, start) }
+    }
+
+    private fun toggleOnJellyfin(config: JellyfinConfig, match: SportsChannelMatch, start: Long) {
+        viewModelScope.launch {
+            val existing = jellyfinTimerFor(match, _state.value.jellyfinTimers)
+            val result = runCatching {
+                if (existing != null) {
+                    jellyfin.cancel(config, existing.id)
+                } else {
+                    if (start <= System.currentTimeMillis()) return@launch
+                    // A minute in, so a programme ending exactly at the start isn't the one taken.
+                    jellyfin.schedule(config, match.channel.name, start + 60_000L)
+                }
+            }
+            val notice = result.fold(
+                onSuccess = { if (existing == null) SportsNotice.Scheduled else null },
+                onFailure = {
+                    Log.w(TAG, "Jellyfin recording failed", it)
+                    SportsNotice.Failed((it as? JellyfinException)?.failure ?: JellyfinFailure.UNREACHABLE)
+                },
+            )
+            _state.update { it.copy(notice = notice) }
+            refreshJellyfinTimers()
+        }
+    }
+
+    private suspend fun refreshJellyfinTimers() {
+        val config = _state.value.jellyfin
+        val timers = if (config.isSet) {
+            runCatching { jellyfin.timers(config) }.onFailure { Log.w(TAG, "Jellyfin timers failed", it) }.getOrNull()
+        } else {
+            emptyList()
+        }
+        if (timers != null) _state.update { it.copy(jellyfinTimers = timers) }
+    }
+
+    /**
+     * Saves the Jellyfin server and checks it answers. A blank address turns Jellyfin off, so
+     * recordings go back to the TV.
+     */
+    fun setJellyfin(url: String, apiKey: String) {
+        val config = JellyfinConfig(url.trim(), apiKey.trim())
+        jellyfinSettings.save(config)
+        _state.update { it.copy(jellyfin = config, jellyfinTimers = emptyList(), notice = null) }
+        if (!config.isSet) return
+        viewModelScope.launch {
+            val notice = runCatching { jellyfin.test(config) }.fold(
+                onSuccess = { SportsNotice.Connected(it) },
+                onFailure = { SportsNotice.Failed(JellyfinFailure.UNREACHABLE) },
+            )
+            _state.update { it.copy(notice = notice) }
+            refreshJellyfinTimers()
         }
     }
 

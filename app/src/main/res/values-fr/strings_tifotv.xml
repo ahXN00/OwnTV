@@ -29,4 +29,19 @@
     <string name="tifo_sports_match_broadcaster">Chaîne habituelle</string>
     <string name="tifo_sports_record_hint">Appuyez à droite sur une chaîne, puis OK, pour enregistrer le match depuis son guide.</string>
     <string name="tifo_sports_recording_set">● Enregistrement · %1$s</string>
+    <string name="tifo_sports_record_hint_jellyfin">Appuyez à droite sur une chaîne, puis OK, pour enregistrer le match sur votre serveur Jellyfin.</string>
+    <string name="tifo_jellyfin_on">Enregistrement Jellyfin</string>
+    <string name="tifo_jellyfin_off">Enregistrer sur Jellyfin</string>
+    <string name="tifo_jellyfin_title">Enregistrer sur Jellyfin</string>
+    <string name="tifo_jellyfin_url">Adresse du serveur</string>
+    <string name="tifo_jellyfin_url_hint">Par exemple 192.168.1.20:8096. Jellyfin doit avoir votre playlist en tuner M3U et votre guide dans TV en direct. Laissez vide pour enregistrer à nouveau sur cette TV.</string>
+    <string name="tifo_jellyfin_next">Suivant</string>
+    <string name="tifo_jellyfin_key">Clé API</string>
+    <string name="tifo_jellyfin_key_hint">Créez-en une dans Jellyfin, Tableau de bord, Clés API.</string>
+    <string name="tifo_jellyfin_connect">Connecter</string>
+    <string name="tifo_jellyfin_connected">Connecté à %1$s. Les enregistrements vont maintenant sur Jellyfin.</string>
+    <string name="tifo_jellyfin_scheduled">Jellyfin enregistrera ce match.</string>
+    <string name="tifo_jellyfin_unreachable">Impossible de joindre Jellyfin. Vérifiez l\'adresse et la clé API.</string>
+    <string name="tifo_jellyfin_no_channel">Jellyfin n\'a pas de chaîne avec ce nom. Vérifiez qu\'il utilise la même playlist.</string>
+    <string name="tifo_jellyfin_no_programme">Le guide de Jellyfin n\'a rien sur cette chaîne à cette heure. Actualisez ses données de guide.</string>
 </resources>
