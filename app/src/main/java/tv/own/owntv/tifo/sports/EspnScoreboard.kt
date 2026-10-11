@@ -27,12 +27,13 @@ class EspnScoreboard(private val http: OkHttpClient) {
     private val cache = ConcurrentHashMap<String, CachedDay>()
 
     /**
-     * Team sports: one request per day, yesterday to a week ahead, because ESPN now rejects
-     * date ranges. Yesterday to tomorrow is fetched on every call since those scores move; later
-     * days are kept for [FAR_DAY_TTL_MS]. Races and tournaments: ESPN's current event.
+     * Team sports and tournaments: one request per day, yesterday to a week ahead, because ESPN
+     * rejects date ranges, and a tennis day answers with a single tournament (Beijing on a day
+     * Shanghai is also on). Yesterday to tomorrow is fetched on every call since those scores move;
+     * later days are kept for [FAR_DAY_TTL_MS]. Races: ESPN's current race weekend.
      */
     suspend fun load(competition: Competition, nowMs: Long): List<SportsEvent> = withContext(Dispatchers.IO) {
-        if (competition.kind != SportKind.TEAM) return@withContext fetch(competition, null)
+        if (competition.kind == SportKind.RACE) return@withContext fetch(competition, null, nowMs)
         val today = Instant.ofEpochMilli(nowMs).atOffset(ZoneOffset.UTC).toLocalDate()
         val days = (-1L..7L).map { today.plusDays(it) }
         val results = coroutineScope {
@@ -44,7 +45,7 @@ class EspnScoreboard(private val http: OkHttpClient) {
                     if (cached != null && !near && nowMs - cached.fetchedAtMs < FAR_DAY_TTL_MS) {
                         return@async cached.events
                     }
-                    runCatching { fetch(competition, date) }
+                    runCatching { fetch(competition, date, nowMs) }
                         .onSuccess { cache[key] = CachedDay(nowMs, it) }
                         .getOrElse { cached?.events }
                 }
@@ -54,11 +55,11 @@ class EspnScoreboard(private val http: OkHttpClient) {
         results.filterNotNull().flatten().distinctBy { it.id }
     }
 
-    private fun fetch(competition: Competition, date: LocalDate?): List<SportsEvent> {
+    private fun fetch(competition: Competition, date: LocalDate?, nowMs: Long): List<SportsEvent> {
         val request = Request.Builder().url(urlFor(competition, date)).build()
         return http.newCall(request).execute().use { response ->
             check(response.isSuccessful) { "ESPN ${competition.espnPath} answered ${response.code}" }
-            parseScoreboard(competition, response.body.string())
+            parseScoreboard(competition, response.body.string(), nowMs)
         }
     }
 
@@ -81,11 +82,47 @@ internal fun parseEspnDate(raw: String?): Long? {
     return runCatching { OffsetDateTime.parse(raw, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant().toEpochMilli() }.getOrNull()
 }
 
-internal fun parseScoreboard(competition: Competition, json: String): List<SportsEvent> {
+internal fun parseScoreboard(competition: Competition, json: String, nowMs: Long = System.currentTimeMillis()): List<SportsEvent> {
     val events = JSONObject(json).optJSONArray("events") ?: return emptyList()
     return (0 until events.length()).mapNotNull { i ->
-        runCatching { parseEvent(competition, events.getJSONObject(i)) }.getOrNull()
+        runCatching {
+            val event = events.getJSONObject(i)
+            if (competition.kind == SportKind.TOURNAMENT) parseTournament(competition, event, nowMs) else parseEvent(competition, event)
+        }.getOrNull()
     }
+}
+
+/**
+ * A tennis tournament: ESPN gives it no status of its own, only its dates and its matches (under
+ * groupings, one per draw), so it is live while a match is, or between its dates while matches
+ * remain to be played.
+ */
+private fun parseTournament(competition: Competition, event: JSONObject, nowMs: Long): SportsEvent? {
+    val startMs = parseEspnDate(event.optString("date")) ?: return null
+    val endMs = parseEspnDate(event.optString("endDate")) ?: startMs
+    val matches = event.optJSONArray("groupings").objects().flatMap { it.optJSONArray("competitions").objects() } +
+        event.optJSONArray("competitions").objects()
+    val states = matches.map { it.optJSONObject("status")?.optJSONObject("type")?.optString("state") }
+    val state = when {
+        "in" in states -> EventState.LIVE
+        nowMs < startMs -> EventState.UPCOMING
+        nowMs <= endMs && "pre" in states -> EventState.LIVE
+        else -> EventState.FINISHED
+    }
+    val broadcasts = matches.flatMap { m ->
+        m.optJSONArray("broadcasts").objects().flatMap { it.optJSONArray("names").strings() }
+    }.distinct()
+    return SportsEvent(
+        id = event.optString("id").ifBlank { return null },
+        competition = competition,
+        name = event.optString("name").ifBlank { event.optString("shortName") },
+        startMs = startMs,
+        state = state,
+        statusDetail = "",
+        home = null,
+        away = null,
+        broadcasts = broadcasts,
+    )
 }
 
 private fun parseEvent(competition: Competition, event: JSONObject): SportsEvent? {

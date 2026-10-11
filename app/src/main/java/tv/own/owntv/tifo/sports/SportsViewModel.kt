@@ -9,14 +9,24 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import tv.own.owntv.core.database.OwnTVDatabase
 import tv.own.owntv.core.database.dao.ChannelDao
+import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.core.database.dao.SourceDao
+import tv.own.owntv.core.database.dao.resolveExistingProfileId
+import tv.own.owntv.core.database.entity.RecordingEntity
+import tv.own.owntv.core.model.RecordingStatus
+import tv.own.owntv.core.recording.RecordingManager
 import tv.own.owntv.core.settings.SettingsRepository
 
 data class SportsUiState(
@@ -38,7 +48,9 @@ class SportsViewModel(
     db: OwnTVDatabase,
     channelDao: ChannelDao,
     sourceDao: SourceDao,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
+    private val profileDao: ProfileDao,
+    private val recordings: RecordingManager,
 ) : ViewModel() {
 
     private val scoreboard = EspnScoreboard(http)
@@ -97,6 +109,57 @@ class SportsViewModel(
                 .onFailure { Log.w(TAG, "channel matching failed", it) }
                 .getOrDefault(emptyList())
             _state.update { if (it.selected?.id == event.id) it.copy(matching = false, matches = matches) else it }
+        }
+    }
+
+    /** This profile's recordings, so a channel knows whether its game is already set to record. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val recordingRows: StateFlow<List<RecordingEntity>> =
+        settings.activeProfileId
+            .flatMapLatest { pid -> if (pid < 0) flowOf(emptyList()) else recordings.observe(pid) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The recording already covering [match]'s guide programme, if there is one. */
+    fun recordingFor(match: SportsChannelMatch, rows: List<RecordingEntity>): RecordingEntity? = rows.firstOrNull {
+        it.channelId == match.channel.id && it.programmeStartMs == match.programmeStartMs &&
+            it.status != RecordingStatus.CANCELLED
+    }
+
+    /**
+     * Records the guide programme that shows the game on [match]'s channel, the way the guide's
+     * Record does (with the user's padding), or cancels it when it is already set. Only for a
+     * programme still to come: a game under way is watched, not scheduled.
+     */
+    fun toggleRecording(match: SportsChannelMatch) {
+        val title = match.programmeTitle ?: return
+        val start = match.programmeStartMs ?: return
+        val stop = match.programmeStopMs ?: return
+        viewModelScope.launch {
+            recordingFor(match, recordingRows.value)?.let { recordings.cancel(it); return@launch }
+            if (start <= System.currentTimeMillis()) return@launch
+            val preferred = settings.activeProfileId.first()
+            val pid = if (preferred >= 0) profileDao.resolveExistingProfileId(preferred) else null
+            if (pid == null) return@launch
+            val channel = match.channel
+            val window = recordings.windowFor(start, stop)
+            recordings.schedule(
+                RecordingEntity(
+                    profileId = pid,
+                    sourceId = channel.sourceId,
+                    channelId = channel.id,
+                    channelName = channel.name,
+                    channelIconUrl = channel.logoUrl,
+                    epgChannelId = channel.epgChannelId,
+                    streamUrl = channel.streamUrl,
+                    httpHeaders = channel.httpHeaders,
+                    title = title,
+                    description = null,
+                    programmeStartMs = start,
+                    programmeStopMs = stop,
+                    startMs = window.first,
+                    stopMs = window.last,
+                ),
+            )
         }
     }
 

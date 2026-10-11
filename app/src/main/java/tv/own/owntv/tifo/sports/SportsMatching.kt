@@ -14,14 +14,12 @@ object SportsMatching {
     /** Both teams in the title. */
     const val BOTH_TEAMS = 100
 
-    /** One team and the competition's name. */
-    const val TEAM_AND_COMPETITION = 70
+
+    /** From this score a match is shown as the best one. */
+    const val BEST_MATCH = 70
 
     /** A race or tournament by its own name ("Singapore Grand Prix" for the Singapore GP). */
     const val EVENT_NAME = 70
-
-    /** One team only. */
-    const val ONE_TEAM = 45
 
     /** Only the competition ("Multiplex Ligue 1", "NFL Sunday"), airing at the event's time. */
     const val COMPETITION_ONLY = 30
@@ -35,8 +33,14 @@ object SportsMatching {
      */
     const val EVENT_CHANNEL = 110
 
-    /** A channel naming one of the teams: a club's own channel, or one side of an event channel. */
-    const val TEAM_CHANNEL = 35
+    /**
+     * The game's own broadcaster: the channel ESPN lists for an NFL or NBA game ("ESPN2", "CBS"),
+     * or the home country's for the others ("Ligue 1+"). The most direct answer, so it goes first.
+     */
+    const val LISTED_BROADCASTER = 120
+
+    /** One of the game's own broadcaster's channels whose guide also shows the game. */
+    const val LISTED_AND_SHOWING = 130
 
     /** Spellings guides use that ESPN doesn't, keyed by ESPN's normalised display name. */
     private val aliases: Map<String, List<String>> = mapOf(
@@ -101,14 +105,12 @@ object SportsMatching {
     fun score(event: SportsEvent, title: String, extra: String? = null): Int {
         val text = normalize(title)
         val all = if (extra.isNullOrBlank()) text else text + " " + normalize(extra)
+        if (mentionsOtherSport(event, all)) return 0
         val competition = event.competition.keywords.any { containsTerm(all, it) }
         return when (event.competition.kind) {
             SportKind.TEAM -> {
-                val hits = teamHits(event, text)
                 when {
-                    hits == BOTH -> BOTH_TEAMS
-                    hits == ONE && competition -> TEAM_AND_COMPETITION
-                    hits == ONE -> ONE_TEAM
+                    namesBothTeams(event, text, competition) -> BOTH_TEAMS
                     competition && containsTerm(text, event.competition.keywords.first()) -> COMPETITION_ONLY
                     else -> 0
                 }
@@ -135,43 +137,123 @@ object SportsMatching {
      */
     fun channelScore(event: SportsEvent, channelName: String): Int {
         val text = normalize(channelName)
+        if (mentionsOtherSport(event, text)) return 0
+        val competition = event.competition.keywords.any { containsTerm(text, it) }
         return when (event.competition.kind) {
-            SportKind.TEAM -> when (teamHits(event, text)) {
-                BOTH -> EVENT_CHANNEL
-                ONE -> TEAM_CHANNEL
-                else -> 0
-            }
+            SportKind.TEAM -> if (namesBothTeams(event, text, competition)) EVENT_CHANNEL else 0
             SportKind.RACE, SportKind.TOURNAMENT -> {
                 val named = eventTerms(event).any { containsTerm(text, it) }
-                val competition = event.competition.keywords.any { containsTerm(text, it) }
                 if (named && competition) EVENT_NAME else 0
             }
         }
     }
 
     /**
-     * [BOTH] when [text] names both teams, [ONE] when it names one by its own name, else 0. A city
-     * ("Chicago at Green Bay") only counts next to the other team, and not when both teams share it
-     * (Lakers v Clippers), since a city alone also names local channels.
+     * Whether [text] names both teams. One team is never enough: "Spurs" alone is also Tottenham,
+     * and a club's own channel doesn't show every game. A city ("Chicago at Green Bay") stands for
+     * its team, but two cities alone also name other sports' games, so then the competition has to
+     * be named too; and a city both teams share (Lakers v Clippers) names neither.
      */
-    private fun teamHits(event: SportsEvent, text: String): Int {
-        val teams = listOfNotNull(event.home, event.away)
+    private fun namesBothTeams(event: SportsEvent, text: String, competitionNamed: Boolean): Boolean {
+        val home = event.home ?: return false
+        val away = event.away ?: return false
+        val teams = listOf(home, away)
         val named = teams.map { team -> teamTerms(team).any { containsTerm(text, it) } }
         val cities = teams.map { city(it) }
-        val byCity = teams.indices.map { i ->
-            val c = cities[i] ?: return@map false
-            cities.count { it != null && normalize(it) == normalize(c) } == 1 && containsTerm(text, c)
-        }
-        val found = teams.indices.count { named[it] || byCity[it] }
-        return when {
-            teams.size == 2 && found == 2 -> BOTH
-            named.any { it } -> ONE
-            else -> 0
+        val sameCity = cities[0] != null && cities[1] != null && normalize(cities[0]!!) == normalize(cities[1]!!)
+        val byCity = cities.map { c -> c != null && !sameCity && containsTerm(text, c) }
+        val found = teams.indices.all { named[it] || byCity[it] }
+        return found && (named.any { it } || competitionNamed)
+    }
+
+    /**
+     * Whether [normalizedText] names a sport other than the event's ("NHL", "Premier League" for an
+     * NBA game): team names repeat across sports (Spurs, Kings, Rangers, Panthers…).
+     */
+    fun mentionsOtherSport(event: SportsEvent, normalizedText: String): Boolean {
+        val own = sportOf(event.competition)
+        return SPORT_WORDS.any { (sport, words) -> sport != own && words.any { containsTerm(normalizedText, it) } }
+    }
+
+    private fun sportOf(competition: Competition): String = when (competition) {
+        Competition.LIGUE_1, Competition.PREMIER_LEAGUE, Competition.LALIGA, Competition.CHAMPIONS_LEAGUE -> SOCCER
+        Competition.NBA -> BASKETBALL
+        Competition.NFL -> AMERICAN_FOOTBALL
+        Competition.FORMULA_1 -> RACING
+        Competition.ATP -> TENNIS
+    }
+
+    /**
+     * Whether a channel named [channelName] is the broadcaster ESPN calls [broadcaster]: "ESPN2" is
+     * "US | ESPN 2 HD", "beIN Sports" is "beIN Sports 1", but "ESPN" is neither "ESPN2" nor "ESPN+".
+     */
+    fun broadcasterMatches(channelName: String, broadcaster: String): Boolean {
+        val text = normalize(channelName)
+        return broadcasterSearchTerms(broadcaster).any { variant ->
+            val needle = normalize(variant)
+            var from = 0
+            while (true) {
+                val at = text.indexOf(needle, from)
+                if (at < 0) break
+                val end = at + needle.length
+                val before = at == 0 || !text[at - 1].isLetterOrDigit()
+                val after = end >= text.length || (!text[end].isLetterOrDigit() && text[end] != '+')
+                if (before && after) return true
+                from = at + 1
+            }
+            false
         }
     }
 
-    private const val ONE = 1
-    private const val BOTH = 2
+    /**
+     * What to look for in the database for [broadcaster]: "ESPN2" also as "ESPN 2", and ESPN's
+     * short forms by the names playlists use ("NFL Net" is "NFL Network").
+     */
+    fun broadcasterSearchTerms(broadcaster: String): List<String> {
+        val name = broadcaster.trim()
+        return (listOf(name) + BROADCASTER_ALIASES[normalize(name)].orEmpty())
+            .flatMap { listOf(it, it.replace(LETTER_DIGIT, " "), it.replace(" ", "")) }
+            .filter { it.length >= 2 }
+            .distinct()
+    }
+
+    /** ESPN's short broadcaster names, keyed normalised, and what channels are called instead. */
+    private val BROADCASTER_ALIASES: Map<String, List<String>> = mapOf(
+        "nfl net" to listOf("NFL Network"),
+        "cbssn" to listOf("CBS Sports Network", "CBS Sports"),
+        "fs1" to listOf("Fox Sports 1"),
+        "fs2" to listOf("Fox Sports 2"),
+        "espnu" to listOf("ESPN U"),
+        "prime video" to listOf("Amazon Prime", "Prime Video"),
+        "nbatv" to listOf("NBA TV"),
+        "usa net" to listOf("USA Network"),
+    )
+
+    private val LETTER_DIGIT = Regex("(?<=\\p{L})(?=\\d)|(?<=\\d)(?=\\p{L})")
+
+    private const val SOCCER = "soccer"
+    private const val BASKETBALL = "basketball"
+    private const val AMERICAN_FOOTBALL = "american football"
+    private const val RACING = "racing"
+    private const val TENNIS = "tennis"
+
+    /** Words that name a sport or one of its leagues, whole-word and normalised. */
+    private val SPORT_WORDS: Map<String, List<String>> = mapOf(
+        SOCCER to listOf(
+            "soccer", "premier league", "ligue 1", "ligue 2", "laliga", "la liga", "champions league",
+            "ligue des champions", "europa league", "serie a", "bundesliga", "eredivisie", "mls", "uefa", "fifa",
+            "epl", "efl", "fa cup", "coupe de france",
+        ),
+        BASKETBALL to listOf("nba", "wnba", "basket", "basketball", "euroleague", "ncaab"),
+        AMERICAN_FOOTBALL to listOf("nfl", "ncaaf", "redzone", "super bowl"),
+        "hockey" to listOf("nhl", "hockey", "khl"),
+        "baseball" to listOf("mlb", "baseball"),
+        RACING to listOf("f1", "formula 1", "formule 1", "nascar", "motogp", "indycar"),
+        TENNIS to listOf("atp", "wta", "tennis"),
+        "rugby" to listOf("rugby", "top 14"),
+        "fighting" to listOf("ufc", "mma", "boxing", "boxe"),
+        "golf" to listOf("golf", "pga"),
+    )
 
     /**
      * Playlists use fake channels as section headers ("# # # NFL # # #", "##### USA #####"). They
@@ -199,6 +281,6 @@ object SportsMatching {
 
     private val GENERIC_WORDS = setOf(
         "grand", "prix", "formula", "open", "masters", "championships", "championship", "tournament",
-        "presented", "with", "cup",
+        "presented", "with", "cup", "rolex", "1000",
     )
 }

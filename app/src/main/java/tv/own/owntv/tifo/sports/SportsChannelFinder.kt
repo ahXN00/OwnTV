@@ -24,7 +24,9 @@ data class SportsChannelMatch(
 /**
  * Finds the active playlist's channels that show an event: through the guide (a programme at the
  * event's time whose title names the teams or the event), through channels named after the game
- * itself ("NFL 03: Bears vs Packers"), then through the competition's usual broadcasters.
+ * itself ("NFL 03: Bears vs Packers"), through the game's own broadcaster (ranked first: ESPN's
+ * listing for a US league, the home country's broadcaster otherwise), then through the
+ * competition's usual broadcasters.
  *
  * Reads core's database and never writes to it. The two queries name core's tables and columns
  * directly, since core has no DAO call that searches programme titles.
@@ -44,7 +46,16 @@ class SportsChannelFinder(
         fun offer(match: SportsChannelMatch) {
             if (SportsMatching.isSeparator(match.channel.name)) return
             val old = best[match.channel.id]
-            if (old == null || match.score > old.score) best[match.channel.id] = match
+            if (old == null) {
+                best[match.channel.id] = match
+            } else if (match.score > old.score) {
+                // Keep the guide programme that matched, if this better match has none.
+                best[match.channel.id] = if (match.programmeTitle == null && old.programmeTitle != null) {
+                    match.copy(programmeTitle = old.programmeTitle, programmeStartMs = old.programmeStartMs, programmeStopMs = old.programmeStopMs)
+                } else {
+                    match
+                }
+            }
         }
 
         // 1. The guide.
@@ -71,8 +82,27 @@ class SportsChannelFinder(
             offer(SportsChannelMatch(channel, score, null, null, null))
         }
 
-        // 3. The broadcasters' channel names, below anything the guide found.
-        val broadcasterNames = (event.competition.broadcasters + event.broadcasts).distinctBy { it.lowercase() }
+        // 3. The game's own broadcaster, above everything else: the channel ESPN lists for a US
+        // league, the home country's broadcaster for the others. A channel whose guide also shows
+        // the game goes above the rest of that broadcaster's channels.
+        val competition = event.competition
+        val firstBroadcasters = if (competition.usesEspnBroadcasts) event.broadcasts else competition.homeBroadcasters
+        for (name in firstBroadcasters.distinctBy { it.lowercase() }) {
+            channelsNamed(SportsMatching.broadcasterSearchTerms(name), sourceIds)
+                .filter { (_, channelName) ->
+                    !SportsMatching.isSeparator(channelName) && SportsMatching.broadcasterMatches(channelName, name)
+                }
+                .sortedBy { (_, channelName) -> channelName.length }
+                .take(LISTED_CHANNELS)
+                .forEach { (channelId, _) ->
+                    val confirmed = (best[channelId]?.score ?: 0) >= SportsMatching.BEST_MATCH
+                    val score = if (confirmed) SportsMatching.LISTED_AND_SHOWING else SportsMatching.LISTED_BROADCASTER
+                    channelDao.getById(channelId)?.let { offer(SportsChannelMatch(it, score, null, null, null)) }
+                }
+        }
+
+        // 4. The competition's usual broadcasters, below anything else found.
+        val broadcasterNames = event.competition.broadcasters.distinctBy { it.lowercase() }
         for (name in broadcasterNames) {
             runCatching { channelDao.searchList(name, sourceIds, BROADCASTER_CHANNELS) }.getOrDefault(emptyList())
                 .forEach { offer(SportsChannelMatch(it, SportsMatching.BROADCASTER, null, null, null)) }
@@ -167,6 +197,9 @@ class SportsChannelFinder(
         const val MAX_PROGRAMMES = 400
         const val MAX_RESULTS = 40
         const val MAX_NAMED_CHANNELS = 400
+
+        /** Per broadcaster, so "CBS" doesn't list every local affiliate. */
+        const val LISTED_CHANNELS = 6
         const val BROADCASTER_CHANNELS = 8
     }
 }
