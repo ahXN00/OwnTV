@@ -36,4 +36,12 @@
     <string name="tifo_sports_play_hint">OK plays it full screen.</string>
     <string name="tifo_sports_quality_from_name">from the channel name</string>
     <string name="tifo_sports_fps">%1$d FPS</string>
+    <string name="tifo_sports_teams">Teams</string>
+    <string name="tifo_sports_teams_title">Favorite teams</string>
+    <string name="tifo_sports_teams_hint">Pick a league, then press OK on a team to star it. The My teams tab lists only their games.</string>
+    <string name="tifo_sports_teams_loading">Loading teams…</string>
+    <string name="tifo_sports_teams_failed">Couldn\'t load this league\'s teams. Try again in a moment.</string>
+    <string name="tifo_sports_my_teams">My teams</string>
+    <string name="tifo_sports_my_teams_none">No favorite team yet. Pick yours with the Teams button at the top.</string>
+    <string name="tifo_sports_my_teams_no_games">None of your teams plays in the next few days.</string>
 </resources>

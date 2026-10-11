@@ -96,6 +96,8 @@ data class SportsTeam(
     val altNames: List<String>,
     val logoUrl: String?,
     val score: String?,
+    /** ESPN's id for the team, the same in every game and in the league's team list. */
+    val id: String = "",
 )
 
 data class SportsEvent(

@@ -185,6 +185,7 @@ private fun parseTeam(competitor: JSONObject): SportsTeam? {
             .filter { it.isNotBlank() },
         logoUrl = team.optString("logo").takeIf { it.isNotBlank() },
         score = competitor.optString("score").takeIf { it.isNotBlank() },
+        id = team.optString("id"),
     )
 }
 

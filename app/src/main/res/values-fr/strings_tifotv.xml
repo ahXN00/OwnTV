@@ -34,4 +34,12 @@
     <string name="tifo_sports_play_hint">OK pour la regarder en plein écran.</string>
     <string name="tifo_sports_quality_from_name">d\'après le nom de la chaîne</string>
     <string name="tifo_sports_fps">%1$d IPS</string>
+    <string name="tifo_sports_teams">Équipes</string>
+    <string name="tifo_sports_teams_title">Équipes favorites</string>
+    <string name="tifo_sports_teams_hint">Choisissez un championnat, puis OK sur une équipe pour l\'ajouter. L\'onglet Mes équipes ne liste que leurs matchs.</string>
+    <string name="tifo_sports_teams_loading">Chargement des équipes…</string>
+    <string name="tifo_sports_teams_failed">Impossible de charger les équipes de ce championnat. Réessayez dans un instant.</string>
+    <string name="tifo_sports_my_teams">Mes équipes</string>
+    <string name="tifo_sports_my_teams_none">Aucune équipe favorite. Choisissez les vôtres avec le bouton Équipes en haut.</string>
+    <string name="tifo_sports_my_teams_no_games">Aucune de vos équipes ne joue dans les prochains jours.</string>
 </resources>

@@ -105,6 +105,20 @@ fun SportsScreen(
     val context = LocalContext.current
     val qualities = remember { StreamQualityStore.get(context) }
     val qualityVersion by qualities.version.collectAsStateWithLifecycle()
+    val favorites = remember { SportsFavorites.get(context) }
+    val favoriteKeys by favorites.keys.collectAsStateWithLifecycle()
+    var settingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    if (settingsOpen) {
+        SportsTeamsSettings(
+            vm, favorites, contentStart,
+            onClose = {
+                vm.setReturnFocus(TEAMS_BUTTON_KEY)
+                settingsOpen = false
+            },
+            modifier = modifier,
+        )
+        return
+    }
 
     // The channel under the cursor plays in the preview once the cursor settles, as in Live TV,
     // and what the stream turns out to be (resolution, frame rate) is kept for its tags.
@@ -149,19 +163,38 @@ fun SportsScreen(
         modifier.padding(start = contentStart, end = 48.mpx, top = 40.mpx, bottom = 24.mpx),
         verticalArrangement = Arrangement.spacedBy(18.mpx),
     ) {
-        Text(
-            stringResource(R.string.tifo_sports_title),
-            style = stageText(40, 800),
-            color = StageColors.Text,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.mpx)) {
+            Text(
+                stringResource(R.string.tifo_sports_title),
+                style = stageText(40, 800),
+                color = StageColors.Text,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            // Sports' own settings: the favourite teams.
+            StageButton(
+                text = stringResource(R.string.tifo_sports_teams),
+                onClick = { settingsOpen = true },
+                icon = OwnTVIcon.SETTINGS,
+                height = 52.mpx,
+                textSize = 18,
+                modifier = Modifier.refocusWhen(TEAMS_BUTTON_KEY, refocus) { refocus = null },
+            )
+        }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.mpx)) {
-            item {
+            item(key = "all") {
                 StageTab(
                     label = stringResource(R.string.tifo_sports_all),
                     count = count(state.events.size),
-                    selected = state.filter == null,
+                    selected = state.filter == null && !state.myTeams,
                     onClick = { vm.setFilter(null) },
+                )
+            }
+            item(key = "mine") {
+                StageTab(
+                    label = stringResource(R.string.tifo_sports_my_teams),
+                    count = count(state.copy(myTeams = true).visibleEvents(favoriteKeys).size),
+                    selected = state.myTeams,
+                    onClick = { vm.showMyTeams() },
                 )
             }
             items(Competition.entries.toList(), key = { it.name }) { c ->
@@ -175,17 +208,27 @@ fun SportsScreen(
         }
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(36.mpx)) {
             Box(Modifier.weight(0.56f).fillMaxHeight()) {
-                val events = state.visibleEvents
+                val events = state.visibleEvents(favoriteKeys)
+                // All lists the games league by league, under the league's name.
+                val grouped = state.filter == null && !state.myTeams
+                val isFavorite = { e: SportsEvent, team: SportsTeam? -> SportsFavorites.isFavorite(favoriteKeys, e.competition, team) }
                 when {
                     state.loading -> Message(stringResource(R.string.tifo_sports_loading))
                     events.isEmpty() && state.failed -> Message(stringResource(R.string.tifo_sports_failed))
+                    events.isEmpty() && state.myTeams && favoriteKeys.isEmpty() -> Message(stringResource(R.string.tifo_sports_my_teams_none))
+                    events.isEmpty() && state.myTeams -> Message(stringResource(R.string.tifo_sports_my_teams_no_games))
                     events.isEmpty() -> Message(stringResource(R.string.tifo_sports_no_games))
                     else -> LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.mpx)) {
-                        for (event in events) {
+                        val ordered = if (grouped) Competition.entries.flatMap { c -> events.filter { it.competition == c } } else events
+                        for ((index, event) in ordered.withIndex()) {
+                            if (grouped && (index == 0 || ordered[index - 1].competition != event.competition)) {
+                                item(key = "league:" + event.competition.name) { LeagueHeader(stringResource(event.competition.labelRes)) }
+                            }
                             val open = event.id == state.selected?.id
                             item(key = eventKey(event)) {
                                 EventRow(
                                     event, selected = open, onClick = { vm.select(event) },
+                                    isFavorite = { team -> isFavorite(event, team) },
                                     modifier = Modifier.refocusWhen(eventKey(event), refocus) { refocus = null },
                                 )
                             }
@@ -390,6 +433,25 @@ private fun qualityTags(quality: StreamQuality?): List<String> {
     )
 }
 
+/** A favourite team's mark beside its name. */
+@Composable
+private fun FavoriteStar(focused: Boolean) {
+    val accent = stageAccent
+    OwnTVIcon(OwnTVIcon.STAR, if (focused) accent.onAccent else accent.accent, Modifier.size(18.mpx), filled = true)
+}
+
+/** "NFL" above the league's games on the All tab. */
+@Composable
+private fun LeagueHeader(text: String) {
+    Text(
+        text,
+        style = stageText(17, 800),
+        color = StageColors.Dim,
+        maxLines = 1, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(start = 8.mpx, top = 14.mpx, bottom = 2.mpx),
+    )
+}
+
 @Composable
 private fun Message(text: String) {
     Text(
@@ -414,7 +476,13 @@ private fun eventTitle(event: SportsEvent): String {
 }
 
 @Composable
-private fun EventRow(event: SportsEvent, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun EventRow(
+    event: SportsEvent,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isFavorite: (SportsTeam?) -> Boolean = { false },
+) {
     val accent = stageAccent
     StageRow(
         onClick = onClick,
@@ -434,6 +502,7 @@ private fun EventRow(event: SportsEvent, selected: Boolean, onClick: () -> Unit,
             if (home != null && away != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.mpx)) {
                     TeamLogo(home.logoUrl)
+                    if (isFavorite(home)) FavoriteStar(focused)
                     Text(home.shortName, style = stageText(21, 700), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     val score = if (event.state == EventState.UPCOMING || home.score == null || away.score == null) {
                         stringResource(R.string.tifo_sports_vs)
@@ -442,6 +511,7 @@ private fun EventRow(event: SportsEvent, selected: Boolean, onClick: () -> Unit,
                     }
                     Text(score, style = stageText(21, 800), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
                     Text(away.shortName, style = stageText(21, 700), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                    if (isFavorite(away)) FavoriteStar(focused)
                     TeamLogo(away.logoUrl)
                 }
             } else {
@@ -589,3 +659,6 @@ private const val PREVIEW_SETTLE_MS = 700L
 private const val MEASURE_MS = 30_000L
 
 private val CHANNEL_INDENT = 40.mpx
+
+/** The Teams button, where the cursor returns when the favourites picker closes. */
+private const val TEAMS_BUTTON_KEY = "teams"

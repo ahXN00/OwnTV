@@ -900,7 +900,7 @@
 1	protocol	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	home
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	homeAway
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	https://site.api.espn.com/apis/site/v2/sports/
-2	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	id
+3	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	id
 2	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	in
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	logo
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	media
@@ -916,6 +916,20 @@
 4	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	status
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	team
 3	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnScoreboard.kt	type
+1	url	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	/teams?limit=200
+1	log	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	ESPN ${competition.espnPath} teams answered ${response.code}
+1	log	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	ESPN ${competition.espnPath}: no teams
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	displayName
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	href
+1	url	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	https://site.api.espn.com/apis/site/v2/sports/
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	id
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	leagues
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	logos
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	name
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	shortDisplayName
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	sports
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	team
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	teams
 4	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	%
 2	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	)
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	) LIMIT $MAX_RESULTS
@@ -932,6 +946,9 @@
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	WHERE startMs <= ? AND stopMs >= ? AND ($likes) LIMIT $MAX_PROGRAMMES
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	name LIKE ?
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	title LIKE ?
+1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsFavorites.kt	:
+1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsFavorites.kt	teams
+1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsFavorites.kt	tifo_sports_favorites
 5	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\0
 1	protocol	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	#
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	(?<=\\p{L})(?=\\d)|(?<=\\d)(?=\\p{L})
@@ -1052,6 +1069,7 @@
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wnba
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wta
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	|
+1	empty	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	ATP
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+ F1
@@ -1096,14 +1114,20 @@
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	tennis/atp
 1	locale	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	EEEdMMM
 1	protocol	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	Mbps
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	all
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	c:$channelId
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	e:
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	h:$key
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	league:
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	m:$key
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	mine
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	q:$broadcaster
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsScreen.kt	teams
+1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsTeamsSettings.kt	:
 1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	TifoSports
 1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	channel matching failed
 1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	scoreboard ${competition.name} failed
+1	log	app/src/main/java/tv/own/owntv/tifo/sports/SportsViewModel.kt	teams ${competition.name} failed
 1	empty	app/src/main/java/tv/own/owntv/tifo/sports/StreamQuality.kt	\0
 1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/StreamQuality.kt	${channel.sourceId}:${channel.remoteId ?: channel.name}
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/StreamQuality.kt	${resolution ?: old?.resolution.orEmpty()}|${fps ?: old?.fps ?: ""}|${System.currentTimeMillis()}

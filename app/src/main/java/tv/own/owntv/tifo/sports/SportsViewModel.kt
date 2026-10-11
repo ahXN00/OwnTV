@@ -35,6 +35,8 @@ data class SportsUiState(
     val failed: Boolean = false,
     /** Null = all competitions. */
     val filter: Competition? = null,
+    /** The "My teams" tab: only games a favourite team plays in, across competitions. */
+    val myTeams: Boolean = false,
     val events: List<SportsEvent> = emptyList(),
     val selected: SportsEvent? = null,
     val matching: Boolean = false,
@@ -42,7 +44,21 @@ data class SportsUiState(
     /** The selected game's own broadcasters ("CBS", "Ligue 1+"), each a search of all channels. */
     val broadcasters: List<String> = emptyList(),
 ) {
-    val visibleEvents: List<SportsEvent> get() = if (filter == null) events else events.filter { it.competition == filter }
+    /** The games the open tab lists; [favorites] are [SportsFavorites.keys], for "My teams". */
+    fun visibleEvents(favorites: Set<String>): List<SportsEvent> = when {
+        myTeams -> events.filter { e ->
+            SportsFavorites.isFavorite(favorites, e.competition, e.home) || SportsFavorites.isFavorite(favorites, e.competition, e.away)
+        }
+        filter == null -> events
+        else -> events.filter { it.competition == filter }
+    }
+}
+
+/** A league's teams in the favourites picker. */
+sealed interface TeamList {
+    data object Loading : TeamList
+    data object Failed : TeamList
+    data class Loaded(val teams: List<SportsTeam>) : TeamList
 }
 
 class SportsViewModel(
@@ -114,7 +130,28 @@ class SportsViewModel(
         }
     }
 
-    fun setFilter(competition: Competition?) = _state.update { it.copy(filter = competition) }
+    fun setFilter(competition: Competition?) = _state.update { it.copy(filter = competition, myTeams = false) }
+
+    fun showMyTeams() = _state.update { it.copy(filter = null, myTeams = true) }
+
+    private val teamLists = EspnTeams(http)
+
+    private val _teams = MutableStateFlow<Map<Competition, TeamList>>(emptyMap())
+
+    /** Each league's teams for the favourites picker, loaded when the picker opens the league. */
+    val teams: StateFlow<Map<Competition, TeamList>> = _teams.asStateFlow()
+
+    fun loadTeams(competition: Competition) {
+        val current = _teams.value[competition]
+        if (current != null && current !is TeamList.Failed) return
+        _teams.update { it + (competition to TeamList.Loading) }
+        viewModelScope.launch {
+            val list: TeamList = runCatching { teamLists.load(competition) }
+                .onFailure { Log.w(TAG, "teams ${competition.name} failed", it) }
+                .fold({ TeamList.Loaded(it) }, { TeamList.Failed })
+            _teams.update { it + (competition to list) }
+        }
+    }
 
     /**
      * Opens [event] under its row and looks for the channels that show it; the open game again
