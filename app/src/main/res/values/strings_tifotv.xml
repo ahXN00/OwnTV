@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- TifoTV's own strings, kept out of OwnTV's files so upstream merges never touch them. -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <!-- Overrides core's "OwnTV": the launcher name, so the two apps can be told apart. -->
-    <string name="app_name" translatable="false">TifoTV</string>
+    <!-- app_name ("TifoTV", or "TifoTV Dev") is generated in app/build.gradle.kts and overrides core's "OwnTV". -->
     <string name="tifo_sports_title">Sports</string>
     <string name="tifo_sports_all">All</string>
     <string name="tifo_sports_ligue_1">Ligue 1</string>
