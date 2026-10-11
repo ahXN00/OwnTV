@@ -32,4 +32,19 @@
     <string name="tifo_sports_match_broadcaster">Usual channel</string>
     <string name="tifo_sports_record_hint">Press right on a channel, then OK, to record the game from its guide.</string>
     <string name="tifo_sports_recording_set">● Recording · %1$s</string>
+    <string name="tifo_sports_record_hint_jellyfin">Press right on a channel, then OK, to record the game on your Jellyfin server.</string>
+    <string name="tifo_jellyfin_on">Jellyfin recording</string>
+    <string name="tifo_jellyfin_off">Record to Jellyfin</string>
+    <string name="tifo_jellyfin_title">Record to Jellyfin</string>
+    <string name="tifo_jellyfin_url">Server address</string>
+    <string name="tifo_jellyfin_url_hint">Like 192.168.1.20:8096. Jellyfin needs your playlist as an M3U tuner and your guide under Live TV. Leave empty to record on this TV again.</string>
+    <string name="tifo_jellyfin_next">Next</string>
+    <string name="tifo_jellyfin_key">API key</string>
+    <string name="tifo_jellyfin_key_hint">Create one in Jellyfin under Dashboard, API Keys.</string>
+    <string name="tifo_jellyfin_connect">Connect</string>
+    <string name="tifo_jellyfin_connected">Connected to %1$s. Recordings now go to Jellyfin.</string>
+    <string name="tifo_jellyfin_scheduled">Jellyfin will record this game.</string>
+    <string name="tifo_jellyfin_unreachable">Couldn\'t reach Jellyfin. Check the address and the API key.</string>
+    <string name="tifo_jellyfin_no_channel">Jellyfin has no channel with this name. Check that it uses the same playlist.</string>
+    <string name="tifo_jellyfin_no_programme">Jellyfin\'s guide has nothing on this channel at that time. Refresh its guide data.</string>
 </resources>
