@@ -1,0 +1,64 @@
+name: PR test APK
+
+# TifoTV's dev environment: every pull request gets a ready-to-install debug APK, so a change can
+# be tried on the Android TV emulator before it is merged (a merge releases to the TV). Android CI
+# deliberately builds no APK for pull requests; this separate workflow does, and leaves that
+# upstream file untouched.
+#
+# Two APKs: x86_64 for an emulator on a Windows/Linux PC or an Intel Mac, arm64 for an Apple
+# Silicon Mac. Both are debug builds (version 99.99.99), so they are for the emulator only: they
+# cannot install over the release-signed app on the TV.
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build debug APKs
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleX86_64Debug assembleStandardDebug --stacktrace
+          mkdir -p dist
+          cp "$(ls app/build/outputs/apk/x86_64/debug/*.apk | head -n1)" "dist/TifoTV-dev-${GITHUB_SHA::7}-x86_64.apk"
+          cp "$(ls app/build/outputs/apk/standard/debug/*.apk | head -n1)" "dist/TifoTV-dev-${GITHUB_SHA::7}-arm64.apk"
+
+      - name: Upload the x86_64 APK (PC or Intel Mac emulator)
+        uses: actions/upload-artifact@v7
+        with:
+          name: TifoTV-dev-x86_64
+          path: dist/*-x86_64.apk
+          retention-days: 14
+
+      - name: Upload the arm64 APK (Apple Silicon Mac emulator)
+        uses: actions/upload-artifact@v7
+        with:
+          name: TifoTV-dev-arm64
+          path: dist/*-arm64.apk
+          retention-days: 14
