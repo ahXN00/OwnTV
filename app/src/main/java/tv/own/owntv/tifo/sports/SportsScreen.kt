@@ -20,9 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,9 +35,7 @@ import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.format.rememberBestDateFormatter
 import tv.own.owntv.ui.format.rememberSystemTimeFormatter
-import tv.own.owntv.ui.components.TextInputDialog
 import tv.own.owntv.ui.stage.StageButton
-import tv.own.owntv.ui.stage.StagePill
 import tv.own.owntv.ui.stage.StageRow
 import tv.own.owntv.ui.stage.StageTab
 import tv.own.owntv.ui.stage.StageTag
@@ -74,64 +69,12 @@ fun SportsScreen(
         modifier.padding(start = contentStart, end = 48.mpx, top = 40.mpx, bottom = 24.mpx),
         verticalArrangement = Arrangement.spacedBy(18.mpx),
     ) {
-        var jellyfinStep by remember { mutableStateOf(JellyfinStep.NONE) }
-        var jellyfinUrl by remember { mutableStateOf("") }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.mpx)) {
-            Text(
-                stringResource(R.string.tifo_sports_title),
-                style = stageText(40, 800),
-                color = StageColors.Text,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            StagePill(
-                text = stringResource(if (state.jellyfin.isSet) R.string.tifo_jellyfin_on else R.string.tifo_jellyfin_off),
-                onClick = { jellyfinStep = JellyfinStep.URL },
-                icon = OwnTVIcon.REC,
-                dimmed = !state.jellyfin.isSet,
-            )
-        }
-        state.notice?.let { notice ->
-            Text(
-                noticeText(notice),
-                style = stageText(17, 700),
-                color = if (notice is SportsNotice.Failed) LiveRed else stageAccent.accent,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-        }
-        when (jellyfinStep) {
-            JellyfinStep.NONE -> Unit
-            JellyfinStep.URL -> TextInputDialog(
-                title = stringResource(R.string.tifo_jellyfin_title),
-                initial = state.jellyfin.url,
-                label = stringResource(R.string.tifo_jellyfin_url),
-                hint = stringResource(R.string.tifo_jellyfin_url_hint),
-                confirmLabel = stringResource(R.string.tifo_jellyfin_next),
-                onConfirm = { url ->
-                    jellyfinUrl = url
-                    if (url.isBlank()) {
-                        vm.setJellyfin("", "")
-                        jellyfinStep = JellyfinStep.NONE
-                    } else {
-                        jellyfinStep = JellyfinStep.KEY
-                    }
-                },
-                onDismiss = { jellyfinStep = JellyfinStep.NONE },
-            )
-            JellyfinStep.KEY -> TextInputDialog(
-                title = stringResource(R.string.tifo_jellyfin_title),
-                initial = state.jellyfin.apiKey,
-                label = stringResource(R.string.tifo_jellyfin_key),
-                hint = stringResource(R.string.tifo_jellyfin_key_hint),
-                confirmLabel = stringResource(R.string.tifo_jellyfin_connect),
-                allowBlank = false,
-                onConfirm = { key ->
-                    vm.setJellyfin(jellyfinUrl, key)
-                    jellyfinStep = JellyfinStep.NONE
-                },
-                onDismiss = { jellyfinStep = JellyfinStep.NONE },
-            )
-        }
+        Text(
+            stringResource(R.string.tifo_sports_title),
+            style = stageText(40, 800),
+            color = StageColors.Text,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.mpx)) {
             item {
                 StageTab(
@@ -199,7 +142,7 @@ fun SportsScreen(
                         }
                         if (state.matches.any(canRecord)) {
                             Text(
-                                stringResource(if (state.jellyfin.isSet) R.string.tifo_sports_record_hint_jellyfin else R.string.tifo_sports_record_hint),
+                                stringResource(R.string.tifo_sports_record_hint),
                                 style = stageText(15, 500),
                                 color = StageColors.Muted,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -207,11 +150,7 @@ fun SportsScreen(
                         }
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(4.mpx)) {
                             items(state.matches, key = { it.channel.id }) { match ->
-                                val recording: Any? = if (state.jellyfin.isSet) {
-                                    vm.jellyfinTimerFor(match, state.jellyfinTimers)
-                                } else {
-                                    vm.recordingFor(match, recordingRows)
-                                }
+                                val recording = vm.recordingFor(match, recordingRows)
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
                                     ChannelRow(match, recordingSet = recording != null, onClick = { onPlayChannel(match.channel) }, modifier = Modifier.weight(1f))
                                     if (recording != null || canRecord(match)) {
@@ -232,21 +171,6 @@ fun SportsScreen(
             }
         }
     }
-}
-
-private enum class JellyfinStep { NONE, URL, KEY }
-
-@Composable
-private fun noticeText(notice: SportsNotice): String = when (notice) {
-    is SportsNotice.Connected -> stringResource(R.string.tifo_jellyfin_connected, notice.serverName)
-    SportsNotice.Scheduled -> stringResource(R.string.tifo_jellyfin_scheduled)
-    is SportsNotice.Failed -> stringResource(
-        when (notice.failure) {
-            JellyfinFailure.UNREACHABLE -> R.string.tifo_jellyfin_unreachable
-            JellyfinFailure.NO_CHANNEL -> R.string.tifo_jellyfin_no_channel
-            JellyfinFailure.NO_PROGRAMME -> R.string.tifo_jellyfin_no_programme
-        },
-    )
 }
 
 @Composable
