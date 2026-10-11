@@ -71,6 +71,7 @@ import tv.own.owntv.features.search.SearchViewModel
 import tv.own.owntv.core.home.TrendingHomeItem
 import tv.own.owntv.features.series.SeriesScreen
 import tv.own.owntv.features.series.SeriesViewModel
+import tv.own.owntv.features.sport.SportsScreen
 import tv.own.owntv.core.settings.RemoteShortcutAction
 import tv.own.owntv.core.settings.RemoteShortcutBindings
 import tv.own.owntv.player.MiniPlayer
@@ -1314,6 +1315,17 @@ fun OwnTVShell(
                             modifier = Modifier.fillMaxSize(),
                         )
 
+                        selectedSection == MainSection.SPORT -> SportsScreen(
+                            onPlayChannel = { id, zap -> scope.launch { if (liveVm.ensurePlayingByIdAsync(id, zap)) openFullscreen(MainSection.LIVE_TV) } },
+                            onChildFocused = { focusedLayer = ShellLayer.CONTENT },
+                            previewEnabled = playerMode == PlayerMode.NONE,
+                            restoreFocus = restoreFocus,
+                            onRestored = { restoreFocus = false },
+                            onContentScrolled = { contentScrolled = it },
+                            contentStart = if (navStyle == tv.own.owntv.core.settings.SettingsRepository.NavStyle.DOCKED) 64.mpx else 150.mpx,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
                         selectedSection == MainSection.MOVIES -> MoviesScreen(
                             onFullscreen = { openFullscreen() },
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
@@ -2033,7 +2045,7 @@ private fun OfflineBanner() {
     }
 
 /** Sections already redrawn for Stage: they own the whole canvas and paint the Stage page. */
-private val StageSections = setOf(MainSection.SEARCH, MainSection.HOME, MainSection.LIVE_TV, MainSection.EPG, MainSection.MOVIES, MainSection.SERIES, MainSection.DOWNLOADS, MainSection.MORE, MainSection.SETTINGS)
+private val StageSections = setOf(MainSection.SEARCH, MainSection.HOME, MainSection.LIVE_TV, MainSection.EPG, MainSection.SPORT, MainSection.MOVIES, MainSection.SERIES, MainSection.DOWNLOADS, MainSection.MORE, MainSection.SETTINGS)
 
 private val MainSection.emptyIcon: OwnTVIcon
     get() = when (this) {
@@ -2044,6 +2056,7 @@ private val MainSection.emptyIcon: OwnTVIcon
         MainSection.SERIES -> OwnTVIcon.SERIES
         MainSection.DOWNLOADS -> OwnTVIcon.DOWNLOADS
         MainSection.EPG -> OwnTVIcon.EPG
+        MainSection.SPORT -> OwnTVIcon.SPORT
         MainSection.SETTINGS -> OwnTVIcon.SETTINGS
         MainSection.MORE -> OwnTVIcon.MORE
     }
@@ -2084,12 +2097,12 @@ private fun railCategoriesFor(section: MainSection): List<RailCategory> = when (
         RailCategory("Movies", labelRes = tv.own.owntv.R.string.content_category_movies),
         RailCategory("Series", labelRes = tv.own.owntv.R.string.content_category_series),
     )
-    MainSection.SETTINGS, MainSection.MORE -> emptyList()
+    MainSection.SETTINGS, MainSection.MORE, MainSection.SPORT -> emptyList()
 }
 
 @Composable
 private fun placeholderCount(section: MainSection): String = when (section) {
-    MainSection.SEARCH, MainSection.HOME, MainSection.EPG, MainSection.SETTINGS, MainSection.MORE -> ""
+    MainSection.SEARCH, MainSection.HOME, MainSection.EPG, MainSection.SPORT, MainSection.SETTINGS, MainSection.MORE -> ""
     MainSection.LIVE_TV -> stringResource(R.string.content_zero_channels)
     MainSection.MOVIES -> stringResource(R.string.content_zero_movies)
     MainSection.SERIES -> stringResource(R.string.content_zero_series)

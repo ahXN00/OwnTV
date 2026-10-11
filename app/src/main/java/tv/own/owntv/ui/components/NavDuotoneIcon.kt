@@ -139,6 +139,17 @@ fun NavDuotoneIcon(
                 drawPath(poly(50f,15f, 59f,21f, 69f,22f, 74f,30f), soft, style = thin)
             }
 
+            // ---- Sport — trophy cup + handles + ball dot -------------------------
+            MainSection.SPORT -> {
+                drawPath(polyC(30f,20f, 70f,20f, 66f,50f, 50f,58f, 34f,50f), fill, style = stroke)
+                drawPath(poly(30f,20f, 70f,20f), fill, style = stroke)
+                arc(soft, 24f, 32f, 10f, 90f, 180f, thin) // left handle
+                arc(soft, 76f, 32f, 10f, 270f, 180f, thin) // right handle
+                drawPath(poly(50f,58f, 50f,72f), fill, style = stroke)
+                drawPath(poly(36f,80f, 64f,80f), fill, style = stroke)
+                dot(50f, 34f, 4f, soft)
+            }
+
             // ---- More — three stacked bars, the shortest last, with a dot accent -----
             MainSection.MORE -> {
                 drawPath(poly(20f,33f, 80f,33f), fill, style = stroke)
