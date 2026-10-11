@@ -1,11 +1,13 @@
 package tv.own.owntv.tifo.sports
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -20,9 +23,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,15 +41,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import java.util.Calendar
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ChannelEntity
+import tv.own.owntv.core.database.entity.RecordingEntity
+import tv.own.owntv.core.epg.displayLogoUrl
+import tv.own.owntv.features.live.LiveViewModel
+import tv.own.owntv.features.live.ProviderTags
+import tv.own.owntv.ui.components.ChannelLogoTile
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.ui.components.OwnTVSpinner
 import tv.own.owntv.ui.format.rememberBestDateFormatter
 import tv.own.owntv.ui.format.rememberSystemTimeFormatter
 import tv.own.owntv.ui.stage.StageButton
+import tv.own.owntv.ui.stage.StageLiveBadge
 import tv.own.owntv.ui.stage.StageRow
+import tv.own.owntv.ui.stage.StageSpecChip
 import tv.own.owntv.ui.stage.StageTab
 import tv.own.owntv.ui.stage.StageTag
+import tv.own.owntv.ui.stage.drawBoxShadow
+import tv.own.owntv.ui.stage.drawInnerRing
 import tv.own.owntv.ui.theme.StageColors
 import tv.own.owntv.ui.theme.StageRadii
 import tv.own.owntv.ui.theme.mpx
@@ -48,22 +72,52 @@ import tv.own.owntv.ui.theme.stageText
 private val LiveRed = Color(0xFFFF5A5A)
 
 /**
- * The Sports tab: live and upcoming games of the followed competitions on the left, and for the
- * game picked, the playlist's channels that show it on the right. OK on a channel plays it; the
- * Record button beside a channel whose guide shows the game later records that programme.
+ * The Sports tab: live and upcoming games of the followed competitions. OK on a game opens its
+ * channels under it, with a search of all channels for each of its own broadcasters ("CBS"). The
+ * channel under the cursor plays in the preview on the right, as in Live TV, and OK plays it full
+ * screen. The Record button beside a channel whose guide shows the game later records that
+ * programme.
  */
 @Composable
 fun SportsScreen(
     onPlayChannel: (ChannelEntity) -> Unit,
     contentStart: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
+    /** False while the full-screen or mini player owns the video, as for Live TV's preview. */
+    previewEnabled: Boolean = true,
 ) {
     val vm = org.koin.androidx.compose.koinViewModel<SportsViewModel>()
+    // Live TV's view model: its preview player, so there is never a second decoder.
+    val liveVm = org.koin.androidx.compose.koinViewModel<LiveViewModel>()
     val state by vm.state.collectAsStateWithLifecycle()
     val recordingRows by vm.recordingRows.collectAsStateWithLifecycle()
     LaunchedEffect(vm) { vm.refreshWhileVisible() }
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     val count = { n: Int -> java.text.NumberFormat.getIntegerInstance(locale).format(n) }
+
+    val context = LocalContext.current
+    val qualities = remember { StreamQualityStore.get(context) }
+    val qualityVersion by qualities.version.collectAsStateWithLifecycle()
+
+    // The channel under the cursor plays in the preview once the cursor settles, as in Live TV,
+    // and what the stream turns out to be (resolution, frame rate) is kept for its tags.
+    var previewed by remember { mutableStateOf<SportsChannelMatch?>(null) }
+    val livePreviewSetting by liveVm.livePreviewEnabled.collectAsStateWithLifecycle()
+    val effectivePreview = previewEnabled && livePreviewSetting
+    LaunchedEffect(previewed?.channel?.id, effectivePreview) {
+        val channel = previewed?.channel ?: return@LaunchedEffect
+        if (!effectivePreview) return@LaunchedEffect
+        delay(PREVIEW_SETTLE_MS)
+        liveVm.onChannelFocused(channel)
+        liveVm.playPreview(channel)
+        withTimeoutOrNull(MEASURE_MS) {
+            // The chips still showing belong to the channel before; this one's follow a reset.
+            liveVm.previewEngine.streamChips
+                .dropWhile { it.isNotEmpty() }
+                .collect { chips -> if (chips.isNotEmpty()) qualities.record(channel, chips) }
+        }
+    }
+    BackHandler(enabled = state.search != null) { vm.closeSearch() }
 
     Column(
         modifier.padding(start = contentStart, end = 48.mpx, top = 40.mpx, bottom = 24.mpx),
@@ -93,7 +147,7 @@ fun SportsScreen(
                 )
             }
         }
-        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(28.mpx)) {
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(36.mpx)) {
             Box(Modifier.weight(0.56f).fillMaxHeight()) {
                 val events = state.visibleEvents
                 when {
@@ -101,76 +155,243 @@ fun SportsScreen(
                     events.isEmpty() && state.failed -> Message(stringResource(R.string.tifo_sports_failed))
                     events.isEmpty() -> Message(stringResource(R.string.tifo_sports_no_games))
                     else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(6.mpx)) {
-                        items(events, key = { it.competition.name + it.id }) { event ->
-                            EventRow(event, selected = event.id == state.selected?.id, onClick = { vm.select(event) })
-                        }
-                    }
-                }
-            }
-            Column(
-                Modifier
-                    .weight(0.44f)
-                    .fillMaxHeight()
-                    .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(StageRadii.Sheet))
-                    .padding(18.mpx),
-                verticalArrangement = Arrangement.spacedBy(10.mpx),
-            ) {
-                val selected = state.selected
-                if (selected == null) {
-                    Message(stringResource(R.string.tifo_sports_pick_game))
-                    return@Column
-                }
-                Text(
-                    eventTitle(selected),
-                    style = stageText(24, 700),
-                    color = StageColors.Text,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    stringResource(R.string.tifo_sports_channels),
-                    style = stageText(16, 700),
-                    color = StageColors.Dim,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
-                when {
-                    state.matching -> Message(stringResource(R.string.tifo_sports_matching))
-                    state.matches.isEmpty() -> Message(stringResource(R.string.tifo_sports_no_channels))
-                    else -> {
-                        val now = System.currentTimeMillis()
-                        val canRecord = { match: SportsChannelMatch ->
-                            selected.state == EventState.UPCOMING && (match.programmeStartMs ?: 0L) > now
-                        }
-                        if (state.matches.any(canRecord)) {
-                            Text(
-                                stringResource(R.string.tifo_sports_record_hint),
-                                style = stageText(15, 500),
-                                color = StageColors.Muted,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.mpx)) {
-                            items(state.matches, key = { it.channel.id }) { match ->
-                                val recording = vm.recordingFor(match, recordingRows)
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
-                                    ChannelRow(match, recordingSet = recording != null, onClick = { onPlayChannel(match.channel) }, modifier = Modifier.weight(1f))
-                                    if (recording != null || canRecord(match)) {
-                                        StageButton(
-                                            text = null,
-                                            onClick = { vm.toggleRecording(match) },
-                                            icon = OwnTVIcon.REC,
-                                            iconFilled = recording != null,
-                                            tinted = recording != null,
-                                            round = true,
-                                        )
-                                    }
-                                }
+                        for (event in events) {
+                            val open = event.id == state.selected?.id
+                            item(key = "e:" + event.competition.name + event.id) {
+                                EventRow(event, selected = open, onClick = { vm.select(event) })
+                            }
+                            if (open) {
+                                eventChannels(
+                                    event = event,
+                                    state = state,
+                                    qualityOf = { ch -> qualityVersion.let { qualities.qualityOf(ch) } },
+                                    recordingFor = { match -> vm.recordingFor(match, recordingRows) },
+                                    onSearch = vm::searchBroadcaster,
+                                    onCloseSearch = vm::closeSearch,
+                                    onFocusChannel = { previewed = it },
+                                    onPlayChannel = onPlayChannel,
+                                    onToggleRecording = vm::toggleRecording,
+                                )
                             }
                         }
                     }
                 }
             }
+            SportsPreviewPane(
+                match = previewed,
+                event = state.selected,
+                quality = previewed?.channel?.let { ch -> qualityVersion.let { qualities.qualityOf(ch) } },
+                previewEngine = liveVm.previewEngine,
+                showVideo = effectivePreview,
+                modifier = Modifier.weight(0.44f).fillMaxHeight(),
+            )
         }
     }
+}
+
+/** Under the open game: its broadcaster searches, then its matches or a search's results. */
+private fun LazyListScope.eventChannels(
+    event: SportsEvent,
+    state: SportsUiState,
+    qualityOf: (ChannelEntity) -> StreamQuality?,
+    recordingFor: (SportsChannelMatch) -> RecordingEntity?,
+    onSearch: (String) -> Unit,
+    onCloseSearch: () -> Unit,
+    onFocusChannel: (SportsChannelMatch) -> Unit,
+    onPlayChannel: (ChannelEntity) -> Unit,
+    onToggleRecording: (SportsChannelMatch) -> Unit,
+) {
+    val key = event.competition.name + event.id
+    val indent = Modifier.padding(start = CHANNEL_INDENT)
+    if (state.broadcasters.isNotEmpty() || state.search != null) {
+        item(key = "b:$key") {
+            LazyRow(indent.padding(vertical = 4.mpx), horizontalArrangement = Arrangement.spacedBy(10.mpx)) {
+                if (state.search != null) {
+                    item(key = "back") {
+                        StageButton(text = stringResource(R.string.tifo_sports_search_back), onClick = onCloseSearch, height = 56.mpx, textSize = 18)
+                    }
+                }
+                items(state.broadcasters, key = { it }) { name ->
+                    StageButton(
+                        text = stringResource(R.string.tifo_sports_search_broadcaster, name),
+                        onClick = { onSearch(name) },
+                        icon = OwnTVIcon.SEARCH,
+                        tinted = state.search == name,
+                        height = 56.mpx,
+                        textSize = 18,
+                    )
+                }
+            }
+        }
+    }
+
+    val search = state.search
+    if (search != null) {
+        when {
+            state.searching -> item(key = "s:$key") { Box(indent) { Message(stringResource(R.string.tifo_sports_searching)) } }
+            state.searchResults.isEmpty() -> item(key = "s:$key") { Box(indent) { Message(stringResource(R.string.tifo_sports_search_none, search)) } }
+            else -> {
+                item(key = "s:$key") {
+                    Text(
+                        stringResource(R.string.tifo_sports_search_count, search, state.searchResults.size),
+                        style = stageText(16, 700), color = StageColors.Dim,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = indent.padding(top = 4.mpx),
+                    )
+                }
+                items(state.searchResults, key = { "r:" + it.id }) { channel ->
+                    val match = SportsChannelMatch(channel, SEARCH_RESULT, null, null, null)
+                    ChannelRow(
+                        match, quality = qualityOf(channel), recordingSet = false,
+                        onFocused = { onFocusChannel(match) }, onClick = { onPlayChannel(channel) },
+                        modifier = indent,
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    when {
+        state.matching -> item(key = "m:$key") { Box(indent) { Message(stringResource(R.string.tifo_sports_matching)) } }
+        state.matches.isEmpty() -> item(key = "m:$key") { Box(indent) { Message(stringResource(R.string.tifo_sports_no_channels)) } }
+        else -> {
+            val now = System.currentTimeMillis()
+            val canRecord = { match: SportsChannelMatch ->
+                event.state == EventState.UPCOMING && (match.programmeStartMs ?: 0L) > now
+            }
+            if (state.matches.any(canRecord)) {
+                item(key = "h:$key") {
+                    Text(
+                        stringResource(R.string.tifo_sports_record_hint),
+                        style = stageText(15, 500), color = StageColors.Muted,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        modifier = indent,
+                    )
+                }
+            }
+            items(state.matches, key = { "c:" + it.channel.id }) { match ->
+                val recording = recordingFor(match)
+                Row(indent, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
+                    ChannelRow(
+                        match, quality = qualityOf(match.channel), recordingSet = recording != null,
+                        onFocused = { onFocusChannel(match) }, onClick = { onPlayChannel(match.channel) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (recording != null || canRecord(match)) {
+                        StageButton(
+                            text = null,
+                            onClick = { onToggleRecording(match) },
+                            icon = OwnTVIcon.REC,
+                            iconFilled = recording != null,
+                            tinted = recording != null,
+                            round = true,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The right-hand side: the channel under the cursor playing muted, as Live TV's preview, with what
+ * the stream is (resolution, frame rate) and the game's programme on it.
+ */
+@Composable
+private fun SportsPreviewPane(
+    match: SportsChannelMatch?,
+    event: SportsEvent?,
+    quality: StreamQuality?,
+    previewEngine: tv.own.owntv.player.LivePreviewEngine,
+    showVideo: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val channel = match?.channel
+    val previewState by previewEngine.state.collectAsStateWithLifecycle()
+    val streamChips by previewEngine.streamChips.collectAsStateWithLifecycle()
+    val playing = showVideo && channel != null &&
+        previewState != tv.own.owntv.player.LivePreviewEngine.State.ERROR &&
+        previewState != tv.own.owntv.player.LivePreviewEngine.State.IDLE
+    val r = 28.mpx
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(14.mpx)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .drawBehind { drawBoxShadow(Color.Black.copy(alpha = 0.55f), 80.mpx.toPx(), r.toPx(), dy = 30.mpx.toPx()) }
+                .clip(RoundedCornerShape(r))
+                .background(Color.Black),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (channel != null) {
+                ChannelLogoTile(logoUrl = channel.displayLogoUrl, modifier = Modifier.size(200.mpx), fill = Color.Transparent) {
+                    OwnTVIcon(OwnTVIcon.LIVE_TV, tint = StageColors.Dim, modifier = Modifier.size(48.mpx))
+                }
+            }
+            if (playing) tv.own.owntv.player.ExoPreviewSurface(engine = previewEngine, modifier = Modifier.fillMaxSize())
+            if (playing && previewState == tv.own.owntv.player.LivePreviewEngine.State.LOADING) OwnTVSpinner(sizeDp = 24)
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.58f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.72f))))
+            Box(Modifier.fillMaxSize().drawBehind { drawInnerRing(Color.White.copy(alpha = 0.08f), 1.mpx.toPx(), r.toPx()) })
+            if (channel != null) {
+                Box(Modifier.align(Alignment.TopStart).padding(start = 20.mpx, top = 18.mpx)) { StageLiveBadge(stringResource(R.string.player_live)) }
+                if (playing && streamChips.isNotEmpty()) {
+                    Row(Modifier.align(Alignment.TopEnd).padding(end = 20.mpx, top = 18.mpx), horizontalArrangement = Arrangement.spacedBy(6.mpx)) {
+                        // Quality, frame rate and sound, as Live TV's preview shows them.
+                        streamChips.filterNot { it.contains(':') || it.endsWith("Mbps") }.forEach { StageSpecChip(it) }
+                    }
+                }
+            }
+        }
+        if (match == null) {
+            Text(
+                stringResource(if (event == null) R.string.tifo_sports_pick_game else R.string.tifo_sports_preview_hint),
+                style = stageText(20, 500), color = StageColors.Muted,
+                maxLines = 3, overflow = TextOverflow.Ellipsis,
+            )
+            return@Column
+        }
+        Text(
+            ProviderTags.parse(match.channel.name).name,
+            style = stageText(30, 800), color = StageColors.Text,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        val time = rememberSystemTimeFormatter()
+        val title = match.programmeTitle
+        val start = match.programmeStartMs
+        val stop = match.programmeStopMs
+        if (title != null && start != null && stop != null) {
+            Text(
+                stringResource(R.string.tifo_sports_programme, time(start), time(stop), title),
+                style = stageText(18, 500), color = StageColors.Muted,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        val tags = qualityTags(quality)
+        if (tags.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.mpx), verticalAlignment = Alignment.CenterVertically) {
+                tags.forEach { StageTag(it) }
+                if (quality?.measured == false) {
+                    Text(stringResource(R.string.tifo_sports_quality_from_name), style = stageText(15, 500), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.tifo_sports_play_hint),
+            style = stageText(15, 500), color = StageColors.Dim,
+            maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** "1080p", "50 FPS": a channel's quality as tags. */
+@Composable
+private fun qualityTags(quality: StreamQuality?): List<String> {
+    if (quality == null) return emptyList()
+    return listOfNotNull(
+        quality.resolution,
+        quality.fps?.let { stringResource(R.string.tifo_sports_fps, it) },
+    )
 }
 
 @Composable
@@ -277,10 +498,21 @@ private fun TeamLogo(url: String?) {
 }
 
 @Composable
-private fun ChannelRow(match: SportsChannelMatch, recordingSet: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ChannelRow(
+    match: SportsChannelMatch,
+    quality: StreamQuality?,
+    recordingSet: Boolean,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val accent = stageAccent
     val time = rememberSystemTimeFormatter()
-    StageRow(onClick = onClick, height = 84.mpx, modifier = modifier.fillMaxWidth()) { focused ->
+    StageRow(
+        onClick = onClick,
+        height = 84.mpx,
+        modifier = modifier.fillMaxWidth().onFocusChanged { if (it.hasFocus) onFocused() },
+    ) { focused ->
         val text = if (focused) accent.onAccent else StageColors.Text
         val dim = if (focused) accent.onAccent.copy(alpha = 0.8f) else StageColors.Dim
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.mpx)) {
@@ -296,16 +528,20 @@ private fun ChannelRow(match: SportsChannelMatch, recordingSet: Boolean, onClick
                 )
             }
         }
-        StageTag(
-            stringResource(
-                when {
-                    match.score >= SportsMatching.BEST_MATCH -> R.string.tifo_sports_match_best
-                    match.score > SportsMatching.BROADCASTER -> R.string.tifo_sports_match_likely
-                    else -> R.string.tifo_sports_match_broadcaster
-                },
-            ),
-            onAccent = if (focused) accent.onAccent else null,
-        )
+        val onAccent = if (focused) accent.onAccent else null
+        qualityTags(quality).forEach { StageTag(it, onAccent = onAccent) }
+        if (match.score != SEARCH_RESULT) {
+            StageTag(
+                stringResource(
+                    when {
+                        match.score >= SportsMatching.BEST_MATCH -> R.string.tifo_sports_match_best
+                        match.score > SportsMatching.BROADCASTER -> R.string.tifo_sports_match_likely
+                        else -> R.string.tifo_sports_match_broadcaster
+                    },
+                ),
+                onAccent = onAccent,
+            )
+        }
     }
 }
 
@@ -317,3 +553,14 @@ private fun isToday(ms: Long): Boolean {
 
 /** Weekday and day: "Sat 11 Oct". */
 private const val DAY_SKELETON = "EEEdMMM"
+
+/** How long the cursor rests on a channel before it plays, as in Live TV. */
+private const val PREVIEW_SETTLE_MS = 700L
+
+/** How long a preview is watched for the stream's resolution and frame rate. */
+private const val MEASURE_MS = 30_000L
+
+/** A broadcaster search result: a channel named after it, with no match to rank it by. */
+private const val SEARCH_RESULT = -1
+
+private val CHANNEL_INDENT = 40.mpx

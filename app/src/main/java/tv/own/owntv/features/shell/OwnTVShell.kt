@@ -816,13 +816,18 @@ fun OwnTVShell(
         }
     }
 
+    // TifoTV: Sports is not a MainSection (see SportsRailItem); any section change closes it.
+    var sportsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(selectedSection) { sportsOpen = false }
+
     // Stop a leftover live preview when you leave the Live section or the Guide, which previews through it
     // too (but never while fullscreen/mini plays).
     // The preview runs on the ExoPlayer live engine, not mpv: stopping only mpv here (as when the preview
     // was mpv) left it decoding and holding a provider connection after a shortcut or deep link out.
-    LaunchedEffect(selectedSection, playerMode) {
-        if (selectedSection != MainSection.LIVE_TV && selectedSection != MainSection.EPG && playerMode == PlayerMode.NONE) liveVm.stopPreview()
-        if (selectedSection != MainSection.HOME || playerMode != PlayerMode.NONE) homeVm.stopPreview()
+    // TifoTV: Sports previews through it as well, so leaving Sports stops it too.
+    LaunchedEffect(selectedSection, playerMode, sportsOpen) {
+        if (selectedSection != MainSection.LIVE_TV && selectedSection != MainSection.EPG && !sportsOpen && playerMode == PlayerMode.NONE) liveVm.stopPreview()
+        if (selectedSection != MainSection.HOME || sportsOpen || playerMode != PlayerMode.NONE) homeVm.stopPreview()
     }
 
     LaunchedEffect(selectedSection, playerMode, activeProfileId, activePlaylistId) {
@@ -845,10 +850,6 @@ fun OwnTVShell(
     LaunchedEffect(openedSeries == null) {
         if (openedSeries == null && searchReturn == MainSection.SERIES && selectedSection == MainSection.SERIES) returnToSearch()
     }
-
-    // TifoTV: Sports is not a MainSection (see SportsRailItem); any section change closes it.
-    var sportsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(selectedSection) { sportsOpen = false }
 
     BackHandler {
         when {
@@ -1119,6 +1120,7 @@ fun OwnTVShell(
                     when {
                         sportsOpen -> tv.own.owntv.tifo.sports.SportsScreen(
                             onPlayChannel = { ch -> guidePlayChannel(ch, emptyList()) },
+                            previewEnabled = playerMode == PlayerMode.NONE,
                             contentStart = if (navStyle == tv.own.owntv.core.settings.SettingsRepository.NavStyle.DOCKED) 64.mpx else 150.mpx,
                             modifier = Modifier.fillMaxSize(),
                         )

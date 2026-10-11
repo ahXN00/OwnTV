@@ -183,7 +183,7 @@ class SportsMatchingTest {
         assertTrue(SportsMatching.broadcasterMatches("CBS New York", "CBS"))
         assertTrue(!SportsMatching.broadcasterMatches("CBSN News", "CBS"))
         assertTrue(SportsMatching.broadcasterMatches("US: NFL Network HD", "NFL Net"))
-        assertTrue(SportsMatching.LISTED_BROADCASTER > SportsMatching.EVENT_CHANNEL)
+        assertTrue(SportsMatching.LISTED_AND_SHOWING > SportsMatching.EVENT_CHANNEL)
     }
 
     @Test
@@ -196,7 +196,6 @@ class SportsMatchingTest {
         assertTrue(SportsMatching.broadcasterMatches("FR| LIGUE1+ 3", "Ligue 1+"))
         assertTrue(!SportsMatching.broadcasterMatches("FR: Ligue 1 Replay", "Ligue 1+"))
         assertTrue(SportsMatching.broadcasterMatches("UK: Sky Sports Premier League", "Sky Sports"))
-        assertTrue(SportsMatching.LISTED_AND_SHOWING > SportsMatching.LISTED_BROADCASTER)
     }
 
     private val shanghai = """

@@ -34,12 +34,10 @@ object SportsMatching {
     const val EVENT_CHANNEL = 110
 
     /**
-     * The game's own broadcaster: the channel ESPN lists for an NFL or NBA game ("ESPN2", "CBS"),
-     * or the home country's for the others ("Ligue 1+"). The most direct answer, so it goes first.
+     * A channel of the game's own broadcaster (the one ESPN lists for an NFL or NBA game, the home
+     * country's for the others) whose guide or name also shows the game. The most direct answer,
+     * so it goes first.
      */
-    const val LISTED_BROADCASTER = 120
-
-    /** One of the game's own broadcaster's channels whose guide also shows the game. */
     const val LISTED_AND_SHOWING = 130
 
     /** Spellings guides use that ESPN doesn't, keyed by ESPN's normalised display name. */
