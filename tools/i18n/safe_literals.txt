@@ -965,6 +965,7 @@
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Tottenham
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	USA Network
 1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\p{Mn}+
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	^\\s*[A-Z]{2,3}\\s*:\\s
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ac milan
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	american football
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	atletico madrid
@@ -1050,6 +1051,7 @@
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	with
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wnba
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wta
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	|
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	ATP
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+ F1

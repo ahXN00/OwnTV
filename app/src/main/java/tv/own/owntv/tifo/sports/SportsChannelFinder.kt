@@ -75,7 +75,9 @@ class SportsChannelFinder(
         }
 
         // 2. Channels named after the game, which providers often leave without a guide.
-        for ((channelId, name) in channelsNamed(SportsMatching.channelSearchTerms(event), sourceIds)) {
+        // Wide: a city ("Los Angeles", "Denver") also names hundreds of local stations, which must
+        // not crowd the game's own channels out of the pre-filter.
+        for ((channelId, name) in channelsNamed(SportsMatching.channelSearchTerms(event), sourceIds, MAX_EVENT_NAMED_CHANNELS)) {
             val score = SportsMatching.channelScore(event, name)
             if (score <= 0) continue
             val channel = channelDao.getById(channelId) ?: continue
@@ -209,6 +211,7 @@ class SportsChannelFinder(
         const val MAX_NAMED_CHANNELS = 400
 
         const val MAX_SEARCH_CHANNELS = 1500
+        const val MAX_EVENT_NAMED_CHANNELS = 3000
         const val BROADCASTER_CHANNELS = 8
     }
 }

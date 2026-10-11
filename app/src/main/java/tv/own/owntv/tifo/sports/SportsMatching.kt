@@ -135,7 +135,7 @@ object SportsMatching {
      */
     fun channelScore(event: SportsEvent, channelName: String): Int {
         val text = normalize(channelName)
-        if (mentionsOtherSport(event, text)) return 0
+        if (mentionsOtherSport(event, normalize(withoutCategoryLabels(channelName)))) return 0
         val competition = event.competition.keywords.any { containsTerm(text, it) }
         return when (event.competition.kind) {
             SportKind.TEAM -> if (namesBothTeams(event, text, competition)) EVENT_CHANNEL else 0
@@ -252,6 +252,19 @@ object SportsMatching {
         "fighting" to listOf("ufc", "mma", "boxing", "boxe"),
         "golf" to listOf("golf", "pga"),
     )
+
+    /**
+     * [channelName] without the provider's category labels after its first part: in "Live | Broncos
+     * vs. Chargers | all | 8K EXCLUSIVE | US: SOCCER" the "US: SOCCER" is the folder the provider
+     * filed the channel in, not the sport it shows. The first part stays, whatever it looks like:
+     * "US: NBA 03 Lakers vs Celtics" names its own sport.
+     */
+    fun withoutCategoryLabels(channelName: String): String {
+        val parts = channelName.split('|')
+        return (parts.take(1) + parts.drop(1).filterNot { CATEGORY_LABEL.containsMatchIn(it) }).joinToString("|")
+    }
+
+    private val CATEGORY_LABEL = Regex("""^\s*[A-Z]{2,3}\s*:\s""")
 
     /**
      * Playlists use fake channels as section headers ("# # # NFL # # #", "##### USA #####"). They

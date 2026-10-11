@@ -33,7 +33,10 @@
     <string name="tifo_sports_search_back">Retour aux résultats</string>
     <string name="tifo_sports_searching">Recherche dans vos chaînes…</string>
     <string name="tifo_sports_search_none">Aucune chaîne %1$s dans votre playlist.</string>
-    <string name="tifo_sports_search_count">%1$s : %2$d chaînes</string>
+    <plurals name="tifo_sports_search_count">
+        <item quantity="one">%1$s : %2$d chaîne</item>
+        <item quantity="other">%1$s : %2$d chaînes</item>
+    </plurals>
     <string name="tifo_sports_preview_hint">Placez-vous sur une chaîne pour la prévisualiser ici.</string>
     <string name="tifo_sports_play_hint">OK pour la regarder en plein écran.</string>
     <string name="tifo_sports_quality_from_name">d\'après le nom de la chaîne</string>

@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -233,7 +234,7 @@ private fun LazyListScope.eventChannels(
             else -> {
                 item(key = "s:$key") {
                     Text(
-                        stringResource(R.string.tifo_sports_search_count, search, state.searchResults.size),
+                        pluralStringResource(R.plurals.tifo_sports_search_count, state.searchResults.size, search, state.searchResults.size),
                         style = stageText(16, 700), color = StageColors.Dim,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = indent.padding(top = 4.mpx),
