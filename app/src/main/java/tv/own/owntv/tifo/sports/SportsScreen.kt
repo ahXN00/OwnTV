@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -110,6 +111,7 @@ fun SportsScreen(
     val favorites = remember { SportsFavorites.get(context) }
     val favoriteKeys by favorites.keys.collectAsStateWithLifecycle()
     var settingsOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val allTab = remember { FocusRequester() }
     var dayPickerOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     val zone = ZoneId.systemDefault()
     val today = LocalDate.now(zone)
@@ -208,10 +210,10 @@ fun SportsScreen(
             item(key = "all") {
                 StageTab(
                     label = stringResource(R.string.tifo_sports_all),
-                    count = count(state.copy(filter = null, myTeams = false).visibleEvents(favoriteKeys, today, zone).size),
+                    count = count(state.copy(filter = null, myTeams = false).dayEvents(today, zone).size),
                     selected = state.filter == null && !state.myTeams,
                     onClick = { vm.setFilter(null) },
-                    modifier = Modifier.refocusWhen(ALL_TAB_KEY, refocus) { refocus = null },
+                    modifier = Modifier.focusRequester(allTab).refocusWhen(ALL_TAB_KEY, refocus) { refocus = null },
                 )
             }
             item(key = "mine") {
@@ -237,14 +239,22 @@ fun SportsScreen(
         if (state.filter == null && !state.myTeams) {
             val dayGames = state.dayEvents(today, zone)
             val stage = state.shownStage(dayGames)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.mpx)) {
+            // Up and Back from any sub-tab go to All, the tab they belong to.
+            var stagesFocused by remember { mutableStateOf(false) }
+            BackHandler(enabled = stagesFocused) { refocus = ALL_TAB_KEY }
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(6.mpx),
+                modifier = Modifier.onFocusChanged { stagesFocused = it.hasFocus },
+            ) {
                 items(Stages, key = { stageKey(it) }) { s ->
                     StageTab(
                         label = stringResource(stageLabel(s)),
                         count = count(dayGames.count { it.state == s }),
                         selected = s == stage,
                         onClick = { vm.setStage(s) },
-                        modifier = Modifier.refocusWhen(stageKey(s), refocus) { refocus = null },
+                        modifier = Modifier
+                            .focusProperties { up = allTab }
+                            .refocusWhen(stageKey(s), refocus) { refocus = null },
                     )
                 }
             }
