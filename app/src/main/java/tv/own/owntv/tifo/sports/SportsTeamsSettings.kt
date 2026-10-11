@@ -121,7 +121,7 @@ private fun LeagueRow(label: String, count: Int, selected: Boolean, onClick: () 
         val text = if (focused) accent.onAccent else StageColors.Text
         Text(label, style = stageText(21, 700), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (count > 0) {
-            Text(count.toString(), style = stageText(18, 700), color = if (focused) accent.onAccent else accent.accent, maxLines = 1)
+            Text(count.toString(), style = stageText(18, 700), color = if (focused) accent.onAccent else accent.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
