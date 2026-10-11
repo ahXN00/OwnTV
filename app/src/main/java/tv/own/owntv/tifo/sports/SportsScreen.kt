@@ -267,7 +267,7 @@ private fun ChannelRow(match: SportsChannelMatch, onClick: () -> Unit) {
         StageTag(
             stringResource(
                 when {
-                    match.score >= SportsMatching.TEAM_AND_COMPETITION -> R.string.tifo_sports_match_best
+                    match.score >= SportsMatching.BEST_MATCH -> R.string.tifo_sports_match_best
                     match.score > SportsMatching.BROADCASTER -> R.string.tifo_sports_match_likely
                     else -> R.string.tifo_sports_match_broadcaster
                 },

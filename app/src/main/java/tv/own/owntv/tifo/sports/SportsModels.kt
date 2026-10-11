@@ -17,55 +17,73 @@ enum class SportKind {
 
 /**
  * The competitions the Sports tab follows. [espnPath] is the league's path on ESPN's public
- * scoreboard API. [keywords] are how a guide names the competition in a programme title, and
- * [broadcasters] the channel names that usually carry it, in France first.
+ * scoreboard API. [keywords] are how a guide names the competition in a programme title.
+ *
+ * Which channel goes first: for the US leagues ([usesEspnBroadcasts]), the one ESPN lists for the
+ * game. For the others ESPN's list is the US one (beIN Sports for Ligue 1), so [homeBroadcasters]
+ * go first instead: who airs the competition in its own country (Ligue 1+ in France, Sky Sports and
+ * TNT Sports in England), or in France where there is no single country. [broadcasters] are other
+ * channels that usually carry it, ranked last.
  */
 enum class Competition(
     @param:StringRes val labelRes: Int,
     val espnPath: String,
     val kind: SportKind,
     val keywords: List<String>,
+    val homeBroadcasters: List<String>,
     val broadcasters: List<String>,
+    val usesEspnBroadcasts: Boolean = false,
 ) {
     LIGUE_1(
         R.string.tifo_sports_ligue_1, "soccer/fra.1", SportKind.TEAM,
         listOf("Ligue 1"),
-        listOf("Ligue 1+", "beIN Sports", "DAZN"),
+        // Every game, from 2026-27.
+        homeBroadcasters = listOf("Ligue 1+"),
+        broadcasters = emptyList(),
     ),
     PREMIER_LEAGUE(
         R.string.tifo_sports_premier_league, "soccer/eng.1", SportKind.TEAM,
         listOf("Premier League"),
-        listOf("Canal+ Foot", "Canal+ Sport", "Sky Sports", "TNT Sports"),
+        homeBroadcasters = listOf("Sky Sports", "TNT Sports"),
+        broadcasters = listOf("Canal+ Foot", "Canal+ Sport"),
     ),
     LALIGA(
         R.string.tifo_sports_laliga, "soccer/esp.1", SportKind.TEAM,
         listOf("LaLiga", "La Liga", "Liga"),
-        listOf("beIN Sports", "Movistar", "DAZN"),
+        homeBroadcasters = listOf("M+ LaLiga", "Movistar", "DAZN LaLiga"),
+        broadcasters = listOf("beIN Sports"),
     ),
     CHAMPIONS_LEAGUE(
         R.string.tifo_sports_champions_league, "soccer/uefa.champions", SportKind.TEAM,
         listOf("Champions League", "Ligue des champions"),
-        listOf("Canal+ Foot", "Canal+ Sport", "Canal+", "TNT Sports"),
+        homeBroadcasters = listOf("Canal+ Foot", "Canal+ Sport"),
+        broadcasters = listOf("Canal+", "TNT Sports"),
     ),
     NBA(
         R.string.tifo_sports_nba, "basketball/nba", SportKind.TEAM,
         listOf("NBA"),
-        listOf("beIN Sports", "NBA TV", "ESPN"),
+        homeBroadcasters = emptyList(),
+        broadcasters = listOf("beIN Sports", "NBA TV", "ESPN"),
+        usesEspnBroadcasts = true,
     ),
     NFL(
         R.string.tifo_sports_nfl, "football/nfl", SportKind.TEAM,
         listOf("NFL"),
-        listOf("beIN Sports", "NFL Network", "DAZN", "ESPN"),
+        homeBroadcasters = emptyList(),
+        broadcasters = listOf("beIN Sports", "NFL Network", "DAZN", "ESPN"),
+        usesEspnBroadcasts = true,
     ),
     FORMULA_1(
         R.string.tifo_sports_formula_1, "racing/f1", SportKind.RACE,
         listOf("Formula 1", "Formule 1", "F1", "Grand Prix"),
-        listOf("Canal+ Sport", "Canal+ F1", "Sky Sports F1", "F1 TV"),
+        homeBroadcasters = emptyList(),
+        broadcasters = listOf("Canal+ Sport", "Canal+ F1", "Sky Sports F1", "F1 TV"),
     ),
     ATP(
         R.string.tifo_sports_atp, "tennis/atp", SportKind.TOURNAMENT,
         listOf("ATP", "Tennis"),
-        listOf("Tennis Channel", "beIN Sports", "Eurosport"),
+        homeBroadcasters = emptyList(),
+        broadcasters = listOf("Tennis Channel", "beIN Sports", "Eurosport"),
     ),
 }
 

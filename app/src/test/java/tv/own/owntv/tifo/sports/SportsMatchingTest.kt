@@ -57,8 +57,9 @@ class SportsMatchingTest {
         val event = parseScoreboard(Competition.LIGUE_1, psgLyon).single()
         assertEquals(SportsMatching.BOTH_TEAMS, SportsMatching.score(event, "Football : PSG / Olympique Lyonnais"))
         assertEquals(SportsMatching.BOTH_TEAMS, SportsMatching.score(event, "Paris SG - Lyon"))
-        assertEquals(SportsMatching.TEAM_AND_COMPETITION, SportsMatching.score(event, "Ligue 1 : avant-match Paris Saint-Germain"))
-        assertEquals(SportsMatching.ONE_TEAM, SportsMatching.score(event, "Le mag de l'OL : Lyon"))
+        // One team is never enough.
+        assertEquals(SportsMatching.COMPETITION_ONLY, SportsMatching.score(event, "Ligue 1 : avant-match Paris Saint-Germain"))
+        assertEquals(0, SportsMatching.score(event, "Le mag de l'OL : Lyon"))
         assertEquals(SportsMatching.COMPETITION_ONLY, SportsMatching.score(event, "Multiplex Ligue 1"))
         assertEquals(0, SportsMatching.score(event, "Journal de 20h"))
     }
@@ -114,7 +115,7 @@ class SportsMatchingTest {
 
     @Test
     fun aCityAloneIsNotATeam() {
-        assertEquals(SportsMatching.TEAM_CHANNEL, SportsMatching.channelScore(bearsAtPackers, "Packers TV"))
+        assertEquals(0, SportsMatching.channelScore(bearsAtPackers, "Packers TV"))
         assertEquals(0, SportsMatching.channelScore(bearsAtPackers, "NBC Sports Chicago"))
         assertEquals(0, SportsMatching.channelScore(bearsAtPackers, "NFL RedZone"))
         assertEquals("Green Bay", SportsMatching.city(bearsAtPackers.home!!))
@@ -142,5 +143,77 @@ class SportsMatchingTest {
         assertTrue(SportsMatching.isSeparator("# # # NFL GAMES # # #"))
         assertTrue(SportsMatching.isSeparator("  ##### Bears vs Packers #####"))
         assertTrue(!SportsMatching.isSeparator("NFL 03: Bears vs Packers"))
+    }
+
+    private fun nbaTeam(city: String, nickname: String, abbreviation: String) =
+        SportsTeam("$city $nickname", nickname, listOf(nickname, abbreviation), null, null)
+
+    private val spursAtSuns = SportsEvent(
+        id = "402", competition = Competition.NBA, name = "San Antonio Spurs at Phoenix Suns",
+        startMs = 0L, state = EventState.LIVE, statusDetail = "", home = nbaTeam("Phoenix", "Suns", "PHX"),
+        away = nbaTeam("San Antonio", "Spurs", "SA"), broadcasts = listOf("ESPN2"),
+    )
+
+    @Test
+    fun bothTeamsOrNothing() {
+        assertEquals(0, SportsMatching.channelScore(spursAtSuns, "EPL 04: Man United vs Spurs"))
+        assertEquals(SportsMatching.BOTH_TEAMS, SportsMatching.score(spursAtSuns, "Phoenix vs Spurs"))
+        assertEquals(0, SportsMatching.score(spursAtSuns, "Phoenix Mercury Highlights"))
+        assertEquals(SportsMatching.EVENT_CHANNEL, SportsMatching.channelScore(spursAtSuns, "NBA 02: Spurs @ Suns"))
+        assertEquals(SportsMatching.EVENT_CHANNEL, SportsMatching.channelScore(spursAtSuns, "NBA | San Antonio @ Phoenix"))
+        // Two cities alone could be any sport: the competition has to be named too.
+        assertEquals(0, SportsMatching.channelScore(spursAtSuns, "San Antonio vs Phoenix"))
+    }
+
+    @Test
+    fun anotherSportIsNeverTheGame() {
+        assertEquals(0, SportsMatching.channelScore(spursAtSuns, "NHL 03: Spurs vs Suns"))
+        assertEquals(0, SportsMatching.score(spursAtSuns, "Spurs - Suns", "Sports; Hockey"))
+        assertEquals(0, SportsMatching.channelScore(spursAtSuns, "Premier League | Spurs v Suns"))
+        assertEquals(SportsMatching.BOTH_TEAMS, SportsMatching.score(spursAtSuns, "Spurs - Suns", "Sports; Basketball"))
+    }
+
+    @Test
+    fun espnsBroadcasterIsFoundByItsChannelName() {
+        assertTrue(SportsMatching.broadcasterMatches("US | ESPN2 HD", "ESPN2"))
+        assertTrue(SportsMatching.broadcasterMatches("USA: ESPN 2", "ESPN2"))
+        assertTrue(!SportsMatching.broadcasterMatches("ESPN2", "ESPN"))
+        assertTrue(!SportsMatching.broadcasterMatches("ESPN+ 03", "ESPN"))
+        assertTrue(SportsMatching.broadcasterMatches("FR | beIN Sports 1 FHD", "beIn Sports"))
+        assertTrue(SportsMatching.broadcasterMatches("CBS New York", "CBS"))
+        assertTrue(!SportsMatching.broadcasterMatches("CBSN News", "CBS"))
+        assertTrue(SportsMatching.broadcasterMatches("US: NFL Network HD", "NFL Net"))
+        assertTrue(SportsMatching.LISTED_BROADCASTER > SportsMatching.EVENT_CHANNEL)
+    }
+
+    @Test
+    fun onlyTheUsLeaguesGoByEspnsListing() {
+        val espn = Competition.entries.filter { it.usesEspnBroadcasts }.toSet()
+        assertEquals(setOf(Competition.NBA, Competition.NFL), espn)
+        assertEquals(listOf("Ligue 1+"), Competition.LIGUE_1.homeBroadcasters)
+        assertTrue(Competition.LIGUE_1.broadcasters.none { it.contains("beIN", ignoreCase = true) })
+        assertTrue(SportsMatching.broadcasterMatches("FR: Ligue 1+ 2 FHD", "Ligue 1+"))
+        assertTrue(SportsMatching.broadcasterMatches("FR| LIGUE1+ 3", "Ligue 1+"))
+        assertTrue(!SportsMatching.broadcasterMatches("FR: Ligue 1 Replay", "Ligue 1+"))
+        assertTrue(SportsMatching.broadcasterMatches("UK: Sky Sports Premier League", "Sky Sports"))
+        assertTrue(SportsMatching.LISTED_AND_SHOWING > SportsMatching.LISTED_BROADCASTER)
+    }
+
+    private val shanghai = """
+        {"events":[{"id":"315-2026","date":"2026-10-05T04:00Z","endDate":"2026-10-19T03:59Z","name":"Rolex Shanghai Masters",
+          "groupings":[{"grouping":{"displayName":"Men's Singles"},"competitions":[
+            {"date":"2026-10-10T06:00Z","status":{"type":{"state":"post"}}},
+            {"date":"2026-10-11T06:00Z","status":{"type":{"state":"pre"}},"broadcasts":[{"names":["Tennis Channel"]}]}]}]}]}
+    """.trimIndent()
+
+    @Test
+    fun aTournamentIsLiveBetweenItsDatesWhileMatchesRemain() {
+        val now = parseEspnDate("2026-10-11T03:00Z")!!
+        val event = parseScoreboard(Competition.ATP, shanghai, now).single()
+        assertEquals(EventState.LIVE, event.state)
+        assertEquals(listOf("Tennis Channel"), event.broadcasts)
+        assertEquals(EventState.UPCOMING, parseScoreboard(Competition.ATP, shanghai, parseEspnDate("2026-10-01T00:00Z")!!).single().state)
+        assertEquals(SportsMatching.EVENT_NAME + 10, SportsMatching.score(event, "Tennis : Masters 1000 de Shanghai"))
+        assertEquals(SportsMatching.EVENT_NAME, SportsMatching.channelScore(event, "ATP Shanghai Court 1"))
     }
 }
