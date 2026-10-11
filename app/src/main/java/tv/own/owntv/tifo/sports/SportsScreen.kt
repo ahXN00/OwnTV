@@ -159,6 +159,11 @@ fun SportsScreen(
         vm.setReturnFocus(channelKey(channel.id))
         onPlayChannel(channel)
     }
+    // Back on a game (none open) goes up to the open tab; Back there leaves Sports.
+    var listFocused by remember { mutableStateOf(false) }
+    BackHandler(enabled = state.selected == null && listFocused) {
+        refocus = tabKey(state)
+    }
     BackHandler(enabled = state.selected != null) {
         val selected = state.selected ?: return@BackHandler
         vm.select(selected)
@@ -206,6 +211,7 @@ fun SportsScreen(
                     count = count(state.copy(filter = null, myTeams = false).visibleEvents(favoriteKeys, today, zone).size),
                     selected = state.filter == null && !state.myTeams,
                     onClick = { vm.setFilter(null) },
+                    modifier = Modifier.refocusWhen(ALL_TAB_KEY, refocus) { refocus = null },
                 )
             }
             item(key = "mine") {
@@ -214,6 +220,7 @@ fun SportsScreen(
                     count = count(state.copy(myTeams = true).visibleEvents(favoriteKeys).size),
                     selected = state.myTeams,
                     onClick = { vm.showMyTeams() },
+                    modifier = Modifier.refocusWhen(MY_TEAMS_TAB_KEY, refocus) { refocus = null },
                 )
             }
             items(Competition.entries.toList(), key = { it.name }) { c ->
@@ -222,11 +229,12 @@ fun SportsScreen(
                     count = count(state.copy(filter = c, myTeams = false).visibleEvents(favoriteKeys, today, zone).size),
                     selected = state.filter == c,
                     onClick = { vm.setFilter(c) },
+                    modifier = Modifier.refocusWhen(tabKey(c), refocus) { refocus = null },
                 )
             }
         }
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(36.mpx)) {
-            Box(Modifier.weight(0.56f).fillMaxHeight()) {
+            Box(Modifier.weight(0.56f).fillMaxHeight().onFocusChanged { listFocused = it.hasFocus }) {
                 val events = state.visibleEvents(favoriteKeys, today, zone)
                 // All lists the games league by league, under the league's name.
                 val grouped = state.filter == null && !state.myTeams
@@ -736,6 +744,19 @@ private fun eventKey(event: SportsEvent): String = "e:" + event.competition.name
 private fun searchKey(broadcaster: String): String = "q:$broadcaster"
 
 private fun channelKey(channelId: Long): String = "c:$channelId"
+
+private fun tabKey(competition: Competition): String = "tab:" + competition.name
+
+/** The tab the list under it belongs to. */
+private fun tabKey(state: SportsUiState): String = when {
+    state.myTeams -> MY_TEAMS_TAB_KEY
+    state.filter == null -> ALL_TAB_KEY
+    else -> tabKey(state.filter)
+}
+
+private const val ALL_TAB_KEY = "tab:all"
+
+private const val MY_TEAMS_TAB_KEY = "tab:mine"
 
 @Composable
 private fun ChannelRow(
