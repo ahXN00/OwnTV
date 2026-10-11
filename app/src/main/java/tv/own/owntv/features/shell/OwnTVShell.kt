@@ -1122,7 +1122,8 @@ fun OwnTVShell(
                             onPlayChannel = { ch -> guidePlayChannel(ch, emptyList()) },
                             previewEnabled = playerMode == PlayerMode.NONE,
                             contentStart = if (navStyle == tv.own.owntv.core.settings.SettingsRepository.NavStyle.DOCKED) 64.mpx else 150.mpx,
-                            modifier = Modifier.fillMaxSize(),
+                            // So Back from Sports goes to its rail item, not to "Exit?", as from any section.
+                            modifier = Modifier.fillMaxSize().onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT },
                         )
 
                         // Plan Z — the hub the rail's last item now opens. Settings is a row in it.
