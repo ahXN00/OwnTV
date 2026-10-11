@@ -269,7 +269,20 @@ fun SportsScreen(
                         }
                     }
                     else -> LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.mpx)) {
-                        val ordered = if (grouped) Competition.entries.flatMap { c -> events.filter { it.competition == c } } else events
+                        // Leagues with a live game first, then those still to play, then those done for the day.
+                        val leagueRank = { c: Competition ->
+                            val states = events.filter { it.competition == c }.map { it.state }
+                            when {
+                                EventState.LIVE in states -> 0
+                                EventState.UPCOMING in states -> 1
+                                else -> 2
+                            }
+                        }
+                        val ordered = if (grouped) {
+                            Competition.entries.sortedBy(leagueRank).flatMap { c -> events.filter { it.competition == c } }
+                        } else {
+                            events
+                        }
                         for ((index, event) in ordered.withIndex()) {
                             if (grouped && (index == 0 || ordered[index - 1].competition != event.competition)) {
                                 item(key = "league:" + event.competition.name) { LeagueHeader(stringResource(event.competition.labelRes)) }
