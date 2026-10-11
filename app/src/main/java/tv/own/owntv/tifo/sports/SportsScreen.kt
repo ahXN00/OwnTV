@@ -32,8 +32,10 @@ import coil3.compose.AsyncImage
 import java.util.Calendar
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ChannelEntity
+import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.format.rememberBestDateFormatter
 import tv.own.owntv.ui.format.rememberSystemTimeFormatter
+import tv.own.owntv.ui.stage.StageButton
 import tv.own.owntv.ui.stage.StageRow
 import tv.own.owntv.ui.stage.StageTab
 import tv.own.owntv.ui.stage.StageTag
@@ -47,7 +49,8 @@ private val LiveRed = Color(0xFFFF5A5A)
 
 /**
  * The Sports tab: live and upcoming games of the followed competitions on the left, and for the
- * game picked, the playlist's channels that show it on the right. OK on a channel plays it.
+ * game picked, the playlist's channels that show it on the right. OK on a channel plays it; the
+ * Record button beside a channel whose guide shows the game later records that programme.
  */
 @Composable
 fun SportsScreen(
@@ -57,6 +60,7 @@ fun SportsScreen(
 ) {
     val vm = org.koin.androidx.compose.koinViewModel<SportsViewModel>()
     val state by vm.state.collectAsStateWithLifecycle()
+    val recordingRows by vm.recordingRows.collectAsStateWithLifecycle()
     LaunchedEffect(vm) { vm.refreshWhileVisible() }
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     val count = { n: Int -> java.text.NumberFormat.getIntegerInstance(locale).format(n) }
@@ -131,9 +135,36 @@ fun SportsScreen(
                 when {
                     state.matching -> Message(stringResource(R.string.tifo_sports_matching))
                     state.matches.isEmpty() -> Message(stringResource(R.string.tifo_sports_no_channels))
-                    else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(4.mpx)) {
-                        items(state.matches, key = { it.channel.id }) { match ->
-                            ChannelRow(match, onClick = { onPlayChannel(match.channel) })
+                    else -> {
+                        val now = System.currentTimeMillis()
+                        val canRecord = { match: SportsChannelMatch ->
+                            selected.state == EventState.UPCOMING && (match.programmeStartMs ?: 0L) > now
+                        }
+                        if (state.matches.any(canRecord)) {
+                            Text(
+                                stringResource(R.string.tifo_sports_record_hint),
+                                style = stageText(15, 500),
+                                color = StageColors.Muted,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.mpx)) {
+                            items(state.matches, key = { it.channel.id }) { match ->
+                                val recording = vm.recordingFor(match, recordingRows)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
+                                    ChannelRow(match, recordingSet = recording != null, onClick = { onPlayChannel(match.channel) }, modifier = Modifier.weight(1f))
+                                    if (recording != null || canRecord(match)) {
+                                        StageButton(
+                                            text = null,
+                                            onClick = { vm.toggleRecording(match) },
+                                            icon = OwnTVIcon.REC,
+                                            iconFilled = recording != null,
+                                            tinted = recording != null,
+                                            round = true,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -246,10 +277,10 @@ private fun TeamLogo(url: String?) {
 }
 
 @Composable
-private fun ChannelRow(match: SportsChannelMatch, onClick: () -> Unit) {
+private fun ChannelRow(match: SportsChannelMatch, recordingSet: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = stageAccent
     val time = rememberSystemTimeFormatter()
-    StageRow(onClick = onClick, height = 84.mpx, modifier = Modifier.fillMaxWidth()) { focused ->
+    StageRow(onClick = onClick, height = 84.mpx, modifier = modifier.fillMaxWidth()) { focused ->
         val text = if (focused) accent.onAccent else StageColors.Text
         val dim = if (focused) accent.onAccent.copy(alpha = 0.8f) else StageColors.Dim
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.mpx)) {
@@ -258,8 +289,9 @@ private fun ChannelRow(match: SportsChannelMatch, onClick: () -> Unit) {
             val start = match.programmeStartMs
             val stop = match.programmeStopMs
             if (title != null && start != null && stop != null) {
+                val programme = stringResource(R.string.tifo_sports_programme, time(start), time(stop), title)
                 Text(
-                    stringResource(R.string.tifo_sports_programme, time(start), time(stop), title),
+                    if (recordingSet) stringResource(R.string.tifo_sports_recording_set, programme) else programme,
                     style = stageText(15, 500), color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }

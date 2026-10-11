@@ -30,4 +30,6 @@
     <string name="tifo_sports_match_best">Best match</string>
     <string name="tifo_sports_match_likely">Likely</string>
     <string name="tifo_sports_match_broadcaster">Usual channel</string>
+    <string name="tifo_sports_record_hint">Press right on a channel, then OK, to record the game from its guide.</string>
+    <string name="tifo_sports_recording_set">● Recording · %1$s</string>
 </resources>

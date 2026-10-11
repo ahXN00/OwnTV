@@ -27,4 +27,6 @@
     <string name="tifo_sports_match_best">Meilleur choix</string>
     <string name="tifo_sports_match_likely">Probable</string>
     <string name="tifo_sports_match_broadcaster">Chaîne habituelle</string>
+    <string name="tifo_sports_record_hint">Appuyez à droite sur une chaîne, puis OK, pour enregistrer le match depuis son guide.</string>
+    <string name="tifo_sports_recording_set">● Enregistrement · %1$s</string>
 </resources>
