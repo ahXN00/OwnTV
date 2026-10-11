@@ -18,9 +18,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -125,6 +127,18 @@ fun SportsScreen(
     // Back closes the open game and puts the cursor back on it. Coming back from a broadcaster
     // search, the cursor starts on the search it left from.
     var refocus by remember { mutableStateOf(vm.takeReturnFocus()) }
+    val listState = rememberLazyListState(vm.listIndex, vm.listOffset)
+    DisposableEffect(listState) {
+        onDispose {
+            vm.listIndex = listState.firstVisibleItemIndex
+            vm.listOffset = listState.firstVisibleItemScrollOffset
+        }
+    }
+    // Back from full screen comes back to the channel that was played.
+    val play = { channel: ChannelEntity ->
+        vm.setReturnFocus(channelKey(channel.id))
+        onPlayChannel(channel)
+    }
     BackHandler(enabled = state.selected != null) {
         val selected = state.selected ?: return@BackHandler
         vm.select(selected)
@@ -166,7 +180,7 @@ fun SportsScreen(
                     state.loading -> Message(stringResource(R.string.tifo_sports_loading))
                     events.isEmpty() && state.failed -> Message(stringResource(R.string.tifo_sports_failed))
                     events.isEmpty() -> Message(stringResource(R.string.tifo_sports_no_games))
-                    else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(6.mpx)) {
+                    else -> LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(6.mpx)) {
                         for (event in events) {
                             val open = event.id == state.selected?.id
                             item(key = eventKey(event)) {
@@ -188,7 +202,7 @@ fun SportsScreen(
                                     refocus = refocus,
                                     onRefocused = { refocus = null },
                                     onFocusChannel = { previewed = it },
-                                    onPlayChannel = onPlayChannel,
+                                    onPlayChannel = play,
                                     onToggleRecording = vm::toggleRecording,
                                 )
                             }
@@ -252,13 +266,13 @@ private fun LazyListScope.eventChannels(
                     )
                 }
             }
-            items(state.matches, key = { "c:" + it.channel.id }) { match ->
+            items(state.matches, key = { channelKey(it.channel.id) }) { match ->
                 val recording = recordingFor(match)
                 Row(indent, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
                     ChannelRow(
                         match, quality = qualityOf(match.channel), recordingSet = recording != null,
                         onFocused = { onFocusChannel(match) }, onClick = { onPlayChannel(match.channel) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).refocusWhen(channelKey(match.channel.id), refocus, onRefocused),
                     )
                     if (recording != null || canRecord(match)) {
                         StageButton(
@@ -510,6 +524,8 @@ private fun Modifier.refocusWhen(key: String, target: String?, onDone: () -> Uni
 private fun eventKey(event: SportsEvent): String = "e:" + event.competition.name + event.id
 
 private fun searchKey(broadcaster: String): String = "q:$broadcaster"
+
+private fun channelKey(channelId: Long): String = "c:$channelId"
 
 @Composable
 private fun ChannelRow(

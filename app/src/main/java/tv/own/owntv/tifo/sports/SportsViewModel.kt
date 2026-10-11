@@ -63,8 +63,15 @@ class SportsViewModel(
 
     private var matchJob: Job? = null
 
-    /** Where the cursor goes when the tab comes back: the broadcaster search it left for. */
+    /**
+     * Where the cursor goes when the tab comes back: the broadcaster search it left for, or the
+     * channel it played full screen. The tab is rebuilt when the player closes, so it starts there.
+     */
     private var returnFocus: String? = null
+
+    /** The game list's scroll position when the tab was last left, to come back to the same rows. */
+    var listIndex = 0
+    var listOffset = 0
 
     fun setReturnFocus(key: String) { returnFocus = key }
 
