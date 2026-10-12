@@ -46,6 +46,26 @@ object SportsMatching {
      */
     const val FAVORITE_BROADCASTER = 150
 
+    /**
+     * The exact channel FotMob's TV guide lists for the game in the channel's own country ("Canal+
+     * Live 3" in France, "Sky Sports Main Event" in the UK): named for this very game, so above a
+     * broadcaster that merely also shows it.
+     */
+    const val LISTED_CHANNEL = 140
+
+    /**
+     * A feed of the streaming service FotMob lists without naming a channel ("Ligue 1+" →
+     * "FR| LIGUE 1+ 3", "FR| LIGUE1+ (Samedi Match 1)"): the game is on one of them.
+     */
+    const val LISTED_SERVICE = 60
+
+    /**
+     * The countries whose channels can be guessed from a broadcaster's name alone (the
+     * competition's usual [Competition.broadcasters]); elsewhere "Paramount" or "Canal" name
+     * unrelated channels (ARG| PARAMOUNT, ARG| CANAL 13).
+     */
+    val GUESS_COUNTRIES = setOf("US", "CA", "FR")
+
     /** Spellings guides use that ESPN doesn't, keyed by ESPN's normalised display name. */
     private val aliases: Map<String, List<String>> = mapOf(
         "paris saint-germain" to listOf("PSG", "Paris SG", "Paris-SG"),
@@ -59,6 +79,29 @@ object SportsMatching {
         "manchester city" to listOf("Man City"),
         "tottenham hotspur" to listOf("Tottenham"),
         "borussia dortmund" to listOf("Dortmund"),
+        // Premier League
+        "afc bournemouth" to listOf("Bournemouth"),
+        "brighton & hove albion" to listOf("Brighton"),
+        "nottingham forest" to listOf("Nottm Forest", "Forest"),
+        "west ham united" to listOf("West Ham"),
+        "wolverhampton wanderers" to listOf("Wolves"),
+        "newcastle united" to listOf("Newcastle"),
+        "leeds united" to listOf("Leeds"),
+        "crystal palace" to listOf("Palace"),
+        // Ligue 1
+        "lille" to listOf("LOSC"),
+        "stade rennais" to listOf("Rennes"),
+        "aj auxerre" to listOf("Auxerre"),
+        "le havre ac" to listOf("Le Havre"),
+        "troyes" to listOf("ESTAC"),
+        "as monaco" to listOf("Monaco"),
+        "brest" to listOf("Stade Brestois"),
+        // LaLiga
+        "real betis" to listOf("Betis"),
+        "celta vigo" to listOf("Celta"),
+        "deportivo alaves" to listOf("Alaves"),
+        "athletic club" to listOf("Athletic Bilbao", "Athletic"),
+        "rayo vallecano" to listOf("Rayo"),
     )
 
     fun normalize(text: String): String =
@@ -293,6 +336,91 @@ object SportsMatching {
             from = at + 1
         }
     }
+
+    /**
+     * A channel name reduced to what identifies the channel, so a TV guide's spelling and the
+     * playlist's meet: no country prefix ("FR| ", "UK-NOWTV| "), no quality or source marks (HD, ᴿᴬᵂ,
+     * HEVC), "+" kept as a word, Sports/Events and La Liga/Ligue1 spelled one way.
+     * "UK-NOWTV| SKY SPORTS MAIN EVENTS HD(BK)" and "Sky Sports Main Event" → "sky sport main event";
+     * "FR| CANAL+LIVE 3 FHD" and "Canal+ Live 3" → "canal plus live 3".
+     */
+    fun tvKey(name: String): String {
+        val folded = Normalizer.normalize(name, Normalizer.Form.NFKC)
+            .replace(COUNTRY_PREFIX, "")
+            .replace(COUNTRY_IN_BRACKETS, " ")
+            .replace("+", " plus ")
+        return normalize(folded)
+            .replace(NON_ALNUM, " ")
+            .replace(LA_LIGA, "laliga")
+            .replace(LIGUE1, "ligue 1")
+            .split(' ')
+            .filter { it.isNotEmpty() && it !in QUALITY_WORDS }
+            .joinToString(" ") { if (it == "sports") "sport" else if (it == "events") "event" else it }
+    }
+
+    /**
+     * The country a playlist channel's name starts with ("FR| …", "UK-NOWTV| …", "[ES] …"), upper
+     * case, with GB written UK as playlists do; null when it has none.
+     */
+    fun countryOf(channelName: String): String? =
+        CHANNEL_COUNTRY.find(channelName)?.groupValues?.get(1)?.uppercase(Locale.ROOT)?.let { if (it == "GB") "UK" else it }
+
+    /** FotMob's country code as playlists write it: "GB" is "UK". */
+    fun playlistCountry(fotMobCountry: String): String =
+        if (fotMobCountry.equals("GB", ignoreCase = true)) "UK" else fotMobCountry.uppercase(Locale.ROOT)
+
+    /**
+     * Whether a playlist channel is the station a TV guide lists: the same [tvKey], or the
+     * playlist's "<name> TV" ("M+ LALIGA" is "ES| M+ LALIGA TV FHD"), and in Spain its main feed
+     * "<name> 1" ("DAZN LaLiga" is "ES| DAZN LA LIGA 1 HD"). Not "<name> 1" elsewhere: France's
+     * "Canal+ Sport" is not "FR| CANAL+ SPORT 1".
+     */
+    fun isListedChannel(channelName: String, station: String, country: String): Boolean {
+        val key = tvKey(station)
+        if (key.isEmpty()) return false
+        val channel = tvKey(channelName)
+        return channel == key || channel == "$key tv" || (country == "ES" && channel == "$key 1")
+    }
+
+    /**
+     * Whether a playlist channel is one of the feeds of [service] ("Ligue 1+"): the service itself,
+     * a numbered feed ("FR| LIGUE 1+ 3 HD", "FR| LIGUE1 + 7") or a match-day one ("FR| LIGUE1+ FHD
+     * ( Samedi Match 1)") — never the service's other channels ("Disney+ Films 1"). Generic apps
+     * (DAZN, myCANAL) name no feed at all.
+     */
+    fun isServiceFeed(channelName: String, service: String): Boolean {
+        val key = tvKey(service)
+        if (key.length < 4 || key in GENERIC_SERVICES) return false
+        val channel = tvKey(channelName)
+        return channel == key || (channel.startsWith("$key ") && SERVICE_FEED.containsMatchIn(channel.substring(key.length + 1)))
+    }
+
+    /**
+     * A channel that carries one event at a time — a PPV or event slot ("US| ESPN+ PPV 23", "US
+     * (ESPN+ 002) | Football: …") or one titled with a game ("Ravens vs. Falcons"): its name says
+     * nothing about which game it shows unless the game itself is in it, so it is never offered as
+     * one of a broadcaster's channels.
+     */
+    fun isEventSlot(channelName: String): Boolean =
+        SLOT_WORDS.containsMatchIn(normalize(channelName)) ||
+            GAME_TITLE.containsMatchIn(channelName) ||
+            NUMBERED_SLOT.containsMatchIn(channelName)
+
+    private val COUNTRY_PREFIX = Regex("""^\s*(\[[^\]]*]|[A-Za-z0-9]{2,6}(-[A-Za-z0-9]+)?\s*[|:])\s*""")
+    private val COUNTRY_IN_BRACKETS = Regex("""\((FR|US|UK|GB|ES|BK)\)""", RegexOption.IGNORE_CASE)
+    private val CHANNEL_COUNTRY = Regex("""^\s*\[?([A-Za-z]{2,4})(-[A-Za-z0-9]+)?\s*[|:\]]""")
+    private val NON_ALNUM = Regex("[^a-z0-9]+")
+    private val LA_LIGA = Regex("""\bla liga\b""")
+    private val LIGUE1 = Regex("""\bligue1\b""")
+    private val QUALITY_WORDS = setOf(
+        "8k", "4k", "uhd", "fhd", "hd", "hdr", "sd", "lq", "1080p", "720p", "3840p", "2160p", "hevc", "h265",
+        "50fps", "60fps", "raw", "backup", "bk", "vip",
+    )
+    private val GENERIC_SERVICES = setOf("dazn", "dazn com", "mycanal", "youtube", "now", "apple tv", "apple tv plus")
+    private val SERVICE_FEED = Regex("""^(\d+|(vendredi|samedi|dimanche|lundi|mardi|mercredi|jeudi|match|multiplex|canal multiplex)\b)""")
+    private val SLOT_WORDS = Regex("""\b(ppv|event|events|evento|eventos)\b""")
+    private val GAME_TITLE = Regex("""\s(vs?\.?|x|@)\s""", RegexOption.IGNORE_CASE)
+    private val NUMBERED_SLOT = Regex("""\(\s*[^)]*\d{2,3}\s*\)\s*\|""")
 
     private val DIACRITICS = Regex("\\p{Mn}+")
 
