@@ -39,11 +39,6 @@ enum class Competition(
     val usesEspnBroadcasts: Boolean = false,
     val tvCountries: List<String> = emptyList(),
 ) {
-    val isFootball: Boolean get() = espnPath.startsWith("soccer/")
-
-    /** The countries whose FotMob guide is read for this competition's games. */
-    val fotMobCountries: List<String> get() = if (isFootball) (listOf("FR") + tvCountries).distinct() else emptyList()
-
     LIGUE_1(
         R.string.tifo_sports_ligue_1, "soccer/fra.1", SportKind.TEAM,
         listOf("Ligue 1"),
@@ -98,6 +93,12 @@ enum class Competition(
         homeBroadcasters = emptyList(),
         broadcasters = listOf("Tennis Channel", "beIN Sports", "Eurosport"),
     ),
+    ;
+
+    val isFootball: Boolean get() = espnPath.startsWith("soccer/")
+
+    /** The countries whose FotMob guide is read for this competition's games. */
+    val fotMobCountries: List<String> get() = if (isFootball) (listOf("FR") + tvCountries).distinct() else emptyList()
 }
 
 enum class EventState { UPCOMING, LIVE, FINISHED }
