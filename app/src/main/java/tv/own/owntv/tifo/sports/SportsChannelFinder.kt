@@ -4,6 +4,7 @@ import androidx.room.useReaderConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
 import tv.own.owntv.core.database.OwnTVDatabase
 import tv.own.owntv.core.database.dao.ChannelDao
 import tv.own.owntv.core.database.dao.SourceDao
@@ -38,7 +39,10 @@ class SportsChannelFinder(
     private val channelDao: ChannelDao,
     private val sourceDao: SourceDao,
     private val settings: SettingsRepository,
+    http: OkHttpClient,
 ) {
+
+    private val fotMob = FotMobTv(http)
 
     suspend fun find(event: SportsEvent, nowMs: Long): List<SportsChannelMatch> = withContext(Dispatchers.IO) {
         val sourceIds = activeProfileSources(settings, sourceDao).first().liveSourceIds
@@ -86,6 +90,28 @@ class SportsChannelFinder(
             offer(SportsChannelMatch(channel, score, null, null, null))
         }
 
+        // 2b. FotMob's TV guide: the exact channel the game is on in France (every football
+        // competition) and in the competition's own country ("Canal+ Live 3", "Sky Sports Main
+        // Event", "M+ LaLiga"), looked for among that country's channels only. A streaming service
+        // it lists without a channel ("Ligue 1+") brings that service's numbered and match-day feeds.
+        val listed = runCatching { fotMob.stationsFor(event, event.competition.fotMobCountries, nowMs) }.getOrDefault(emptyMap())
+        for ((fotMobCountry, stations) in listed) {
+            val country = SportsMatching.playlistCountry(fotMobCountry)
+            for (station in stations) {
+                val word = searchWord(station.name) ?: continue
+                for ((channelId, name) in channelsNamedIn(word, country, sourceIds)) {
+                    if (SportsMatching.isSeparator(name) || SportsMatching.countryOf(name) != country) continue
+                    val score = when {
+                        station.isTv && SportsMatching.isListedChannel(name, station.name, country) -> SportsMatching.LISTED_CHANNEL
+                        !station.isTv && SportsMatching.isServiceFeed(name, station.name) -> SportsMatching.LISTED_SERVICE
+                        else -> continue
+                    }
+                    val channel = channelDao.getById(channelId) ?: continue
+                    offer(SportsChannelMatch(channel, score, null, null, null))
+                }
+            }
+        }
+
         // 3. The game's own broadcaster (ESPN's listing for a US league, the home country's for the
         // others) goes above everything else, for the channels the guide or the name already showed
         // to carry the game. The rest of that broadcaster's channels are one search away (the
@@ -93,7 +119,7 @@ class SportsChannelFinder(
         // hundreds of them.
         for (name in firstBroadcasters(event)) {
             for (match in best.values.toList()) {
-                if (match.score < SportsMatching.BEST_MATCH) continue
+                if (match.score < SportsMatching.BEST_MATCH || match.score >= SportsMatching.LISTED_AND_SHOWING) continue
                 if (!SportsMatching.broadcasterMatches(match.channel.name, name)) continue
                 best[match.channel.id] = match.copy(score = SportsMatching.LISTED_AND_SHOWING)
             }
@@ -111,11 +137,20 @@ class SportsChannelFinder(
                 .copy(score = SportsMatching.FAVORITE_BROADCASTER)
         }
 
-        // 5. The competition's usual broadcasters, below anything else found.
-        val broadcasterNames = event.competition.broadcasters.distinctBy { it.lowercase() }
-        for (name in broadcasterNames) {
-            runCatching { channelDao.searchList(name, sourceIds, BROADCASTER_CHANNELS) }.getOrDefault(emptyList())
-                .forEach { offer(SportsChannelMatch(it, SportsMatching.BROADCASTER, null, null, null)) }
+        // 5. Only when nothing at all was found: the competition's usual broadcasters, as guesses.
+        // Never an event slot (it shows one other game), and only channels of the countries a
+        // broadcaster's name can be trusted in (or without a country).
+        if (best.isEmpty()) {
+            val broadcasterNames = event.competition.broadcasters.distinctBy { it.lowercase() }
+            for (name in broadcasterNames) {
+                runCatching { channelDao.searchList(name, sourceIds, BROADCASTER_SEARCH) }.getOrDefault(emptyList())
+                    .filter { ch ->
+                        val country = SportsMatching.countryOf(ch.name)
+                        !SportsMatching.isEventSlot(ch.name) && (country == null || country in SportsMatching.GUESS_COUNTRIES)
+                    }
+                    .take(BROADCASTER_CHANNELS)
+                    .forEach { offer(SportsChannelMatch(it, SportsMatching.BROADCASTER, null, null, null)) }
+            }
         }
 
         val favoriteIds = favorites.mapTo(HashSet()) { it.id }
@@ -207,6 +242,32 @@ class SportsChannelFinder(
         }.getOrDefault(emptyList())
     }
 
+    /**
+     * The word a station is looked up by in the database: its first word of three letters or more
+     * ("Canal" for "Canal+ Live 3", "LALIGA" for "M+ LALIGA", "Ligue" for "Ligue 1+"), which every
+     * playlist spelling of it keeps ("CANAL+LIVE 3", "M+ LALIGA TV", "LIGUE1 + 3").
+     */
+    private fun searchWord(station: String): String? =
+        station.split(NOT_ALNUM).firstOrNull { it.length >= 3 }
+
+    /** Id and name of the playlist channels named with [word] whose name starts with [country]. */
+    private suspend fun channelsNamedIn(word: String, country: String, sourceIds: List<Long>): List<Pair<Long, String>> {
+        val sql = "SELECT id, name FROM channels " +
+            "WHERE sourceId IN (" + sourceIds.joinToString(",") { "?" } + ") " +
+            "AND name LIKE ? AND (name LIKE ? OR name LIKE ?) LIMIT $MAX_EVENT_NAMED_CHANNELS"
+        return runCatching {
+            db.useReaderConnection { connection ->
+                connection.usePrepared(sql) { st ->
+                    sourceIds.forEachIndexed { i, id -> st.bindLong(i + 1, id) }
+                    st.bindText(sourceIds.size + 1, "%$word%")
+                    st.bindText(sourceIds.size + 2, "$country%")
+                    st.bindText(sourceIds.size + 3, "[$country]%")
+                    buildList { while (st.step()) add(st.getLong(0) to st.getText(1)) }
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
     /** Channel id to guide key, for the playlist channels whose guide id is one of [keys]. */
     private suspend fun channelsForGuideKeys(keys: Set<String>, sourceIds: List<Long>): List<Pair<Long, String>> {
         if (keys.isEmpty()) return emptyList()
@@ -234,5 +295,10 @@ class SportsChannelFinder(
 
         const val MAX_EVENT_NAMED_CHANNELS = 3000
         const val BROADCASTER_CHANNELS = 8
+
+        /** Read for a broadcaster before event slots and other countries' channels are left out. */
+        const val BROADCASTER_SEARCH = 60
+
+        val NOT_ALNUM = Regex("[^\\p{L}\\p{N}]+")
     }
 }

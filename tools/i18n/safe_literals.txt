@@ -930,85 +930,174 @@
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	sports
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	team
 1	json	app/src/main/java/tv/own/owntv/tifo/sports/EspnTeams.kt	teams
+2	empty	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	\0
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	(?i).*\\bapp\\b.*|now|youtube|dazn
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	-?\\d+
+1	log	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	FotMob $country answered ${response.code}
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	Stream
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	TV
+1	protocol	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	User-Agent
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	\\s*\\((FR|US|UK|GB|ES)\\)\\s*$
+1	url	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	https://www.fotmob.com/api/data/tvlistings?countryCode=
+2	json	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	name
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	program
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	startTime
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	station
+1	json	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	teams
+2	json	app/src/main/java/tv/own/owntv/tifo/sports/FotMobTv.kt	type
+1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	$country%
 4	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	%
-2	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	)
+1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	%$word%
+3	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	)
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	) LIMIT $MAX_RESULTS
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	) LIMIT $limit
-3	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	,
-3	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	?
+4	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	,
+4	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	?
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	AND (
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	AND LOWER(TRIM(epgChannelId)) IN (
+1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	AND name LIKE ? AND (name LIKE ? OR name LIKE ?) LIMIT $MAX_EVENT_NAMED_CHANNELS
 2	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	OR
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	SELECT epgChannelId, title, categories, startMs, stopMs FROM epg_programmes
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	SELECT id, LOWER(TRIM(epgChannelId)) FROM channels
-1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	SELECT id, name FROM channels
-2	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	WHERE sourceId IN (
+2	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	SELECT id, name FROM channels
+3	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	WHERE sourceId IN (
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	WHERE startMs <= ? AND stopMs >= ? AND ($likes) LIMIT $MAX_PROGRAMMES
+1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	[$country]%
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	[^\\p{L}\\p{N}]+
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	name LIKE ?
 1	sql	app/src/main/java/tv/own/owntv/tifo/sports/SportsChannelFinder.kt	title LIKE ?
 1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsFavorites.kt	:
 1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsFavorites.kt	teams
 1	preference-key	app/src/main/java/tv/own/owntv/tifo/sports/SportsFavorites.kt	tifo_sports_favorites
-5	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\0
+9	empty	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\0
 1	protocol	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	#
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	$key
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	$key 1
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	$key tv
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	(?<=\\p{L})(?=\\d)|(?<=\\d)(?=\\p{L})
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	+
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	1000
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	1080p
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	2160p
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	3840p
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	4k
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	50fps
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	60fps
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	720p
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	8k
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	AC Milan
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Alaves
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Amazon Prime
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Athletic
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Athletic Bilbao
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Atletico
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Atletico de Madrid
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Auxerre
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Bayern
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Bayern Munchen
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Betis
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Bournemouth
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Brighton
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	CA
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	CBS Sports
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	CBS Sports Network
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Celta
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Dortmund
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ES
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ESPN U
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ESTAC
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	FR
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Forest
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Fox Sports 1
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Fox Sports 2
+2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	GB
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Inter
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Inter Milan
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	LOSC
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Le Havre
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Leeds
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Man City
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Man United
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Man Utd
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Milan AC
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Monaco
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	NBA TV
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	NFL Network
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Newcastle
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Nottm Forest
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Olympique Lyonnais
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Olympique de Marseille
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	PSG
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Palace
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Paris SG
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Paris-SG
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Prime Video
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Rayo
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Rennes
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Stade Brestois
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Tottenham
+2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	UK
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	US
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	USA Network
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	West Ham
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	Wolves
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	[^a-z0-9]+
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\((FR|US|UK|GB|ES|BK)\\)
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\(\\s*[^)]*\\d{2,3}\\s*\\)\\s*\\|
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\b(ppv|event|events|evento|eventos)\\b
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\bla liga\\b
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\bligue1\\b
 1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\p{Mn}+
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	\\s(vs?\\.?|x|@)\\s
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	^(\\d+|(vendredi|samedi|dimanche|lundi|mardi|mercredi|jeudi|match|multiplex|canal multiplex)\\b)
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	^\\s*(\\[[^\\]]*]|[A-Za-z0-9]{2,6}(-[A-Za-z0-9]+)?\\s*[|:])\\s*
 1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	^\\s*[A-Z]{2,3}\\s*:\\s
+1	regex	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	^\\s*\\[?([A-Za-z]{2,4})(-[A-Za-z0-9]+)?\\s*[|:\\]]
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ac milan
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	afc bournemouth
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	aj auxerre
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	american football
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	apple tv
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	apple tv plus
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	as monaco
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	athletic club
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	atletico madrid
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	atp
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	backup
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	baseball
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	basket
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	basketball
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	bayern munich
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	bk
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	borussia dortmund
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	boxe
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	boxing
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	brest
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	brighton & hove albion
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	bundesliga
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	cbssn
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	celta vigo
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	champions league
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	championship
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	championships
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	coupe de france
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	crystal palace
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	cup
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	dazn
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	dazn com
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	deportivo alaves
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	efl
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	epl
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	eredivisie
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	espnu
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	euroleague
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	europa league
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	event
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	events
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	f1
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	fa cup
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	fhd
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	fifa
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	fighting
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	formula
@@ -1018,15 +1107,23 @@
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	fs2
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	golf
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	grand
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	h265
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	hd
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	hdr
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	hevc
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	hockey
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	indycar
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	internazionale
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	khl
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	la liga
-1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	laliga
-1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ligue 1
+2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	laliga
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	le havre ac
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	leeds united
+2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ligue 1
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ligue 2
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ligue des champions
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	lille
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	lq
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	lyon
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	manchester city
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	manchester united
@@ -1036,54 +1133,77 @@
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	mls
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	mma
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	motogp
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	mycanal
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nascar
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nba
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nbatv
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ncaab
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ncaaf
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	newcastle united
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nfl
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nfl net
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nhl
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	nottingham forest
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	now
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	open
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	paris saint-germain
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	pga
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	plus
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	premier league
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	presented
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	prime video
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	prix
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	racing
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	raw
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	rayo vallecano
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	real betis
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	redzone
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	rolex
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	rugby
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	sd
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	serie a
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	soccer
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	sport
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	sports
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	stade rennais
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	super bowl
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	tennis
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	top 14
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	tottenham hotspur
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	tournament
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	troyes
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	uefa
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	ufc
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	uhd
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	usa net
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	vip
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	west ham united
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	with
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wnba
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wolverhampton wanderers
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	wta
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	youtube
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsMatching.kt	|
 1	empty	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	ATP
-1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	CBS Sports
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+ F1
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+ Foot
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+ Live
 3	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Canal+ Sport
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Champions League
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	DAZN
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	DAZN LaLiga
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	ES
 2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	ESPN
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	ESPN Deportes
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Eurosport
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	F1
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	F1 TV
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	FR
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Formula 1
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Formule 1
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	GB
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Grand Prix
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	La Liga
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	LaLiga
@@ -1097,16 +1217,19 @@
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	NBA TV
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	NFL
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	NFL Network
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Paramount+
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Peacock
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Premier League
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Sky Sports
-1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Sky Sports F1
-2	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	TNT Sports
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	TNT Sports
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Tennis
 1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	Tennis Channel
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	USA Network
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	basketball/nba
-4	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	beIN Sports
+3	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	beIN Sports
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	football/nfl
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	racing/f1
+1	technical	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	soccer/
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	soccer/eng.1
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	soccer/esp.1
 1	url	app/src/main/java/tv/own/owntv/tifo/sports/SportsModels.kt	soccer/fra.1

@@ -103,7 +103,7 @@ class SportsViewModel(
 ) : ViewModel() {
 
     private val scoreboard = EspnScoreboard(http)
-    private val finder = SportsChannelFinder(db, channelDao, sourceDao, settings)
+    private val finder = SportsChannelFinder(db, channelDao, sourceDao, settings, http)
 
     private val _state = MutableStateFlow(SportsUiState())
     val state: StateFlow<SportsUiState> = _state.asStateFlow()

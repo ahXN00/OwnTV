@@ -23,7 +23,11 @@ enum class SportKind {
  * game. For the others ESPN's list is the US one (beIN Sports for Ligue 1), so [homeBroadcasters]
  * go first instead: who airs the competition in its own country (Ligue 1+ in France, Sky Sports and
  * TNT Sports in England), or in France where there is no single country. [broadcasters] are other
- * channels that usually carry it, ranked last.
+ * channels that usually carry it — only ones a US, Canadian or French channel goes by — offered
+ * only when nothing else is found.
+ *
+ * Football's exact channel per game comes from FotMob's TV guide: France's for every competition,
+ * plus [tvCountries] (FotMob's codes) for the competition's own country.
  */
 enum class Competition(
     @param:StringRes val labelRes: Int,
@@ -33,7 +37,13 @@ enum class Competition(
     val homeBroadcasters: List<String>,
     val broadcasters: List<String>,
     val usesEspnBroadcasts: Boolean = false,
+    val tvCountries: List<String> = emptyList(),
 ) {
+    val isFootball: Boolean get() = espnPath.startsWith("soccer/")
+
+    /** The countries whose FotMob guide is read for this competition's games. */
+    val fotMobCountries: List<String> get() = if (isFootball) (listOf("FR") + tvCountries).distinct() else emptyList()
+
     LIGUE_1(
         R.string.tifo_sports_ligue_1, "soccer/fra.1", SportKind.TEAM,
         listOf("Ligue 1"),
@@ -45,19 +55,22 @@ enum class Competition(
         R.string.tifo_sports_premier_league, "soccer/eng.1", SportKind.TEAM,
         listOf("Premier League"),
         homeBroadcasters = listOf("Sky Sports", "TNT Sports"),
-        broadcasters = listOf("Canal+ Foot", "Canal+ Sport"),
+        broadcasters = listOf("Canal+ Foot", "Canal+ Sport", "Peacock", "USA Network"),
+        tvCountries = listOf("GB"),
     ),
     LALIGA(
         R.string.tifo_sports_laliga, "soccer/esp.1", SportKind.TEAM,
         listOf("LaLiga", "La Liga", "Liga"),
         homeBroadcasters = listOf("M+ LaLiga", "Movistar", "DAZN LaLiga"),
-        broadcasters = listOf("beIN Sports"),
+        // beIN Sports no longer has LaLiga in France; ESPN+ (ESPN's listing) carries it in the US.
+        broadcasters = listOf("ESPN Deportes"),
+        tvCountries = listOf("ES"),
     ),
     CHAMPIONS_LEAGUE(
         R.string.tifo_sports_champions_league, "soccer/uefa.champions", SportKind.TEAM,
         listOf("Champions League", "Ligue des champions"),
         homeBroadcasters = listOf("Canal+ Foot", "Canal+ Sport"),
-        broadcasters = listOf("Canal+", "TNT Sports"),
+        broadcasters = listOf("Canal+ Live", "Paramount+", "CBS Sports"),
     ),
     NBA(
         R.string.tifo_sports_nba, "basketball/nba", SportKind.TEAM,
@@ -77,7 +90,7 @@ enum class Competition(
         R.string.tifo_sports_formula_1, "racing/f1", SportKind.RACE,
         listOf("Formula 1", "Formule 1", "F1", "Grand Prix"),
         homeBroadcasters = emptyList(),
-        broadcasters = listOf("Canal+ Sport", "Canal+ F1", "Sky Sports F1", "F1 TV"),
+        broadcasters = listOf("Canal+ Sport", "Canal+ F1", "F1 TV"),
     ),
     ATP(
         R.string.tifo_sports_atp, "tennis/atp", SportKind.TOURNAMENT,
