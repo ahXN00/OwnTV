@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- TifoTV's own strings, kept out of OwnTV's files so upstream merges never touch them. -->
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
-    <!-- Overrides core's "OwnTV": the launcher name, so the two apps can be told apart. -->
-    <string name="app_name" translatable="false">TifoTV</string>
+    <!-- app_name ("TifoTV", or "TifoTV Dev") is generated in app/build.gradle.kts and overrides core's "OwnTV". -->
     <string name="tifo_sports_title">Sports</string>
     <string name="tifo_sports_all">All</string>
     <string name="tifo_sports_ligue_1">Ligue 1</string>
@@ -21,7 +20,7 @@
     <string name="tifo_sports_versus">%1$s vs %2$s</string>
     <string name="tifo_sports_loading">Loading games…</string>
     <string name="tifo_sports_failed">Couldn\'t load the games. Check the connection and try again in a moment.</string>
-    <string name="tifo_sports_no_games">No games in the next few days.</string>
+    <string name="tifo_sports_no_games">No games today.</string>
     <string name="tifo_sports_pick_game">Pick a game to see which of your channels show it.</string>
     <string name="tifo_sports_channels">Channels</string>
     <string name="tifo_sports_matching">Looking for channels…</string>
@@ -32,19 +31,26 @@
     <string name="tifo_sports_match_broadcaster">Usual channel</string>
     <string name="tifo_sports_record_hint">Press right on a channel, then OK, to record the game from its guide.</string>
     <string name="tifo_sports_recording_set">● Recording · %1$s</string>
-    <string name="tifo_sports_record_hint_jellyfin">Press right on a channel, then OK, to record the game on your Jellyfin server.</string>
-    <string name="tifo_jellyfin_on">Jellyfin recording</string>
-    <string name="tifo_jellyfin_off">Record to Jellyfin</string>
-    <string name="tifo_jellyfin_title">Record to Jellyfin</string>
-    <string name="tifo_jellyfin_url">Server address</string>
-    <string name="tifo_jellyfin_url_hint">Like 192.168.1.20:8096. Jellyfin needs your playlist as an M3U tuner and your guide under Live TV. Leave empty to record on this TV again.</string>
-    <string name="tifo_jellyfin_next">Next</string>
-    <string name="tifo_jellyfin_key">API key</string>
-    <string name="tifo_jellyfin_key_hint">Create one in Jellyfin under Dashboard, API Keys.</string>
-    <string name="tifo_jellyfin_connect">Connect</string>
-    <string name="tifo_jellyfin_connected">Connected to %1$s. Recordings now go to Jellyfin.</string>
-    <string name="tifo_jellyfin_scheduled">Jellyfin will record this game.</string>
-    <string name="tifo_jellyfin_unreachable">Couldn\'t reach Jellyfin. Check the address and the API key.</string>
-    <string name="tifo_jellyfin_no_channel">Jellyfin has no channel with this name. Check that it uses the same playlist.</string>
-    <string name="tifo_jellyfin_no_programme">Jellyfin\'s guide has nothing on this channel at that time. Refresh its guide data.</string>
+    <string name="tifo_sports_search_broadcaster">All %1$s channels</string>
+    <string name="tifo_sports_preview_hint">Move onto a channel to preview it here.</string>
+    <string name="tifo_sports_play_hint">OK plays it full screen.</string>
+    <string name="tifo_sports_quality_from_name">from the channel name</string>
+    <string name="tifo_sports_fps">%1$d FPS</string>
+    <string name="tifo_sports_teams">Teams</string>
+    <string name="tifo_sports_teams_title">Favorite teams</string>
+    <string name="tifo_sports_teams_hint">Pick a league, then press OK on a team to star it. The My teams tab lists only their games.</string>
+    <string name="tifo_sports_teams_loading">Loading teams…</string>
+    <string name="tifo_sports_teams_failed">Couldn\'t load this league\'s teams. Try again in a moment.</string>
+    <string name="tifo_sports_my_teams">My teams</string>
+    <string name="tifo_sports_my_teams_none">No favorite team yet. Pick yours with the Teams button at the top.</string>
+    <string name="tifo_sports_my_teams_no_games">None of your teams plays in the next few days.</string>
+    <string name="tifo_sports_no_games_on">No games on %1$s.</string>
+    <string name="tifo_sports_next_games">Next games: %1$s</string>
+    <string name="tifo_sports_yesterday">Yesterday</string>
+    <string name="tifo_sports_tomorrow">Tomorrow</string>
+    <string name="tifo_sports_pick_day">Pick a day to see its games.</string>
+    <string name="tifo_sports_stage_live">Live</string>
+    <string name="tifo_sports_stage_upcoming">Upcoming</string>
+    <string name="tifo_sports_stage_ended">Ended</string>
+    <string name="tifo_sports_stage_empty">No games in this tab for the day.</string>
 </resources>

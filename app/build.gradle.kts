@@ -49,7 +49,12 @@ android {
 
     defaultConfig {
         // TifoTV: its own package, so it installs next to OwnTV. The namespace (R, code) stays OwnTV's.
-        applicationId = "tv.own.tifotv"
+        // TIFO_CHANNEL=dev (CI's dev builds, see tifotv-dev-release.yml) makes "TifoTV Dev": its own
+        // package and data, updating from the TifoTV-dev repository's releases instead of TifoTV's.
+        val tifoDev = System.getenv("TIFO_CHANNEL") == "dev"
+        applicationId = if (tifoDev) "tv.own.tifotv.dev" else "tv.own.tifotv"
+        resValue("string", "app_name", if (tifoDev) "TifoTV Dev" else "TifoTV")
+        buildConfigField("String", "RELEASE_REPO", if (tifoDev) "\"samolo93190/TifoTV-dev\"" else "\"samolo93190/TifoTV\"")
         minSdk = 26
         targetSdk = 36
         // CI injects these from the git tag (see .github/workflows/android.yml) so releases never
@@ -184,6 +189,8 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // TifoTV: app_name is a resValue (TifoTV / TifoTV Dev); AGP 9 turns resValues off by default.
+        resValues = true
     }
 
     androidResources {

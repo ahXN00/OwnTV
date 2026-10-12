@@ -1,9 +1,10 @@
 package tv.own.owntv.tifo.sports
 
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -36,24 +37,59 @@ data class SportsUiState(
     val failed: Boolean = false,
     /** Null = all competitions. */
     val filter: Competition? = null,
+    /** The "My teams" tab: only games a favourite team plays in, across competitions. */
+    val myTeams: Boolean = false,
     val events: List<SportsEvent> = emptyList(),
     val selected: SportsEvent? = null,
     val matching: Boolean = false,
     val matches: List<SportsChannelMatch> = emptyList(),
-    /** Set when recordings go to the user's Jellyfin server instead of the TV. */
-    val jellyfin: JellyfinConfig = JellyfinConfig("", ""),
-    /** What Jellyfin has scheduled, read when a game is opened. */
-    val jellyfinTimers: List<JellyfinTimer> = emptyList(),
-    /** A one-line message under the channels: Jellyfin connected, or why it couldn't record. */
-    val notice: SportsNotice? = null,
+    /** The selected game's own broadcasters ("CBS", "Ligue 1+"), each a search of all channels. */
+    val broadcasters: List<String> = emptyList(),
+    /** The day the league tabs show; null = today, following midnight. */
+    val day: LocalDate? = null,
+    /** A picked day's games are still being fetched. */
+    val dayLoading: Boolean = false,
+    /** All's sub-tab: live, upcoming or ended games. Null = live when a game is, else upcoming. */
+    val stage: EventState? = null,
 ) {
-    val visibleEvents: List<SportsEvent> get() = if (filter == null) events else events.filter { it.competition == filter }
+    fun shownDay(today: LocalDate): LocalDate = day ?: today
+
+    /** The open tab's games on every day: [filter]'s, or all of them. */
+    fun tabEvents(): List<SportsEvent> = if (filter == null) events else events.filter { it.competition == filter }
+
+    /**
+     * The games the open tab lists; [favorites] are [SportsFavorites.keys], for "My teams", which
+     * lists every day. The other tabs list the [shownDay] only.
+     */
+    fun visibleEvents(
+        favorites: Set<String>,
+        today: LocalDate = LocalDate.now(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): List<SportsEvent> = when {
+        myTeams -> events.filter { e ->
+            SportsFavorites.isFavorite(favorites, e.competition, e.home) || SportsFavorites.isFavorite(favorites, e.competition, e.away)
+        }
+        filter == null -> dayEvents(today, zone).let { day -> day.filter { it.state == shownStage(day) } }
+        else -> dayEvents(today, zone)
+    }
+
+    /** The open tab's games on the [shownDay], whatever their state. */
+    fun dayEvents(today: LocalDate = LocalDate.now(), zone: ZoneId = ZoneId.systemDefault()): List<SportsEvent> =
+        tabEvents().filter { SportsSchedule.isOn(it, shownDay(today), today, zone) }
+
+    /** All's open sub-tab, given the day's [games]. */
+    fun shownStage(games: List<SportsEvent>): EventState = stage ?: when {
+        games.any { it.state == EventState.LIVE } -> EventState.LIVE
+        games.any { it.state == EventState.UPCOMING } || games.none { it.state == EventState.FINISHED } -> EventState.UPCOMING
+        else -> EventState.FINISHED
+    }
 }
 
-sealed interface SportsNotice {
-    data class Connected(val serverName: String) : SportsNotice
-    data object Scheduled : SportsNotice
-    data class Failed(val failure: JellyfinFailure) : SportsNotice
+/** A league's teams in the favourites picker. */
+sealed interface TeamList {
+    data object Loading : TeamList
+    data object Failed : TeamList
+    data class Loaded(val teams: List<SportsTeam>) : TeamList
 }
 
 class SportsViewModel(
@@ -64,19 +100,29 @@ class SportsViewModel(
     private val settings: SettingsRepository,
     private val profileDao: ProfileDao,
     private val recordings: RecordingManager,
-    appContext: Context,
 ) : ViewModel() {
-
-    private val jellyfinSettings = JellyfinSettings(appContext)
-    private val jellyfin = JellyfinRecorder(http)
 
     private val scoreboard = EspnScoreboard(http)
     private val finder = SportsChannelFinder(db, channelDao, sourceDao, settings)
 
-    private val _state = MutableStateFlow(SportsUiState(jellyfin = jellyfinSettings.load()))
+    private val _state = MutableStateFlow(SportsUiState())
     val state: StateFlow<SportsUiState> = _state.asStateFlow()
 
     private var matchJob: Job? = null
+
+    /**
+     * Where the cursor goes when the tab comes back: the broadcaster search it left for, or the
+     * channel it played full screen. The tab is rebuilt when the player closes, so it starts there.
+     */
+    private var returnFocus: String? = null
+
+    /** The game list's scroll position when the tab was last left, to come back to the same rows. */
+    var listIndex = 0
+    var listOffset = 0
+
+    fun setReturnFocus(key: String) { returnFocus = key }
+
+    fun takeReturnFocus(): String? = returnFocus.also { returnFocus = null }
 
     /**
      * Keeps the scores fresh while the Sports tab is on screen: every 30 seconds while a game is
@@ -95,7 +141,7 @@ class SportsViewModel(
         val results = coroutineScope {
             Competition.entries.map { competition ->
                 async {
-                    runCatching { scoreboard.load(competition, now) }
+                    runCatching { scoreboard.load(competition, now, _state.value.day) }
                         .onFailure { Log.w(TAG, "scoreboard ${competition.name} failed", it) }
                         .getOrNull()
                 }
@@ -107,6 +153,7 @@ class SportsViewModel(
         _state.update { s ->
             s.copy(
                 loading = false,
+                dayLoading = false,
                 failed = results.all { it == null },
                 events = events,
                 // Keep the open game current: its score and status change while it is shown.
@@ -115,13 +162,63 @@ class SportsViewModel(
         }
     }
 
-    fun setFilter(competition: Competition?) = _state.update { it.copy(filter = competition) }
+    fun setFilter(competition: Competition?) = _state.update { it.copy(filter = competition, myTeams = false) }
 
-    /** Opens [event] on the right and looks for the channels that show it. */
-    fun select(event: SportsEvent) {
-        _state.update { it.copy(selected = event, matching = true, matches = emptyList(), notice = null) }
+    fun setStage(stage: EventState) = _state.update { it.copy(stage = stage) }
+
+    fun showMyTeams() = _state.update { it.copy(filter = null, myTeams = true) }
+
+    /**
+     * Shows [day]'s games on the league tabs (today when it is today), closing the open game. A day
+     * past the week already loaded is fetched now.
+     */
+    fun setDay(day: LocalDate) {
+        val today = LocalDate.now()
+        val picked = day.takeIf { it != today }
+        if (picked == _state.value.day) return
         matchJob?.cancel()
-        viewModelScope.launch { refreshJellyfinTimers() }
+        val known = !day.isBefore(today.minusDays(1)) && !day.isAfter(today.plusDays(LOADED_DAYS_AHEAD))
+        _state.update {
+            it.copy(day = picked, dayLoading = !known, selected = null, matching = false, matches = emptyList(), broadcasters = emptyList())
+        }
+        if (!known) viewModelScope.launch { refresh() }
+    }
+
+    private val teamLists = EspnTeams(http)
+
+    private val _teams = MutableStateFlow<Map<Competition, TeamList>>(emptyMap())
+
+    /** Each league's teams for the favourites picker, loaded when the picker opens the league. */
+    val teams: StateFlow<Map<Competition, TeamList>> = _teams.asStateFlow()
+
+    fun loadTeams(competition: Competition) {
+        val current = _teams.value[competition]
+        if (current != null && current !is TeamList.Failed) return
+        _teams.update { it + (competition to TeamList.Loading) }
+        viewModelScope.launch {
+            val list: TeamList = runCatching { teamLists.load(competition) }
+                .onFailure { Log.w(TAG, "teams ${competition.name} failed", it) }
+                .fold({ TeamList.Loaded(it) }, { TeamList.Failed })
+            _teams.update { it + (competition to list) }
+        }
+    }
+
+    /**
+     * Opens [event] under its row and looks for the channels that show it; the open game again
+     * closes it.
+     */
+    fun select(event: SportsEvent) {
+        matchJob?.cancel()
+        if (_state.value.selected?.id == event.id) {
+            _state.update { it.copy(selected = null, matching = false, matches = emptyList(), broadcasters = emptyList()) }
+            return
+        }
+        _state.update {
+            it.copy(
+                selected = event, matching = true, matches = emptyList(),
+                broadcasters = finder.firstBroadcasters(event),
+            )
+        }
         matchJob = viewModelScope.launch {
             val matches = runCatching { finder.find(event, System.currentTimeMillis()) }
                 .onFailure { Log.w(TAG, "channel matching failed", it) }
@@ -152,11 +249,6 @@ class SportsViewModel(
         val title = match.programmeTitle ?: return
         val start = match.programmeStartMs ?: return
         val stop = match.programmeStopMs ?: return
-        val config = _state.value.jellyfin
-        if (config.isSet) {
-            toggleOnJellyfin(config, match, start)
-            return
-        }
         viewModelScope.launch {
             recordingFor(match, recordingRows.value)?.let { recordings.cancel(it); return@launch }
             if (start <= System.currentTimeMillis()) return@launch
@@ -186,76 +278,20 @@ class SportsViewModel(
         }
     }
 
-    /** The Jellyfin timer already recording [match]'s programme, if there is one. */
-    fun jellyfinTimerFor(match: SportsChannelMatch, timers: List<JellyfinTimer>): JellyfinTimer? {
-        val start = match.programmeStartMs ?: return null
-        return timers.firstOrNull { JellyfinRecorder.covers(it, match.channel.name, start) }
-    }
-
-    private fun toggleOnJellyfin(config: JellyfinConfig, match: SportsChannelMatch, start: Long) {
-        viewModelScope.launch {
-            val existing = jellyfinTimerFor(match, _state.value.jellyfinTimers)
-            val result = runCatching {
-                if (existing != null) {
-                    jellyfin.cancel(config, existing.id)
-                } else {
-                    if (start <= System.currentTimeMillis()) return@launch
-                    // A minute in, so a programme ending exactly at the start isn't the one taken.
-                    jellyfin.schedule(config, match.channel.name, start + 60_000L)
-                }
-            }
-            val notice = result.fold(
-                onSuccess = { if (existing == null) SportsNotice.Scheduled else null },
-                onFailure = {
-                    Log.w(TAG, "Jellyfin recording failed", it)
-                    SportsNotice.Failed((it as? JellyfinException)?.failure ?: JellyfinFailure.UNREACHABLE)
-                },
-            )
-            _state.update { it.copy(notice = notice) }
-            refreshJellyfinTimers()
-        }
-    }
-
-    private suspend fun refreshJellyfinTimers() {
-        val config = _state.value.jellyfin
-        val timers = if (config.isSet) {
-            runCatching { jellyfin.timers(config) }.onFailure { Log.w(TAG, "Jellyfin timers failed", it) }.getOrNull()
-        } else {
-            emptyList()
-        }
-        if (timers != null) _state.update { it.copy(jellyfinTimers = timers) }
-    }
-
-    /**
-     * Saves the Jellyfin server and checks it answers. A blank address turns Jellyfin off, so
-     * recordings go back to the TV.
-     */
-    fun setJellyfin(url: String, apiKey: String) {
-        val config = JellyfinConfig(url.trim(), apiKey.trim())
-        jellyfinSettings.save(config)
-        _state.update { it.copy(jellyfin = config, jellyfinTimers = emptyList(), notice = null) }
-        if (!config.isSet) return
-        viewModelScope.launch {
-            val notice = runCatching { jellyfin.test(config) }.fold(
-                onSuccess = { SportsNotice.Connected(it) },
-                onFailure = { SportsNotice.Failed(JellyfinFailure.UNREACHABLE) },
-            )
-            _state.update { it.copy(notice = notice) }
-            refreshJellyfinTimers()
-        }
-    }
-
     private companion object {
         const val TAG = "TifoSports"
         const val LIVE_REFRESH_MS = 30_000L
         const val IDLE_REFRESH_MS = 5 * 60_000L
 
+        /** The days ahead [EspnScoreboard.load] always fetches, less one for time zones. */
+        const val LOADED_DAYS_AHEAD = 6L
+
         /** Finished games stay listed for a day, for the result. */
         const val FINISHED_KEEP_MS = 24 * 60 * 60_000L
 
-        /** Live first, then upcoming soonest first, then results newest first. */
+        /** Live first, then results newest first, then upcoming soonest first. */
         val eventOrder = Comparator<SportsEvent> { a, b ->
-            val rank = { e: SportsEvent -> when (e.state) { EventState.LIVE -> 0; EventState.UPCOMING -> 1; EventState.FINISHED -> 2 } }
+            val rank = { e: SportsEvent -> when (e.state) { EventState.LIVE -> 0; EventState.FINISHED -> 1; EventState.UPCOMING -> 2 } }
             val byState = rank(a).compareTo(rank(b))
             when {
                 byState != 0 -> byState

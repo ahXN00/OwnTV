@@ -114,6 +114,22 @@ class SportsMatchingTest {
     }
 
     @Test
+    fun aProviderCategoryLabelIsNotTheSport() {
+        val broncosAtChargers = nflGame(nflTeam("Los Angeles", "Chargers", "LAC"), nflTeam("Denver", "Broncos", "DEN"))
+        assertEquals(
+            SportsMatching.EVENT_CHANNEL,
+            SportsMatching.channelScore(broncosAtChargers, "Live | Broncos vs. Chargers | all | 8K EXCLUSIVE | US: SOCCER EVENTS"),
+        )
+        assertEquals(
+            SportsMatching.EVENT_CHANNEL,
+            SportsMatching.channelScore(broncosAtChargers, "Next | Broncos vs. Chargers | all | 11-10-2026 | 21:57 (GMT) | 8K EXCLUSIVE"),
+        )
+        // The sport in the channel's own name still counts.
+        assertEquals(0, SportsMatching.channelScore(broncosAtChargers, "US: MLS | Broncos vs Chargers"))
+        assertEquals(0, SportsMatching.channelScore(broncosAtChargers, "Broncos vs Chargers | Rugby"))
+    }
+
+    @Test
     fun aCityAloneIsNotATeam() {
         assertEquals(0, SportsMatching.channelScore(bearsAtPackers, "Packers TV"))
         assertEquals(0, SportsMatching.channelScore(bearsAtPackers, "NBC Sports Chicago"))
@@ -183,7 +199,7 @@ class SportsMatchingTest {
         assertTrue(SportsMatching.broadcasterMatches("CBS New York", "CBS"))
         assertTrue(!SportsMatching.broadcasterMatches("CBSN News", "CBS"))
         assertTrue(SportsMatching.broadcasterMatches("US: NFL Network HD", "NFL Net"))
-        assertTrue(SportsMatching.LISTED_BROADCASTER > SportsMatching.EVENT_CHANNEL)
+        assertTrue(SportsMatching.LISTED_AND_SHOWING > SportsMatching.EVENT_CHANNEL)
     }
 
     @Test
@@ -196,7 +212,6 @@ class SportsMatchingTest {
         assertTrue(SportsMatching.broadcasterMatches("FR| LIGUE1+ 3", "Ligue 1+"))
         assertTrue(!SportsMatching.broadcasterMatches("FR: Ligue 1 Replay", "Ligue 1+"))
         assertTrue(SportsMatching.broadcasterMatches("UK: Sky Sports Premier League", "Sky Sports"))
-        assertTrue(SportsMatching.LISTED_AND_SHOWING > SportsMatching.LISTED_BROADCASTER)
     }
 
     private val shanghai = """
