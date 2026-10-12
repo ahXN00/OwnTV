@@ -113,7 +113,7 @@ class SearchViewModel(
 
     private suspend fun search(q: String): SearchResults {
         val pid = currentProfileId() ?: return SearchResults()
-        return searchReader.search(pid, ctx.value, q)
+        return tv.own.owntv.tifo.search.TifoSearch.search(searchReader, pid, ctx.value, q) // TifoTV: no "###" separator rows
     }
 
     // --- Stage page (SR-01 … SR-07) ---

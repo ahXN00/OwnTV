@@ -19,6 +19,8 @@ data class SportsChannelMatch(
     val programmeTitle: String?,
     val programmeStartMs: Long?,
     val programmeStopMs: Long?,
+    /** One of the user's favourite channels. */
+    val favorite: Boolean = false,
 )
 
 /**
@@ -97,15 +99,34 @@ class SportsChannelFinder(
             }
         }
 
-        // 4. The competition's usual broadcasters, below anything else found.
+        // 4. The user's own favourite channels of that broadcaster ("NBC" for an NBC game) count as
+        // showing it even when the guide doesn't say so: that is where they watch it.
+        val favorites = favoriteChannels(sourceIds)
+        val listed = firstBroadcasters(event)
+        for (channel in favorites) {
+            if (SportsMatching.isSeparator(channel.name)) continue
+            if (listed.none { SportsMatching.broadcasterMatches(channel.name, it) }) continue
+            val old = best[channel.id]
+            best[channel.id] = (old ?: SportsChannelMatch(channel, 0, null, null, null))
+                .copy(score = SportsMatching.FAVORITE_BROADCASTER)
+        }
+
+        // 5. The competition's usual broadcasters, below anything else found.
         val broadcasterNames = event.competition.broadcasters.distinctBy { it.lowercase() }
         for (name in broadcasterNames) {
             runCatching { channelDao.searchList(name, sourceIds, BROADCASTER_CHANNELS) }.getOrDefault(emptyList())
                 .forEach { offer(SportsChannelMatch(it, SportsMatching.BROADCASTER, null, null, null)) }
         }
 
+        val favoriteIds = favorites.mapTo(HashSet()) { it.id }
         best.values
-            .sortedWith(compareByDescending<SportsChannelMatch> { it.score }.thenBy { it.channel.name.lowercase() })
+            .map { if (it.channel.id in favoriteIds) it.copy(favorite = true) else it }
+            // A favourite channel that shows the game, however it was found, goes on top.
+            .sortedWith(
+                compareByDescending<SportsChannelMatch> { it.favorite }
+                    .thenByDescending { it.score }
+                    .thenBy { it.channel.name.lowercase() },
+            )
             .take(MAX_RESULTS)
     }
 
@@ -114,6 +135,16 @@ class SportsChannelFinder(
         val competition = event.competition
         val names = if (competition.usesEspnBroadcasts) event.broadcasts else competition.homeBroadcasters
         return names.map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { it.lowercase() }
+    }
+
+    /** The active profile's favourite channels in [sourceIds]. */
+    private suspend fun favoriteChannels(sourceIds: List<Long>): List<ChannelEntity> {
+        val profileId = settings.activeProfileId.first()
+        if (profileId < 0) return emptyList()
+        val sources = sourceIds.toHashSet()
+        return runCatching { channelDao.favoritesListAlpha(profileId).first() }
+            .getOrDefault(emptyList())
+            .filter { it.sourceId in sources }
     }
 
     /** The guide window in which a programme can show the event. */

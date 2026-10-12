@@ -40,6 +40,12 @@ object SportsMatching {
      */
     const val LISTED_AND_SHOWING = 130
 
+    /**
+     * One of the user's favourite channels from the game's own broadcaster, which the guide may
+     * not confirm: the channel they already watch it on.
+     */
+    const val FAVORITE_BROADCASTER = 150
+
     /** Spellings guides use that ESPN doesn't, keyed by ESPN's normalised display name. */
     private val aliases: Map<String, List<String>> = mapOf(
         "paris saint-germain" to listOf("PSG", "Paris SG", "Paris-SG"),

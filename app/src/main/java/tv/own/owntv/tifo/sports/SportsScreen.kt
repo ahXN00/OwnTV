@@ -652,7 +652,10 @@ private fun EventRow(
         modifier = modifier
             .fillMaxWidth()
             .then(if (selected) Modifier.background(accent.accent.copy(alpha = 0.12f), RoundedCornerShape(StageRadii.Row)) else Modifier),
-    ) { focused ->
+    ) { cursor ->
+        // The open game keeps its white text under the cursor too: on its tinted row the accent's
+        // dark text was hard to read.
+        val focused = cursor && !selected
         val text = if (focused) accent.onAccent else StageColors.Text
         val dim = if (focused) accent.onAccent.copy(alpha = 0.8f) else StageColors.Dim
         Column(Modifier.width(150.mpx), verticalArrangement = Arrangement.spacedBy(4.mpx)) {
@@ -801,7 +804,10 @@ private fun ChannelRow(
         val text = if (focused) accent.onAccent else StageColors.Text
         val dim = if (focused) accent.onAccent.copy(alpha = 0.8f) else StageColors.Dim
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.mpx)) {
-            Text(match.channel.name, style = stageText(20, 700), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
+                if (match.favorite) FavoriteStar(focused)
+                Text(match.channel.name, style = stageText(20, 700), color = text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             val title = match.programmeTitle
             val start = match.programmeStartMs
             val stop = match.programmeStopMs
