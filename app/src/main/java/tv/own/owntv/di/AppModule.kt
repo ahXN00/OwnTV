@@ -28,6 +28,10 @@ import tv.own.owntv.features.settings.DeleteSubtitlesViewModel
 import tv.own.owntv.features.settings.EpgSourcesViewModel
 import tv.own.owntv.features.settings.HomeSettingsViewModel
 import tv.own.owntv.features.settings.LanguageSettingsViewModel
+import tv.own.owntv.features.sport.EspnApi
+import tv.own.owntv.features.sport.SportsMatcher
+import tv.own.owntv.features.sport.SportsPrefs
+import tv.own.owntv.features.sport.SportsViewModel
 import tv.own.owntv.features.settings.OpenSubtitlesViewModel
 import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.features.setup.DisplaySizeViewModel
@@ -161,4 +165,9 @@ val appModule = module {
     viewModelOf(::MoreCountsViewModel)
     // The counts beside the sections in the open Stage rail.
     viewModelOf(::RailCountsViewModel)
+    // Sports hub (Lume-style): ESPN fixtures/scores/standings matched to the user's channels.
+    singleOf(::EspnApi)
+    singleOf(::SportsMatcher)
+    singleOf(::SportsPrefs)
+    viewModelOf(::SportsViewModel)
 }

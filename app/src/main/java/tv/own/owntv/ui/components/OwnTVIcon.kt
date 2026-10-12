@@ -48,6 +48,8 @@ enum class OwnTVIcon {
     // Stage marks with no older counterpart (see StageGlyphs.kt). TILES is the More destination.
     PLAY_CIRCLE, BELL, REC, CHEVRON_LEFT, GRID, LIST, CHECK, CLOCK, SUN, TREND, LAYERS, PENCIL,
     EYE_OFF, MOVE, EXTERNAL, TRASH, MULTIVIEW, NOW, CALENDAR, TILES,
+    // The Sports hub (fixtures, live scores, standings matched to the user's own channels).
+    SPORT,
     // Audio mode's equaliser mark (the bar at rest, the rail's Now playing item).
     EQ,
 }
@@ -423,6 +425,21 @@ fun OwnTVIcon(
                 drawArc(tint, 60f, 90f, false, p(5.5f, 5.5f), Size(13f * s, 13f * s), style = stroke)
                 drawArc(tint, -125f, 100f, false, p(1.8f, 1.8f), Size(20.4f * s, 20.4f * s), style = stroke)
                 drawArc(tint, 55f, 100f, false, p(1.8f, 1.8f), Size(20.4f * s, 20.4f * s), style = stroke)
+            }
+            OwnTVIcon.SPORT -> {
+                // Trophy cup: bowl, two handles, stem and foot — the Sports hub.
+                val cup = Path().apply {
+                    moveTo(p(7f, 4f).x, p(7f, 4f).y)
+                    lineTo(p(17f, 4f).x, p(17f, 4f).y)
+                    cubicTo(p(17f, 10f).x, p(17f, 10f).y, p(15f, 14f).x, p(15f, 14f).y, p(12f, 14.5f).x, p(12f, 14.5f).y)
+                    cubicTo(p(9f, 14f).x, p(9f, 14f).y, p(7f, 10f).x, p(7f, 10f).y, p(7f, 4f).x, p(7f, 4f).y)
+                    close()
+                }
+                drawPath(cup, tint, style = stroke)
+                drawArc(tint, 90f, 180f, false, topLeft = p(3.2f, 5f), size = Size(4.4f * s, 5.4f * s), style = stroke)
+                drawArc(tint, 270f, 180f, false, topLeft = p(16.4f, 5f), size = Size(4.4f * s, 5.4f * s), style = stroke)
+                drawLineStroke(p(12f, 14.5f), p(12f, 18.5f), tint, stroke)
+                drawLineStroke(p(8.5f, 21f), p(15.5f, 21f), tint, stroke)
             }
             else -> Unit // drawn from StagePaths above
     }
