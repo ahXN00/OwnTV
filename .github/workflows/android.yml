@@ -255,27 +255,27 @@ jobs:
             echo "ARM_SRC=$SRC" >> "$GITHUB_ENV"
           fi
 
-      - name: Name the APK (OwnTV-v<version>)
+      - name: Name the APK (TifoTV-v<version>)
         run: |
           mkdir -p dist
           if [ "$IS_TAG" = "true" ]; then
-            OUT="OwnTV-v${{ steps.ver.outputs.name }}.apk"
+            OUT="TifoTV-v${{ steps.ver.outputs.name }}.apk"
           else
-            OUT="OwnTV-dev-${GITHUB_SHA::7}.apk"
+            OUT="TifoTV-dev-${GITHUB_SHA::7}.apk"
           fi
           cp "$ARM_SRC" "dist/$OUT"
           echo "APK_OUT=$OUT" >> "$GITHUB_ENV"
           echo "Packaged dist/$OUT (arm: arm64-v8a + armeabi-v7a)"
           # Tag builds also ship a stable-named copy so a fixed URL always serves the latest signed
-          # release: https://github.com/<repo>/releases/latest/download/OwnTV.apk
+          # release: https://github.com/<repo>/releases/latest/download/TifoTV.apk
           # (used by the Fire TV Downloader code and any "always-latest" sideload link).
           if [ "$IS_TAG" = "true" ]; then
-            cp "$ARM_SRC" "dist/OwnTV.apk"
+            cp "$ARM_SRC" "dist/TifoTV.apk"
             # Separate x86_64 build for emulators / rare Intel boxes. Pinned to the version only —
             # no always-latest copy, since real devices (the Downloader audience) don't need it.
             if [ -n "$X86_SRC" ]; then
-              cp "$X86_SRC" "dist/OwnTV-x86_64-v${{ steps.ver.outputs.name }}.apk"
-              echo "Packaged dist/OwnTV-x86_64-v${{ steps.ver.outputs.name }}.apk"
+              cp "$X86_SRC" "dist/TifoTV-x86_64-v${{ steps.ver.outputs.name }}.apk"
+              echo "Packaged dist/TifoTV-x86_64-v${{ steps.ver.outputs.name }}.apk"
             fi
           fi
 
@@ -325,11 +325,11 @@ jobs:
         if: env.IS_TAG == 'true'
         uses: softprops/action-gh-release@v3
         with:
-          name: OwnTV ${{ github.ref_name }}
+          name: TifoTV ${{ github.ref_name }}
           files: |
             dist/${{ env.APK_OUT }}
-            dist/OwnTV.apk
-            dist/OwnTV-x86_64-v${{ steps.ver.outputs.name }}.apk
+            dist/TifoTV.apk
+            dist/TifoTV-x86_64-v${{ steps.ver.outputs.name }}.apk
           body_path: dist/RELEASE_NOTES.md
           # Must stay false: it appends GitHub's auto commit/PR list under the body, which buries the
           # short in-app notes the updater dialog shows.
