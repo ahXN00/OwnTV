@@ -34,6 +34,7 @@ import tv.own.owntv.core.database.dao.resolveExistingProfileId
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.MovieEntity
 import tv.own.owntv.core.database.entity.SeriesEntity
+import tv.own.owntv.core.database.entity.SourceEntity
 import tv.own.owntv.core.database.entity.MetadataCacheEntity
 import tv.own.owntv.core.home.GuideSliceState
 import tv.own.owntv.core.home.HeroItem
@@ -358,12 +359,19 @@ class HomeViewModel(
      * playlist's User-Agent plus the item's own headers. Without them a source that needs a custom UA or
      * a Referer had a home screen that 403'd on every preview while the item itself played fine.
      */
+    private val hostSelector by lazy {
+        org.koin.core.context.GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.core.network.HostSelector>()
+    }
+
     suspend fun startPreview(hero: HeroItem) {
         val source = withContext(Dispatchers.IO) {
             runCatching { sourceDao.getById(hero.sourceId) }.getOrNull()
         }
+        val url = heroPreviewUrl(hero.streamUrl, source) { stored, s ->
+            hostSelector?.forRequest(stored, s) ?: stored
+        }
         heroPreviewEngine.play(
-            hero.streamUrl, hero.seekToMs, source?.userAgent,
+            url, hero.seekToMs, source?.userAgent,
             tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(hero.httpHeaders, source),
         )
     }
@@ -468,3 +476,9 @@ class HomeViewModel(
     }
 
 }
+
+internal fun heroPreviewUrl(
+    stored: String,
+    source: SourceEntity?,
+    forRequest: (String, SourceEntity) -> String,
+): String = source?.let { forRequest(stored, it) } ?: stored

@@ -1782,6 +1782,31 @@ fun OwnTVShell(
                     )
                 }
                 tv.own.owntv.ui.components.InAppToast(localSubToast)
+                // Host failover: "Switched to server 3 of 21 · host", over Live, films and episodes alike.
+                val serverNotices = koinInject<tv.own.owntv.player.ServerNotices>()
+                val serverToast = tv.own.owntv.ui.components.rememberInAppToast()
+                val serverRes = androidx.compose.ui.platform.LocalResources.current
+                LaunchedEffect(serverNotices) {
+                    serverNotices.switched.collect { n ->
+                        serverToast.show(serverRes.getString(R.string.player_server_switched, n.position, n.total, n.server), SERVER_TOAST_MS)
+                    }
+                }
+                LaunchedEffect(serverNotices) {
+                    serverNotices.busy.collect {
+                        serverToast.show(serverRes.getString(R.string.player_switching_servers), SERVER_TOAST_MS)
+                    }
+                }
+                LaunchedEffect(serverNotices) {
+                    serverNotices.noNetwork.collect {
+                        serverToast.show(serverRes.getString(R.string.player_no_network), SERVER_TOAST_MS)
+                    }
+                }
+                LaunchedEffect(serverNotices) {
+                    serverNotices.timeshiftOff.collect {
+                        serverToast.show(serverRes.getString(R.string.player_failover_off_timeshift), SERVER_TOAST_MS)
+                    }
+                }
+                tv.own.owntv.ui.components.InAppToast(serverToast)
                 // Programme reminders (G2): when one comes up, ask to switch, switch, or only say so (the
                 // Programme reminders setting) — over whatever is on screen, the player included.
                 val reminderManager = koinInject<tv.own.owntv.core.reminder.ReminderManager>()
@@ -2118,3 +2143,6 @@ private fun railDetail(section: MainSection, d: RailDetails): String? = when (se
 
 /** How recently ◀ / ▶ or [focusRail] must have happened for a rail visit to open the rail. */
 private const val RAIL_KEY_WINDOW_MS = 400L
+
+/** How long the server-switch toast stays (U1: about 4 s, longer than the 2.2 s default). */
+private const val SERVER_TOAST_MS = 4_000L

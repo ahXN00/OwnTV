@@ -16,6 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.tv.material3.Text
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.delay
 
 /**
@@ -32,10 +35,18 @@ class InAppToastState {
         private set
     internal var tick by mutableStateOf(0L)
         private set
+    internal var durationMs by mutableStateOf(DEFAULT_MS)
+        private set
 
-    fun show(text: String) {
+    /** Shows [text] for [durationMs] (2.2 s by default; the player's server-switch notice uses 4 s, U1). */
+    fun show(text: String, durationMs: Long = DEFAULT_MS) {
         message = text
+        this.durationMs = durationMs
         tick++
+    }
+
+    companion object {
+        const val DEFAULT_MS = 2200L
     }
 
     internal fun clear() {
@@ -51,7 +62,7 @@ fun InAppToast(state: InAppToastState) {
     val msg = state.message ?: return
     // Re-run the timer every time show() bumps the tick (so repeated identical messages re-trigger).
     LaunchedEffect(state.tick) {
-        delay(2200)
+        delay(state.durationMs)
         state.clear()
     }
     // A Stage glass pill at the bottom centre, as the sync status pill.
@@ -62,6 +73,8 @@ fun InAppToast(state: InAppToastState) {
         Text(
             msg,
             modifier = Modifier
+                // Read out as it appears (TalkBack), like a system toast.
+                .semantics { liveRegion = LiveRegionMode.Polite }
                 .stageGlass(30.mpx, overContent = true)
                 .padding(horizontal = 30.mpx, vertical = 16.mpx),
             style = tv.own.owntv.ui.theme.stageText(19, 700),

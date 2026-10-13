@@ -169,9 +169,9 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                 onBack = { vm.stopRemoteListener(); step = Step.ADD_CONTENT },
             )
             Step.ADD_SOURCE -> AddSourceScreen(
-                onStartXtream = { name, server, user, pass, ua, ref, epg, refresh, live, movies, series, _, preferHls ->
+                onStartXtream = { name, server, user, pass, ua, ref, epg, refresh, live, movies, series, _, preferHls, servers ->
                     importName = name.ifBlank { defaultIptvName }
-                    vm.startXtream(importName!!, server, user, pass, ua, epg, refresh, live, movies, series, preferHls, httpReferer = ref)
+                    vm.startXtream(importName!!, server, user, pass, ua, epg, refresh, live, movies, series, preferHls, httpReferer = ref, servers = servers)
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING
                 },

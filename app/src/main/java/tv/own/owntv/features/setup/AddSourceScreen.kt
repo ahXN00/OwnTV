@@ -53,6 +53,7 @@ import tv.own.owntv.features.settings.StageFullPage
 import tv.own.owntv.features.settings.StageSettingRow
 import tv.own.owntv.features.settings.StageSettingsHeading
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import tv.own.owntv.features.settings.SourceTestDialog
 import tv.own.owntv.features.settings.SourceTestUi
 import tv.own.owntv.core.repository.SourceTester
@@ -97,6 +98,7 @@ fun AddSourceScreen(
         series: SyncScopeChoice,
         isDefault: Boolean,
         preferHls: Boolean,
+        servers: BackupServersChoice,
     ) -> Unit,
     onStartM3u: (name: String, url: String, userAgent: String, referer: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean) -> Unit,
     // The last submission from the Remote companion screen, retained as a StateFlow so it survives the
@@ -128,6 +130,7 @@ fun AddSourceScreen(
         movies: SyncScopeChoice,
         series: SyncScopeChoice,
     ) -> Unit)? = null,
+    onTestAll: (() -> Unit)? = null,
 ) {
     val editing = initial != null
     var kind by remember {
@@ -172,6 +175,25 @@ fun AddSourceScreen(
     var showFileBrowser by remember { mutableStateOf(false) }
     var showAutoRefreshPicker by remember { mutableStateOf(false) }
     var showManualDaysPicker by remember { mutableStateOf(false) }
+    // Host failover: the backup servers sub-screen and its list, written by the form's Save.
+    val hostSelector: tv.own.owntv.core.network.HostSelector = koinInject()
+    val backupForm = remember(initial) { BackupServersForm(initial, initial?.let { hostSelector.current(it) }) }
+    fun formFingerprint() = listOf(
+        kind, name, server, username, password, m3uUrl, portalUrl, mac,
+        stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2, stalkerSignature,
+        epgUrl, userAgent, referer, autoRefresh, isDefault, preferHls,
+        syncLive, syncMovies, syncSeries,
+        backupForm.backups.toList(), backupForm.failoverEnabled, backupForm.useFirst,
+    )
+    val unsavedBaseline = remember(initial) { formFingerprint() }
+    val formDirty = formFingerprint() != unsavedBaseline
+    var showUnsaved by remember { mutableStateOf(false) }
+    var showBackups by remember { mutableStateOf(false) }
+    val guardedBack = {
+        if (formDirty) showUnsaved = true else onBack()
+    }
+    BackHandler(enabled = !showBackups) { guardedBack() }
+    val backupRowFocus = remember { FocusRequester() }
     val firstFocus = remember { FocusRequester() }
     val startImportFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { firstFocus.requestFocus() } }
@@ -408,7 +430,10 @@ fun AddSourceScreen(
     // panel, reached with ▶ from any row. Everything the old form offered stays, below the drawn rows.
     val submit = {
         when (kind) {
-            SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, referer, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls)
+            SourceKind.XTREAM -> onStartXtream(
+                name, server, username, password, userAgent, referer, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls,
+                BackupServersChoice(backupForm.backups, backupForm.failoverEnabled, backupForm.useFirst),
+            )
             SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, referer, epgUrl, autoRefresh, isDefault)
             SourceKind.STALKER -> onStartStalker?.invoke(
                 name, portalUrl, mac, stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2,
@@ -459,12 +484,23 @@ fun AddSourceScreen(
         modifier = modifier.then(toSubmit),
     )
 
-    Box(modifier.fillMaxSize()) {
+    if (showBackups && kind == SourceKind.XTREAM) {
+        BackupServersScreen(
+            form = backupForm,
+            primary = server,
+            parentTitle = pageTitle,
+            onTestAll = onTestAll,
+            onBack = {
+                showBackups = false
+                scope.launch { kotlinx.coroutines.delay(60); runCatching { backupRowFocus.requestFocus() } }
+            },
+        )
+    } else Box(modifier.fillMaxSize()) {
     StageFullPage(
         parents = listOf(parent),
         title = pageTitle,
         count = "",
-        onBack = onBack,
+        onBack = guardedBack,
         rowsFocus = firstFocus,
         settingsRoot = false,
     ) {
@@ -498,6 +534,33 @@ fun AddSourceScreen(
         when (kind) {
             SourceKind.XTREAM -> {
                 field(stringResource(R.string.setup_server_url), server, { server = it }, placeholder = stringResource(R.string.setup_server_example), keyboardType = KeyboardType.Uri)
+                // Host failover (ui-design Q1/Q7): the backup list opens a sub-screen; the switch shows
+                // only once there is a backup and Server URL has no path.
+                val backupTitle = stringResource(R.string.settings_sources_backup_title)
+                val backupDesc = backupServersSummary(backupForm, server)
+                StageSettingRow(
+                    icon = OwnTVIcon.LIST,
+                    title = backupTitle,
+                    desc = backupDesc,
+                    value = SettingValue.Opens(backupForm.backups.size.takeIf { it > 0 }?.toString().orEmpty()),
+                    onClick = { showBackups = true },
+                    modifier = toSubmit.focusRequester(backupRowFocus),
+                    help = help(backupTitle, listOf(backupDesc, stringResource(R.string.settings_sources_backup_add_help), stringResource(R.string.settings_sources_backup_same_login)).joinToString("\n"), openKeys),
+                )
+                if (backupForm.backups.isNotEmpty() && !tv.own.owntv.core.network.HostPool.hasPathPrefix(server)) {
+                    val autoTitle = stringResource(R.string.settings_sources_backup_auto_title)
+                    val autoDesc = stringResource(R.string.settings_sources_backup_auto_desc) +
+                        "\n" + stringResource(R.string.settings_sources_backup_auto_timeshift_note)
+                    StageSettingRow(
+                        icon = OwnTVIcon.REFRESH,
+                        title = autoTitle,
+                        desc = autoDesc,
+                        value = SettingValue.Switch(backupForm.failoverEnabled),
+                        onClick = { backupForm.failoverEnabled = !backupForm.failoverEnabled },
+                        modifier = toSubmit,
+                        help = help(autoTitle, autoDesc, switchKeys),
+                    )
+                }
                 field(stringResource(R.string.setup_username), username, { username = it })
                 field(stringResource(if (editing) R.string.setup_password_keep else R.string.setup_password), password, { password = it }, password = true)
             }
@@ -700,6 +763,37 @@ fun AddSourceScreen(
               onDismiss = { confirmMeasure = false },
               confirmLabel = R.string.settings_sources_retest,
           )
+      }
+      if (showUnsaved) {
+          val saveFocus = remember { FocusRequester() }
+          LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { saveFocus.requestFocus() } }
+          tv.own.owntv.ui.stage.StagePopup(
+              onDismiss = { showUnsaved = false },
+              title = stringResource(R.string.settings_sources_unsaved_title),
+              body = stringResource(R.string.settings_sources_unsaved_body),
+          ) {
+              tv.own.owntv.ui.stage.StagePopupOption(
+                  title = stringResource(R.string.settings_sources_unsaved_save),
+                  onClick = {
+                      showUnsaved = false
+                      if (canStart) submit() else scope.launch {
+                          kotlinx.coroutines.delay(60)
+                          runCatching { firstFocus.requestFocus() }
+                      }
+                  },
+                  modifier = Modifier.focusRequester(saveFocus),
+                  chosen = true,
+              )
+              tv.own.owntv.ui.stage.StagePopupOption(
+                  title = stringResource(R.string.settings_sources_unsaved_discard),
+                  onClick = { showUnsaved = false; onBack() },
+                  danger = true,
+              )
+              tv.own.owntv.ui.stage.StagePopupOption(
+                  title = stringResource(R.string.settings_sources_unsaved_keep),
+                  onClick = { showUnsaved = false },
+              )
+          }
       }
       sourceTest?.let { state ->
           SourceTestDialog(

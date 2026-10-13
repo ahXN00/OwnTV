@@ -155,6 +155,8 @@ class SettingsSearchCoverageTest {
         "settings_sources_test_title", "player_subtitles_sign_in_title", "settings_open_subtitles_setup_title",
         "settings_panel_width_dialog_title", "settings_panel_width_disable_preview_title",
         "settings_record_watching_warning_title",
+        // Host failover: the Test all servers confirmation and its result rows (one per server).
+        "settings_sources_backup_test_all_title", "settings_sources_backup_result_title",
     )
 
     @Test

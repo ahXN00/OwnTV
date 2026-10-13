@@ -133,6 +133,12 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
                 )
             }
         }
+        // Host failover is per session: every playlist starts on its main server.
+        appScope.launch {
+            runCatching {
+                GlobalContext.get().get<tv.own.owntv.core.database.dao.SourceDao>().clearAllActiveUrls()
+            }
+        }
         // NOTE: cold start does ZERO heavy DB work. Index + ANALYZE maintenance is piggy-backed onto the
         // operation that actually changes the data — ImportFinalizer.finalize() for normal re-syncs, the
         // deferred content-index worker after a fresh import, the EpgRepository refresh after every EPG

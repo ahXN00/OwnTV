@@ -33,6 +33,38 @@ val playerModule = module {
             heroPreview = get(),
         )
     }
+    // Host failover's toast and "All N servers failed", shared by Live, films and episodes.
+    single { tv.own.owntv.player.ServerNotices() }
+    // One per film/series ViewModel: plays on the in-use server and reopens on the next one (AC5).
+    factory {
+        tv.own.owntv.player.VodServerFailover(
+            player = get<tv.own.owntv.player.OwnTVPlayer>(),
+            hosts = get<tv.own.owntv.core.network.HostSelector>(),
+            gate = get<tv.own.owntv.player.ReleaseGate>(),
+            xtream = get<tv.own.owntv.core.parser.XtreamClient>(),
+            notices = get<tv.own.owntv.player.ServerNotices>(),
+            connectivity = get<tv.own.owntv.core.network.ConnectivityObserver>(),
+            settings = get<tv.own.owntv.core.settings.SettingsRepository>(),
+            openStreams = get<tv.own.owntv.core.live.OpenStreamRegistry>(),
+        )
+    }
+    // Host failover: stops every engine and anything else holding the account before another server
+    // is opened (one connection at a time). Core's LiveTuneController and VodFailover resolve it lazily.
+    single {
+        tv.own.owntv.player.ReleaseGate(
+            tv.own.owntv.player.PlaybackReleaseSteps(
+                player = get(),
+                livePreview = get(),
+                pool = get(),
+                heroPreview = get(),
+                streaming = get(),
+                openStreams = get(),
+                downloads = get(),
+                timeshift = getOrNull(),
+                hosts = get(),
+            ),
+        )
+    }
     // Audio focus (duck-don't-pause) + the system MediaSession, driven by whichever engine is playing.
     single { tv.own.owntv.player.PlaybackSession(androidContext()) }
     // N17 — ends itself when the session detaches; what "stop" means is assigned by the shell.

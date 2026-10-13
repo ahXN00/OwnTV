@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -236,6 +237,10 @@ fun PlayerHud(
     val duration by player.duration.collectAsStateWithLifecycle()
     val buffering by player.buffering.collectAsStateWithLifecycle()
     val error by player.error.collectAsStateWithLifecycle()
+    // Host failover: a round that tried every server replaces the error's wording (ui-design Q5).
+    val serverNotices = org.koin.compose.koinInject<ServerNotices>()
+    val serversFailed by serverNotices.exhausted.collectAsStateWithLifecycle()
+    LaunchedEffect(error == null) { if (error == null) serverNotices.clear() }
     val errorInfo by player.errorInfo.collectAsStateWithLifecycle()
     val providerBackOff by player.providerBackOff.collectAsStateWithLifecycle()
     val stalledSinceMs by player.stalledSinceMs.collectAsStateWithLifecycle()
@@ -762,6 +767,25 @@ fun PlayerHud(
 
         // Status overlay (always shown).
         when {
+            error != null && serversFailed != null -> Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(pluralStringResource(R.plurals.player_all_servers_failed, serversFailed ?: 0, serversFailed ?: 0), style = MaterialTheme.typography.titleLarge, color = Color.White)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.player_all_servers_failed_detail),
+                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.92f),
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(0.8f),
+                )
+                Spacer(Modifier.height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OwnTVButton(
+                        stringResource(R.string.common_retry),
+                        onClick = { serverNotices.clear(); player.retry() },
+                        icon = OwnTVIcon.PLAY,
+                        modifier = Modifier.focusRequester(retryFocus),
+                    )
+                    OwnTVButton(stringResource(R.string.settings_close), onClick = onBack, style = OwnTVButtonStyle.SECONDARY)
+                }
+            }
             error != null -> Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.player_playback_error), style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Spacer(Modifier.height(8.dp))

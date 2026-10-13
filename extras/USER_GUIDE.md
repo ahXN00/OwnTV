@@ -170,6 +170,19 @@ defaults to Live now, Movies/Series later, because Stalker VOD has no bulk endpo
 **Resync now** adds and updates. **Resync and remove missing titles** also drops what the provider
 has stopped listing. Neither touches your favourites, history, resume points or manual order.
 
+### 🔁 Backup servers (automatic failover)
+**Where:** Settings → Sources & guide → Playlists → edit a playlist → **Backup servers**
+Xtream playlists only.
+
+- Add up to the maximum. Every server uses the same username and password. **Move** reorders them; **Use first** puts one at the top.
+- Press **Save** on the playlist form. Leaving with unsaved changes asks **Save** / **Discard** / **Keep editing**.
+- **Switch servers automatically** turns the handover on or off.
+- When the playing server stops answering (a stall or a failed open), Live TV and films reopen on the next server in list order, one connection at a time, with a short **Switched to server 2 of 3** notice.
+- If every server fails you see **All 3 servers failed**, with **Retry**.
+- The app always starts on your main server. A switch lasts until the app is closed.
+- **Test all servers** — on this screen, and in the playlist test results — checks each server one by one, stops playback while it runs, shows the fastest and offers **Use fastest**.
+- Switching is paused during local timeshift. A recording or a download check may refuse **Test all servers** while busy.
+
 ### 🗂️ Several playlists at once
 **Where:** the playlist pill in the top-right
 Pick **All playlists** or just one — it applies everywhere at once and survives a restart. A

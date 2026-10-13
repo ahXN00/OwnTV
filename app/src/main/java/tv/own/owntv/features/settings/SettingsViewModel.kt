@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import tv.own.owntv.core.database.dao.ProfileDao
 import tv.own.owntv.player.AudioOutputPolicy
+import tv.own.owntv.player.ReleaseGate
 import tv.own.owntv.core.player.SurroundMode
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.SourceEntity
@@ -97,6 +98,9 @@ class SettingsViewModel(
     private val enginePool: tv.own.owntv.player.LiveEnginePool,
     // Adding a playlist is core's sequence, not a copy of it — see [importState].
     private val importer: SourceImporter,
+    // Host failover: the in-use server (Use first, Use fastest) and the gate Test all servers runs first.
+    private val hostSelector: tv.own.owntv.core.network.HostSelector,
+    private val releaseGate: tv.own.owntv.player.ReleaseGate,
 ) : ViewModel() {
     companion object {
         private const val TAG = "OwnTVHome"
@@ -1110,6 +1114,8 @@ class SettingsViewModel(
         syncSeries: Boolean = true,
         preferHls: Boolean = false,
         httpReferer: String = "",
+        /** Xtream only: the form's backup servers; null keeps what is stored (M3U, Stalker). */
+        servers: tv.own.owntv.features.setup.BackupServersChoice? = null,
     ) {
         viewModelScope.launch {
             val existing = sourceDao.getById(id) ?: return@launch
@@ -1138,8 +1144,12 @@ class SettingsViewModel(
                 syncMovies = syncMovies,
                 syncSeries = syncSeries,
                 preferHls = preferHls,
+                backupUrls = servers?.let { tv.own.owntv.core.network.HostPool.encode(it.backups) } ?: existing.backupUrls,
+                failoverEnabled = servers?.failoverEnabled ?: existing.failoverEnabled,
             )
             sourceRepository.updateSource(updated)
+            // Use first: that backup is the in-use server from now on (stored at once, like a switch).
+            servers?.useFirst?.let { host -> sourceDao.getById(id)?.let { hostSelector.use(it, host) } }
             settings.setPlaylistAutoRefresh(id, autoRefresh)
             // Apply the "Default playlist" toggle: on → this becomes the active playlist; off → if this was
             // the default, clear it back to All. Leaves another playlist's default untouched.
@@ -1230,12 +1240,14 @@ class SettingsViewModel(
         isDefault: Boolean = false,
         preferHls: Boolean = false,
         httpReferer: String = "",
+        servers: tv.own.owntv.features.setup.BackupServersChoice = tv.own.owntv.features.setup.BackupServersChoice(),
     ) = runImport {
         importer.xtream(
             name = name, server = server, username = user, password = pass,
             userAgent = userAgent, epgUrl = epgUrl, autoRefresh = autoRefresh,
             live = live, movies = movies, series = series,
             preferHls = preferHls, makeDefault = isDefault, httpReferer = httpReferer,
+            backupUrls = servers.backups, failoverEnabled = servers.failoverEnabled,
         )
     }
 
@@ -1244,6 +1256,10 @@ class SettingsViewModel(
     /** Null while no test is on screen; [SourceTestUi.Running] while the call is in flight. */
     private val _sourceTest = MutableStateFlow<SourceTestUi?>(null)
     val sourceTest: StateFlow<SourceTestUi?> = _sourceTest.asStateFlow()
+
+    /** True after the busy notice closed back onto Done, so focus lands on Test all servers. */
+    private val _testAllFocus = MutableStateFlow(false)
+    val testAllFocus: StateFlow<Boolean> = _testAllFocus.asStateFlow()
 
     /**
      * The Info popup: what is already known, plus a quick liveness check.
@@ -1254,6 +1270,7 @@ class SettingsViewModel(
      * always really answered.
      */
     fun testSource(source: SourceEntity) {
+        _testAllFocus.value = false
         viewModelScope.launch {
             _sourceTest.value = SourceTestUi.Running(source.name)
             val result = sourceTester.test(source)
@@ -1272,6 +1289,7 @@ class SettingsViewModel(
      * running would both be killed by the measurement and corrupt its result.
      */
     fun retestSource(source: SourceEntity) {
+        _testAllFocus.value = false
         measureJob?.cancel()
         measureJob = viewModelScope.launch {
             stopAllPlayback()
@@ -1310,7 +1328,83 @@ class SettingsViewModel(
     }
 
     fun dismissSourceTest() {
+        testAllSkip = true
+        testAllJob?.cancel()
         _sourceTest.value = null
+        _testAllFocus.value = false
+    }
+
+    /** Close only the busy notice. Restore the popup that was showing, or close everything if there was none. */
+    fun dismissTestAllBusy() {
+        val target = busyDismissTarget(_sourceTest.value)
+        if (target != null) {
+            _sourceTest.value = target
+            _testAllFocus.value = true
+        } else {
+            dismissSourceTest()
+        }
+    }
+
+    // ---- Test all servers (host failover, ui-design Q6) ----
+
+    private var testAllJob: Job? = null
+    @Volatile private var testAllSkip = false
+
+    /**
+     * Checks every server of [source] one at a time and lists the answers in list order. Playback stops
+     * first (the user agreed to that); the order of the list never changes. Refused while the connection
+     * measurement runs, because both use the account one request at a time.
+     */
+    fun testAllServers(source: SourceEntity) {
+        val previous = _sourceTest.value as? SourceTestUi.Done
+        _testAllFocus.value = false
+        testAllJob?.cancel()
+        testAllSkip = false
+        testAllJob = viewModelScope.launch {
+            val fresh = sourceDao.getById(source.id) ?: source
+            val pool = tv.own.owntv.core.network.HostPool.pool(fresh)
+            if (pool.size < 2) return@launch
+            if (hostSelector.probeLock.isLocked) {
+                _sourceTest.value = SourceTestUi.TestAllBusy(fresh.name, previous = previous)
+                return@launch
+            }
+            _sourceTest.value = SourceTestUi.TestingAll(fresh.name, 1, pool.size, tv.own.owntv.core.network.HostPool.display(pool.first()))
+            // Refused means nothing stopped (recording, download, measurement, timeshift). Do not test.
+            val gate = releaseGate.stopAllStreamsAndAwait(fresh.id)
+            if (testAllRefused(hostSelector.probeLock.isLocked, gate)) {
+                val cause = testAllBusyCause(hostSelector.probeLock.isLocked, gate) ?: TestAllBusyCause.MEASURING
+                _sourceTest.value = SourceTestUi.TestAllBusy(fresh.name, cause, previous)
+                return@launch
+            }
+            val rows = sourceTester.testAll(fresh, skip = { testAllSkip }) { position, total, host ->
+                if (_sourceTest.value is SourceTestUi.TestingAll) {
+                    _sourceTest.value = SourceTestUi.TestingAll(fresh.name, position, total, tv.own.owntv.core.network.HostPool.display(host))
+                }
+            }
+            if (_sourceTest.value == null) return@launch // closed meanwhile
+            _sourceTest.value = if (rows == null) {
+                SourceTestUi.TestAllBusy(fresh.name, previous = previous)
+            } else {
+                SourceTestUi.AllResults(fresh.name, fresh.id, rows, hostSelector.current(fresh))
+            }
+        }
+    }
+
+    /** Skip: stop the run after the server being checked and keep the results so far (U3). */
+    fun skipTestAll() {
+        testAllSkip = true
+    }
+
+    /** Use fastest, or OK on a result row: [host] is the in-use server from now on; the order stays. */
+    fun useServer(sourceId: Long, host: String) {
+        viewModelScope.launch {
+            val src = sourceDao.getById(sourceId) ?: return@launch
+            hostSelector.use(src, host)
+            val pool = tv.own.owntv.core.network.HostPool.pool(src)
+            (_sourceTest.value as? SourceTestUi.AllResults)?.let {
+                _sourceTest.value = it.copy(inUse = hostSelector.current(src), nowUsing = tv.own.owntv.core.network.HostPool.position(pool, host))
+            }
+        }
     }
 
     // ---- Stalker portal (plan Phase B) ----
@@ -1754,6 +1848,30 @@ class SettingsViewModel(
     }
 }
 
+/** Popup to restore when the busy notice closes, or null when the whole test flow should close. */
+internal fun busyDismissTarget(current: SourceTestUi?): SourceTestUi? =
+    (current as? SourceTestUi.TestAllBusy)?.previous
+
+/** True when Test all must not run: a measurement holds the probe lock, or the release gate refused. */
+internal fun testAllRefused(probeLocked: Boolean, gate: ReleaseGate.Result): Boolean =
+    probeLocked || gate is ReleaseGate.Result.Refused
+
+/** Why Test all is busy, or null when it may run. A gate refusal wins over the probe lock. */
+internal fun testAllBusyCause(probeLocked: Boolean, gate: ReleaseGate.Result): TestAllBusyCause? {
+    if (!testAllRefused(probeLocked, gate)) return null
+    if (gate is ReleaseGate.Result.Refused) {
+        return when (gate.why) {
+            ReleaseGate.Refusal.RECORDING -> TestAllBusyCause.RECORDING
+            ReleaseGate.Refusal.DOWNLOAD -> TestAllBusyCause.DOWNLOAD
+            ReleaseGate.Refusal.TIMESHIFT -> TestAllBusyCause.TIMESHIFT
+            ReleaseGate.Refusal.MEASURING -> TestAllBusyCause.MEASURING
+        }
+    }
+    return if (probeLocked) TestAllBusyCause.MEASURING else null
+}
+
+enum class TestAllBusyCause { RECORDING, DOWNLOAD, TIMESHIFT, MEASURING }
+
 /** What the source-test popup is showing. */
 sealed interface SourceTestUi {
     val sourceName: String
@@ -1774,5 +1892,37 @@ sealed interface SourceTestUi {
         val result: SourceTestResult,
         /** What is stored for this playlist, measured or published. Null before anything is known. */
         val limit: tv.own.owntv.core.live.ConnectionLimit? = null,
+    ) : SourceTestUi
+
+    /** Test all servers, one at a time: server [position] of [total] ([host] as shown) is being checked. */
+    data class TestingAll(
+        override val sourceName: String,
+        val position: Int,
+        val total: Int,
+        val host: String,
+    ) : SourceTestUi
+
+    /**
+     * Test all servers' results, in list order. [inUse] is the server in use now (an origin);
+     * [nowUsing] the position the user just picked, for the confirmation line.
+     */
+    data class AllResults(
+        override val sourceName: String,
+        val sourceId: Long,
+        val rows: List<tv.own.owntv.core.repository.HostTestRow>,
+        val inUse: String?,
+        val nowUsing: Int? = null,
+    ) : SourceTestUi {
+        /** The quickest server that answered properly; never an invalid, blocked or refused one. */
+        val fastest: tv.own.owntv.core.repository.HostTestRow?
+            get() = rows.filter { it.status == tv.own.owntv.core.repository.HostTestStatus.OK && it.ms != null }.minByOrNull { it.ms!! }
+    }
+
+    /** Test all servers refused: something else holds the account. [cause] says which. */
+    data class TestAllBusy(
+        override val sourceName: String,
+        val cause: TestAllBusyCause = TestAllBusyCause.MEASURING,
+        /** Popup that was showing when Test all was refused. Null means there is nothing to restore. */
+        val previous: SourceTestUi? = null,
     ) : SourceTestUi
 }

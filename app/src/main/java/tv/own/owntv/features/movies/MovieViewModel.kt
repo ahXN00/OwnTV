@@ -102,6 +102,8 @@ class MovieViewModel(
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val streamUrlResolver: tv.own.owntv.core.stalker.StreamUrlResolver,
     private val subtitleController: tv.own.owntv.core.subtitles.SubtitleController,
+    private val vodServerFailover: tv.own.owntv.player.VodServerFailover? = null,
+    private val playbackEngines: tv.own.owntv.player.PlaybackEngines? = null,
 ) : ViewModel() {
 
     /** The categories' search text, held here so it survives the player (see LiveViewModel). */
@@ -344,9 +346,21 @@ class MovieViewModel(
      */
     private data class PlayingRef(val movie: MovieEntity, val profileId: Long, val contentKey: String?)
 
+    private val bgListener: () -> Unit = { vodServerFailover?.stop() }
+
+    /** The playlist of the film on the player, for mapping its URL back to the stored one (AC11). */
+    private var playingSource: tv.own.owntv.core.database.entity.SourceEntity? = null
+
+    override fun onCleared() {
+        playbackEngines?.removeBackgroundListener(bgListener)
+        vodServerFailover?.stop()
+        super.onCleared()
+    }
+
     private var playingRef: PlayingRef? = null
 
     init {
+        playbackEngines?.addBackgroundListener(bgListener)
         // Periodically persist resume position for the movie currently playing. This is the crash
         // backstop; the real saves happen on pause (below) and on leaving the player.
         viewModelScope.launch {
@@ -627,7 +641,7 @@ class MovieViewModel(
      *  Null = resolve failed (portal/auth error) — the caller should not start playback. */
     private suspend fun resolvedUrlOrNull(movie: MovieEntity): String? {
         val source = sourceDao.getById(movie.sourceId)
-        if (!streamUrlResolver.needsResolve(source)) return movie.streamUrl
+        if (!streamUrlResolver.needsResolve(source)) return vodServerFailover?.urlFor(movie.streamUrl, source) ?: movie.streamUrl
         return try {
             streamUrlResolver.resolve(source!!, movie.streamUrl, vod = true)
         } catch (e: Exception) {
@@ -698,16 +712,16 @@ class MovieViewModel(
                     return@launch
                 }
             } else {
-                movie.streamUrl
+                vodServerFailover?.urlFor(movie.streamUrl, source) ?: movie.streamUrl
             }
             Log.d(TAG, "play movieId=${movie.id} profile=$pid startPositionMs=$startPositionMs")
             val pinKey = tv.own.owntv.core.player.enginePinKey(movie.sourceId, "MOVIE", movie.remoteId)
-            player.play(
-                playUrl,
+            fun start(url: String, positionMs: Long) = player.play(
+                url,
                 title = movie.name,
                 year = movie.year?.toString(),
                 isLive = false,
-                startPositionMs = startPositionMs,
+                startPositionMs = positionMs,
                 userAgent = sourceUa,
                 httpHeaders = SourceOverrides.headersWithReferer(movie.httpHeaders, source),
                 vodEngineOverride = SourceOverrides.vodEngineOf(source),
@@ -726,6 +740,10 @@ class MovieViewModel(
                     }
                 } else null,
             )
+            start(playUrl, startPositionMs)
+            playingSource = source
+            vodServerFailover?.watch(viewModelScope, source, key = pinKey ?: movie.streamUrl, replay = { url, pos, _ -> start(url, pos) }, storedUrl = movie.streamUrl,
+                isOurs = { if (pinKey != null) player.currentMediaContentKey == pinKey else canonicalPlaying() == movie.streamUrl })
             _playingMovie.value = movie
             playingRef = pid?.let { PlayingRef(movie, it, pinKey) }
             // Enable the player's OpenSubtitles search for this movie (subtitle plan §4). tmdbId is
@@ -898,7 +916,11 @@ class MovieViewModel(
      */
     private fun playerIsOn(ref: PlayingRef): Boolean =
         if (ref.contentKey != null) player.currentMediaContentKey == ref.contentKey
-        else player.currentMediaUrl != null && player.currentMediaUrl == ref.movie.streamUrl
+        else player.currentMediaUrl != null && canonicalPlaying() == ref.movie.streamUrl
+
+    /** The player's URL as stored: a film playing on a backup server still matches its row (AC11). */
+    private fun canonicalPlaying(): String? =
+        player.currentMediaUrl?.let { url -> playingSource?.let { tv.own.owntv.core.network.HostPool.canonical(url, it) } ?: url }
 
     /** Persist the resume position if the player is still on the movie we started. */
     fun saveProgressNow() {

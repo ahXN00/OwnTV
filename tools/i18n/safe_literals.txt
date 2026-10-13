@@ -244,7 +244,7 @@
 3	empty	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	${StorageAccess.sanitize(ep.name.ifBlank { "episode-${ep.episodeNumber}" })}.$ext
 1	technical	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	${StorageAccess.sanitize(episode.name.ifBlank { "episode-${episode.episodeNumber}" })}.$ext
-3	technical	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	EPISODE
+4	technical	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	EPISODE
 1	log	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	OwnTVHome
 1	technical	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	SERIES
 1	technical	app/src/main/java/tv/own/owntv/features/series/SeriesViewModel.kt	Series
@@ -642,12 +642,14 @@
 4	preference-key	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	vp_zoom
 1	technical	app/src/main/java/tv/own/owntv/features/settings/WeatherSettingsScreen.kt	#%06X
 1	empty	app/src/main/java/tv/own/owntv/features/setup/AddSourceChooserScreen.kt	\0
-17	empty	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	\0
+19	empty	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	\0
 2	file-path	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	/
 1	technical	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	m3u
 1	technical	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	m3u8
 1	technical	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	▶
 1	technical	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	◀ ▶
+7	empty	app/src/main/java/tv/own/owntv/features/setup/BackupServersScreen.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/setup/BackupServersScreen.kt	▶
 2	empty	app/src/main/java/tv/own/owntv/features/setup/RemoteSetupScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/setup/RemoteSetupScreen.kt	…
 12	empty	app/src/main/java/tv/own/owntv/features/setup/SetupViewModel.kt	\0
@@ -886,6 +888,13 @@
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerHudControls.kt	toolPadding
 1	technical	app/src/main/java/tv/own/owntv/player/RecordingBadge.kt	rec
 1	technical	app/src/main/java/tv/own/owntv/player/RecordingBadge.kt	recPulse
+1	log	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	OwnTVFailover
+1	compiler	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	UNCHECKED_CAST
+1	log	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	film cap: $why (${filmCapMs}ms)
+1	log	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	film cap: giving up, the server stopped sending the film
+1	log	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	film cap: refused ${outcome.detail}
+1	log	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	no picture
+1	log	app/src/main/java/tv/own/owntv/player/VodServerFailover.kt	stalled
 1	file-path	app/src/main/java/tv/own/owntv/ui/components/BackgroundImageChooserDialog.kt	background_${System.currentTimeMillis()}.$ext
 1	file-path	app/src/main/java/tv/own/owntv/ui/components/BackgroundImageChooserDialog.kt	png
 1	log	app/src/main/java/tv/own/owntv/ui/components/BackgroundPicture.kt	BgImage

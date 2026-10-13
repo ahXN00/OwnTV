@@ -23,6 +23,8 @@
 - **⏰ Schedule recording… on a channel: pick the day, start and end (#2)**
 - **⏹️ Stop recording from the channel's menu**
 - **☀️ Light theme across the whole app (Theme: System / Dark / Light)**
+- **🔁 Backup servers with automatic failover for Xtream playlists**
+- **⚡ Test all servers: check every backup server and use the fastest**
 
 ### 🐛 Fixes
 - **⚡ Opening a channel from its preview goes straight to full screen, no black gap** (community PR #242 by @tvdev-android)

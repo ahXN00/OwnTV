@@ -105,8 +105,12 @@ class SetupViewModel(
         series: SyncScopeChoice = SyncScopeChoice.Now,
         preferHls: Boolean = false,
         httpReferer: String = "",
+        servers: tv.own.owntv.features.setup.BackupServersChoice = tv.own.owntv.features.setup.BackupServersChoice(),
     ) = runImport {
-        importer.xtream(name, server, username, password, userAgent, epgUrl, autoRefresh, live, movies, series, preferHls, httpReferer = httpReferer)
+        importer.xtream(
+            name, server, username, password, userAgent, epgUrl, autoRefresh, live, movies, series, preferHls,
+            httpReferer = httpReferer, backupUrls = servers.backups, failoverEnabled = servers.failoverEnabled,
+        )
     }
 
     fun startStalker(

@@ -134,6 +134,7 @@ class LiveViewModel(
     private val epgRepository: tv.own.owntv.core.repository.EpgRepository,
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val recordings: tv.own.owntv.core.recording.RecordingManager,
+    private val serverNotices: tv.own.owntv.player.ServerNotices,
 ) : ViewModel() {
 
     // --- "Record what I'm watching" (Plan D, D3 mode b) -----------------------------------------
@@ -973,8 +974,34 @@ class LiveViewModel(
             sourceLookup = { id -> sourceById[id] },
             // A handover re-opens the channel at its live edge: the rewind is over.
             backToLiveEdge = { clearTimeshift() },
+            // Host failover: the toast, and "All N servers failed" on the error screen.
+            serverSwitched = { _, position, total, server -> serverNotices.switched(position, total, tv.own.owntv.core.network.HostPool.display(server)) },
+            serversExhausted = { _, total -> serverNotices.exhausted(total) },
+            // A new tune starts a fresh round: an old "All N servers failed" no longer applies.
+            engineStarted = { serverNotices.clear() },
+            noNetwork = { serverNotices.noNetwork() },
+            failoverOffForTimeshift = { serverNotices.timeshiftOff() },
         ),
     )
+
+    private val bgListener: () -> Unit = { live.cancelFailover() }
+
+    private val fgHandler: () -> Boolean = { live.resumeAfterBackground() }
+
+    init {
+        org.koin.core.context.GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.player.PlaybackEngines>()?.let { engines ->
+            engines.addBackgroundListener(bgListener)
+            engines.addForegroundHandler(fgHandler)
+        }
+    }
+
+    override fun onCleared() {
+        org.koin.core.context.GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.player.PlaybackEngines>()?.let { engines ->
+            engines.removeBackgroundListener(bgListener)
+            engines.removeForegroundHandler(fgHandler)
+        }
+        super.onCleared()
+    }
 
     // True while the in-pane preview is suppressed because the provider allows one stream at a time and
     // that stream is already in use (full-screen playback). The pane says so instead of sitting silently
@@ -1554,7 +1581,7 @@ class LiveViewModel(
         // Same while rewound into the live archive: swapping engines re-opens the channel at the edge.
         // Not for a copy saved on this device (N4): the other engine continues it at the same moment.
         if (timeshift.isRewound && live.localTimeshift.value == null) return
-        live.toggleEngine()
+        if (!live.toggleEngine() && live.isSwitchingServers) serverNotices.switchingBusy()
     }
 
     /**

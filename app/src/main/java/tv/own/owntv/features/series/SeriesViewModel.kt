@@ -107,6 +107,8 @@ class SeriesViewModel(
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val streamUrlResolver: tv.own.owntv.core.stalker.StreamUrlResolver,
     private val subtitleController: tv.own.owntv.core.subtitles.SubtitleController,
+    private val vodServerFailover: tv.own.owntv.player.VodServerFailover? = null,
+    private val playbackEngines: tv.own.owntv.player.PlaybackEngines? = null,
 ) : ViewModel() {
 
     /** The categories' search text, held here so it survives the player (see LiveViewModel). */
@@ -422,10 +424,29 @@ class SeriesViewModel(
 
     private var playingQueue: PlayingQueue? = null
 
+    private val bgListener: () -> Unit = { vodServerFailover?.stop() }
+
+    init {
+        playbackEngines?.addBackgroundListener(bgListener)
+    }
+
+    /** The playlist of the queue on the player, to map its URL back to the stored one (AC11). */
+    private var playingSource: tv.own.owntv.core.database.entity.SourceEntity? = null
+
+    override fun onCleared() {
+        playbackEngines?.removeBackgroundListener(bgListener)
+        vodServerFailover?.stop()
+        super.onCleared()
+    }
+
+    /** The player's URL as stored: an episode playing on a backup server still matches its row. */
+    private fun canonicalPlaying(): String? =
+        player.currentMediaUrl?.let { url -> playingSource?.let { tv.own.owntv.core.network.HostPool.canonical(url, it) } ?: url }
+
     /** A season's last episode finished with auto-play on — start the next season's first episode, if any.
      *  Matches the just-finished episode by its stream URL (robust to in-season auto-advance). */
     private fun continueToNextSeason() {
-        val url = player.currentMediaUrl ?: return
+        val url = canonicalPlaying() ?: return
         val all = episodes.value
         val finished = all.firstOrNull { it.streamUrl == url } ?: return // not one of this series' episodes
         val nextEpisode = all
@@ -441,7 +462,7 @@ class SeriesViewModel(
      */
     private fun playerIsOn(ref: PlayingEpisodeRef): Boolean =
         if (ref.contentKey != null) player.currentMediaContentKey == ref.contentKey
-        else player.currentMediaUrl != null && player.currentMediaUrl == ref.episode.streamUrl
+        else player.currentMediaUrl != null && canonicalPlaying() == ref.episode.streamUrl
 
     /** Saves the position of the episode the player is actually on — including one the player itself
      *  switched to via prev/next or auto-advance, which re-pins the ref in [init]. */
@@ -939,7 +960,7 @@ class SeriesViewModel(
     private suspend fun resolvedEpisodeUrlOrNull(episode: EpisodeEntity): String? {
         val show = seriesDao.getSeriesById(episode.seriesId)
         val source = show?.let { sourceDao.getById(it.sourceId) }
-        if (!streamUrlResolver.needsResolve(source)) return episode.streamUrl
+        if (!streamUrlResolver.needsResolve(source)) return vodServerFailover?.urlFor(episode.streamUrl, source) ?: episode.streamUrl
         return try {
             streamUrlResolver.resolve(source!!, episode.streamUrl, vod = true, episode = episode.episodeNumber)
         } catch (e: Exception) {
@@ -1030,8 +1051,10 @@ class SeriesViewModel(
                     episode, it, tv.own.owntv.core.player.enginePinKey(show.sourceId, "EPISODE", episode.remoteId),
                 )
             }
-            player.playEpisodes(
-                items = queue.map { ep ->
+            // A pooled Xtream playlist: each item asks for the in-use server as it loads (and on the
+            // player's own reconnects), so it follows any switch made after the queue started.
+            val pooled = source != null && !needsResolve && tv.own.owntv.core.network.HostPool.pool(source).size > 1
+            val items = queue.map { ep ->
                     PlaylistItem(
                         url = ep.streamUrl,
                         meta = MediaMeta(
@@ -1047,16 +1070,32 @@ class SeriesViewModel(
                         ),
                         resolveUrl = if (needsResolve && source != null) {
                             { streamUrlResolver.resolve(source, ep.streamUrl, vod = true, episode = ep.episodeNumber) }
+                        } else if (pooled) {
+                            { vodServerFailover?.urlFor(ep.streamUrl, source) ?: ep.streamUrl }
                         } else null,
                         httpHeaders = tv.own.owntv.core.settings.SourceOverrides.headersWithReferer(ep.httpHeaders, source),
                         drmConfig = ep.drmConfig,
                         manifestType = ep.manifestType,
                     )
-                },
-                startIndex = startIndex,
-                startPositionMs = startPositionMs,
+                }
+            fun start(index: Int, positionMs: Long) = player.playEpisodes(
+                items = items,
+                startIndex = index,
+                startPositionMs = positionMs,
                 userAgent = sourceUa,
                 vodEngineOverride = tv.own.owntv.core.settings.SourceOverrides.vodEngineOf(source),
+            )
+            start(startIndex, startPositionMs)
+            playingSource = source
+            // A dead server reopens whichever episode of this queue is on the player, where it was.
+            vodServerFailover?.watch(
+                viewModelScope, source, key = tv.own.owntv.core.player.enginePinKey(show.sourceId, "EPISODE", episode.remoteId) ?: episode.streamUrl,
+                replay = { _, pos, key ->
+                    val at = items.indexOfFirst { it.meta.contentKey != null && it.meta.contentKey == key }
+                    start(if (at >= 0) at else startIndex, pos)
+                },
+                storedUrl = episode.streamUrl,
+                isOurs = { player.currentMediaContentKey.let { k -> k != null && items.any { it.meta.contentKey == k } } },
             )
             // Enable the player's OpenSubtitles search for this episode (subtitle plan §4). The parent
             // series' TMDB id gives the strongest episode match (review R7) when metadata is available.

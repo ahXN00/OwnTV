@@ -94,6 +94,7 @@ val appModule = module {
             get(),
             get(),
             get(),
+            get(),
         )
     }
     viewModelOf(::MovieViewModel)
@@ -142,6 +143,8 @@ val appModule = module {
             livePreview = get(),
             enginePool = get(),
             importer = get(),
+            hostSelector = get(),
+            releaseGate = get(),
         )
     }
     viewModelOf(::LocalSyncViewModel)

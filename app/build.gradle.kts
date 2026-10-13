@@ -439,6 +439,7 @@ dependencies {
 
     // Test
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
     // Test-only, never packaged: android.jar's org.json is a stub, and isReturnDefaultValues turns
     // every JSONObject call into a silent null/0. Backup/restore is all JSON, so the unit tests need
     // the real implementation to mean anything.

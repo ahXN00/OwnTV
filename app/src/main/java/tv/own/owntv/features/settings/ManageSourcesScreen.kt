@@ -1,5 +1,8 @@
 package tv.own.owntv.features.settings
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.widthIn
 import tv.own.owntv.ui.stage.stageGlass
 import tv.own.owntv.ui.theme.stageAccent
@@ -28,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
@@ -51,6 +55,8 @@ import tv.own.owntv.ui.components.detailText
 import tv.own.owntv.ui.components.primaryText
 import tv.own.owntv.ui.components.remainderText
 import tv.own.owntv.ui.components.warningText
+import tv.own.owntv.core.repository.HostTestRow
+import tv.own.owntv.core.repository.HostTestStatus
 import tv.own.owntv.core.repository.SourceTestResult
 import tv.own.owntv.core.setup.detailLines
 import tv.own.owntv.core.setup.headline
@@ -76,6 +82,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     val defaultId by vm.defaultSourceId.collectAsStateWithLifecycle()
     val sourceExpiry by vm.sourceExpiry.collectAsStateWithLifecycle()
     val sourceTest by vm.sourceTest.collectAsStateWithLifecycle()
+    val testAllFocus by vm.testAllFocus.collectAsStateWithLifecycle()
     val deletingIds by vm.deletingSourceIds.collectAsStateWithLifecycle()
     val epgSync by vm.epgSync.collectAsStateWithLifecycle()
     val colors = OwnTVTheme.colors
@@ -91,6 +98,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var resyncChoice by remember { mutableStateOf<SourceEntity?>(null) }
     // Set while the "this will stop playback and take a while" confirmation is on screen.
     var confirmRetest by remember { mutableStateOf<SourceEntity?>(null) }
+    var confirmTestAll by remember { mutableStateOf<SourceEntity?>(null) }
     val addFocus = remember { FocusRequester() }
     val errorFocus = remember { FocusRequester() }
 
@@ -161,13 +169,14 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 initial = src,
                 initialAutoRefresh = playlistAutoRefresh[src.id] ?: PlaylistRefresh.OFF,
                 initialIsDefault = src.id == defaultId,
-                onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
+                onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls, servers ->
                     vm.updateSource(
                         src.id, n, server, u, p, ua, epg, autoRefresh, isDefault, httpReferer = ref,
                         syncLive = live != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         syncMovies = movies != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         syncSeries = series != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         preferHls = preferHls,
+                        servers = servers,
                     )
                     editingSource = null
                 },
@@ -184,6 +193,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     editingSource = null
                 },
                 onBack = { editingSource = null },
+                onTestAll = src.takeIf { tv.own.owntv.core.network.HostPool.pool(it).size > 1 }?.let { s -> { confirmTestAll = s } },
                 modifier = Modifier,
             )
         } else if (showAdd) {
@@ -206,8 +216,8 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         modifier = Modifier,
                     )
                     AddMode.MANUAL -> AddSourceScreen(
-                        onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
-                            vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, httpReferer = ref)
+                        onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls, servers ->
+                            vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, httpReferer = ref, servers = servers)
                         },
                         onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault, httpReferer = ref) },
                         onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series ->
@@ -339,11 +349,29 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             SourceTestDialog(
                 state = state,
                 onDismiss = { vm.dismissSourceTest() },
+                onBusyDismiss = { vm.dismissTestAllBusy() },
+                focusTestAll = testAllFocus,
                 // Only for a playlist that exists; the measurement is stored against its row.
                 onRetest = sources.firstOrNull { it.name == state.sourceName }?.let { src ->
                     { confirmRetest = src }
                 },
                 onSkip = { vm.skipConnectionMeasurement() },
+                // Test all servers: a saved Xtream playlist with at least one backup server.
+                onTestAll = sources.firstOrNull { it.name == state.sourceName }
+                    ?.takeIf { tv.own.owntv.core.network.HostPool.pool(it).size > 1 }
+                    ?.let { src -> { confirmTestAll = src } },
+                onSkipAll = { vm.skipTestAll() },
+                onUseServer = { id, host -> vm.useServer(id, host) },
+            )
+        }
+
+        confirmTestAll?.let { src ->
+            ConfirmDialog(
+                title = pluralStringResource(R.plurals.settings_sources_backup_test_all_title, tv.own.owntv.core.network.HostPool.pool(src).size, tv.own.owntv.core.network.HostPool.pool(src).size),
+                message = stringResource(R.string.settings_sources_backup_test_all_warning),
+                onConfirm = { confirmTestAll = null; vm.testAllServers(src) },
+                onDismiss = { confirmTestAll = null },
+                confirmLabel = R.string.settings_sources_backup_test_all_confirm,
             )
         }
 
@@ -403,7 +431,13 @@ private fun SourceRow(
     val visibleCounts = if (activeSync == null) counts?.breakdownText() else activeCounts?.displayText()
     val sep = stringResource(R.string.settings_sources_details_separator)
     // The row's line: counts, refresh and expiry; the URL itself goes to the panel.
+    // Host failover (ui-design Q4): a playlist playing from a backup says so, in words.
+    val pool = tv.own.owntv.core.network.HostPool.pool(source)
+    val inUse = tv.own.owntv.core.network.HostPool.inUse(source)?.takeIf { pool.size > 1 && it != pool.first() }
+    val onBackupLine = inUse?.let { stringResource(R.string.settings_sources_backup_row_line, pool.indexOf(it), pool.size - 1) }
+    val inUseLine = inUse?.let { stringResource(R.string.settings_sources_backup_panel_in_use, tv.own.owntv.core.network.HostPool.display(it)) }
     val line = buildList {
+        if (onBackupLine != null) add(onBackupLine)
         if (!visibleCounts.isNullOrBlank()) add(visibleCounts)
         else if (activeSync != null) add(stringResource(R.string.settings_sources_preparing_detail))
         if (autoRefresh.mode != PlaylistAutoRefresh.OFF) add(stringResource(R.string.settings_sources_auto_refresh, playlistAutoRefreshLabel(autoRefresh)))
@@ -438,7 +472,7 @@ private fun SourceRow(
         help = SettingHelp(
             title = source.name,
             // The address on one line, the counts on the next (owner).
-            text = listOfNotNull(typeName, visibleCounts).joinToString("\n"),
+            text = listOfNotNull(typeName, inUseLine, visibleCounts).joinToString("\n"),
             hints = listOf(
                 "▶" to stringResource(R.string.settings_key_actions),
                 stringResource(R.string.common_back) to stringResource(R.string.common_nav_settings),
@@ -594,16 +628,47 @@ internal fun SourceTestDialog(
     onRetest: (() -> Unit)? = null,
     /** Abandon a measurement in progress. Falls back to simply closing when not supplied. */
     onSkip: (() -> Unit)? = null,
+    /** Test all servers: null hides it (no saved playlist, or no backup server). */
+    onTestAll: (() -> Unit)? = null,
+    /** Stop Test all and keep what it found so far. */
+    onSkipAll: () -> Unit = {},
+    /** Use fastest / OK on a result row. */
+    onUseServer: (sourceId: Long, host: String) -> Unit = { _, _ -> },
+    /** Close only the busy notice. Defaults to [onDismiss], which clears the whole popup. */
+    onBusyDismiss: () -> Unit = onDismiss,
+    /** After the busy notice, land on Test all servers instead of OK. */
+    focusTestAll: Boolean = false,
 ) {
+    if (state is SourceTestUi.TestAllBusy) {
+        val message = when (state.cause) {
+            TestAllBusyCause.RECORDING -> R.string.settings_sources_backup_busy_recording
+            TestAllBusyCause.DOWNLOAD -> R.string.settings_sources_backup_busy_download
+            TestAllBusyCause.TIMESHIFT -> R.string.settings_sources_backup_busy_timeshift
+            TestAllBusyCause.MEASURING -> R.string.settings_sources_backup_busy
+        }
+        tv.own.owntv.ui.stage.StageNotice(
+            title = stringResource(R.string.settings_sources_test_title),
+            body = stringResource(message),
+            onDismiss = onBusyDismiss,
+            eyebrow = null,
+        )
+        return
+    }
     val focus = remember { FocusRequester() }
+    val testAllButtonFocus = remember { FocusRequester() }
     // Keyed on *which* button carries the requester, not on first composition: while measuring it is
     // Skip, then OK replaces it — a one-shot request left focus on a node that no longer existed, so
     // the finished dialog could not be dismissed. A frame is waited for so the replacement exists.
-    val measuring = state is SourceTestUi.Measuring
-    LaunchedEffect(measuring) {
+    val measuring = when (state) {
+        is SourceTestUi.Measuring, is SourceTestUi.TestingAll -> 1
+        is SourceTestUi.AllResults -> 2 + (if (state.fastest == null || state.fastest?.host == state.inUse) 0 else 1)
+        else -> 0
+    }
+    val landOnTestAll = focusTestAll && state is SourceTestUi.Done && onTestAll != null
+    LaunchedEffect(measuring, landOnTestAll) {
         withFrameNanos { }
         kotlinx.coroutines.delay(60)
-        runCatching { focus.requestFocus() }
+        runCatching { (if (landOnTestAll) testAllButtonFocus else focus).requestFocus() }
     }
     tv.own.owntv.ui.stage.StagePopup(
         onDismiss = onDismiss,
@@ -615,9 +680,24 @@ internal fun SourceTestDialog(
             if (onRetest != null && state is SourceTestUi.Done) {
                 tv.own.owntv.ui.stage.StageButton(stringResource(R.string.settings_sources_retest), onClick = onRetest, height = 56.mpx, textSize = 19)
             }
+            if (onTestAll != null && state is SourceTestUi.Done) {
+                tv.own.owntv.ui.stage.StageButton(
+                    stringResource(R.string.settings_sources_backup_test_all),
+                    onClick = onTestAll,
+                    height = 56.mpx,
+                    textSize = 19,
+                    modifier = if (landOnTestAll) Modifier.focusRequester(testAllButtonFocus) else Modifier,
+                )
+            }
+            val fastest = (state as? SourceTestUi.AllResults)?.let { useFastestTarget(it.fastest, it.inUse) }
             // While measuring, the only honest button abandons it: OK would suggest the answer is in.
             if (state is SourceTestUi.Measuring) {
                 tv.own.owntv.ui.stage.StageButton(stringResource(R.string.settings_sources_probe_skip), onClick = onSkip ?: onDismiss, height = 56.mpx, textSize = 19, tinted = true, modifier = Modifier.focusRequester(focus))
+            } else if (state is SourceTestUi.TestingAll) {
+                tv.own.owntv.ui.stage.StageButton(stringResource(R.string.settings_sources_probe_skip), onClick = onSkipAll, height = 56.mpx, textSize = 19, tinted = true, modifier = Modifier.focusRequester(focus))
+            } else if (state is SourceTestUi.AllResults && fastest != null) {
+                tv.own.owntv.ui.stage.StageButton(stringResource(R.string.settings_sources_backup_use_fastest), onClick = { onUseServer(state.sourceId, fastest.host) }, height = 56.mpx, textSize = 19, tinted = true, modifier = Modifier.focusRequester(focus))
+                tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_ok), onClick = onDismiss, height = 56.mpx, textSize = 19)
             } else {
                 tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_ok), onClick = onDismiss, height = 56.mpx, textSize = 19, tinted = true, modifier = Modifier.focusRequester(focus))
             }
@@ -637,13 +717,96 @@ internal fun SourceTestDialog(
                 Text(stringResource(R.string.settings_sources_probe_running, state.progress.stream, state.progress.maxStreams), style = line, color = tv.own.owntv.ui.theme.StageColors.Muted)
             }
             is SourceTestUi.Done -> SourceTestReport(state.result, state.limit)
+            is SourceTestUi.TestingAll -> Row(verticalAlignment = Alignment.CenterVertically) {
+                OwnTVSpinner(sizeDp = 22)
+                Spacer(Modifier.width(16.mpx))
+                Text(
+                    stringResource(R.string.settings_sources_backup_testing, state.position, state.total, state.host),
+                    style = line, color = tv.own.owntv.ui.theme.StageColors.Muted,
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+            is SourceTestUi.AllResults -> HostTestResults(state, onUseServer)
+            is SourceTestUi.TestAllBusy -> Unit
+        }
+    }
+}
+
+internal fun useFastestTarget(fastest: HostTestRow?, inUse: String?): HostTestRow? =
+    fastest?.takeIf { it.host != inUse }
+
+internal fun canUseResultRow(row: HostTestRow, inUse: String?): Boolean =
+    row.status == HostTestStatus.OK && row.host != inUse
+
+internal fun hostTestResultLabelRes(status: HostTestStatus): Int = when (status) {
+    HostTestStatus.OK -> R.string.settings_sources_backup_result_ms
+    HostTestStatus.UNREACHABLE -> R.string.settings_sources_backup_result_unreachable
+    HostTestStatus.INVALID_RESPONSE -> R.string.settings_sources_backup_result_invalid
+    HostTestStatus.BLOCKED -> R.string.settings_sources_backup_result_blocked
+    HostTestStatus.NETWORK_PROBLEM -> R.string.settings_sources_backup_result_network
+    HostTestStatus.AUTH_FAILED,
+    HostTestStatus.EXPIRED -> R.string.settings_sources_backup_result_auth
+    HostTestStatus.NOT_TESTED -> R.string.settings_sources_backup_result_skipped
+}
+
+/** Test all servers' answers, one row per server in list order (ui-design Q6, Rev 2). */
+@Composable
+private fun HostTestResults(state: SourceTestUi.AllResults, onUseServer: (Long, String) -> Unit) {
+    val res = LocalContext.current.resources
+    val fastest = state.fastest
+    val fastestWord = stringResource(R.string.settings_sources_backup_fastest)
+    val inUseWord = stringResource(R.string.settings_sources_backup_in_use)
+    val talkSep = stringResource(R.string.settings_sources_backup_talkback_separator)
+    val dotSep = stringResource(R.string.content_genres_separator)
+    Column(verticalArrangement = Arrangement.spacedBy(6.mpx)) {
+        state.nowUsing?.let {
+            Text(
+                stringResource(R.string.settings_sources_backup_now_using, it),
+                style = tv.own.owntv.ui.theme.stageText(18, 700), color = tv.own.owntv.ui.theme.StageColors.Ok,
+                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+            )
+        }
+        state.rows.forEach { row ->
+            val shown = tv.own.owntv.core.network.HostPool.display(row.host)
+            val label = hostTestResultLabelRes(row.status)
+            val ms = row.ms
+            val value = if (row.status == HostTestStatus.OK && ms != null) {
+                res.getString(label, ms.toInt())
+            } else if (row.status == HostTestStatus.OK) {
+                res.getString(R.string.settings_sources_test_ok)
+            } else {
+                res.getString(label)
+            }
+            val (icon, tint) = when (row.status) {
+                tv.own.owntv.core.repository.HostTestStatus.OK -> OwnTVIcon.CHECK to tv.own.owntv.ui.theme.StageColors.Ok
+                tv.own.owntv.core.repository.HostTestStatus.INVALID_RESPONSE,
+                tv.own.owntv.core.repository.HostTestStatus.NOT_TESTED -> OwnTVIcon.WARNING to tv.own.owntv.ui.theme.StageColors.Muted
+                else -> OwnTVIcon.CLOSE to tv.own.owntv.ui.theme.StageColors.Danger
+            }
+            val words = listOfNotNull(
+                fastestWord.takeIf { fastest != null && row.host == fastest.host },
+                inUseWord.takeIf { row.host == state.inUse },
+            )
+            val title = stringResource(R.string.settings_sources_backup_result_title, row.position, shown)
+            tv.own.owntv.ui.stage.StagePopupOption(
+                title = title,
+                subtitle = words.joinToString(dotSep).ifEmpty { null },
+                value = value,
+                // OK on a server that answered properly uses it (U4); the others can't be picked.
+                onClick = { if (canUseResultRow(row, state.inUse)) onUseServer(state.sourceId, row.host) },
+                chosen = row.host == state.inUse,
+                leading = { tv.own.owntv.ui.stage.StagePopupIcon(icon, tint) },
+                modifier = Modifier.semantics {
+                    contentDescription = (listOf(title, value) + words.map { it.lowercase() }).joinToString(talkSep)
+                },
+            )
         }
     }
 }
 
 @Composable
 private fun SourceTestReport(result: SourceTestResult, limit: tv.own.owntv.core.live.ConnectionLimit?) {
-    val res = LocalContext.current.resources
+    val res = androidx.compose.ui.platform.LocalResources.current
     Column(verticalArrangement = Arrangement.spacedBy(8.mpx)) {
         Text(
             result.headline(res), style = tv.own.owntv.ui.theme.stageText(20, 700),
