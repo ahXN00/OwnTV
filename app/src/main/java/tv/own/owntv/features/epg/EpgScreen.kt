@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -34,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -46,6 +48,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -55,6 +58,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ChannelEntity
@@ -114,6 +118,9 @@ private fun programmeAt(progs: List<EpgProgrammeEntity>?, time: Long): EpgProgra
 
 /** Across a gap the cursor moves by half an hour, rather than leaping hours to the next programme. */
 private const val GAP_STEP_MS = 30L * 60 * 1000
+
+/** Cursor passed to rows that are not focused, so a cursor move does not recompose them. */
+private const val NO_CURSOR = -1L
 
 /** Where ◀ ([dir] -1) or ▶ (+1) takes the cursor: programme by programme, half an hour at a time across gaps. */
 private fun cursorStep(progs: List<EpgProgrammeEntity>, cursor: Long, dir: Int, windowStart: Long, windowEnd: Long): Long {
@@ -229,6 +236,7 @@ fun EpgScreen(
     val ppm = with(density) { GuideGridDefaults.PxPerMin.toPx() }
     var timelinePx by remember { mutableIntStateOf(0) }
     var scrollPx by remember { mutableIntStateOf(0) }
+    val readScrollPx = remember { { scrollPx } }
     fun pxAt(t: Long): Float = (t - state.windowStart) / 60_000f * ppm
     fun maxScroll(): Int = (pxAt(state.windowEnd) - timelinePx).toInt().coerceAtLeast(0)
     fun timeAt(px: Float): Long = state.windowStart + (px / ppm * 60_000f).toLong()
@@ -536,7 +544,7 @@ fun EpgScreen(
                     // The number column fits the longest channel number (38 = the mockup's three digits).
                     val numberWidth = maxOf(38f, (state.channels.maxOfOrNull { it.number?.toString()?.length ?: 0 } ?: 0) * 11f).mpx
                     GuideRuler(
-                        windowStart = state.windowStart, windowEnd = state.windowEnd, now = liveNow, scrollPx = scrollPx,
+                        windowStart = state.windowStart, windowEnd = state.windowEnd, now = liveNow, scrollPx = readScrollPx,
                         modifier = Modifier.padding(start = gx).width(timelineW).height(40.mpx),
                     )
                     CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides edgeScrollSpec) {
@@ -552,6 +560,7 @@ fun EpgScreen(
                             contentPadding = PaddingValues(bottom = 24.mpx),
                         ) {
                             itemsIndexed(state.channels, key = { _, ch -> ch.id }) { index, channel ->
+                                val sel = index == focusedRow
                                 GuideRow(
                                     vm = vm,
                                     channel = channel,
@@ -562,11 +571,11 @@ fun EpgScreen(
                                     windowStart = state.windowStart,
                                     windowEnd = state.windowEnd,
                                     now = liveNow,
-                                    scrollPx = scrollPx,
+                                    scrollPx = readScrollPx,
                                     focusRequester = rowFocus(index),
                                     selectedRow = gridHasFocus && index == focusedRow,
-                                    cursorTime = cursorTime,
-                                    cellMode = inCellMode,
+                                    cursorTime = if (sel) cursorTime else NO_CURSOR,
+                                    cellMode = sel && inCellMode,
                                     onEnterCell = { cursorTime = System.currentTimeMillis(); inCellMode = true },
                                     recordingStarts = recordingsByChannel[channel.id].orEmpty(),
                                     reminderStarts = remindersByChannel[channel.id].orEmpty(),
@@ -593,11 +602,16 @@ fun EpgScreen(
                         }
                     }
                     // The now-line, 3 px with its glow, over every row.
-                    val nowX = with(density) { (pxAt(liveNow) - scrollPx).toDp() }
-                    if (liveNow in state.windowStart..state.windowEnd && nowX >= 0.mpx && nowX <= timelineW) {
+                    if (liveNow in state.windowStart..state.windowEnd) {
+                        val timelinePxWidth = with(density) { timelineW.toPx() }
                         Box(
                             Modifier
-                                .padding(start = gx + nowX - 1.5.mpx, top = 38.mpx, bottom = 24.mpx)
+                                .padding(start = gx - 1.5.mpx, top = 38.mpx, bottom = 24.mpx)
+                                .offset { IntOffset((pxAt(liveNow) - scrollPx).roundToInt(), 0) }
+                                .graphicsLayer {
+                                    val x = pxAt(liveNow) - scrollPx
+                                    alpha = if (x >= 0f && x <= timelinePxWidth) 1f else 0f
+                                }
                                 .width(3.mpx)
                                 .fillMaxHeight()
                                 .guideNowLine(stageAccent.accent),
@@ -760,7 +774,7 @@ private fun GuideRow(
     windowStart: Long,
     windowEnd: Long,
     now: Long,
-    scrollPx: Int,
+    scrollPx: () -> Int,
     focusRequester: FocusRequester,
     selectedRow: Boolean,
     cursorTime: Long,
@@ -777,7 +791,8 @@ private fun GuideRow(
 ) {
     // Cache peek first, so a row scrolled back into view draws at once; a miss reads this one channel.
     val cacheRevision by vm.cacheRevision.collectAsStateWithLifecycle()
-    val programmes by produceState(initialValue = vm.cachedProgrammes(channel), channel.id, windowStart, cacheRevision) {
+    val initial = remember(channel.id, windowStart, cacheRevision) { vm.cachedProgrammes(channel) }
+    val programmes by produceState(initialValue = initial, channel.id, windowStart, cacheRevision) {
         value = vm.cachedProgrammes(channel) ?: vm.programmesFor(channel)
         // Still empty: ask again a little later, twice, before the row settles on "No program".
         repeat(2) {
