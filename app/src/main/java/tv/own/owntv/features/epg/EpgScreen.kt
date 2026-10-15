@@ -122,7 +122,24 @@ private fun programmeAt(progs: List<EpgProgrammeEntity>?, time: Long): EpgProgra
 private const val GAP_STEP_MS = 30L * 60 * 1000
 
 /** Cursor passed to rows that are not focused, so a cursor move does not recompose them. */
-private const val NO_CURSOR = -1L
+internal const val NO_CURSOR = -1L
+
+internal data class GuideRowFocusArgs(val selectedRow: Boolean, val cursorTime: Long, val cellMode: Boolean)
+
+internal fun guideRowFocusArgs(
+    index: Int,
+    focusedRow: Int,
+    cursorTime: Long,
+    inCellMode: Boolean,
+    gridHasFocus: Boolean,
+): GuideRowFocusArgs {
+    val sel = index == focusedRow
+    return GuideRowFocusArgs(
+        selectedRow = gridHasFocus && sel,
+        cursorTime = if (sel) cursorTime else NO_CURSOR,
+        cellMode = sel && inCellMode,
+    )
+}
 
 /** Where ◀ ([dir] -1) or ▶ (+1) takes the cursor: programme by programme, half an hour at a time across gaps. */
 private fun cursorStep(progs: List<EpgProgrammeEntity>, cursor: Long, dir: Int, windowStart: Long, windowEnd: Long): Long {
@@ -474,8 +491,7 @@ fun EpgScreen(
         }
 
         // The control line (452): one row, every header button of the old guide kept.
-        val viewTime = timeAt(scrollPx + timelinePx * 3f / 8f)
-        val viewDay = localMidnight(viewTime)
+        val viewDay by remember { derivedStateOf { localMidnight(timeAt(scrollPx + timelinePx * 3f / 8f)) } }
         Row(
             Modifier.padding(start = fx(68), end = fx(64), top = 48.mpx).fillMaxWidth().height(48.mpx),
             horizontalArrangement = Arrangement.spacedBy(8.mpx),
@@ -566,8 +582,8 @@ fun EpgScreen(
                             contentPadding = PaddingValues(bottom = 24.mpx),
                         ) {
                             itemsIndexed(state.channels, key = { _, ch -> ch.id }) { index, channel ->
-                                val sel = index == focusedRow
-                                    GuideRow(
+                                val focus = guideRowFocusArgs(index, focusedRow, cursorTime, inCellMode, gridHasFocus)
+                                GuideRow(
                                     vm = vm,
                                     rowIndex = index,
                                     channel = channel,
@@ -580,9 +596,9 @@ fun EpgScreen(
                                     now = liveNow,
                                     scrollPx = readScrollPx,
                                     focusRequester = rowFocus(index),
-                                    selectedRow = gridHasFocus && index == focusedRow,
-                                    cursorTime = if (sel) cursorTime else NO_CURSOR,
-                                    cellMode = sel && inCellMode,
+                                    selectedRow = focus.selectedRow,
+                                    cursorTime = focus.cursorTime,
+                                    cellMode = focus.cellMode,
                                     onEnterCell = { cursorTime = System.currentTimeMillis(); inCellMode = true },
                                     recordingStarts = recordingsByChannel[channel.id].orEmpty(),
                                     reminderStarts = remindersByChannel[channel.id].orEmpty(),
@@ -713,9 +729,10 @@ fun EpgScreen(
         val days = remember(state.windowStart, state.windowEnd) {
             generateSequence(localMidnight(state.windowStart)) { localMidnight(it + 36L * 60 * 60 * 1000) }.takeWhile { it < state.windowEnd }.toList()
         }
+        val currentDay by remember { derivedStateOf { localMidnight(timeAt(scrollPx + timelinePx * 3f / 8f)) } }
         GuideDayMenu(
             days = days,
-            currentDay = localMidnight(timeAt(scrollPx + timelinePx * 3f / 8f)),
+            currentDay = currentDay,
             onPick = { day ->
                 val now = System.currentTimeMillis()
                 showTime(day + (now - localMidnight(now)))
