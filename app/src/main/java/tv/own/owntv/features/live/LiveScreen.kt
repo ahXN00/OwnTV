@@ -560,10 +560,11 @@ fun LiveScreen(
 
     // CH± in the categories moves the highlight only; OK picks (owner, 2026-10-01).
     var catFocusIndex by remember { mutableStateOf<Int?>(null) }
+    // Browsing the categories (or the search field) keeps the preview playing, like a TV: only picking
+    // another channel or leaving Live TV changes it.
     val categoriesModifier = Modifier
         .onFocusChanged {
             railPaneFocused = it.hasFocus
-            if (it.hasFocus && previewEnabled) vm.stopPreview()
             // The sheet closes when focus leaves it (◀ to the rail) — not while its own menus are open,
             // and not on the "unfocused" report every node gets when it first attaches.
             if (it.hasFocus) sheetHadFocus = true
@@ -763,7 +764,6 @@ fun LiveScreen(
                             .weight(1f, fill = false)
                             .width(if (separate) listWidth * (230f / 620f) else listWidth * (456f / 846f))
                             .focusRequester(listSearchFocus)
-                            .onFocusChanged { if (it.hasFocus && previewEnabled) vm.stopPreview() }
                             // ◀ Categories from the search field too, as from the rows (not while typing).
                             .onPreviewKeyEvent { e ->
                                 if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown &&
@@ -901,23 +901,25 @@ fun LiveScreen(
                     modifier = Modifier.align(Alignment.BottomEnd).padding(end = margin, bottom = 40.mpx),
                 )
             }
+        }
 
-            if (previewShown) {
-                LiveStagePane(
-                    channel = previewChannel,
-                    channelName = previewChannel?.let { ProviderTags.parse(it.name).name },
-                    nowNext = nowNext,
-                    previewEngine = vm.previewEngine,
-                    showVideo = effectivePreview,
-                    singleSessionBlocked = previewBlockedSingleSession,
-                    scheduleFocus = scheduleFocus,
-                    onOpenProgramme = { p -> previewChannel?.let { openProgramme = it to p } },
-                    onBackToList = { focusCurrentRow() },
-                    modifier = Modifier
-                        .padding(start = screenW - margin - stageW, top = 120.mpx)
-                        .width(stageW),
-                )
-            }
+        // The preview sits outside the dimmed list side: a video surface under a translucent layer goes
+        // black, and the show keeps playing while the categories are open.
+        if (previewShown) {
+            LiveStagePane(
+                channel = previewChannel,
+                channelName = previewChannel?.let { ProviderTags.parse(it.name).name },
+                nowNext = nowNext,
+                previewEngine = vm.previewEngine,
+                showVideo = effectivePreview,
+                singleSessionBlocked = previewBlockedSingleSession,
+                scheduleFocus = scheduleFocus,
+                onOpenProgramme = { p -> previewChannel?.let { openProgramme = it to p } },
+                onBackToList = { focusCurrentRow() },
+                modifier = Modifier
+                    .padding(start = screenW - margin - stageW, top = 120.mpx)
+                    .width(stageW),
+            )
         }
 
         if (categoriesOpen) {
