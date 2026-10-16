@@ -91,6 +91,8 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     // "…" in the tool row: New categories and the PIN lock.
     var showMoreMenu by remember { mutableStateOf(false) }
     var restoringDefaults by remember { mutableStateOf(false) }
+    // "Hide all" / "Show all" from the "…" menu, pending its confirmation: true = hide, false = show.
+    var settingAllHidden by remember { mutableStateOf<Boolean?>(null) }
     val restorePlaylist by vm.restorePlaylistName.collectAsStateWithLifecycle()
     val moreFocus = remember { FocusRequester() }
     val actionsFocus = remember { FocusRequester() }
@@ -115,7 +117,7 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     // Opener row for whichever dialog (new-category picker, rename) is open — restored on close so
     // focus doesn't always jump back to the Live TV section chip.
     var dialogReturn by tv.own.owntv.ui.components.rememberDialogFocusRestore(
-        anyDialogOpen = showNewCatPicker || showSortPicker || showFilterPicker || showMoreMenu || restoringDefaults || renaming != null || creatingCategory ||
+        anyDialogOpen = showNewCatPicker || showSortPicker || showFilterPicker || showMoreMenu || restoringDefaults || settingAllHidden != null || renaming != null || creatingCategory ||
             deletingCategory != null || rangeEnd != null || editingPin != null,
     )
 
@@ -364,9 +366,13 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     )
 
     if (showMoreMenu) {
+        // Only offer what would change something: no "Show all" when nothing listed is hidden.
+        val visibleCount = rows.count { !it.hidden }
+        val hiddenCount = rows.size - visibleCount
         PickerDialog(
             title = stringResource(R.string.common_nav_more),
-            options = customizeMoreOptions(hideNewCategories, hasPin = pinLock.pin != null, askForSettingsPin = askForSettingsPin),
+            options = customizeMoreOptions(hideNewCategories, hasPin = pinLock.pin != null, askForSettingsPin = askForSettingsPin,
+                visibleCount = visibleCount, hiddenCount = hiddenCount),
             selected = "",
             onSelect = { value ->
                 showMoreMenu = false
@@ -381,6 +387,8 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     "PIN_REMOVE" -> editingPin = PinEdit.REMOVE
                     "SETTINGS_PIN" -> settingsPinVm.setAskOnOpen(!askForSettingsPin)
                     CustomizeOption.RESTORE.name -> restoringDefaults = true
+                    CustomizeOption.HIDE_ALL.name -> settingAllHidden = true
+                    CustomizeOption.SHOW_ALL.name -> settingAllHidden = false
                 }
             },
             onDismiss = { showMoreMenu = false },
@@ -455,6 +463,31 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             confirmLabel = stringResource(R.string.common_reset),
             onConfirm = { vm.restoreSectionDefaults(); restoringDefaults = false },
             onDismiss = { restoringDefaults = false },
+        )
+    }
+
+    settingAllHidden?.let { hide ->
+        val count = rows.count { it.hidden != hide }
+        val sectionName = stringResource(
+            when (section) {
+                MediaType.LIVE -> R.string.settings_live_tv
+                MediaType.MOVIE -> R.string.settings_movies
+                else -> R.string.settings_series
+            },
+        )
+        val playlistName = restorePlaylist ?: stringResource(R.string.content_all_playlists)
+        PinConfirmDialog(
+            title = stringResource(
+                if (hide) R.string.settings_customize_hide_all_title else R.string.settings_customize_show_all_title,
+                sectionName, playlistName,
+            ),
+            message = pluralStringResource(
+                if (hide) R.plurals.settings_customize_hide_all_description else R.plurals.settings_customize_show_all_description,
+                count, count,
+            ),
+            confirmLabel = stringResource(if (hide) R.string.settings_customize_hide_all_confirm else R.string.settings_customize_show_all_confirm),
+            onConfirm = { vm.setAllHidden(hide); settingAllHidden = null },
+            onDismiss = { settingAllHidden = null },
         )
     }
 

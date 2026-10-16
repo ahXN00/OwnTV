@@ -10,6 +10,9 @@ internal fun customizeMoreOptions(
     hideNewCategories: Boolean,
     hasPin: Boolean,
     askForSettingsPin: Boolean,
+    /** Categories in the current list that are shown / hidden: each bulk entry appears only when it would act. */
+    visibleCount: Int,
+    hiddenCount: Int,
 ): List<Pair<String, String>> = listOfNotNull(
     // Bulk rename over every listed category, as the items page has it (the long-press span
     // stays). In ⋯ rather than the tool row: two more pills pushed ⋯ itself off the screen.
@@ -31,9 +34,11 @@ internal fun customizeMoreOptions(
     } else {
         null
     },
+    if (visibleCount > 0) CustomizeOption.HIDE_ALL.name to stringResource(R.string.settings_customize_hide_all, visibleCount) else null,
+    if (hiddenCount > 0) CustomizeOption.SHOW_ALL.name to stringResource(R.string.settings_customize_show_all, hiddenCount) else null,
     // Undo for hide / rename / move / reorder, for the playlist(s) this screen shows.
     CustomizeOption.RESTORE.name to stringResource(R.string.settings_customize_restore_defaults),
 )
 
-/** Key of the restore entry in the More menu (the others are the screen's existing string keys). */
-internal enum class CustomizeOption { RESTORE }
+/** Keys of the restore and hide/show-all entries in the More menu (the others are the screen's existing string keys). */
+internal enum class CustomizeOption { RESTORE, HIDE_ALL, SHOW_ALL }

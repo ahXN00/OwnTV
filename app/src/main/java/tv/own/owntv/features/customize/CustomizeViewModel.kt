@@ -342,6 +342,22 @@ class CustomizeViewModel(
         }
     }
 
+    /**
+     * Hides (or shows) every category the list currently shows — the selected section, the top-right
+     * playlist choice and the visibility filter — in ONE store write. Lets a provider with hundreds of
+     * groups be cut down to "hide all, then show the few I want".
+     */
+    fun setAllHidden(hidden: Boolean) {
+        val pid = ctx.value.profileId
+        if (pid < 0) return
+        val keys = rows.value.filter { it.hidden != hidden }.map { it.key }
+        if (keys.isEmpty()) return
+        span.cancel()
+        viewModelScope.launch {
+            customize.setCategoriesHidden(pid, _section.value, keys, hidden)
+        }
+    }
+
     /** Blank name restores the provider's original. */
     fun renameCategory(row: CustomizeCatRow, name: String?) {
         viewModelScope.launch {
