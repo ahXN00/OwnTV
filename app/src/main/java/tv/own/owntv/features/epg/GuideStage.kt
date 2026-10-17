@@ -214,7 +214,7 @@ internal fun GuideRuler(
     windowStart: Long,
     windowEnd: Long,
     now: Long,
-    scrollPx: Int,
+    scrollPx: () -> Int,
     modifier: Modifier = Modifier,
 ) {
     val formatTime = rememberSystemTimeFormatter()
@@ -238,6 +238,7 @@ internal fun GuideRuler(
             }
         },
     ) { measurables, constraints ->
+        val scrollPx = scrollPx()
         val ppm = GuideGridDefaults.PxPerMin.toPx()
         val chipShift = 34.mpx.toPx()
         val placeables = measurables.map { it.measure(Constraints()) }

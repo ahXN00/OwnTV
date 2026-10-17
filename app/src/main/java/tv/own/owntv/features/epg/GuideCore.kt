@@ -75,8 +75,8 @@ internal fun ProgrammeStripCanvas(
     catchupIds: Set<Long>,
     recordingStarts: Set<Long>,
     reminderStarts: Set<Long>,
-    /** How far the timeline is scrolled, shared by every row and the ruler. */
-    scrollPx: Int,
+    /** How far the timeline is scrolled, shared by every row and the ruler. Read only while drawing. */
+    scrollPx: () -> Int,
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val measurer = rememberTextMeasurer(cacheSize = 64)
@@ -98,7 +98,9 @@ internal fun ProgrammeStripCanvas(
     // A row with nothing in the window says so, rather than looking broken.
     val emptyText = stringResource(R.string.content_epg_no_programme)
     // Clipped at the timeline's left edge only, so a focused cell's glow still spills up and down.
-    Canvas(Modifier.fillMaxSize()) { clipRect(left = 0f, top = -size.height, right = size.width + 40 * px, bottom = size.height * 2) {
+    Canvas(Modifier.fillMaxSize()) {
+        val scrollPx = scrollPx()
+        clipRect(left = 0f, top = -size.height, right = size.width + 40 * px, bottom = size.height * 2) {
         // The focused cell's ring. In light the focus colour is the accent, the cell's own fill, so the
         // ring stands off it with a page-coloured gap first (`.mine.light .gcell.f`: 2.5 page + 2.5 accent).
         fun focusRing(x0: Float, w: Float, h: Float, r: CornerRadius) {
