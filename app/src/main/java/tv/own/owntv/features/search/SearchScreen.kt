@@ -34,7 +34,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
@@ -88,6 +87,7 @@ import tv.own.owntv.features.shell.components.VodMeta
 import tv.own.owntv.features.shell.components.VodTitleInfo
 import tv.own.owntv.features.shell.components.vodRating
 import tv.own.owntv.features.shell.components.vodRuntime
+import tv.own.owntv.ui.components.BlurredPoster
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.format.localizedInteger
 import tv.own.owntv.ui.stage.PlaylistMark
@@ -637,7 +637,7 @@ private fun PosterPanel(info: VodTitleInfo, series: Boolean, modifier: Modifier 
                     alignment = BiasAlignment(0f, -0.4f), modifier = Modifier.fillMaxSize(),
                 )
             } else if (!info.posterUrl.isNullOrBlank()) {
-                AsyncImage(model = info.posterUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(36.mpx))
+                BlurredPoster(url = info.posterUrl!!, modifier = Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                 AsyncImage(
                     model = info.posterUrl, contentDescription = null, contentScale = ContentScale.Fit,
