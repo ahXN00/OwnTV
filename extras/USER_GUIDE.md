@@ -629,6 +629,18 @@ creates a profile, and in Settings → **Profile** when you edit one.
 **Where:** Settings → App → **App startup**
 **Home**, **Last channel**, **Live Favorites**, or one chosen channel picked from a searchable list.
 
+**Open OwnTV with the TV:** Settings → App → **Auto start on boot** · **Auto start on wake-up**, both
+off by default. *On boot* opens OwnTV once the TV has started up; *on wake-up* opens it each time the
+TV comes out of sleep, which is what most TVs do when you press the power button. A cold start lands
+on the App startup choice above; an OwnTV that was still running comes back where you left it, but a
+profile with a PIN asks for it again.
+- Android 10 and newer let an app open by itself only when it may **display over other apps**. OwnTV
+  asks for that when you turn an option on, and until it is allowed the row says so. If your TV has
+  no such screen, the option cannot work there.
+- *On wake-up* keeps a small background listener, with a silent notification, while it is on. It is
+  offered on TVs only. If Android ends the listener, it comes back with the next boot, app start or
+  visit to Settings.
+
 ---
 
 ## 🎛️ The player
@@ -847,6 +859,7 @@ all settings** lists every setting whose name contains what you type, with its p
 | **Programme reminders** · **Reminder time** | Sources & guide | Ask to switch, switch, or notify; how early |
 | **Measured stream stats** | App | Live fps, bitrate and dropped frames in Stream info |
 | **Check updates on startup** | App | Be told when a newer version is on GitHub |
+| **Auto start on boot** · **Auto start on wake-up** | App | Open OwnTV when the TV starts up or wakes from sleep. Off by default |
 | **Error log** | ⋯ More → Error log | The last crash and recent playback failures — exportable |
 | **Detailed playback logging** | App | Turn on before reproducing a playback bug |
 

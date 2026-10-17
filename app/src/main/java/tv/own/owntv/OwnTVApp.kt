@@ -84,6 +84,8 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // "Restart now" after an icon change runs a few milliseconds in a process of its own; nothing
         // below may start there (core's AppRestartActivity).
         if (tv.own.owntv.core.brand.AppIconSwitcher.isRestartProcess(this)) return
+        // The auto-start wake listener's process stays this bare (see AutoStart.isAutoStartProcess).
+        if (tv.own.owntv.features.autostart.AutoStart.isAutoStartProcess(this)) return
         // Core has its own BuildConfig, which carries none of this: a library gets no version at all,
         // and the edge key and the maintainer switch are the app's build inputs. Hand them over before
         // the first reader — CrashRecorder, two lines down (see CoreBuildInfo).
@@ -119,6 +121,9 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // A chosen icon colour ("Later", the first-run pick, a restore) reaches the launcher when the app
         // is next in the background, never while it is on screen.
         tv.own.owntv.core.brand.AppIconSwitcher.start(this, GlobalContext.get().get())
+        // Auto start on wake-up: a force stop ends the wake listener, so the next app start brings it back.
+        tv.own.owntv.features.autostart.AutoStart.onAppStarted(this)
+        registerActivityLifecycleCallbacks(tv.own.owntv.features.autostart.AutoStartProfileGate())
         // Diagnostics switch, the persisted archive-decode quirk and the one-shot settings migrations —
         // core's, shared with the phone, which used to run none of them.
         tv.own.owntv.player.PlaybackStartup.start(

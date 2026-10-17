@@ -26,6 +26,13 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
+    <!-- Settings › App › Auto start. From Android 10 an app may open itself from the background only
+         with "Display over other apps"; OwnTV asks for it when an auto-start option is turned on and
+         draws nothing over other apps. RECEIVE_BOOT_COMPLETED merges in from :core. The wake listener
+         is a specialUse foreground service: no other type describes waiting for the screen to come on. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <!-- TV-first app, but allow non-TV installs too: touchscreen optional, and leanback is NOT required
          (required=true blocked plain phones / non-TV armv7a boxes that don't report the leanback feature). -->
     <uses-feature
@@ -343,6 +350,28 @@
                     android:scheme="owntv" />
             </intent-filter>
         </activity>
+
+        <!-- Auto start (AutoStart.kt). Both run in the bare :autostart process, where OwnTVApp starts
+             nothing, so the wake listener does not keep the whole app in memory. The receiver is
+             exported because these are system broadcasts; the service is not. -->
+        <receiver
+            android:name=".features.autostart.AutoStartReceiver"
+            android:process=":autostart"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+        <service
+            android:name=".features.autostart.WakeListenerService"
+            android:process=":autostart"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Listens for the screen turning on so the app can open when the TV wakes from sleep, a setting the user turns on." />
+        </service>
 
     </application>
 

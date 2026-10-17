@@ -158,6 +158,8 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "app_startup" to R.string.settings_help_startup,
     "check_updates" to R.string.settings_help_check_updates,
     "update_startup" to R.string.settings_help_update_startup,
+    "auto_start_boot" to R.string.settings_help_auto_start_boot,
+    "auto_start_wake" to R.string.settings_help_auto_start_wake,
     "tab_NETWORK" to R.string.settings_proxy_description,
     "tab_DNS" to R.string.settings_help_dns,
     "vp_live_engine" to R.string.settings_help_live_engine,
