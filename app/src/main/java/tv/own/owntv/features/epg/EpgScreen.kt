@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -25,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -46,6 +50,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ChannelEntity
@@ -113,6 +119,26 @@ private fun programmeAt(progs: List<EpgProgrammeEntity>?, time: Long): EpgProgra
 
 /** Across a gap the cursor moves by half an hour, rather than leaping hours to the next programme. */
 private const val GAP_STEP_MS = 30L * 60 * 1000
+
+/** Cursor passed to rows that are not focused, so a cursor move does not recompose them. */
+internal const val NO_CURSOR = -1L
+
+internal data class GuideRowFocusArgs(val selectedRow: Boolean, val cursorTime: Long, val cellMode: Boolean)
+
+internal fun guideRowFocusArgs(
+    index: Int,
+    focusedRow: Int,
+    cursorTime: Long,
+    inCellMode: Boolean,
+    gridHasFocus: Boolean,
+): GuideRowFocusArgs {
+    val sel = index == focusedRow
+    return GuideRowFocusArgs(
+        selectedRow = gridHasFocus && sel,
+        cursorTime = if (sel) cursorTime else NO_CURSOR,
+        cellMode = sel && inCellMode,
+    )
+}
 
 /** Where ◀ ([dir] -1) or ▶ (+1) takes the cursor: programme by programme, half an hour at a time across gaps. */
 private fun cursorStep(progs: List<EpgProgrammeEntity>, cursor: Long, dir: Int, windowStart: Long, windowEnd: Long): Long {
@@ -226,6 +252,7 @@ fun EpgScreen(
     val ppm = with(density) { GuideGridDefaults.PxPerMin.toPx() }
     var timelinePx by remember { mutableIntStateOf(0) }
     var scrollPx by remember { mutableIntStateOf(0) }
+    val readScrollPx = remember { { scrollPx } }
     fun pxAt(t: Long): Float = (t - state.windowStart) / 60_000f * ppm
     fun maxScroll(): Int = (pxAt(state.windowEnd) - timelinePx).toInt().coerceAtLeast(0)
     fun timeAt(px: Float): Long = state.windowStart + (px / ppm * 60_000f).toLong()
@@ -418,7 +445,11 @@ fun EpgScreen(
         val timelineW = screenW - fx(48) - labelW - fx(64)
         LaunchedEffect(timelineW) { timelinePx = with(density) { timelineW.roundToPx() } }
 
-        val top = selected ?: state.channels.getOrNull(focusedRow)?.let { ch -> ch to programmeAt(vm.cachedProgrammes(ch), liveNow) }
+        val top by remember {
+            derivedStateOf {
+                selected ?: state.channels.getOrNull(focusedRow)?.let { ch -> ch to programmeAt(vm.cachedProgrammes(ch), liveNow) }
+            }
+        }
         val topChannel = top?.first
         val topProgramme = top?.second
         val full by produceState<EpgProgrammeEntity?>(null, topProgramme?.id) {
@@ -457,8 +488,7 @@ fun EpgScreen(
         }
 
         // The control line (452): one row, every header button of the old guide kept.
-        val viewTime = timeAt(scrollPx + timelinePx * 3f / 8f)
-        val viewDay = localMidnight(viewTime)
+        val viewDay by remember { derivedStateOf { localMidnight(timeAt(scrollPx + timelinePx * 3f / 8f)) } }
         Row(
             Modifier.padding(start = fx(68), end = fx(64), top = 48.mpx).fillMaxWidth().height(48.mpx),
             horizontalArrangement = Arrangement.spacedBy(8.mpx),
@@ -533,7 +563,7 @@ fun EpgScreen(
                     // The number column fits the longest channel number (38 = the mockup's three digits).
                     val numberWidth = maxOf(38f, (state.channels.maxOfOrNull { it.number?.toString()?.length ?: 0 } ?: 0) * 11f).mpx
                     GuideRuler(
-                        windowStart = state.windowStart, windowEnd = state.windowEnd, now = liveNow, scrollPx = scrollPx,
+                        windowStart = state.windowStart, windowEnd = state.windowEnd, now = liveNow, scrollPx = readScrollPx,
                         modifier = Modifier.padding(start = gx).width(timelineW).height(40.mpx),
                     )
                     CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides edgeScrollSpec) {
@@ -549,8 +579,10 @@ fun EpgScreen(
                             contentPadding = PaddingValues(bottom = 24.mpx),
                         ) {
                             itemsIndexed(state.channels, key = { _, ch -> ch.id }) { index, channel ->
+                                val focus = guideRowFocusArgs(index, focusedRow, cursorTime, inCellMode, gridHasFocus)
                                 GuideRow(
                                     vm = vm,
+                                    rowIndex = index,
                                     channel = channel,
                                     name = rowName(channel),
                                     dot = playlistMarks[channel.sourceId]?.shownColor,
@@ -559,11 +591,11 @@ fun EpgScreen(
                                     windowStart = state.windowStart,
                                     windowEnd = state.windowEnd,
                                     now = liveNow,
-                                    scrollPx = scrollPx,
+                                    scrollPx = readScrollPx,
                                     focusRequester = rowFocus(index),
-                                    selectedRow = gridHasFocus && index == focusedRow,
-                                    cursorTime = cursorTime,
-                                    cellMode = inCellMode,
+                                    selectedRow = focus.selectedRow,
+                                    cursorTime = focus.cursorTime,
+                                    cellMode = focus.cellMode,
                                     onEnterCell = { cursorTime = System.currentTimeMillis(); inCellMode = true },
                                     recordingStarts = recordingsByChannel[channel.id].orEmpty(),
                                     reminderStarts = remindersByChannel[channel.id].orEmpty(),
@@ -590,11 +622,16 @@ fun EpgScreen(
                         }
                     }
                     // The now-line, 3 px with its glow, over every row.
-                    val nowX = with(density) { (pxAt(liveNow) - scrollPx).toDp() }
-                    if (liveNow in state.windowStart..state.windowEnd && nowX >= 0.mpx && nowX <= timelineW) {
+                    if (liveNow in state.windowStart..state.windowEnd) {
+                        val timelinePxWidth = with(density) { timelineW.toPx() }
                         Box(
                             Modifier
-                                .padding(start = gx + nowX - 1.5.mpx, top = 38.mpx, bottom = 24.mpx)
+                                .padding(start = gx - 1.5.mpx, top = 38.mpx, bottom = 24.mpx)
+                                .offset { IntOffset((pxAt(liveNow) - scrollPx).roundToInt(), 0) }
+                                .graphicsLayer {
+                                    val x = pxAt(liveNow) - scrollPx
+                                    alpha = if (x >= 0f && x <= timelinePxWidth) 1f else 0f
+                                }
                                 .width(3.mpx)
                                 .fillMaxHeight()
                                 .guideNowLine(stageAccent.accent),
@@ -689,9 +726,10 @@ fun EpgScreen(
         val days = remember(state.windowStart, state.windowEnd) {
             generateSequence(localMidnight(state.windowStart)) { localMidnight(it + 36L * 60 * 60 * 1000) }.takeWhile { it < state.windowEnd }.toList()
         }
+        val currentDay by remember { derivedStateOf { localMidnight(timeAt(scrollPx + timelinePx * 3f / 8f)) } }
         GuideDayMenu(
             days = days,
-            currentDay = localMidnight(timeAt(scrollPx + timelinePx * 3f / 8f)),
+            currentDay = currentDay,
             onPick = { day ->
                 val now = System.currentTimeMillis()
                 showTime(day + (now - localMidnight(now)))
@@ -741,14 +779,31 @@ fun EpgScreen(
     }
 }
 
+/** Test hook. Disabled: [hit] returns before the map write. Key is rowIndex to channelId. */
+internal object EpgRecompositionCounter {
+    var enabled: Boolean = false
+    val counts = mutableMapOf<Pair<Int, Long>, Int>()
+
+    fun hit(rowIndex: Int, channelId: Long) {
+        if (!enabled) return
+        val key = rowIndex to channelId
+        counts[key] = (counts[key] ?: 0) + 1
+    }
+
+    fun clear() { counts.clear() }
+
+    fun count(channelId: Long): Int = counts.entries.sumOf { (key, n) -> if (key.second == channelId) n else 0 }
+}
+
 /**
  * One guide row: the channel label, then the programmes as one focus target with a cursor. ◀ ▶ move the
  * cursor programme by programme (◀ from the first leaves to the rail), ▲ ▼ step rows ([onStep]), OK
  * watches, holding OK or ☰ opens the programme menu. Programmes are read when the row comes into view.
  */
 @Composable
-private fun GuideRow(
-    vm: EpgViewModel,
+internal fun GuideRow(
+    vm: EpgViewModel? = null,
+    rowIndex: Int = -1,
     channel: ChannelEntity,
     name: String,
     dot: Color?,
@@ -757,7 +812,7 @@ private fun GuideRow(
     windowStart: Long,
     windowEnd: Long,
     now: Long,
-    scrollPx: Int,
+    scrollPx: () -> Int,
     focusRequester: FocusRequester,
     selectedRow: Boolean,
     cursorTime: Long,
@@ -771,16 +826,28 @@ private fun GuideRow(
     onStep: (Int) -> Boolean,
     onOk: (EpgProgrammeEntity?) -> Unit,
     onMenu: (EpgProgrammeEntity?) -> Unit,
+    fixedProgrammes: List<EpgProgrammeEntity>? = null,
 ) {
+    if (EpgRecompositionCounter.enabled) {
+        val id = channel.id
+        SideEffect { EpgRecompositionCounter.hit(rowIndex, id) }
+    }
     // Cache peek first, so a row scrolled back into view draws at once; a miss reads this one channel.
-    val cacheRevision by vm.cacheRevision.collectAsStateWithLifecycle()
-    val programmes by produceState(initialValue = vm.cachedProgrammes(channel), channel.id, windowStart, cacheRevision) {
-        value = vm.cachedProgrammes(channel) ?: vm.programmesFor(channel)
+    val revisionSource = remember(vm) { vm?.cacheRevision ?: kotlinx.coroutines.flow.MutableStateFlow(0) }
+    val cacheRevision by revisionSource.collectAsStateWithLifecycle()
+    val initial = fixedProgrammes ?: remember(channel.id, windowStart, cacheRevision) { vm?.cachedProgrammes(channel) }
+    val programmes by produceState(initialValue = initial, channel.id, windowStart, cacheRevision, fixedProgrammes) {
+        val viewModel = vm
+        if (fixedProgrammes != null || viewModel == null) {
+            value = fixedProgrammes
+            return@produceState
+        }
+        value = viewModel.cachedProgrammes(channel) ?: viewModel.programmesFor(channel)
         // Still empty: ask again a little later, twice, before the row settles on "No program".
         repeat(2) {
             if (value?.isNotEmpty() == true) return@produceState
             delay(3_000)
-            value = vm.programmesFor(channel)
+            value = viewModel.programmesFor(channel)
         }
     }
     var focused by remember { mutableStateOf(false) }
@@ -827,7 +894,10 @@ private fun GuideRow(
                 .then(if (rowSelected) Modifier.stageFocusLook(tv.own.owntv.ui.stage.StageFocus.FX, 14.mpx) else Modifier),
         ) {
             programmes?.let { progs ->
-                val catchupIds = remember(progs, channel, now) { progs.filter { vm.canCatchup(channel, it, now) }.mapTo(HashSet()) { it.id } }
+                val catchupIds = remember(progs, channel, now) {
+                    val viewModel = vm
+                    if (viewModel == null) emptySet() else progs.filter { viewModel.canCatchup(channel, it, now) }.mapTo(HashSet()) { it.id }
+                }
                 ProgrammeStripCanvas(
                     programmes = progs,
                     windowStart = windowStart,
