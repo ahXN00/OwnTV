@@ -302,7 +302,7 @@ private fun ScreenOffRow(screenOff: ScreenOff = koinInject()) {
                 screenOff.revoke()
                 allowed = false
             } else {
-                runCatching { ask.launch(screenOff.requestIntent()) }.onFailure {
+                runCatching { tv.own.owntv.features.pip.startAsHandOff(screenOff.requestIntent()) { ask.launch(it) } }.onFailure {
                     android.widget.Toast.makeText(context, R.string.player_sleep_timer_screen_off_unavailable, android.widget.Toast.LENGTH_LONG).show()
                 }
             }

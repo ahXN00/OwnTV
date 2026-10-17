@@ -649,6 +649,11 @@ creates a profile, and in Settings → **Profile** when you edit one.
   assistant.
 - **A notification won't pause your film** — the sound dips and comes back.
 - **Mini-player** — subtitles show in it too. Get back to it from any screen via **Now Playing**.
+- **Picture-in-picture** — with Settings → Watching & recording → **Picture-in-picture when leaving
+  the app** on (off by default), pressing **Home** while a video plays full screen or in the mini-player
+  keeps it playing in a small window. Open OwnTV again for full screen; close the window to stop. Not
+  in Multiview, not when OwnTV itself opens another app (an external player, a trailer on YouTube),
+  and only on TVs that offer picture-in-picture.
 
 ### 🎧 Audio Mode — listen with the screen free
 **Where:** the **headphones** button on the player controls
@@ -825,6 +830,7 @@ all settings** lists every setting whose name contains what you type, with its p
 | Setting | Where | Why |
 |---|---|---|
 | **Multiview** | Watching & recording | Watch up to four channels at once. Off by default; also sets the tile ceiling |
+| **Picture-in-picture when leaving the app** | Watching & recording | Home keeps the video in a small window. Off by default; hidden on TVs without picture-in-picture |
 | **Live latency** | Live TV | How close to the live edge to play. Lower = less delay, more stutter risk |
 | **Pre-buffer live streams** | Live TV | Collect a few seconds first on a flaky provider |
 | **Give up on a channel after** | Live TV | 30 s default — bounds how long a dead channel can spin (+ per playlist) |

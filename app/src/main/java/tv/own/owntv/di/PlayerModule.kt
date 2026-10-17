@@ -33,6 +33,15 @@ val playerModule = module {
             heroPreview = get(),
         )
     }
+    // A screen of another app that OwnTV opens itself: no picture-in-picture, the same stop as Home.
+    single {
+        val engines = get<tv.own.owntv.player.PlaybackEngines>()
+        tv.own.owntv.features.pip.AppHandOff(
+            holdWindow = get<tv.own.owntv.features.pip.PictureInPicture>()::holdWindow,
+            stopPlayback = engines::onAppBackgrounded,
+            restorePlayback = engines::onAppForegrounded,
+        )
+    }
     // Audio focus (duck-don't-pause) + the system MediaSession, driven by whichever engine is playing.
     single { tv.own.owntv.player.PlaybackSession(androidContext()) }
     // Ends itself when the session detaches; what "stop" means is assigned by the shell.

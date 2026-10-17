@@ -81,7 +81,9 @@
              configChanges: a remote waking up (keyboard/navigation), an HDR or frame-rate mode switch
              (uiMode/colorMode/screen*) or a density change must not rebuild the Activity mid-film — that
              closed the player and re-ran the startup popups. locale|layoutDirection are left out on
-             purpose: a script-family language switch still needs its one recreate (LocalizedContent). -->
+             purpose: a script-family language switch still needs its one recreate (LocalizedContent).
+             supportsPictureInPicture: Settings › Video player › Picture-in-picture when leaving the app;
+             the window resizes the activity, which screenSize|smallestScreenSize|screenLayout keep alive. -->
         <activity
             android:name=".MainActivityPetrol"
             android:banner="@drawable/owntv_banner_petrol"
@@ -90,6 +92,7 @@
             android:icon="@mipmap/owntv_icon_petrol"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_petrol"
             android:theme="@style/Theme.OwnTV.Starting.Petrol"
             android:windowSoftInputMode="adjustPan">
@@ -119,6 +122,7 @@
             android:icon="@mipmap/owntv_icon_sunflower"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_sunflower"
             android:theme="@style/Theme.OwnTV.Starting.Sunflower"
             android:windowSoftInputMode="adjustPan">
@@ -148,6 +152,7 @@
             android:icon="@mipmap/owntv_icon_cobalt"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_cobalt"
             android:theme="@style/Theme.OwnTV.Starting.Cobalt"
             android:windowSoftInputMode="adjustPan">
@@ -177,6 +182,7 @@
             android:icon="@mipmap/owntv_icon_tomato"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_tomato"
             android:theme="@style/Theme.OwnTV.Starting.Tomato"
             android:windowSoftInputMode="adjustPan">
@@ -206,6 +212,7 @@
             android:icon="@mipmap/owntv_icon_board"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_board"
             android:theme="@style/Theme.OwnTV.Starting.Board"
             android:windowSoftInputMode="adjustPan">
@@ -235,6 +242,7 @@
             android:icon="@mipmap/owntv_icon_eggshell"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_eggshell"
             android:theme="@style/Theme.OwnTV.Starting.Eggshell"
             android:windowSoftInputMode="adjustPan">
@@ -264,6 +272,7 @@
             android:icon="@mipmap/owntv_icon_olive"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_olive"
             android:theme="@style/Theme.OwnTV.Starting.Olive"
             android:windowSoftInputMode="adjustPan">
@@ -293,6 +302,7 @@
             android:icon="@mipmap/owntv_icon_olive_cream"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_olive_cream"
             android:theme="@style/Theme.OwnTV.Starting.OliveCream"
             android:windowSoftInputMode="adjustPan">
@@ -323,6 +333,7 @@
             android:icon="@mipmap/owntv_icon_pixel"
             android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout|orientation|uiMode|density|colorMode"
             android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
             android:roundIcon="@mipmap/owntv_icon_pixel"
             android:theme="@style/Theme.OwnTV.Starting.Pixel"
             android:windowSoftInputMode="adjustPan">

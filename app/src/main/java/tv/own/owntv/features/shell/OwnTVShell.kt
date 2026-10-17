@@ -1,6 +1,5 @@
 package tv.own.owntv.features.shell
 
-import tv.own.owntv.ui.stage.stageGlass
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
@@ -80,9 +79,9 @@ import tv.own.owntv.player.PlayerHud
 import tv.own.owntv.features.shell.components.AvatarPickerDialog
 import tv.own.owntv.features.shell.components.ExitDialog
 import tv.own.owntv.features.shell.components.IncompleteRestoreDialog
+import tv.own.owntv.features.shell.components.OfflineBanner
 import tv.own.owntv.features.shell.components.SettingsScreen
 import tv.own.owntv.features.shell.components.SolidAmbientBackdrop
-import androidx.tv.material3.Text
 import androidx.compose.ui.res.stringResource
 import tv.own.owntv.player.alignment
 import tv.own.owntv.ui.theme.mpx
@@ -636,6 +635,15 @@ fun OwnTVShell(
     // keys act on while the window is docked.
     val dockedEngine = if (liveOnExo) liveVm.previewEngine else mpvEngine
     val dockedPlaying by dockedEngine.isPlaying.collectAsStateWithLifecycle()
+    // Leaving the app while video plays can keep it going in a picture-in-picture window, which shows
+    // the video alone. Coming back from the window always lands on full screen.
+    val (inPip, pipSource) = tv.own.owntv.features.pip.rememberShellPictureInPicture(
+        playerShown = playerMode == PlayerMode.FULLSCREEN || playerMode == PlayerMode.MINI,
+        multiview = multiview != null,
+        engine = dockedEngine,
+        videoAspect = if (liveOnExo) liveVm.previewEngine.videoAspect else player.videoAspect,
+        onReturnToApp = { if (playerMode == PlayerMode.MINI) expandPlayer() },
+    )
     val nowPlayingRail = when (playerMode) {
         PlayerMode.MINI, PlayerMode.AUDIO -> tv.own.owntv.features.shell.components.NowPlayingRail(
             // Only a live channel has a logo to show; a movie or an episode falls back to the play mark.
@@ -1500,7 +1508,7 @@ fun OwnTVShell(
       if (multiview == null && (playerMode == PlayerMode.FULLSCREEN || playerMode == PlayerMode.MINI)) {
         val isFull = playerMode == PlayerMode.FULLSCREEN
         Box(
-            modifier = if (isFull) {
+            modifier = (if (isFull || inPip) {
                 Modifier.fillMaxSize().background(Color.Black)
             } else {
                 // Dynamic docked size/position: a screen-width fraction at the chosen corner/edge, so it
@@ -1508,7 +1516,7 @@ fun OwnTVShell(
                 Modifier.align(miniPos.alignment).padding(24.dp)
                     .fillMaxWidth(tv.own.owntv.core.player.MiniPlayerSize.fraction(miniSizePct)).aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(14.dp)).background(Color.Black)
-            },
+            }).then(pipSource),
         ) {
             // "Promote Preview": a Live channel playing on ExoPlayer renders the ExoPlayer surface — in BOTH
             // full-screen AND the docked mini-player (same call site = the surface persists across dock/
@@ -1516,11 +1524,11 @@ fun OwnTVShell(
             if (liveOnExo) {
                 tv.own.owntv.player.ExoPreviewSurface(
                     engine = liveVm.previewEngine, modifier = Modifier.fillMaxSize(),
-                    keepAwake = true, autoFrameRate = isFull && autoFrameRate,
+                    keepAwake = true, autoFrameRate = isFull && !inPip && autoFrameRate,
                 )
             } else {
                 MpvVideoSurface(
-                    player = player, modifier = Modifier.fillMaxSize(), autoFrameRate = isFull && autoFrameRate,
+                    player = player, modifier = Modifier.fillMaxSize(), autoFrameRate = isFull && !inPip && autoFrameRate,
                     afrMatchResolution = afrMatchResolution, afrHoldSecs = afrPauseSecs,
                 )
             }
@@ -1532,13 +1540,13 @@ fun OwnTVShell(
             } else {
                 player.audioOnlyMedia.collectAsStateWithLifecycle()
             }
-            if (audioOnlyMedia) {
+            if (audioOnlyMedia && !inPip) {
                 tv.own.owntv.player.AudioOnlyBadge(modifier = Modifier.fillMaxSize(), compact = !isFull)
             }
             // Direct render mode: mpv can't draw subtitles on the decoder-owned surface — the app does.
             // Also drawn docked: the mini-player is a real watching mode for a subtitled film, and
             // dropping the only line of dialogue there made subtitles look broken. Scaled to the box.
-            if (!liveOnExo) {
+            if (!liveOnExo && !inPip) {
                 tv.own.owntv.player.SubtitleOverlay(
                     player = player, modifier = Modifier.fillMaxSize(),
                     // Tied to the chosen mini size, but nudged up and floored: a strictly proportional
@@ -1548,7 +1556,7 @@ fun OwnTVShell(
                     },
                 )
             }
-            if (isFull && !autoFrameRate && !afrPrompted) {
+            if (isFull && !inPip && !autoFrameRate && !afrPrompted) {
                 // Frame rate of whichever engine is on screen. On the mpv side this is what the direct
                 // path judders on; on Exo it now survives "Measured stream stats" being off.
                 val activeFps by if (liveOnExo) {
@@ -1571,7 +1579,7 @@ fun OwnTVShell(
                     onDismiss = { scope.launch { settingsRepo.setAutoFrameRatePrompted() } },
                 )
             }
-            if (isFull) {
+            if (isFull && !inPip) {
                 // Engine state still distinguishes the live edge from catch-up/archive playback for
                 // controls such as direct number tuning. It must not gate the physical CH keys below.
                 val isLiveStream = liveOnExo || player.isLiveContent
@@ -1869,7 +1877,7 @@ fun OwnTVShell(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-            } else {
+            } else if (!inPip) {
                 MiniPlayer(
                     player = if (liveOnExo) liveVm.previewEngine else mpvEngine,
                     onExpand = expandPlayer,
@@ -2002,24 +2010,6 @@ private const val GOAL_TOAST_MS = 8_000L
 
 /** Long enough to read "Auto-matched 12 channels. 40 channels need review." from the sofa. */
 private const val EPG_MATCH_TOAST_MS = 6_000L
-
-/** A thin bar shown above the browse UI when the device loses internet. */
-@Composable
-private fun OfflineBanner() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .stageGlass(0.dp, overContent = true)
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            stringResource(R.string.content_offline_banner),
-            style = tv.own.owntv.ui.theme.stageText(25, 600),
-            color = tv.own.owntv.ui.theme.StageColors.Text,
-        ) }
-    }
 
 /** The line under a rail item at Size = Extra wide; real data only, so most items can have none. */
 @Composable

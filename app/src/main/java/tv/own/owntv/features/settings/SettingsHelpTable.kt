@@ -96,6 +96,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_multiview" to R.string.settings_vp_cat_multiview_summary_mobile,
     "vp_multiview_tiles" to R.string.settings_line_tiles,
     "vp_mini" to R.string.settings_line_mini,
+    "vp_pip" to R.string.settings_line_pip,
     "vp_measured_stats" to R.string.settings_line_measured_stats,
     "vp_logging" to R.string.settings_line_logging,
     "rec_reserve" to R.string.settings_line_rec_reserve,
@@ -172,6 +173,7 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "vp_seek_step" to R.string.settings_help_seek_step,
     "vp_resume" to R.string.settings_help_resume,
     "vp_mini" to R.string.settings_help_mini,
+    "vp_pip" to R.string.settings_help_pip,
 )
 
 /** For a switch row, whether On is the recommended value (the panel tags it). Absent = no tag. */

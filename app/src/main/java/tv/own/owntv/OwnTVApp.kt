@@ -2,7 +2,9 @@ package tv.own.owntv
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.os.Bundle
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -72,6 +74,15 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
      * resolves the *new* device locale list, so a device-locale change while following system applies on
      * the next callback rather than freezing the startup locale.
      */
+    /** Core opens external players and system screens from this context: each one is a hand-off. */
+    override fun startActivity(intent: Intent) {
+        tv.own.owntv.features.pip.startAsHandOff(intent) { super.startActivity(it) }
+    }
+
+    override fun startActivity(intent: Intent, options: Bundle?) {
+        tv.own.owntv.features.pip.startAsHandOff(intent) { super.startActivity(it, options) }
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         val tag = tv.own.owntv.core.i18n.LocaleStore.from(this).readBlocking()

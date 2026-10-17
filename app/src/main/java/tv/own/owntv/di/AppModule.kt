@@ -1,6 +1,7 @@
 package tv.own.owntv.di
 
 import tv.own.owntv.features.sports.SportsPlayback
+import tv.own.owntv.features.pip.PictureInPicture
 import tv.own.owntv.features.sports.SportsSettingsViewModel
 import tv.own.owntv.features.sports.SportsViewModel
 import org.koin.core.module.dsl.viewModel
@@ -61,6 +62,8 @@ val appModule = module {
     singleOf(::HomeFeedReader)
     // Sports Hub: which match the playing channel came from. Lazy; nothing runs until it is asked.
     singleOf(::SportsPlayback)
+    // Picture-in-picture when leaving the app: one instance shared by the activity and the shell.
+    singleOf(::PictureInPicture)
     // Process-long scope for work that must outlive the screen that started it (a first-run restore).
     single<kotlinx.coroutines.CoroutineScope> {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
