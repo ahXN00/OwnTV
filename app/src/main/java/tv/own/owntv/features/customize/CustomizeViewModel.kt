@@ -103,11 +103,15 @@ class CustomizeViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PinLock())
 
-    /** Set (or with null: remove) the PIN lock for this profile. */
+    /** Set (or with null: remove) the PIN lock for this profile. Removing it also drops every
+     *  category lock: without the PIN nothing could open them again. */
     fun setPin(pin: String?) {
         val pid = ctx.value.profileId
         if (pid < 0) return
-        viewModelScope.launch { settings.setCustomizePin(pid, pin) }
+        viewModelScope.launch {
+            if (pin == null) customize.clearCategoryLocks(pid)
+            settings.setCustomizePin(pid, pin)
+        }
     }
 
     private val _section = MutableStateFlow(MediaType.LIVE)

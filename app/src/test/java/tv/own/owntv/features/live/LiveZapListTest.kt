@@ -264,4 +264,49 @@ class LiveZapListTest {
         h.releaseWindow = false
         h.stop()
     }
+
+    @Test
+    fun `a relock takes the sealed folder's channels out of the list`() {
+        val h = Harness()
+        val mixed = list.mapIndexed { i, ch -> if (i % 2 == 0) ch.copy(categoryId = 20) else ch }
+        h.zap.armFromBrowse(mixed, title = "Favorites", key = LiveKey.Favorites, categoryId = null)
+        h.zap.dropCategories(setOf(20))
+        assertEquals(listOf(2L, 4L), h.zap.channels.value.map { it.id })
+        h.playing = 2
+        assertEquals(4L, h.zap.next(1)?.id)
+        assertEquals("Favorites", h.zap.title.value)
+        h.stop()
+    }
+
+    @Test
+    fun `a load that started before a relock publishes without the sealed folder`() {
+        val h = Harness(category = list.mapIndexed { i, ch -> if (i < 2) ch.copy(categoryId = 20) else ch })
+        h.releaseArming = true
+        h.zap.armFor(list[4])
+        h.zap.dropCategories(setOf(20))
+        h.releaseArming = false
+        h.await("the arming load") { h.zap.channels.value.isNotEmpty() }
+        assertEquals(listOf(3L, 4L, 5L), h.zap.channels.value.map { it.id })
+        h.stop()
+    }
+
+    @Test
+    fun `a folder the PIN opened again publishes its channels`() {
+        val h = Harness()
+        h.zap.dropCategories(setOf(10))
+        h.zap.dropCategories(emptySet())
+        h.zap.armFromBrowse(list, title = null, key = null, categoryId = 10)
+        assertEquals(list.map { it.id }, h.zap.channels.value.map { it.id })
+        h.stop()
+    }
+
+    @Test
+    fun `a relock that seals the whole list leaves nothing to zap`() {
+        val h = Harness()
+        h.zap.armFromBrowse(list, title = null, key = null, categoryId = 10)
+        h.zap.dropCategories(setOf(10))
+        assertEquals(emptyList<ChannelEntity>(), h.zap.channels.value)
+        assertFalse(h.zap.canZap.value)
+        h.stop()
+    }
 }

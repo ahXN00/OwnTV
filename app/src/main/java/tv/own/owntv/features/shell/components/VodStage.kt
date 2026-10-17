@@ -153,7 +153,7 @@ fun cinematicQualityBadges(qualityRank: Int, advertisedCapabilities: String?): L
 
 /** "Movies" 46/800, then the crumb "‹ **Disney+ Kids Movies** · 136 titles" (no ‹ when the column is on screen). */
 @Composable
-internal fun VodHeader(section: String, category: String, count: String, showChevron: Boolean, modifier: Modifier = Modifier) {
+internal fun VodHeader(section: String, category: String, count: String?, showChevron: Boolean, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(22.mpx), verticalAlignment = Alignment.Bottom) {
         Text(section, style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(
@@ -166,7 +166,7 @@ internal fun VodHeader(section: String, category: String, count: String, showChe
                 category, style = stageText(20, 700), color = stageAccent.accent,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
-            Text("· $count", style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (count != null) Text("· $count", style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -590,9 +590,9 @@ internal fun vodCategoryEntries(
                 LiveKey.Favorites -> OwnTVIcon.FAVORITE
                 LiveKey.History -> OwnTVIcon.HISTORY
                 LiveKey.All -> if (series) OwnTVIcon.SERIES else OwnTVIcon.MOVIES
-                else -> null
+                else -> if (item.locked) OwnTVIcon.LOCK else null
             },
-            count = counts[item.key],
+            count = if (item.sealed) null else counts[item.key],
             mark = item.sourceId?.let(marks::get),
         )
     }

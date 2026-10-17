@@ -657,7 +657,7 @@ class SettingsViewModel(
             sources.map { it.id }
         }
         if (sourceIds.isEmpty()) return emptyList()
-        val customizations = customizationStore.observe(profileId, tv.own.owntv.core.model.MediaType.LIVE).first()
+        val customizations = customizationStore.observeVisible(profileId, tv.own.owntv.core.model.MediaType.LIVE).first()
         val isKids = profileDao.getById(profileId)?.isKids == true
         val hiddenCategoryIds = tv.own.owntv.core.content.AdultCategoryClassifier.hiddenCategoryIds(
             categoryDao.observe(sourceIds, tv.own.owntv.core.model.MediaType.LIVE).first(),

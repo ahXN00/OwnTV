@@ -47,7 +47,7 @@ enum class OwnTVIcon {
     BEDTIME,
     // Stage marks with no older counterpart (see StageGlyphs.kt). TILES is the More destination.
     PLAY_CIRCLE, BELL, REC, CHEVRON_LEFT, GRID, LIST, CHECK, CLOCK, SUN, TREND, LAYERS, PENCIL,
-    EYE_OFF, MOVE, EXTERNAL, TRASH, MULTIVIEW, NOW, CALENDAR, TILES,
+    EYE_OFF, MOVE, EXTERNAL, TRASH, LOCK, MULTIVIEW, NOW, CALENDAR, TILES,
     // Audio mode's equaliser mark (the bar at rest, the rail's Now playing item).
     EQ,
     // The Sports Hub's trophy (rail, Settings → Sports).

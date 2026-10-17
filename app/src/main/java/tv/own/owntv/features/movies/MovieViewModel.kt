@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -38,7 +39,12 @@ import kotlinx.coroutines.launch
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.CustomizeKeys
 import tv.own.owntv.core.customize.SectionCustomizations
-import tv.own.owntv.core.customize.applyCustomizations
+import tv.own.owntv.core.content.movieCountFlow
+import tv.own.owntv.features.categorylock.clearWhenSealed
+import tv.own.owntv.features.categorylock.lockAwareCountsByContexts
+import tv.own.owntv.features.categorylock.visibleOnceRead
+import tv.own.owntv.core.customize.seals
+import tv.own.owntv.core.customize.sealsItemIn
 import tv.own.owntv.core.customize.CategoryMove
 import tv.own.owntv.core.customize.CategoryRailEditor
 import tv.own.owntv.core.customize.MoveKind
@@ -152,23 +158,23 @@ class MovieViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    /** This profile's customizations for Movies, null until read: the item lists wait for them. */
+    private val customOnceRead: StateFlow<SectionCustomizations?> = ctx
+        .flatMapLatest { c -> customize.visibleOnceRead(c.profileId, MediaType.MOVIE) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     /** This profile's hide/rename/reorder customizations for Movies. */
-    private val custom: StateFlow<SectionCustomizations> = ctx
-        .flatMapLatest { c ->
-            if (c.profileId < 0) flowOf(SectionCustomizations())
-            else customize.observe(c.profileId, MediaType.MOVIE)
-        }
+    private val custom: StateFlow<SectionCustomizations> = customOnceRead.filterNotNull()
         .stateIn(viewModelScope, SharingStarted.Eagerly, SectionCustomizations())
+    private val sealedCategoryIds: Flow<Set<Long>> = custom.map { it.sealedCategoryIds }.distinctUntilChanged()
 
     /** The user's custom combined categories with live member counts — the "Move to…" dialog's list. */
     val moveTargets: StateFlow<List<MoveTarget>> = combine(ctx, custom) { c, cust -> c to cust }
         .flatMapLatest { (c, cust) ->
             if (c.profileId < 0 || cust.customCategories.isEmpty()) flowOf(emptyList())
-            else customCategoryDao.observeCountsByContexts(
-                c.profileId,
-                MediaType.MOVIE,
-                cust.customCategories.map { it.id },
-                c.sourceIds.ifEmpty { listOf(-1L) },
+            else customCategoryDao.lockAwareCountsByContexts(
+                c.profileId, MediaType.MOVIE,
+                cust.customCategories.map { it.id }, c.sourceIds.ifEmpty { listOf(-1L) }, cust.sealedCategoryIds,
             ).map { counts ->
                 cust.customCategories.map { cc ->
                     MoveTarget(
@@ -236,8 +242,8 @@ class MovieViewModel(
 
     /** Customizations + resolved hidden-category ids, bundled so the list pipeline takes one flow. */
     private data class CustState(val cust: SectionCustomizations, val hiddenCats: Set<Long>)
-    private val custResolved: StateFlow<CustState> = combine(custom, hiddenCategoryIds) { c, h -> CustState(c, h) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CustState(SectionCustomizations(), emptySet()))
+    private val custResolved: StateFlow<CustState?> = combine(customOnceRead, hiddenCategoryIds) { c, h -> c?.let { CustState(it, h) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** List ordering for this section (Provider order vs A–Z), persisted in DataStore. */
     val sortMode: StateFlow<SettingsRepository.SortMode> = settings.sortMovies
@@ -347,6 +353,7 @@ class MovieViewModel(
     private var playingRef: PlayingRef? = null
 
     init {
+        viewModelScope.clearWhenSealed(_selectedMovie, sealedCategoryIds) { it.categoryId }
         // Periodically persist resume position for the movie currently playing. This is the crash
         // backstop; the real saves happen on pause (below) and on leaving the player.
         viewModelScope.launch {
@@ -387,7 +394,7 @@ class MovieViewModel(
             if (c.profileId < 0) flowOf(defaultRail)
             else combine(
                 categoryDao.observe(c.sourceIds, MediaType.MOVIE),
-                customize.observe(c.profileId, MediaType.MOVIE),
+                customize.observeVisible(c.profileId, MediaType.MOVIE),
                 sortMode,
                 profileDao.observeById(c.profileId),
             ) { cats, cust, sort, profile ->
@@ -404,7 +411,7 @@ class MovieViewModel(
                 defaultRail + folders.map { e ->
                     LiveRailItem(
                         key = e.categoryId?.let { LiveKey.Folder(it) } ?: LiveKey.Custom(e.customId!!),
-                        title = e.displayName,
+                        title = e.displayName, locked = e.locked, sealed = e.sealed,
                         providerName = e.categoryId
                             ?.let(categoriesById::get)
                             ?.sourceId
@@ -419,7 +426,7 @@ class MovieViewModel(
     val movies: Flow<PagingData<MovieEntity>> = combine(
         _selected, ctx, _search.map { it.trim() }.debounce(300).distinctUntilChanged(), sortMode, _listRefresh,
     ) { key, c, query, sort, _ -> Args(key, c, query, sort) }
-        .combine(custResolved) { args, cs -> args to cs }
+        .combine(custResolved.filterNotNull()) { args, cs -> args to cs }
         // Rebuild the pager when a folder gains/loses manual order (C3): the fast-path plain
         // PagingSource doesn't observe content_order, so the switch must recreate it.
         .combine(orderedContexts) { p, _ -> p }
@@ -431,9 +438,9 @@ class MovieViewModel(
             }.flow.map { paging ->
                 val cust = cs.cust
                 val movedFrom = cust.movedFromOrigin
-                if (cust.hiddenItems.isEmpty() && cust.itemNames.isEmpty() && cs.hiddenCats.isEmpty() && movedFrom.isEmpty()) paging
+                if (cust.hiddenItems.isEmpty() && cust.itemNames.isEmpty() && cs.hiddenCats.isEmpty() && movedFrom.isEmpty() && cust.sealedCategories.isEmpty()) paging
                 else paging.filter { m ->
-                    CustomizeKeys.movie(m) !in cust.hiddenItems &&
+                    CustomizeKeys.movie(m) !in cust.hiddenItems && !cust.seals(args.key) && !cust.sealsItemIn(m.categoryId) &&
                         (m.categoryId == null || m.categoryId !in cs.hiddenCats) &&
                         // Moved-out items leave ONLY their origin folder (they stay in All/search).
                         (movedFrom[CustomizeKeys.movie(m)]?.let { origin ->
@@ -449,18 +456,18 @@ class MovieViewModel(
 
     private data class Args(val key: LiveKey, val ctx: Ctx, val query: String, val sort: SettingsRepository.SortMode)
 
-    val count: StateFlow<Int> = combine(_selected, ctx, hiddenCategoryIds) { key, c, hidden -> Triple(key, c, hidden) }
-        .flatMapLatest { (key, c, hidden) -> countFlow(key, c, hidden).throttleLatest() } // C2: cap live COUNT re-runs during bulk sync
+    val count: StateFlow<Int> = combine(_selected, ctx, hiddenCategoryIds, sealedCategoryIds) { key, c, hidden, sealed -> countFlow(key, c, hidden, sealed) }
+        .flatMapLatest { it.throttleLatest() } // C2: cap live COUNT re-runs during bulk sync
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** The count beside every category (Stage sheet / column): one grouped query for the folders. */
-    val railCounts: StateFlow<Map<LiveKey, Int>> = combine(ctx, hiddenCategoryIds, railItems) { c, hidden, items -> Triple(c, hidden, items) }
-        .flatMapLatest { (c, hidden, items) ->
-            val single = items.filter { it.key !is LiveKey.Folder }.map { item -> countFlow(item.key, c, hidden).map { mapOf(item.key to it) } }
+    val railCounts: StateFlow<Map<LiveKey, Int>> = combine(ctx, hiddenCategoryIds, railItems, sealedCategoryIds) { c, hidden, items, sealed ->
+            val single = items.filter { it.key !is LiveKey.Folder }.map { item -> countFlow(item.key, c, hidden, sealed).map { mapOf(item.key to it) } }
             val folders = movieDao.observeCountsByCategory(c.sourceIds.ifEmpty { listOf(-1L) })
                 .map { rows -> rows.associate { LiveKey.Folder(it.categoryId) as LiveKey to it.itemCount } }
             combine(single + folders) { parts -> parts.fold(emptyMap<LiveKey, Int>()) { acc, m -> acc + m } }.throttleLatest()
         }
+        .flatMapLatest { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Which playlist a title or category comes from (GOLD / JR), only while more than one is shown. */
@@ -640,7 +647,7 @@ class MovieViewModel(
     fun playExternal(movie: MovieEntity) {
         viewModelScope.launch {
             val pid = currentProfileId()
-            if (pid != null && !tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao)) return@launch
+            if (pid != null && (!tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao) || customize.sealsCategory(pid, movie.categoryId))) return@launch
             Log.d(TAG, "playExternal movieId=${movie.id}")
             val url = resolvedUrlOrNull(movie) ?: return@launch
             val source = sourceDao.getById(movie.sourceId)
@@ -662,7 +669,7 @@ class MovieViewModel(
     fun play(movie: MovieEntity, startPositionMs: Long = 0) {
         viewModelScope.launch {
             val pid = currentProfileId()
-            if (pid != null && !tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao)) return@launch
+            if (pid != null && (!tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao) || customize.sealsCategory(pid, movie.categoryId))) return@launch
             // External player (global toggle): hand the stream URL to an external app and skip the
             // in-app engine entirely. History is still recorded (recently-watched); resume position
             // and the playing-movie HUD/progress tick are intentionally not — the external app owns
@@ -768,7 +775,7 @@ class MovieViewModel(
     fun download(movie: MovieEntity) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            if (!tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao)) return@launch
+            if (!tv.own.owntv.core.content.AdultCategoryClassifier.allows(pid, movie.categoryId, profileDao, categoryDao) || customize.sealsCategory(pid, movie.categoryId)) return@launch
             downloadManager.enqueue(
                 profileId = pid,
                 mediaType = MediaType.MOVIE,
@@ -901,6 +908,9 @@ class MovieViewModel(
     private fun playerIsOn(ref: PlayingRef): Boolean =
         if (ref.contentKey != null) player.currentMediaContentKey == ref.contentKey
         else player.currentMediaUrl != null && player.currentMediaUrl == ref.movie.streamUrl
+
+    /** The category of the film the player is on now, if it is one of ours. */
+    fun playingCategoryId(): Long? = playingRef?.takeIf { !player.isLiveContent && playerIsOn(it) }?.movie?.categoryId
 
     /** Persist the resume position if the player is still on the movie we started. */
     fun saveProgressNow() {
@@ -1065,18 +1075,8 @@ class MovieViewModel(
         }
     }
 
-    private fun countFlow(key: LiveKey, c: Ctx, hiddenCats: Set<Long>): Flow<Int> {
-        val ids = c.sourceIds.ifEmpty { listOf(-1L) }
-        return when (key) {
-            LiveKey.All, LiveKey.Catchup ->
-                if (hiddenCats.isEmpty()) movieDao.countAll(ids)
-                else movieDao.countAllExcluding(ids, hiddenCats.toList())
-            LiveKey.Favorites -> movieDao.countFavorites(c.profileId, ids)
-            LiveKey.History -> movieDao.countHistory(c.profileId, ids)
-            is LiveKey.Custom -> customCategoryDao.countMembers(c.profileId, MediaType.MOVIE, key.id, ids)
-            is LiveKey.Folder -> movieDao.countByCategory(key.id)
-        }
-    }
+    private fun countFlow(key: LiveKey, c: Ctx, hiddenCats: Set<Long>, sealedCats: Set<Long>): Flow<Int> =
+        movieCountFlow(key, c.profileId, c.sourceIds, hiddenCats, movieDao, customCategoryDao, sealedCats)
 
     // Remember the last selected category (Settings → Browsing & lists → "Remember last category —
     // Movies", on by default). Declared LAST in the class so railItems below/above is already assigned

@@ -458,6 +458,16 @@ class EpgViewModel(
             .drop(if (epgActivity.active.value.isEmpty()) 1 else 0)
             .onEach { load() }
             .launchIn(viewModelScope)
+        // Reload when a category lock closes or opens (the relock on leaving the app, a PIN entry), so
+        // the grid and the zap list armed from it follow. drop(1): the screen triggers the initial load.
+        settings.activeProfileId
+            .flatMapLatest { pid ->
+                if (pid < 0) flowOf(emptySet()) else customize.observeVisible(pid, MediaType.LIVE).map { it.sealedCategories }
+            }
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach { load() }
+            .launchIn(viewModelScope)
     }
 
     /** The Guide's current sort, for the header button. */
@@ -515,7 +525,7 @@ class EpgViewModel(
     fun playCatchupExternal(channel: ChannelEntity, programme: EpgProgrammeEntity) {
         viewModelScope.launch {
             val profileId = settings.activeProfileId.first()
-            if (!tv.own.owntv.core.content.AdultCategoryClassifier.allows(profileId, channel.categoryId, profileDao, categoryDao)) return@launch
+            if (!tv.own.owntv.core.content.AdultCategoryClassifier.allows(profileId, channel.categoryId, profileDao, categoryDao) || customize.sealsCategory(profileId, channel.categoryId)) return@launch
             val url = withContext(kotlinx.coroutines.Dispatchers.IO) { catchupUrlFor(channel, programme) }
             if (url == null) {
                 _matchSummary.value = EpgMatchSummary.CatchupUnavailable
@@ -922,7 +932,7 @@ class EpgViewModel(
         val windowEnd = nowAligned + settings.guideDaysToKeep.first() * DAY_MS
 
         // Respect customizations: hidden channels stay out of the guide, renames show.
-        val cust = customize.observe(pid, MediaType.LIVE).first()
+        val cust = customize.observeVisible(pid, MediaType.LIVE).first()
         val q = _query.value.trim()
         val rawChannels = if (settings.guideShowEmpty.first()) channelDao.channelsForGuide(playlistIds, q, MAX_CHANNELS)
             else channelDao.channelsWithGuide(ids, q, MAX_CHANNELS)
@@ -945,7 +955,7 @@ class EpgViewModel(
         val folderKey = (filter as? tv.own.owntv.core.live.LiveKey.Folder)
             ?.let { categoryDao.getById(it.id) }?.let(CustomizeKeys::category)
         val memberIds: Set<Long>? = when (filter) {
-            is tv.own.owntv.core.live.LiveKey.Custom -> customCategoryDao.itemIds(pid, MediaType.LIVE, filter.id).toSet()
+            is tv.own.owntv.core.live.LiveKey.Custom -> if (filter.id in cust.sealedCategories) emptySet() else customCategoryDao.itemIds(pid, MediaType.LIVE, filter.id).toSet()
             tv.own.owntv.core.live.LiveKey.Favorites -> favoriteIds
             tv.own.owntv.core.live.LiveKey.History ->
                 historyDao.getForProfileType(pid, MediaType.LIVE).mapTo(HashSet()) { it.itemId }
@@ -955,7 +965,7 @@ class EpgViewModel(
         // the main thread (#3/#5) so a 50k-channel playlist never freezes the UI building the guide list.
         val channels = withContext(Dispatchers.Default) {
             val auto = rawChannels
-                .filter { CustomizeKeys.channel(it) !in cust.hiddenItems }
+                .filter { CustomizeKeys.channel(it) !in cust.hiddenItems && it.categoryId !in cust.sealedCategoryIds }
                 .filter {
                     memberIds != null || it.categoryId == null || it.categoryId !in hiddenCatIds
                 }

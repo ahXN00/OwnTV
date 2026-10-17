@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,7 +30,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,7 +48,6 @@ import tv.own.owntv.features.settings.StageAction
 import tv.own.owntv.features.settings.StageActionColumn
 import tv.own.owntv.features.settings.SpanHelpBlock
 import tv.own.owntv.core.model.MediaType
-import tv.own.owntv.core.util.Pin
 import tv.own.owntv.features.profiles.PinDialog
 import tv.own.owntv.features.settings.PickerDialog
 import tv.own.owntv.features.settings.SettingsViewModel
@@ -102,7 +99,6 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var deletingCategory by remember { mutableStateOf<CustomizeCatRow?>(null) }
     // PIN gate: asked on every entry (state is per-composition, so leaving the screen re-locks it).
     var unlocked by remember { mutableStateOf(false) }
-    var pinError by remember { mutableStateOf(false) }
     // Set/Change/Remove PIN flow (only reachable once unlocked).
     var editingPin by remember { mutableStateOf<PinEdit?>(null) }
     var firstPin by remember { mutableStateOf("") }
@@ -145,34 +141,9 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
 
     // Wait for the stored lock state before showing anything (no unlocked flash).
     if (!pinLock.loaded) return
-    if (pinLock.pin != null && !unlocked) {
-        Column(
-            modifier = modifier
-                .padding(start = 6.dp, end = 6.dp, bottom = 6.dp, top = tv.own.owntv.features.shell.components.StageContentTop)
-                .fillMaxSize()
-                .padding(horizontal = 40.dp, vertical = 28.dp),
-        ) {
-            Text(stringResource(R.string.settings_customize_title), style = tv.own.owntv.ui.theme.stageText(42, 800), color = tv.own.owntv.ui.theme.StageColors.Text)
-            Text(
-                stringResource(R.string.settings_customize_pin_locked),
-                style = tv.own.owntv.ui.theme.stageText(18, 500),
-                color = tv.own.owntv.ui.theme.StageColors.Muted,
-                modifier = Modifier.padding(top = 10.mpx),
-            )
-        }
-        PinDialog(
-            title = stringResource(if (pinError) R.string.settings_customize_wrong_pin else R.string.settings_customize_enter_pin),
-            onSubmit = { entered ->
-                if (entered == pinLock.pin || Pin.verify(entered, pinLock.pin)) {
-                    unlocked = true
-                    pinError = false
-                } else {
-                    pinError = true
-                }
-            },
-            onDismiss = onBack,
-            compact = true,
-        )
+    val storedPin = pinLock.pin
+    if (storedPin != null && !unlocked) {
+        CustomizePinGate(storedPin, onUnlocked = { unlocked = true }, onBack = onBack, modifier = modifier)
         return
     }
 
@@ -552,7 +523,7 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         when (mode) {
             PinEdit.REMOVE -> PinConfirmDialog(
                 title = stringResource(R.string.settings_customize_remove_pin_title),
-                message = stringResource(R.string.settings_customize_remove_pin_message),
+                message = stringResource(R.string.settings_customize_remove_pin_message) + " " + stringResource(R.string.settings_customize_remove_pin_locks),
                 confirmLabel = stringResource(R.string.settings_customize_remove),
                 onConfirm = { vm.setPin(null); editingPin = null },
                 onDismiss = { editingPin = null },

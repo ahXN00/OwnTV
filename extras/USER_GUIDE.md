@@ -788,6 +788,12 @@ Hide, rename, reorder, and **unhide**. Highlights:
   order. Other playlists, combined categories, favorites and guide matches are kept.
 - **Span select** — long-press a **Hide** or **move** button to act on a whole block at once.
 - **PIN lock** this screen with **Set PIN**.
+- **Lock a category with a PIN** — long-press a playlist category in Live TV, Movies or Series →
+  **Lock with PIN**. It uses this screen's PIN (the first lock asks you to set one). The category stays
+  in the list with a lock; its channels, films and shows stay out of everything else (search, Guide,
+  Home rows, CH+/−, counts, history, Downloads) until you open it with **Enter PIN**. It stays open
+  until OwnTV goes to the background or you switch profile. **Remove lock** in the same menu asks the
+  PIN, and removing this screen's PIN unlocks every category. 5 wrong PINs → a 30 s wait.
 
 ### 🔀 Reorder the long-press menus
 **Where:** Settings → Layout → **Long-press menus**

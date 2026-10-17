@@ -34,7 +34,8 @@ import tv.own.owntv.ui.components.OwnTVPopup
 import tv.own.owntv.ui.components.trapAllFocusExit
 
 /**
- * Long-press quick actions for a category (move / hide / restore). Restore is offered when
+ * Long-press quick actions for a category (move / hide / lock / restore). Lock with PIN or Remove lock
+ * is offered when [locked] is set, saying which of the two the category is. Restore is offered when
  * [resetLabel] is set and asks first, in a popup of its own listing [resetLines] (null while they are
  * still being worked out, empty when there is nothing to undo) — it has no undo of its own.
  */
@@ -49,6 +50,8 @@ fun CategoryContextMenu(
     resetLabel: String? = null,
     resetLines: List<String>? = null,
     onReset: () -> Unit = {},
+    locked: Boolean? = null,
+    onToggleLock: () -> Unit = {},
 ) {
     val focus = remember { FocusRequester() }
     var confirmingReset by remember { mutableStateOf(false) }
@@ -76,11 +79,18 @@ fun CategoryContextMenu(
                         icon = OwnTVIcon.EYE_OFF, modifier = if (!canMove) Modifier.focusRequester(focus) else Modifier,
                     )
                 }
+                if (locked != null) {
+                    tv.own.owntv.ui.stage.StageMenuItem(
+                        stringResource(if (locked) tv.own.owntv.R.string.content_category_unlock else tv.own.owntv.R.string.content_category_lock),
+                        onClick = onToggleLock, icon = OwnTVIcon.LOCK,
+                        modifier = if (!canMove && !canHide) Modifier.focusRequester(focus) else Modifier,
+                    )
+                }
                 if (resetLabel != null) {
                     tv.own.owntv.ui.stage.StageMenuItem(
                         resetLabel, onClick = { confirmingReset = true },
                         icon = OwnTVIcon.REFRESH,
-                        modifier = if (!canMove && !canHide) Modifier.focusRequester(focus) else Modifier,
+                        modifier = if (!canMove && !canHide && locked == null) Modifier.focusRequester(focus) else Modifier,
                     )
                 }
                 tv.own.owntv.ui.stage.StageMenuItem(stringResource(tv.own.owntv.R.string.common_cancel), onClick = onDismiss, icon = OwnTVIcon.CLOSE)

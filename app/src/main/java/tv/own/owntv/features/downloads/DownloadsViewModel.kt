@@ -18,9 +18,13 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import tv.own.owntv.core.content.AdultCategoryClassifier
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.CustomizeKeys
+import tv.own.owntv.core.customize.ItemCategory
 import tv.own.owntv.core.customize.SectionCustomizations
+import tv.own.owntv.core.customize.sealsItem
+import tv.own.owntv.core.customize.sealsItemIn
 import tv.own.owntv.core.database.dao.DownloadDao
 import tv.own.owntv.core.database.dao.MovieDao
 import tv.own.owntv.core.database.dao.SeriesDao
@@ -28,6 +32,8 @@ import tv.own.owntv.core.database.entity.DownloadEntity
 import tv.own.owntv.core.download.DownloadManager
 import tv.own.owntv.core.model.MediaType
 import tv.own.owntv.core.settings.SettingsRepository
+import tv.own.owntv.features.categorylock.PlayingFileCategory
+import tv.own.owntv.features.categorylock.anyLockSealed
 import tv.own.owntv.player.OwnTVPlayer
 
 /** Phase 12 — lists the active profile's downloads and plays completed ones from local storage. */
@@ -47,6 +53,7 @@ class DownloadsViewModel(
     private val subtitleController: tv.own.owntv.core.subtitles.SubtitleController,
     private val metadata: tv.own.owntv.core.metadata.MetadataRepository,
     tracker: tv.own.owntv.core.download.DownloadActivityTracker,
+    private val playingFiles: PlayingFileCategory,
 ) : ViewModel() {
 
     /** What playing does to a running download on a one-stream playlist (the Downloads screen's tool). */
@@ -63,8 +70,10 @@ class DownloadsViewModel(
     /**
      * The profile's downloads, minus rows whose movie/series the user has hidden — a hidden title
      * disappears everywhere, Downloads included. The file stays on disk and the row reappears on
-     * unhide (Settings → Customize Category). Downloads whose source item no longer exists (deleted
-     * playlist / re-sync id churn) are kept — they can't be resolved to a hide key.
+     * unhide (Settings → Customize Category). A title in a locked category stays out the same way
+     * until the PIN opens that category. Downloads whose source item no longer exists (deleted
+     * playlist / re-sync id churn) are kept — they can't be resolved to a hide key — except while the
+     * profile has a lock that is not open: which category held them is unknown, so they stay out too.
      */
     val downloads: StateFlow<List<DownloadEntity>> = settings.activeProfileId
         .flatMapLatest { pid ->
@@ -73,12 +82,14 @@ class DownloadsViewModel(
             } else {
                 combine(
                 downloadDao.observeForProfile(pid),
-                customize.observe(pid, MediaType.MOVIE),
-                customize.observe(pid, MediaType.SERIES),
+                customize.observeVisible(pid, MediaType.MOVIE),
+                customize.observeVisible(pid, MediaType.SERIES),
                 profileDao.observeById(pid),
-            ) { list, custMovie, custSeries, profile ->
-                if (custMovie.hiddenItems.isEmpty() && custSeries.hiddenItems.isEmpty() && profile?.isKids != true) list
-                else list.filterNot { isHidden(it, custMovie, custSeries, profile?.isKids == true) }
+                customize.anyLockSealed(pid),
+            ) { list, custMovie, custSeries, profile, anySealed ->
+                val noSeals = !anySealed && custMovie.sealedCategoryIds.isEmpty() && custSeries.sealedCategoryIds.isEmpty()
+                if (custMovie.hiddenItems.isEmpty() && custSeries.hiddenItems.isEmpty() && noSeals && profile?.isKids != true) list
+                else list.filterNot { isHidden(it, custMovie, custSeries, profile?.isKids == true, anySealed) }
                 }
             }
         }
@@ -89,17 +100,18 @@ class DownloadsViewModel(
         custMovie: SectionCustomizations,
         custSeries: SectionCustomizations,
         isKidsProfile: Boolean,
+        anySealed: Boolean,
     ): Boolean = when (d.mediaType) {
         MediaType.MOVIE -> movieDao.getById(d.itemId)?.let { movie ->
-            CustomizeKeys.movie(movie) in custMovie.hiddenItems ||
-                (isKidsProfile && tv.own.owntv.core.content.AdultCategoryClassifier.isAdult(movie.categoryId?.let { categoryDao.getById(it)?.name }))
-        } ?: isKidsProfile
+            CustomizeKeys.movie(movie) in custMovie.hiddenItems || custMovie.sealsItemIn(movie.categoryId) ||
+                (isKidsProfile && AdultCategoryClassifier.isAdult(movie.categoryId?.let { categoryDao.getById(it)?.name }))
+        } ?: (isKidsProfile || custMovie.sealsItem(ItemCategory.Unresolved, anySealed))
         MediaType.EPISODE -> seriesDao.getEpisodeById(d.itemId)
             ?.let { ep -> seriesDao.getSeriesById(ep.seriesId) }
             ?.let { series ->
-                CustomizeKeys.series(series) in custSeries.hiddenItems ||
-                    (isKidsProfile && tv.own.owntv.core.content.AdultCategoryClassifier.isAdult(series.categoryId?.let { categoryDao.getById(it)?.name }))
-            } ?: isKidsProfile
+                CustomizeKeys.series(series) in custSeries.hiddenItems || custSeries.sealsItemIn(series.categoryId) ||
+                    (isKidsProfile && AdultCategoryClassifier.isAdult(series.categoryId?.let { categoryDao.getById(it)?.name }))
+            } ?: (isKidsProfile || custSeries.sealsItem(ItemCategory.Unresolved, anySealed))
         else -> false
     }
 
@@ -202,6 +214,7 @@ class DownloadsViewModel(
                 externalPlayerLauncher.launch(path, download.title)
                 return@launch
             }
+            playingFiles.started(path, categoryOf(download))
             player.play(path, title = download.title, isLive = false)
             setSubtitleContext(download, path)
         }
@@ -215,13 +228,24 @@ class DownloadsViewModel(
      */
     private suspend fun isDownloadAllowed(download: DownloadEntity, profileId: Long): Boolean = when (download.mediaType) {
         MediaType.MOVIE -> movieDao.getById(download.itemId)?.let {
-            tv.own.owntv.core.content.AdultCategoryClassifier.allows(profileId, it.categoryId, profileDao, categoryDao)
-        } ?: (profileDao.getById(profileId)?.let { !it.isKids } ?: false)
+            AdultCategoryClassifier.allows(profileId, it.categoryId, profileDao, categoryDao) && !customize.sealsCategory(profileId, it.categoryId)
+        } ?: allowsUnresolved(profileId)
         MediaType.EPISODE -> seriesDao.getEpisodeById(download.itemId)
             ?.let { seriesDao.getSeriesById(it.seriesId) }
-            ?.let { tv.own.owntv.core.content.AdultCategoryClassifier.allows(profileId, it.categoryId, profileDao, categoryDao) }
-            ?: (profileDao.getById(profileId)?.let { !it.isKids } ?: false)
+            ?.let { AdultCategoryClassifier.allows(profileId, it.categoryId, profileDao, categoryDao) && !customize.sealsCategory(profileId, it.categoryId) }
+            ?: allowsUnresolved(profileId)
         else -> true
+    }
+
+    /** A download whose film or show is gone: not on a kids profile, nor while a lock is closed (its category is unknown). */
+    private suspend fun allowsUnresolved(profileId: Long): Boolean =
+        profileDao.getById(profileId)?.isKids == false && !customize.sealsItem(profileId, ItemCategory.Unresolved)
+
+    /** The category of [download]'s film or show; null when its playlist no longer has it. */
+    private suspend fun categoryOf(download: DownloadEntity): Long? = when (download.mediaType) {
+        MediaType.MOVIE -> movieDao.getById(download.itemId)?.categoryId
+        MediaType.EPISODE -> seriesDao.getEpisodeById(download.itemId)?.let { seriesDao.getSeriesById(it.seriesId) }?.categoryId
+        else -> null
     }
 
     private suspend fun setSubtitleContext(download: DownloadEntity, localPath: String) {

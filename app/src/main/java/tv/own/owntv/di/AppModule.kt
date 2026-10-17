@@ -9,6 +9,9 @@ import org.koin.core.module.dsl.viewModelOf
 import tv.own.owntv.features.more.MoreCountsViewModel
 import tv.own.owntv.features.shell.RailCountsViewModel
 import org.koin.dsl.module
+import tv.own.owntv.features.categorylock.CategoryLockViewModel
+import tv.own.owntv.features.categorylock.PinAttemptLimiter
+import tv.own.owntv.features.categorylock.PlayingFileCategory
 import tv.own.owntv.features.customize.CustomizeItemsViewModel
 import tv.own.owntv.features.customize.CustomizeViewModel
 import tv.own.owntv.features.downloads.DownloadsViewModel
@@ -169,4 +172,10 @@ val appModule = module {
     viewModelOf(::MoreCountsViewModel)
     // The counts beside the sections in the open Stage rail.
     viewModelOf(::RailCountsViewModel)
+    // One count of wrong category-lock PINs for the whole app, so moving to another category or
+    // section does not start a fresh run of guesses. Monotonic clock: changing the time cannot end a wait.
+    single { PinAttemptLimiter(android.os.SystemClock::elapsedRealtime) }
+    viewModelOf(::CategoryLockViewModel)
+    // Which locked category a downloaded or recorded file the player is on belongs to, for the relock.
+    singleOf(::PlayingFileCategory)
 }

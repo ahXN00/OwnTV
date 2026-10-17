@@ -3,6 +3,7 @@ package tv.own.owntv.features.shell
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -11,6 +12,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import tv.own.owntv.core.content.AdultCategoryClassifier
+import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.database.dao.CategoryDao
 import tv.own.owntv.core.database.dao.ChannelDao
 import tv.own.owntv.core.database.dao.DownloadDao
@@ -25,6 +27,9 @@ import tv.own.owntv.core.model.MediaType
 import tv.own.owntv.core.nav.MainSection
 import tv.own.owntv.core.repository.activeProfileSources
 import tv.own.owntv.core.settings.SettingsRepository
+import tv.own.owntv.features.categorylock.lockAwareCount
+import tv.own.owntv.features.categorylock.recheckedOn
+import tv.own.owntv.features.categorylock.sealedCategoryIds
 
 /** The rail's details lines (Size = Extra wide), as data; the shell turns them into text. */
 data class RailDetails(
@@ -42,7 +47,9 @@ data class RailEpisode(val series: String, val season: Int, val episode: Int, va
 /**
  * The numbers beside Live TV, Movies, Series and Downloads in the open Stage rail, for the playlists
  * being shown ("All playlists" or the one picked), and the details lines under them. Every query
- * already exists on the DAOs; titles in adult categories stay hidden exactly as in the Continue pill.
+ * already exists on the DAOs; titles in adult or locked categories stay hidden exactly as in the
+ * Continue pill, and the counts leave out what a locked category holds. Both follow a lock closing
+ * or opening, not only new history.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RailCountsViewModel(
@@ -56,6 +63,7 @@ class RailCountsViewModel(
     progressDao: ProgressDao,
     profileDao: ProfileDao,
     categoryDao: CategoryDao,
+    customize: CustomizationStore,
 ) : ViewModel() {
 
     val counts: StateFlow<Map<MainSection, Int>> = activeProfileSources(settings, sourceDao)
@@ -63,10 +71,12 @@ class RailCountsViewModel(
             if (c.profileId < 0) return@flatMapLatest flowOf(emptyMap())
             // An empty id list would make the IN clause meaningless; -1 matches nothing.
             fun ids(type: MediaType) = c.sourceIdsFor(type).ifEmpty { listOf(-1L) }
+            fun count(type: MediaType, all: (List<Long>) -> Flow<Int>, excluding: (List<Long>, List<Long>) -> Flow<Int>) =
+                lockAwareCount(customize.sealedCategoryIds(c.profileId, type), { all(ids(type)) }) { excluding(ids(type), it) }
             combine(
-                channelDao.countAll(ids(MediaType.LIVE)),
-                movieDao.countAll(ids(MediaType.MOVIE)),
-                seriesDao.countAll(ids(MediaType.SERIES)),
+                count(MediaType.LIVE, channelDao::countAll, channelDao::countAllExcluding),
+                count(MediaType.MOVIE, movieDao::countAll, movieDao::countAllExcluding),
+                count(MediaType.SERIES, seriesDao::countAll, seriesDao::countAllExcluding),
                 downloadDao.count(c.profileId),
             ) { live, movies, series, downloads ->
                 mapOf(
@@ -82,16 +92,19 @@ class RailCountsViewModel(
     val details: StateFlow<RailDetails> = settings.activeProfileId
         .flatMapLatest { pid ->
             if (pid < 0) return@flatMapLatest flowOf(RailDetails())
-            suspend fun allowed(categoryId: Long?) = AdultCategoryClassifier.allows(pid, categoryId, profileDao, categoryDao)
-            val live = historyDao.observeMostRecentOfType(pid, MediaType.LIVE).map { h ->
+            suspend fun allowed(categoryId: Long?) =
+                AdultCategoryClassifier.allows(pid, categoryId, profileDao, categoryDao) && !customize.sealsCategory(pid, categoryId)
+            fun lastOf(type: MediaType, section: MediaType) =
+                historyDao.observeMostRecentOfType(pid, type).recheckedOn(customize.sealedCategoryIds(pid, section))
+            val live = lastOf(MediaType.LIVE, MediaType.LIVE).map { h ->
                 h?.let { channelDao.getById(it.itemId) }?.takeIf { allowed(it.categoryId) }?.name
             }
-            val movie = historyDao.observeMostRecentOfType(pid, MediaType.MOVIE).map { h ->
+            val movie = lastOf(MediaType.MOVIE, MediaType.MOVIE).map { h ->
                 h?.let { movieDao.getById(it.itemId) }
                     ?.takeIf { allowed(it.categoryId) && (progressDao.get(pid, MediaType.MOVIE, it.id)?.positionMs ?: 0L) > 0 }
                     ?.name
             }
-            val episode = historyDao.observeMostRecentOfType(pid, MediaType.EPISODE).map { h ->
+            val episode = lastOf(MediaType.EPISODE, MediaType.SERIES).map { h ->
                 val ep = h?.let { seriesDao.getEpisodeById(it.itemId) } ?: return@map null
                 val s = seriesDao.getSeriesById(ep.seriesId)?.takeIf { allowed(it.categoryId) } ?: return@map null
                 val pos = progressDao.get(pid, MediaType.EPISODE, ep.id)?.positionMs ?: 0L

@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +22,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import tv.own.owntv.core.customize.CategoryUnlockSession
+import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.nav.MainSection
 import tv.own.owntv.core.nav.NavVisibility
 import tv.own.owntv.core.network.ConnectivityObserver
@@ -34,6 +38,9 @@ import tv.own.owntv.core.theme.FontCustomization
 import tv.own.owntv.core.theme.ThemeMode
 import tv.own.owntv.core.theme.UiFontScale
 import tv.own.owntv.core.theme.UiZoom
+import tv.own.owntv.features.categorylock.RelockProfile
+import tv.own.owntv.features.categorylock.SealedPlaybackGuard
+import tv.own.owntv.features.categorylock.relockedProfiles
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ShellViewModel(
@@ -47,6 +54,8 @@ class ShellViewModel(
     private val weatherRepository: WeatherRepository,
     private val navVisibility: NavVisibility,
     private val profiles: tv.own.owntv.core.profile.ProfileManager,
+    private val categoryUnlocks: CategoryUnlockSession,
+    private val customize: CustomizationStore,
 ) : ViewModel() {
 
     companion object {
@@ -62,6 +71,8 @@ class ShellViewModel(
     /** The startup update check runs once per launch, not once per shell composition. */
     var startupUpdateCheckDone = false
 
+    private val relockProfile = RelockProfile()
+
     init {
         // One-time: move any existing playlist EPG into the new standalone EPG sources (v2.2.0).
         viewModelScope.launch { runCatching { epgMigration.run() } }
@@ -70,12 +81,59 @@ class ShellViewModel(
             settings.activeProfileId
                 .distinctUntilChanged()
                 .collect { pid ->
+                    // What the PIN opened belongs to the profile that entered it.
+                    relockFor(relockProfile.changeTo(pid))
                     Log.d(TAG, "activeProfileChanged profile=$pid androidTvHomeEnabled=${settings.androidTvHomeEnabled.first()}")
                     if (pid >= 0 && settings.androidTvHomeEnabled.first()) {
                         runCatching { launcherIntegrationRepository.refreshProfile(pid, allowBrowsableRequest = true) }
                     }
                 }
         }
+    }
+
+    /** Set by the shell while it is up: stops what plays from a category a relock seals. */
+    internal var sealedPlayback: SealedPlaybackGuard? = null
+    private var sealCheck: Job? = null
+    private var resumeAfterCheck: Job? = null
+
+    /**
+     * Closes every category the PIN opened; the app does this whenever it leaves the screen. Call it
+     * before the engines free their streams: what is playing is read first, then stopped if now sealed.
+     */
+    fun relockCategories() = relockFor(relockProfile.current)
+
+    /** [relockCategories], checking what plays against [opener]'s locks as well as the active profile's. */
+    private fun relockFor(opener: Long?) {
+        // Leaving again before the last return's resume ran: it must not start the engines in the background.
+        resumeAfterCheck?.cancel()
+        val guard = sealedPlayback
+        val playing = guard?.snapshot()
+        categoryUnlocks.relockAll()
+        if (guard == null || playing == null) return
+        val earlier = sealCheck
+        sealCheck = viewModelScope.launch {
+            earlier?.join()
+            guard.stopIfSealed(playing) { sealsNow(opener, it) }
+        }
+    }
+
+    /**
+     * Whether [opener], the profile whose PIN may have opened what plays, or the active one seals it.
+     * Fails closed: a category whose lock cannot be read is treated as sealed, so its playback stops.
+     */
+    private suspend fun sealsNow(opener: Long?, categoryId: Long): Boolean = try {
+        relockedProfiles(opener, settings.activeProfileId.first()).any { customize.sealsCategory(it, categoryId) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w(TAG, "relock check failed for category $categoryId; stopping its playback", e)
+        true
+    }
+
+    /** Back in front: [resume] what was freed only once the relock check has stopped what it sealed. */
+    fun afterSealCheck(resume: () -> Unit) {
+        val pending = sealCheck?.takeIf { it.isActive } ?: return resume()
+        resumeAfterCheck = viewModelScope.launch { pending.join(); resume() }
     }
 
     /** Whether the device currently has internet (drives the offline banner). */

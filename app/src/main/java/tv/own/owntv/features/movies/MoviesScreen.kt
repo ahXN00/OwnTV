@@ -2,6 +2,7 @@
 
 package tv.own.owntv.features.movies
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.CompositionLocalProvider
@@ -12,6 +13,8 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.layout
+import tv.own.owntv.ui.components.onDpadLeft
+import tv.own.owntv.features.categorylock.focusListAfterSheet
 import tv.own.owntv.features.live.LiveCategories
 import tv.own.owntv.core.live.ProviderTags
 import tv.own.owntv.features.live.edgeScrollSpec
@@ -96,9 +99,6 @@ import tv.own.owntv.features.live.displayLabel
 import org.koin.androidx.compose.koinViewModel
 import androidx.tv.material3.Text
 import tv.own.owntv.R
-import tv.own.owntv.core.customize.categoryRestoreSummary
-import tv.own.owntv.core.customize.CategoryRestorePlan
-import androidx.compose.runtime.produceState
 import tv.own.owntv.core.customize.CustomizeKeys
 import tv.own.owntv.core.database.entity.ContentOrderEntity
 import tv.own.owntv.core.database.entity.MovieEntity
@@ -109,7 +109,7 @@ import tv.own.owntv.core.settings.PanelSection
 import tv.own.owntv.features.settings.data.computePanelWidths
 import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.features.settings.rememberPanelShares
-import tv.own.owntv.features.shell.components.CategoryContextMenu
+import tv.own.owntv.features.shell.components.RailCategoryMenu
 import tv.own.owntv.features.shell.components.MediaDetailsScreen
 import tv.own.owntv.ui.components.MoveOrderOverlay
 import tv.own.owntv.ui.components.InAppToast
@@ -142,6 +142,7 @@ fun MoviesScreen(
     onEntryHook: (((() -> Boolean)?) -> Unit)? = null,
 ) {
     val vm: MovieViewModel = koinViewModel()
+    val lockVm: tv.own.owntv.features.categorylock.CategoryLockViewModel = koinViewModel()
     // Locking and unlocking are one pair: the pin belongs to this screen's lifetime, not to the view
     // model's. On the television that view model is a single instance shared with the browse section,
     // so a pin left behind froze its category rail. `DisposableEffect` (not `LaunchedEffect`) also
@@ -390,7 +391,7 @@ fun MoviesScreen(
         runCatching { selFocus.requestFocus() }.getOrDefault(false) ||
             runCatching { contextFocus.requestFocus() }.getOrDefault(false) ||
             runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)
-    // From the categories to the titles: the remembered movie, else the first; the search field when empty.
+    // From the categories to the titles: the remembered movie, else the first; a locked one's Enter PIN button; else the search field.
     fun focusTitles() {
         val targetId = if (rememberMovies) perCategoryMovieIds[selectedKey] ?: selectedMovie?.id else selectedMovie?.id
         scope.launch {
@@ -407,7 +408,7 @@ fun MoviesScreen(
                     }
                     withFrameNanos { }
                 }
-            } else {
+            } else if (!runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) {
                 runCatching { listSearchFocus.requestFocus() }
             }
         }
@@ -429,12 +430,12 @@ fun MoviesScreen(
     val panelShares = rememberPanelShares(PanelSection.MOVIES, settingsVm)
     val cinematicSheetPct by settingsVm.cinematicSheetWidth(PanelSection.MOVIES).collectAsStateWithLifecycle()
     val selectedMeta = selectedMovieMeta?.takeIf { it.movieId == selectedMovie?.id }?.cache
-    val titleInfo = selectedMovie?.let { movieTitleInfo(it, selectedMeta, metadataMode.tmdbWins) }
+    val titleInfo = selectedMovie?.takeUnless { selectedItem?.sealed == true || movies.itemCount == 0 }?.let { movieTitleInfo(it, selectedMeta, metadataMode.tmdbWins) }
     val (categoryEntries, groupsHeading) = vodCategoryEntries(railItems, railCounts, playlistMarks, series = false)
     val headerLabel = if (selectedItem?.key is LiveKey.Folder || selectedItem?.key is LiveKey.Custom) ProviderTags.parse(selectedLabel).name else selectedLabel
 
-    // Back closes the sheet: one level out.
-    androidx.activity.compose.BackHandler(enabled = categoriesOpen) { categoriesOpen = false; focusCurrentTitle() }
+    // Back closes the sheet: one level out, to the current title (or the list's way in when a lock emptied it).
+    BackHandler(enabled = categoriesOpen) { categoriesOpen = false; focusListAfterSheet(scope, ::focusCurrentTitle, { gridPaneFocused }, ::focusTitles) }
     LaunchedEffect(categoriesOpen) {
         if (categoriesOpen) { withFrameNanos { }; runCatching { railFocus.requestFocus() } }
         // However the sheet closed (Back, a pick, ◀ to the rail), the next one starts fresh.
@@ -448,7 +449,7 @@ fun MoviesScreen(
             // The sheet closes when focus leaves it (◀ to the rail) — not while its own menus are open,
             // and not on the "unfocused" report every node gets when it first attaches.
             if (it.hasFocus) sheetHadFocus = true
-            else if (sheetHadFocus && categoriesOpen && contextCategory == null && categoryMoveState == null) {
+            else if (sheetHadFocus && categoriesOpen && contextCategory == null && categoryMoveState == null && !lockVm.prompting) {
                 sheetHadFocus = false
                 categoriesOpen = false
             }
@@ -463,8 +464,10 @@ fun MoviesScreen(
             onJumpToIndex = { idx -> catFocusIndex = idx; railFocusRow = idx },
         )
     val onCategorySelect: (Int) -> Unit = { idx ->
-        railItems.getOrNull(idx)?.let { vm.select(it.key) }
-        if (categoriesOpen) { categoriesOpen = false; focusTitles() }
+        val item = railItems.getOrNull(idx)
+        item?.let { vm.select(it.key) }
+        if (item?.sealed == true) lockVm.open(tv.own.owntv.core.model.MediaType.MOVIE, item.key)
+        else if (categoriesOpen) { categoriesOpen = false; focusTitles() }
     }
     val onCategoryLongSelect: (Int) -> Unit = { idx ->
         railItems.getOrNull(idx)?.let { item ->
@@ -545,14 +548,14 @@ fun MoviesScreen(
         .focusGroup()
     // ◀ from the search field opens the categories, as from the titles — with a query too (a search that
     // found nothing here may be in another category), but not while typing, where ◀ moves the cursor.
+    // A locked category's Enter PIN opens them the same way.
     var searchEditing by remember { mutableStateOf(false) }
-    val searchLeft = Modifier.onPreviewKeyEvent { e ->
-        if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft && !searchEditing && lockedKey == null) {
-            if (cinematic) categoriesOpen = true else runCatching { railFocus.requestFocus() }
-            true
-        } else false
-    }
-    val emptyText = if (searchQuery.isNotBlank()) stringResource(R.string.content_no_movies_found, searchQuery.trim()) else stringResource(R.string.content_no_movies_here)
+    fun openCategories() { if (cinematic) categoriesOpen = true else runCatching { railFocus.requestFocus() } }
+    val searchLeft = Modifier.onDpadLeft({ !searchEditing && lockedKey == null }) { openCategories() }
+    val listPin = tv.own.owntv.features.categorylock.rememberListPinFocus(movies.itemCount, firstItemFocus, { scrollToIndex(0) }) { focusTitles() }
+    val sealed = selectedItem?.sealed == true
+    val onEnterPin: () -> Unit = { selectedItem?.let { listPin.askedFromList(); lockVm.open(tv.own.owntv.core.model.MediaType.MOVIE, it.key) } }
+    val emptyText = if (sealed) stringResource(R.string.content_category_locked_placeholder) else if (searchQuery.isNotBlank()) stringResource(R.string.content_no_movies_found, searchQuery.trim()) else stringResource(R.string.content_no_movies_here)
 
     BoxWithConstraints(
         modifier = modifier
@@ -568,7 +571,7 @@ fun MoviesScreen(
             Box(Modifier.fillMaxSize().then(if (categoriesOpen) Modifier.graphicsLayer { alpha = 0.36f } else Modifier)) {
                 VodCinematicBackdrop(titleInfo?.backdropUrl, series = false, Modifier.align(Alignment.TopEnd))
                 VodHeader(
-                    section = stringResource(R.string.common_nav_movies), category = headerLabel, count = vodCount(false, count),
+                    section = stringResource(R.string.common_nav_movies), category = headerLabel, count = vodCount(false, count).takeUnless { sealed },
                     showChevron = true, modifier = Modifier.padding(start = fx(84), top = 52.mpx).width(fx(900)),
                 )
                 titleInfo?.let { VodHero(it, Modifier.padding(start = fx(84), top = 122.mpx).width(fx(1000)).height(heroH)) }
@@ -593,7 +596,7 @@ fun MoviesScreen(
                         StageKeyHints(listOf(playHint, optionsHint, "◀" to stringResource(R.string.content_category_browser_title)))
                     }
                     if (movies.itemCount == 0) {
-                        Text(emptyText, style = stageText(20, 500), color = StageColors.Muted, modifier = Modifier.padding(start = fx(84), top = 60.mpx))
+                        tv.own.owntv.features.categorylock.CategoryEmptyState(emptyText, sealed, onEnterPin, firstItemFocus, Modifier.padding(start = fx(84), top = 60.mpx), onNavigateLeft = { openCategories() })
                     } else {
                         // The 196 × 294 posters, 26 apart, as many across as fit; the grid grows downwards
                         // (owner, 2026-10-01: the mockup's single row became a grid). Glow room on every side.
@@ -664,7 +667,7 @@ fun MoviesScreen(
             val top = if (locked) 0.mpx else 128.mpx
             if (!locked) {
                 VodHeader(
-                    section = stringResource(R.string.common_nav_movies), category = headerLabel, count = vodCount(false, count),
+                    section = stringResource(R.string.common_nav_movies), category = headerLabel, count = vodCount(false, count).takeUnless { sealed },
                     showChevron = false, modifier = Modifier.padding(start = fx(84), top = 52.mpx).width(fx(860)),
                 )
                 LiveCategories(
@@ -718,7 +721,7 @@ fun MoviesScreen(
                 }
                 if (movies.itemCount == 0) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(emptyText, style = stageText(20, 500), color = StageColors.Muted)
+                        tv.own.owntv.features.categorylock.CategoryEmptyState(emptyText, sealed, onEnterPin, firstItemFocus, horizontalAlignment = Alignment.CenterHorizontally, onNavigateLeft = { openCategories() }.takeIf { lockedKey == null })
                     }
                 } else if (viewMode == SettingsRepository.VodViewMode.LIST) {
                     Spacer(Modifier.height(20.mpx))
@@ -1099,19 +1102,21 @@ fun MoviesScreen(
     }
 
     contextCategory?.let { item ->
-        val restorePlan by produceState<CategoryRestorePlan?>(null, item.key) { value = vm.categoryRestorePlan(item.key) }
-        CategoryContextMenu(
-            categoryName = item.displayLabel(R.string.content_category_all_movies),
-            canHide = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
-            canMove = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
-            onHide = { vm.hideCategory(item.key); contextCategory = null },
-            onMove = { vm.enterCategoryMoveMode(item.key); contextCategory = null },
-            // Always offered: the plan is read in the background and only fills in the confirmation.
-            resetLabel = stringResource(if (item.key is LiveKey.Custom) R.string.content_category_restore_custom else R.string.content_category_restore_playlist),
-            resetLines = restorePlan?.let { categoryRestoreSummary(it, androidx.compose.ui.platform.LocalContext.current.resources) },
-            onReset = { vm.restoreCategory(item.key); contextCategory = null },
-            onDismiss = { contextCategory = null }
+        RailCategoryMenu(
+            item, item.displayLabel(R.string.content_category_all_movies), vm::categoryRestorePlan,
+            onHide = vm::hideCategory, onMove = vm::enterCategoryMoveMode, onRestore = vm::restoreCategory,
+            onToggleLock = { lockVm.toggleLock(tv.own.owntv.core.model.MediaType.MOVIE, it) },
+            onSealedAction = { key, action -> lockVm.open(tv.own.owntv.core.model.MediaType.MOVIE, key, action) },
+            onClose = { contextCategory = null },
         )
+    }
+    tv.own.owntv.features.categorylock.CategoryLockPrompts(
+        tv.own.owntv.core.model.MediaType.MOVIE,
+        onAction = { key, action -> action.run(key, vm::hideCategory, vm::enterCategoryMoveMode, vm::restoreCategory) },
+    ) { key, opened ->
+        if (listPin.takeClose(opened)) Unit
+        else if (opened && categoriesOpen) { categoriesOpen = false; focusTitles(); listPin.openedFromCategories() }
+        else railFocusRow = railItems.indexOfFirst { it.key == key }.takeIf { it >= 0 }
     }
 
     // Restore focus to the rail when the context menu or category move mode closes.

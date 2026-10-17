@@ -120,7 +120,8 @@ open class MainActivity : ComponentActivity() {
         // Backgrounded (Home / another app), exited, or logged out: stop playback and free the demuxer
         // cache + decoder buffers — holding them while invisible got the process LMK-killed on real TVs.
         // Every engine: mpv, the Live engine (its audio must stop too), each Multiview tile and the hero.
-        if (!isChangingConfigurations) engines.onAppBackgrounded()
+        // The relock first: it reads what is playing before the engines free it.
+        if (!isChangingConfigurations) { shellViewModel.relockCategories(); engines.onAppBackgrounded() }
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
@@ -129,7 +130,8 @@ open class MainActivity : ComponentActivity() {
         // Paired with onStop: bring back what was freed while backgrounded (notably the TV screensaver, which
         // kicks in during a long pause) — a VOD restored paused at its position, and a live channel re-tuned
         // to the live edge — so Play resumes instead of sitting on a dead/empty stream. No-op on fresh launch.
-        engines.onAppForegrounded()
+        // Not before the relock check is done: what it found sealed must not come back first.
+        shellViewModel.afterSealCheck { engines.onAppForegrounded() }
         // Staleness-based auto refresh on resume (interval modes only — STARTUP is cold-start only). The
         // ViewModel throttles this internally so a quick toggle doesn't re-run the check.
         shellViewModel.checkAutoRefresh(includeStartup = false)
