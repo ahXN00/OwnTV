@@ -196,9 +196,19 @@ class ShellViewModel(
     private val _selectedSection = MutableStateFlow(MainSection.HOME)
     val selectedSection: StateFlow<MainSection> = _selectedSection.asStateFlow()
 
+    // The section Settings was opened from, for Back out of its PIN prompt.
+    private var sectionBeforeSettings = MainSection.MORE
+
     fun selectSection(section: MainSection) {
+        if (section == MainSection.SETTINGS && _selectedSection.value != MainSection.SETTINGS) {
+            sectionBeforeSettings = _selectedSection.value
+        }
         _selectedSection.value = section
     }
+
+    /** Where to go when Settings stays locked: see [sectionAfterLockedSettings]. */
+    fun sectionToLeaveLockedSettings(): MainSection =
+        sectionAfterLockedSettings(sectionBeforeSettings, visibleSections.value)
 
     /** Which browse sections currently show as icons in the rail (v4.3.0 — Nav menu customization).
      *  The rule itself lives in core's [NavVisibility], shared with the mobile app's bottom bar. */

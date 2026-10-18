@@ -794,7 +794,8 @@ Hide, rename, reorder, and **unhide**. Highlights:
   are on (Live TV, Movies or Series): hidden categories and items, renames, category order and custom
   order. Other playlists, combined categories, favorites and guide matches are kept.
 - **Span select** — long-press a **Hide** or **move** button to act on a whole block at once.
-- **PIN lock** this screen with **Set PIN**.
+- **PIN lock** this screen with **Set PIN**. With a PIN set, **⋯ More → Ask for PIN to open Settings**
+  makes Settings ask for the same PIN each time it opens, on this profile. Removing the PIN turns it off.
 
 ### 🔀 Reorder the long-press menus
 **Where:** Settings → Layout → **Long-press menus**

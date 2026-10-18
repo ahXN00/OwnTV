@@ -11,6 +11,7 @@ import tv.own.owntv.features.shell.RailCountsViewModel
 import org.koin.dsl.module
 import tv.own.owntv.features.customize.CustomizeItemsViewModel
 import tv.own.owntv.features.customize.CustomizeViewModel
+import tv.own.owntv.features.settings.lock.SettingsPinViewModel
 import tv.own.owntv.features.downloads.DownloadsViewModel
 import tv.own.owntv.features.recordings.RecordingsViewModel
 import tv.own.owntv.features.epg.EpgViewModel
@@ -161,6 +162,7 @@ val appModule = module {
     viewModelOf(::RecordingsViewModel)
     viewModelOf(::EpgViewModel)
     viewModelOf(::CustomizeViewModel)
+    viewModelOf(::SettingsPinViewModel)
     viewModelOf(::CustomizeItemsViewModel)
     viewModelOf(::BackupViewModel)
     viewModelOf(::EpgSourcesViewModel)
