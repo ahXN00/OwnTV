@@ -7,6 +7,11 @@
 > Issue numbers that are part of a title are fine; explanatory parentheticals are not. The detail —
 > what, why, files and verification — belongs in the commit message, never here.
 
+## Unreleased
+
+### 🐛 Fixes
+- **📜 The update popup's What's new scrolls with Up and Down**
+
 ## v5.2.0 — 2026-10-17
 
 ### ✨ New features
