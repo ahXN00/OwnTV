@@ -948,6 +948,13 @@ class LiveViewModel(
 
     fun revealDone() { _reveal.value = null }
 
+    /** The rail entry [channel] lives in: its own category, or All channels when that category is not in the rail. */
+    suspend fun railKeyOf(channel: ChannelEntity): LiveKey {
+        val folder = channel.categoryId?.let { LiveKey.Folder(it) } ?: return LiveKey.All
+        val inRail = kotlinx.coroutines.withTimeoutOrNull(2_000) { railItems.first { list -> list.any { it.key == folder } } } != null
+        return if (inRail) folder else LiveKey.All
+    }
+
     // The in-pane preview only plays once the user has actually focused a channel — so restoring the last
     // focused channel on startup positions focus & the details pane WITHOUT auto-previewing on launch (#6).
     private val _previewArmed = MutableStateFlow(false)

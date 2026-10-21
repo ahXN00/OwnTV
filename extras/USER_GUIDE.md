@@ -630,7 +630,9 @@ creates a profile, and in Settings → **Profile** when you edit one.
 
 ### 🚀 Where a profile opens
 **Where:** Settings → App → **App startup**
-**Home**, **Last channel**, **Live Favorites**, or one chosen channel picked from a searchable list.
+**Home**, **Last channel** (full screen), **Last channel · TV Guide** or **Last channel · Live TV**
+(that screen opens on the channel's category with the channel focused and in the preview),
+**Live Favorites**, or one chosen channel picked from a searchable list.
 
 ---
 

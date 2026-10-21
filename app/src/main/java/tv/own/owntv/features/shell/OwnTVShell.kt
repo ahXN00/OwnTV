@@ -440,9 +440,9 @@ fun OwnTVShell(
     val resumeSettings = koinInject<tv.own.owntv.core.settings.SettingsRepository>()
     val startupChannelUnavailable = androidx.compose.ui.res.stringResource(tv.own.owntv.R.string.settings_startup_channel_unavailable)
     LaunchedEffect(Unit) {
-        if (playerMode != PlayerMode.NONE) return@LaunchedEffect
+        if (playerMode != PlayerMode.NONE) { StartupGate.settled = true; return@LaunchedEffect }
         val pid = resumeSettings.activeProfileId.first()
-        when (resumeSettings.startupMode(pid).first()) {
+        when (val startupMode = resumeSettings.startupMode(pid).first()) {
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL -> {
                 val ch = liveVm.lastWatchedLiveChannel()
                 if (ch != null && playerMode == PlayerMode.NONE) {
@@ -451,6 +451,25 @@ fun OwnTVShell(
                     // provider context instead of permanently arming a one-item list that disables CH+/CH-.
                     liveVm.watchFullscreen(ch, emptyList())
                     playerMode = PlayerMode.FULLSCREEN
+                }
+            }
+            // The TV Guide or Live TV on the last channel's category, the channel focused and in the preview,
+            // as TiviMate opens. Live TV's list scrolls to it (revealChannel); a guide focuses its row on load.
+            tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_GUIDE,
+            tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_LIVE -> {
+                val ch = liveVm.lastWatchedLiveChannel()?.takeIf { liveVm.isVisibleToActiveProfile(it) }
+                val toGuide = startupMode == tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_GUIDE
+                if (ch != null && playerMode == PlayerMode.NONE) {
+                    if (!toGuide && resumeSettings.liveView.first() == tv.own.owntv.core.settings.SettingsRepository.LiveView.LIST) {
+                        liveVm.revealChannel(ch)
+                    } else {
+                        val key = liveVm.railKeyOf(ch)
+                        if (toGuide) epgVm.setCategoryFilter(key) else liveVm.select(key)
+                        epgVm.noteChannelTuned(ch)
+                        liveVm.onChannelFocused(ch)
+                        restoreFocus = true
+                    }
+                    onSelectSection(if (toGuide) MainSection.EPG else MainSection.LIVE_TV)
                 }
             }
             // Open straight to Live TV on the Favorites folder, with focus landing inside the channel list
@@ -495,6 +514,8 @@ fun OwnTVShell(
             }
             tv.own.owntv.core.settings.StartupMode.HOME -> Unit
         }
+        tv.own.owntv.core.util.Perf.stamp("startup-settled")
+        StartupGate.settled = true
     }
 
     // Movies/Series/Live load on first open via their reactive Paging flows — their indexed first page is

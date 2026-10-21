@@ -1465,6 +1465,8 @@ private fun startupLabel(mode: tv.own.owntv.core.settings.StartupMode): String =
     when (mode) {
         tv.own.owntv.core.settings.StartupMode.HOME -> R.string.settings_startup_home
         tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL -> R.string.settings_startup_last_channel
+        tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_GUIDE -> R.string.settings_startup_last_channel_guide
+        tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_LIVE -> R.string.settings_startup_last_channel_live
         tv.own.owntv.core.settings.StartupMode.FAVORITES -> R.string.settings_startup_favorites
         tv.own.owntv.core.settings.StartupMode.SPECIFIC_CHANNEL -> R.string.settings_startup_specific_channel
     },
