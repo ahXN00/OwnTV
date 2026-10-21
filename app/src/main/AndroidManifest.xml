@@ -35,6 +35,15 @@
         android:name="android.software.leanback"
         android:required="false" />
 
+    <!-- Voice search hands the listening to the system's speech recogniser, so no microphone permission
+         is needed. From Android 11 the app can only see that recogniser if it names the action here;
+         without it Search would hide the microphone even where one exists. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".OwnTVApp"
         android:allowBackup="false"

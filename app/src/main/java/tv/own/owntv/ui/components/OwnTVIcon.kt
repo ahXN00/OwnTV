@@ -52,6 +52,8 @@ enum class OwnTVIcon {
     EQ,
     // The Sports Hub's trophy (rail, Settings → Sports).
     SPORTS,
+    // Voice search, beside the search field.
+    MIC,
 }
 
 /** Parsed once: [StageGlyphPaths] in 24-unit coordinates. */

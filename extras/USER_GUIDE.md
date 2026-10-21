@@ -582,6 +582,9 @@ results; a film or show shows its poster panel.
 **TV Shows** lists programmes from the stored guide whose title matches, on now or within the next 12
 hours, with the channel and time; **OK** goes to that channel. With
 the box empty: **Jump to**, your recent searches, and Continue watching.
+**Voice search:** the 🎤 button right of the box listens through your TV's speech recogniser and
+searches what you say. It only appears where the device has one (most Google TV and Android TV
+devices do; many Fire TV and generic boxes don't).
 
 ### ⭐ Favourites
 **Where:** ⋯ More → Favourites

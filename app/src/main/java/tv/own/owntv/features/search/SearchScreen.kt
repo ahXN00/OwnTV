@@ -94,7 +94,6 @@ import tv.own.owntv.ui.stage.PlaylistMark
 import tv.own.owntv.ui.stage.StageKeyHints
 import tv.own.owntv.ui.stage.StagePlaylistMark
 import tv.own.owntv.ui.stage.StageRow
-import tv.own.owntv.ui.stage.StageSearchField
 import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.stage.StageTab
 import tv.own.owntv.ui.stage.StageTag
@@ -295,16 +294,13 @@ fun SearchScreen(
         } else {
             Text(stringResource(R.string.search_title), style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = titleModifier)
         }
-        StageSearchField(
+        SearchFieldRow(
             query = query,
             onQueryChange = vm::setQuery,
-            placeholder = stringResource(R.string.search_field_hint),
-            modifier = Modifier
-                .padding(start = listX, top = 118.mpx)
-                .width(listW)
-                .focusRequester(fieldFocus)
-                // ▼ lands on a filter button that is on, not whichever one is nearest below.
-                .focusProperties { down = if (searching) filterEntry else if (!showingResults) jumpFocus else FocusRequester.Default },
+            fieldFocus = fieldFocus,
+            // ▼ lands on a filter button that is on, not whichever one is nearest below.
+            focusDown = if (searching) filterEntry else if (!showingResults) jumpFocus else FocusRequester.Default,
+            modifier = Modifier.padding(start = listX, top = 118.mpx).width(listW),
         )
 
         if (!showingResults) {
