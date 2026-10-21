@@ -156,11 +156,12 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
     /**
      * App-wide Coil loader that fetches images through the app's OkHttpClient — so posters/logos get
      * the same player-style User-Agent and connection pooling our IPTV requests use (some panels reject
-     * default UAs). Crossfade smooths the grid as images stream in. The memory cache is capped well
-     * below Coil's default ~25% — on a 4K TV every megabyte belongs to the video pipeline, not to
-     * channel-logo bitmaps.
+     * default UAs). Crossfade (120 ms, off on low-RAM) smooths the grid as images stream in. The memory
+     * cache is 20% of the heap (12% on low-RAM), clamped to 24–96 MB — on a 4K TV every megabyte
+     * belongs to the video pipeline, not to channel-logo bitmaps.
      */
     override fun newImageLoader(context: PlatformContext): ImageLoader {
+        val lowRam = context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true
         // The shared client deliberately disables connection retries so catalog/EPG sync owns its retry
         // policy. That setting is harmful for CDN images, though: hosts such as image.tmdb.org publish
         // both IPv6 and IPv4, and some Android TV boxes resolve IPv6 first even when their IPv6 route is
@@ -179,7 +180,11 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             .build()
         return ImageLoader.Builder(context)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { imageHttpClient })) }
-            .memoryCache { MemoryCache.Builder().maxSizePercent(context, 0.10).build() }
+            .memoryCache {
+                MemoryCache.Builder()
+                    .maxSizeBytes(imageMemoryCacheBytes(Runtime.getRuntime().maxMemory(), lowRam))
+                    .build()
+            }
             // Explicit bounded disk cache: posters/logos survive across sessions instead of
             // re-downloading, capped so a 220k-item catalog can't eat the box's storage.
             .diskCache {
@@ -191,7 +196,7 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             // Opaque poster art doesn't need an alpha channel; RGB_565 halves bitmap memory
             // under the deliberately small memory cap.
             .allowRgb565(true)
-            .crossfade(true)
+            .crossfade(if (lowRam) 0 else 120)
             .build()
     }
 
@@ -224,4 +229,12 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // and used to leave mpv on a trimmed cache for the rest of the session.
         runCatching { GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.player.PlaybackEngines>()?.onTrimMemory(level) }
     }
+}
+
+private const val IMAGE_CACHE_MB = 1024L * 1024
+
+/** 20% of the heap (12% on low-RAM), clamped to 24–96 MB. */
+internal fun imageMemoryCacheBytes(heapBytes: Long, lowRam: Boolean): Long {
+    val fraction = if (lowRam) 0.12 else 0.20
+    return (heapBytes * fraction).toLong().coerceIn(24L * IMAGE_CACHE_MB, 96L * IMAGE_CACHE_MB)
 }
