@@ -296,6 +296,10 @@ feeds here — **Fill from playlist** takes the URL your playlist already carrie
 User-Agent and refresh interval. The refresh interval can also be **every N days**, the same choice a
 playlist offers.
 
+When two feeds list the same channel, the one higher on the list is used. Open a feed and choose
+**Move up** or **Move down** to set the order; a lower feed still fills any hours the higher one
+leaves empty.
+
 > **Playlist has no channel logos?** Turn on **Use this guide's channel logos** on the feed. Logos
 > then come from the XMLTV guide instead; channels the feed has no logo for keep the playlist's one.
 

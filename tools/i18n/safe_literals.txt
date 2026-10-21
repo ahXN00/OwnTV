@@ -281,8 +281,10 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/DeveloperScreen.kt	Developer
 1	technical	app/src/main/java/tv/own/owntv/features/settings/DeveloperScreen.kt	Forces a fresh TMDB trending download for every playlist, ignoring the multi-day fetch timer.
 1	technical	app/src/main/java/tv/own/owntv/features/settings/DeveloperScreen.kt	Rebuild Now Trending
-6	empty	app/src/main/java/tv/own/owntv/features/settings/EpgSourcesScreen.kt	\0
-2	technical	app/src/main/java/tv/own/owntv/features/settings/EpgSourcesScreen.kt	▶
+5	empty	app/src/main/java/tv/own/owntv/features/settings/EpgSourceForm.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/settings/EpgSourceForm.kt	▶
+1	technical	app/src/main/java/tv/own/owntv/features/settings/EpgSourceRow.kt	▶
+1	empty	app/src/main/java/tv/own/owntv/features/settings/EpgSourcesScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/EpgSourcesViewModel.kt	add
 1	technical	app/src/main/java/tv/own/owntv/features/settings/EpgSourcesViewModel.kt	manual_resync
 1	technical	app/src/main/java/tv/own/owntv/features/settings/EpgSourcesViewModel.kt	update
