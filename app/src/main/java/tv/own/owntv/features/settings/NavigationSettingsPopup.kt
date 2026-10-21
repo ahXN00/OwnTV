@@ -33,7 +33,7 @@ import tv.own.owntv.ui.theme.mpx
 import androidx.compose.foundation.layout.Spacer
 
 /**
- * Settings › Layout › Navigation: Floating or Docked as radio rows, then the rail's
+ * Settings › Layout › Navigation: Floating or Docked as radio rows, then Menu labels (see [MenuLabels]), the rail's
  * Size and Length (Docked + Compact adds Widen on focus), Menu items (Dynamic / Static; Static lists the sections as toggles) and, for Floating
  * only, the hide delay. OK on a value row steps to its next choice.
  */
@@ -80,6 +80,7 @@ fun NavigationSettingsPopup(
             )
         }
         StagePopupDivider()
+        MenuLabelsOption(style, size, widen, onSize, onWiden)
         StagePopupOption(
             title = stringResource(R.string.settings_size),
             subtitle = stringResource(R.string.settings_nav_size_desc),

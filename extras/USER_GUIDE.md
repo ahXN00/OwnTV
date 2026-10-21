@@ -558,6 +558,10 @@ switch channel rows between **Cards** and **On now** (an inline mini-guide).
 - **Floating** — rests as a small capsule over the content, opens when you move Left, and hides
   itself after **Hide after** (2, 4 or 8 s); Left at the edge calls it back. **Docked** — always on
   screen; the content makes room (recommended).
+- **Menu labels** — the one switch for names beside the icons: **Off**, **When focused** (the names
+  slide out over the content while the rail has focus) or **Always** (Docked only; the content makes
+  room). It sets Size and Widen on focus for you, and shows what they already say. Floating offers
+  Off and When focused, because a floating rail hides while you browse.
 - **Size** — **Compact** (icons), **Normal** (names), **Wide** (names and counts, profile line),
   **Extra wide** (also a detail line: last channel, the film to resume, downloads in progress…).
 - **Length** — **Fit to items**, or **Full height** with the profile at the bottom.
