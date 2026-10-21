@@ -387,6 +387,10 @@
 1	locale	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesAccountScreen.kt	zh-tw
 2	log	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesViewModel.kt	OpenSubtitles
 1	log	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesViewModel.kt	user-info refresh failed: ${it.message}
+1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_hold_ok
+1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_number_keys
+1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_short_ok
+1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_swap_ch
 1	technical	app/src/main/java/tv/own/owntv/features/settings/RecordingSettingsScreen.kt	rec_post_roll
 1	technical	app/src/main/java/tv/own/owntv/features/settings/RecordingSettingsScreen.kt	rec_pre_roll
 1	technical	app/src/main/java/tv/own/owntv/features/settings/RecordingSettingsScreen.kt	rec_reserve
@@ -407,6 +411,10 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	live_layout
 2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	live_opens_in
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	navigation
+1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_hold_ok
+1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_number_keys
+1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_short_ok
+1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_swap_ch
 2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	popup_size
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	quick_autoplay
 2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	quick_channel_numbers
@@ -874,6 +882,8 @@
 1	log	app/src/main/java/tv/own/owntv/player/FrameRateController.kt	AFR: video ${fps}fps matches no mode -> display default
 1	compiler	app/src/main/java/tv/own/owntv/player/FrameRateController.kt	DEPRECATION
 1	log	app/src/main/java/tv/own/owntv/player/FrameRateController.kt	FrameRate
+1	protocol	app/src/main/java/tv/own/owntv/player/MediaSpecDisplayText.kt	exoplayer
+1	protocol	app/src/main/java/tv/own/owntv/player/MediaSpecDisplayText.kt	mpv
 1	empty	app/src/main/java/tv/own/owntv/player/MiniPlayer.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/player/MiniPlayer.kt	miniControls
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerClock.kt	EEEdMMM
@@ -881,8 +891,6 @@
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerHud.kt	$k: $v
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerHud.kt	/ $it
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerHud.kt	?
-1	protocol	app/src/main/java/tv/own/owntv/player/PlayerHud.kt	exoplayer
-1	protocol	app/src/main/java/tv/own/owntv/player/PlayerHud.kt	mpv
 1	technical	app/src/main/java/tv/own/owntv/player/PlayerHud.kt	position: $reportPosition${reportDuration?.let { " / $it" }.orEmpty()}
 3	empty	app/src/main/java/tv/own/owntv/player/PlayerHudChrome.kt	\0
 2	technical	app/src/main/java/tv/own/owntv/player/PlayerHudChrome.kt	?

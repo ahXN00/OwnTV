@@ -32,6 +32,7 @@ import tv.own.owntv.features.settings.EpgSourcesViewModel
 import tv.own.owntv.features.settings.HomeSettingsViewModel
 import tv.own.owntv.features.settings.LanguageSettingsViewModel
 import tv.own.owntv.features.settings.OpenSubtitlesViewModel
+import tv.own.owntv.features.settings.PlayerButtonsSettingsViewModel
 import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.features.setup.DisplaySizeViewModel
 import tv.own.owntv.features.setup.SetupViewModel
@@ -105,6 +106,7 @@ val appModule = module {
     viewModelOf(::MovieViewModel)
     viewModelOf(::SportsViewModel)
     viewModelOf(::SportsSettingsViewModel)
+    viewModelOf(::PlayerButtonsSettingsViewModel)
     viewModelOf(::SeriesViewModel)
     viewModelOf(::SearchViewModel)
     viewModelOf(::ProfilesViewModel)

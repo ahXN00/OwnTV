@@ -136,6 +136,15 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 **Want different keys?** **Settings → Layout → Remote shortcuts** maps spare colour, number, channel
 and media keys to 26 actions — **Previous channel** among them. D-pad, Back, OK, volume, Home and power stay protected.
 
+**Player buttons**, on the same page, change four player keys. Every default is the behaviour above:
+
+| Option | Choices | Default |
+|---|---|---|
+| **Hold OK in the player** | Off, Channel list, Guide, Programme info (live channels only) | Off |
+| **OK when the controls are hidden** | Show controls, Channel list, Guide (live channels only; films keep Show controls) | Show controls |
+| **Swap channel up/down** | CH+ and Up go to the previous channel, CH− and Down to the next | Off |
+| **Number keys tune channels** | Off stops 0–9 from typing a channel number in the player | On |
+
 ---
 
 ## 📥 Playlists & sources

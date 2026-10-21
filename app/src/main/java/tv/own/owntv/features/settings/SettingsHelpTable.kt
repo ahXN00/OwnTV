@@ -4,7 +4,7 @@ import tv.own.owntv.R
 
 /*
  * The words of each Settings row on a Stage page, by row key: root rows by their own key
- * ("theme", "tab_SOURCES"), Video player rows by their Quick key ("vp_hw"), Recording rows by "rec_*".
+ * ("theme", "tab_SOURCES"), Video player rows by their Quick key ("vp_hw"), Recording rows by "rec_*", Player buttons rows by "pb_*".
  * A row's own title and description are used wherever a key is missing here; a long description
  * the row used to carry becomes its panel text when [SETTING_HELP] has nothing better.
  */
@@ -172,6 +172,10 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "vp_seek_step" to R.string.settings_help_seek_step,
     "vp_resume" to R.string.settings_help_resume,
     "vp_mini" to R.string.settings_help_mini,
+    "pb_hold_ok" to R.string.settings_help_player_hold_ok,
+    "pb_short_ok" to R.string.settings_help_player_short_ok,
+    "pb_swap_ch" to R.string.settings_help_player_swap_channel_keys,
+    "pb_number_keys" to R.string.settings_help_player_number_keys_tune,
 )
 
 /** For a switch row, whether On is the recommended value (the panel tags it). Absent = no tag. */
