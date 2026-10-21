@@ -126,7 +126,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 | **CH+ / CH−** | the channel, history or all-categories list over the player, Multiview's channel picker | Page by 10 items, like any browse list. **Long-press** jumps to first/last |
 | **Last channel** key | full-screen live | Back to the channel you watched before (press again to flip back). Also the clock button on the player bar |
 | **Up / Down** | full-screen live, controls hidden | Same as CH+/CH− |
-| **0–9** | full-screen live | Type a channel number to tune. OK submits, Back cancels |
+| **0–9** | full-screen live | Type a channel number to tune. OK submits, Back cancels. A playlist that carries no channel numbers (no `tvg-chno`) is numbered 1, 2, 3… in its file order |
 | **CH+ / CH−** | any browse list | Page by 10 items. **Long-press** jumps to first/last. In a category list it only moves the highlight — **OK** opens the category |
 | **Back** | category list with a search typed | Clears the search and jumps to the search box. The search stays while you watch a channel |
 | **Left** | anywhere in a screen, nothing further left | Back to the rail |
