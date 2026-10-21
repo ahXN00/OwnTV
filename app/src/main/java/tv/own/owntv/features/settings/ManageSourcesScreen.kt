@@ -85,6 +85,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var editingSource by remember { mutableStateOf<SourceEntity?>(null) }
     var confirmDelete by remember { mutableStateOf<SourceEntity?>(null) }
     var resyncChoice by remember { mutableStateOf<SourceEntity?>(null) }
+    var nameCleanup by remember { mutableStateOf<SourceEntity?>(null) }
     // Set while the "this will stop playback and take a while" confirmation is on screen.
     var confirmRetest by remember { mutableStateOf<SourceEntity?>(null) }
     val addFocus = remember { FocusRequester() }
@@ -315,12 +316,15 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         onEdit = { contextId = source.id; contextIndex = index; editingSource = source },
                         onTest = { contextId = source.id; contextIndex = index; vm.testSource(source) },
                         onResync = { contextId = source.id; contextIndex = index; resyncChoice = source },
+                        onCleanNames = { contextId = source.id; contextIndex = index; nameCleanup = source },
                         onCancelSync = { contextId = source.id; contextIndex = index; vm.cancelResync(source) },
                         onDelete = { contextId = source.id; contextIndex = index; confirmDelete = source },
                     )
                 }
             }
         }
+
+        nameCleanup?.let { src -> ChannelNameCleanupHost(src, onNeedsResync = { vm.resync(it) }, onDismiss = { nameCleanup = null }) }
 
         resyncChoice?.let { src ->
             ResyncChoiceDialog(
@@ -382,6 +386,7 @@ private fun SourceRow(
     onEdit: () -> Unit,
     onTest: () -> Unit,
     onResync: () -> Unit,
+    onCleanNames: () -> Unit,
     onCancelSync: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -422,6 +427,7 @@ private fun SourceRow(
             stringResource(if (syncState.isActive) R.string.settings_sources_cancel else R.string.settings_sources_resync),
             if (syncState.isActive) onCancelSync else onResync,
         ),
+        StageAction(OwnTVIcon.SPARKLE, stringResource(R.string.settings_sources_clean_names), onCleanNames),
         StageAction(OwnTVIcon.TRASH, stringResource(R.string.settings_sources_delete), onDelete, danger = true),
     )
     StageSettingRow(
@@ -532,44 +538,6 @@ internal fun ConfirmDialog(
         title = title, body = message, confirm = stringResource(confirmLabel),
         onConfirm = onConfirm, onCancel = onDismiss, focusCancel = true,
     )
-}
-
-/**
- * Resync picker: an ordinary refresh, or one that is also allowed to drop titles the provider has
- * stopped listing.
- *
- * A normal resync will not remove more than half a source's rows, because a truncated provider
- * response is indistinguishable from a genuinely shrunken catalog and guessing wrong wipes a working
- * playlist. The consequence is that a provider that really did drop a lot of titles leaves them
- * behind with no way out — this dialog is that way out, kept behind a deliberate choice.
- *
- * Focus starts on the ordinary refresh, so the common case is still Select-then-Select and a
- * mis-press can't trigger removals. Back cancels.
- */
-@Composable
-private fun ResyncChoiceDialog(
-    sourceName: String,
-    onNormal: () -> Unit,
-    onClean: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { focus.requestFocus() } }
-    tv.own.owntv.ui.stage.StagePopup(
-        onDismiss = onDismiss,
-        title = stringResource(R.string.settings_sources_resync_title_full, sourceName),
-        body = stringResource(R.string.settings_sources_resync_description),
-        buttons = { tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_cancel), onClick = onDismiss, height = 56.mpx, textSize = 19) },
-    ) {
-        tv.own.owntv.ui.stage.StagePopupOption(
-            title = stringResource(R.string.settings_sources_resync_now_full), onClick = onNormal, modifier = Modifier.focusRequester(focus),
-            leading = { tv.own.owntv.ui.stage.StagePopupIcon(OwnTVIcon.REFRESH) },
-        )
-        tv.own.owntv.ui.stage.StagePopupOption(
-            title = stringResource(R.string.settings_sources_resync_remove_full), onClick = onClean, danger = true,
-            leading = { tv.own.owntv.ui.stage.StagePopupIcon(OwnTVIcon.TRASH, tv.own.owntv.ui.theme.StageColors.Danger) },
-        )
-    }
 }
 
 /** How the user chose to add a source: fill it from another device (Remote) or type it here (Manual). */

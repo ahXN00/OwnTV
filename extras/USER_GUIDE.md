@@ -173,6 +173,15 @@ defaults to Live now, Movies/Series later, because Stalker VOD has no bulk endpo
 **Resync now** adds and updates. **Resync and remove missing titles** also drops what the provider
 has stopped listing. Neither touches your favourites, history, resume points or manual order.
 
+### ✨ Clean channel names
+**Where:** Settings → Sources & guide → Playlists → the playlist → **Names**
+Turn on **Clean channel names** and that playlist's channels lose a country prefix (`UK|`, `[US]`,
+`DE:`) and a quality tag at the end (`HD`, `FHD`, `4K`, `HEVC`) everywhere they appear: "UK| News
+One HD" shows as "News One". **Also remove** takes your own words, separated by `;`, removed from
+the start or end of every name. Saving refreshes the playlist. Guide matching still uses the
+provider's names, channels you renamed in Customize keep your name, and favourites and history stay
+put. Switch it off and the next refresh brings the original names back.
+
 ### 🗂️ Several playlists at once
 **Where:** the playlist pill in the top-right
 Pick **All playlists** or just one — it applies everywhere at once and survives a restart. A
