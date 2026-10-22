@@ -47,6 +47,8 @@ class ShellViewModel(
     private val weatherRepository: WeatherRepository,
     private val navVisibility: NavVisibility,
     private val profiles: tv.own.owntv.core.profile.ProfileManager,
+    private val catalogSyncScheduler: tv.own.owntv.core.sync.work.CatalogSyncScheduler,
+    private val importFinalizer: tv.own.owntv.core.sync.ImportFinalizer,
 ) : ViewModel() {
 
     companion object {
@@ -85,6 +87,26 @@ class ShellViewModel(
     /** The Auto refresh settings — core's [tv.own.owntv.core.sync.AutoRefresh], shared with the phone. */
     fun checkAutoRefresh(includeStartup: Boolean) {
         viewModelScope.launch { autoRefresh.check(includeStartup) }
+    }
+
+    /**
+     * The playlist menu's "Resync now": the same sync as Settings › Sources › Resync now, for
+     * [sources]. KEEP, so a playlist already syncing carries on instead of starting over.
+     */
+    fun resync(sources: List<tv.own.owntv.core.database.entity.SourceEntity>) {
+        viewModelScope.launch {
+            sources.forEach { source ->
+                Log.d(TAG, "resync enqueue sourceId=${source.id} from=playlist_menu")
+                val counts = importFinalizer.contentCounts(source.id)
+                catalogSyncScheduler.enqueueSync(
+                    source.id,
+                    reason = "manual_resync",
+                    contentTypes = tv.own.owntv.core.sync.SyncContentTypes.enabledOf(source),
+                    baseItemCount = counts.channels + counts.movies + counts.series,
+                    policy = androidx.work.ExistingWorkPolicy.KEEP,
+                )
+            }
+        }
     }
 
     val themeMode: StateFlow<ThemeMode> = settings.themeMode

@@ -750,7 +750,7 @@ fun OwnTVShell(
             }
             RemoteShortcutAction.OPEN_PLAYLIST_SWITCHER -> {
                 if (playerMode == PlayerMode.FULLSCREEN) dockPlayer()
-                if (playlists.size > 1) showPlaylistPicker = true
+                if (playlists.isNotEmpty()) showPlaylistPicker = true
             }
             RemoteShortcutAction.CONTINUE_LAST_WATCHED -> continueLastWatched()
             RemoteShortcutAction.FOCUS_NOW_PLAYING -> enterNowPlaying()
@@ -1361,7 +1361,8 @@ fun OwnTVShell(
                 },
                 audioBar = audioBarContent,
                 playlistLabel = playlistLabel,
-                playlistInteractive = playlists.size > 1,
+                // One playlist too: the menu also holds Resync now.
+                playlistInteractive = playlists.isNotEmpty(),
                 onPlaylistClick = { showPlaylistPicker = true },
                 // Out of reach from deep in a list: from the rail or on Home only.
                 pillsFocusable = focusedLayer == ShellLayer.SIDEBAR || clusterFocused || selectedSection == MainSection.HOME,
@@ -1914,6 +1915,7 @@ fun OwnTVShell(
                 pillLabel = playlistLabel,
                 pillBounds = playlistPillBounds,
                 onSelect = onSelectPlaylist,
+                onResync = { shellVm.resync(playlists.filter { it.id == activePlaylistId }.ifEmpty { playlists }) },
                 onDismiss = { showPlaylistPicker = false },
             )
         }
