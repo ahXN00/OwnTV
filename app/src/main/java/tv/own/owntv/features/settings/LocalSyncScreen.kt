@@ -101,10 +101,17 @@ fun LocalSyncScreen(
     val vm: LocalSyncViewModel = koinViewModel()
     val paired by vm.paired.collectAsStateWithLifecycle()
     val hosting by vm.hosting.collectAsStateWithLifecycle()
+    // The auto-sync settings, for the tile that shows when the next automatic run is due. The
+    // sheet that edits them uses the same view model — one screen, one set of settings.
+    val autoSyncVm: LocalAutoSyncViewModel = koinViewModel()
+    val autoSync by autoSyncVm.config.collectAsStateWithLifecycle()
 
     val ownFocus = remember { FocusRequester() }
     val firstFocus = entry ?: ownFocus
     val connectFocus = remember { FocusRequester() }
+    val autoSyncFocus = remember { FocusRequester() }
+    // The auto-sync sheet is a popup over this page, exactly like the steps below.
+    var showAutoSync by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     // Deliberately NOT started on entry. Which device hosts is the user's choice, on both apps and in
     // the same words — a television that quietly opened a listener the moment you looked at the
@@ -114,7 +121,7 @@ fun LocalSyncScreen(
     // accepted. In More the page is shown while the sheet still has focus, so it waits for OK / ▶.
     if (entry == null) LaunchedEffect(Unit) { restoreAfterDialogClose(firstFocus, scrollState, 0) }
     // Which row to put focus back on when a step popup closes.
-    val stepFocus = rememberDialogFocusRestore(anyDialogOpen = vm.step != null, scrollState = scrollState)
+    val stepFocus = rememberDialogFocusRestore(anyDialogOpen = vm.step != null || showAutoSync, scrollState = scrollState)
     // The listener runs while this page does, and not a moment longer.
     DisposableEffect(Unit) { onDispose { vm.stopHosting() } }
     BackHandler(enabled = vm.step != null || onBack != null) { if (vm.step != null) vm.cancel() else onBack?.invoke() }
@@ -147,6 +154,20 @@ fun LocalSyncScreen(
                 body = stringResource(R.string.local_sync_connect_description),
                 onClick = { stepFocus.value = connectFocus; vm.beginPairing() },
                 modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(connectFocus),
+            ) { OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx)) }
+        }
+        // The television's own schedule, under the two ways of syncing by hand. A tile of its own
+        // row: three tiles side by side on a television are three narrow ones, and this one is the
+        // only one that says when something will happen on its own.
+        Row(Modifier.fillMaxWidth().padding(top = 20.mpx)) {
+            SyncTile(
+                icon = OwnTVIcon.CLOCK,
+                title = stringResource(R.string.local_auto_sync_title),
+                // The timing, not a description: the question this tile answers is "how often", and
+                // the answer is one word.
+                body = stringResource(autoSync.timing.labelRes()),
+                onClick = { stepFocus.value = autoSyncFocus; showAutoSync = true },
+                modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(autoSyncFocus),
             ) { OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx)) }
         }
 
@@ -200,6 +221,9 @@ fun LocalSyncScreen(
             is LocalSyncViewModel.Step.Confirm -> StepPopup(vm::cancel) { ConfirmBlock(vm, step) }
             is LocalSyncViewModel.Step.Result -> StepPopup(vm::cancel) { ResultBlock(vm, step) }
         }
+        // The auto-sync settings, in the same kind of popup: it is a set of choices to be made
+        // before anything happens, and a page under the page would hide the page behind it.
+        if (showAutoSync) LocalAutoSyncSheet(onDismiss = { showAutoSync = false })
         Spacer(Modifier.height(40.mpx))
     }
 }
@@ -750,7 +774,8 @@ private fun SyncFailure.messageRes(): Int = when (this) {
     SyncFailure.Unknown -> R.string.local_sync_error_unknown
 }
 
-private fun BackupManager.Section.labelRes(): Int = when (this) {
+/** The words the backup sections are named by, everywhere in the app. */
+internal fun BackupManager.Section.labelRes(): Int = when (this) {
     BackupManager.Section.SOURCES -> R.string.settings_backup_section_sources
     BackupManager.Section.CUSTOMIZE -> R.string.settings_backup_section_customize
     BackupManager.Section.FAVORITES -> R.string.settings_backup_section_favorites
