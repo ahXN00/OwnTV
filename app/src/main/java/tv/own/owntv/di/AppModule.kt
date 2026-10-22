@@ -25,6 +25,7 @@ import tv.own.owntv.features.profiles.ProfileGateSessionViewModel
 import tv.own.owntv.features.profiles.ProfilesViewModel
 import tv.own.owntv.features.search.SearchViewModel
 import tv.own.owntv.features.series.SeriesViewModel
+import tv.own.owntv.features.settings.LocalAutoSyncViewModel
 import tv.own.owntv.features.settings.LocalSyncViewModel
 import tv.own.owntv.features.settings.BackupViewModel
 import tv.own.owntv.features.settings.DeleteSubtitlesViewModel
@@ -151,6 +152,7 @@ val appModule = module {
         )
     }
     viewModelOf(::LocalSyncViewModel)
+    viewModelOf(::LocalAutoSyncViewModel)
     viewModelOf(::HomeSettingsViewModel)
     viewModelOf(::LanguageSettingsViewModel)
     viewModelOf(::OpenSubtitlesViewModel)
