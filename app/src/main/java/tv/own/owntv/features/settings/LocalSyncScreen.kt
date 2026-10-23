@@ -56,6 +56,7 @@ import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
 import tv.own.owntv.core.backup.BackupManager
 import tv.own.owntv.core.companion.CompanionServerState
+import tv.own.owntv.core.sync.local.PairedDevice
 import tv.own.owntv.core.sync.local.SyncDirection
 import tv.own.owntv.core.sync.local.SyncFailure
 import tv.own.owntv.core.sync.local.shortCodes
@@ -101,17 +102,17 @@ fun LocalSyncScreen(
     val vm: LocalSyncViewModel = koinViewModel()
     val paired by vm.paired.collectAsStateWithLifecycle()
     val hosting by vm.hosting.collectAsStateWithLifecycle()
-    // The auto-sync settings, for the tile that shows when the next automatic run is due. The
-    // sheet that edits them uses the same view model — one screen, one set of settings.
+    // Every device's schedule, for the line under its row and for the sheet that edits one of
+    // them. The sheet uses the same view model — one screen, one set of settings.
     val autoSyncVm: LocalAutoSyncViewModel = koinViewModel()
-    val autoSync by autoSyncVm.config.collectAsStateWithLifecycle()
+    val autoSync by autoSyncVm.settings.collectAsStateWithLifecycle()
 
     val ownFocus = remember { FocusRequester() }
     val firstFocus = entry ?: ownFocus
     val connectFocus = remember { FocusRequester() }
-    val autoSyncFocus = remember { FocusRequester() }
-    // The auto-sync sheet is a popup over this page, exactly like the steps below.
-    var showAutoSync by remember { mutableStateOf(false) }
+    // The auto-sync sheet is a popup over this page, exactly like the steps below, and it edits
+    // one device — the row that opened it.
+    var autoSyncFor by remember { mutableStateOf<PairedDevice?>(null) }
     val scrollState = rememberScrollState()
     // Deliberately NOT started on entry. Which device hosts is the user's choice, on both apps and in
     // the same words — a television that quietly opened a listener the moment you looked at the
@@ -121,7 +122,7 @@ fun LocalSyncScreen(
     // accepted. In More the page is shown while the sheet still has focus, so it waits for OK / ▶.
     if (entry == null) LaunchedEffect(Unit) { restoreAfterDialogClose(firstFocus, scrollState, 0) }
     // Which row to put focus back on when a step popup closes.
-    val stepFocus = rememberDialogFocusRestore(anyDialogOpen = vm.step != null || showAutoSync, scrollState = scrollState)
+    val stepFocus = rememberDialogFocusRestore(anyDialogOpen = vm.step != null || autoSyncFor != null, scrollState = scrollState)
     // The listener runs while this page does, and not a moment longer.
     DisposableEffect(Unit) { onDispose { vm.stopHosting() } }
     BackHandler(enabled = vm.step != null || onBack != null) { if (vm.step != null) vm.cancel() else onBack?.invoke() }
@@ -156,21 +157,6 @@ fun LocalSyncScreen(
                 modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(connectFocus),
             ) { OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx)) }
         }
-        // The television's own schedule, under the two ways of syncing by hand. A tile of its own
-        // row: three tiles side by side on a television are three narrow ones, and this one is the
-        // only one that says when something will happen on its own.
-        Row(Modifier.fillMaxWidth().padding(top = 20.mpx)) {
-            SyncTile(
-                icon = OwnTVIcon.CLOCK,
-                title = stringResource(R.string.local_auto_sync_title),
-                // The timing, not a description: the question this tile answers is "how often", and
-                // the answer is one word.
-                body = stringResource(autoSync.timing.labelRes()),
-                onClick = { stepFocus.value = autoSyncFocus; showAutoSync = true },
-                modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(autoSyncFocus),
-            ) { OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx)) }
-        }
-
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
             Column(Modifier.weight(1f)) {
                 if (paired.isNotEmpty()) {
@@ -194,9 +180,17 @@ fun LocalSyncScreen(
                                 }
                             },
                             title = codes[device.id]?.let { stringResource(R.string.local_sync_device_with_code, device.name, it) } ?: device.name,
-                            line = listOfNotNull(device.address.takeIf { it.isNotBlank() }, lastSyncedText(device.lastSyncAt)).joinToString(sep),
+                            // The schedule is part of what the row says about the device: "last
+                            // synced an hour ago" and "daily by itself" are both true, and the
+                            // user should not have to open the sheet to find the second one.
+                            line = listOfNotNull(
+                                device.address.takeIf { it.isNotBlank() },
+                                lastSyncedText(device.lastSyncAt),
+                                autoSync[device.id].takeIf { it.enabled }?.let { stringResource(it.timing.labelRes()) },
+                            ).joinToString(sep),
                             actions = listOf(
                                 tv.own.owntv.features.more.RowAction(stringResource(R.string.settings_sync_now), OwnTVIcon.REFRESH) { stepFocus.value = rowFocus; vm.chooseDevice(device) },
+                                tv.own.owntv.features.more.RowAction(stringResource(R.string.local_auto_sync_title), OwnTVIcon.CLOCK) { stepFocus.value = rowFocus; autoSyncFor = device },
                                 tv.own.owntv.features.more.RowAction(stringResource(R.string.more_sync_unpair), OwnTVIcon.CLOSE) { vm.unpair(device) },
                             ),
                         )
@@ -223,7 +217,7 @@ fun LocalSyncScreen(
         }
         // The auto-sync settings, in the same kind of popup: it is a set of choices to be made
         // before anything happens, and a page under the page would hide the page behind it.
-        if (showAutoSync) LocalAutoSyncSheet(onDismiss = { showAutoSync = false })
+        autoSyncFor?.let { device -> LocalAutoSyncSheet(device, onDismiss = { autoSyncFor = null }) }
         Spacer(Modifier.height(40.mpx))
     }
 }
