@@ -70,6 +70,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.em
+import tv.own.owntv.ui.stage.StageConfirm
 import tv.own.owntv.ui.stage.StagePopupDivider
 import tv.own.owntv.ui.stage.StagePopupIcon
 import tv.own.owntv.ui.stage.StagePopupOption
@@ -89,8 +90,9 @@ import tv.own.owntv.ui.theme.stageText
  * here too — the phone can be found on the network and its PIN typed with the remote — so either
  * device can start a sync.
  *
- * Nothing arrives silently. A container pushed here becomes a summary of what it would change, and
- * waits for someone to press OK.
+ * Nothing arrives silently by hand: a container pushed here becomes a summary of what it would
+ * change, and waits for someone to press OK. The one exception is a device this one has accepted for
+ * automatic sync — that merge is the promise the acceptance made, and it lands without a summary.
  */
 @Composable
 fun LocalSyncScreen(
@@ -106,6 +108,9 @@ fun LocalSyncScreen(
     // them. The sheet uses the same view model — one screen, one set of settings.
     val autoSyncVm: LocalAutoSyncViewModel = koinViewModel()
     val autoSync by autoSyncVm.settings.collectAsStateWithLifecycle()
+    // A request from a paired device to sync here automatically. It arrives only while this
+    // device is hosting, and it is answered right here — the far side is waiting on it.
+    val autoSyncRequests by vm.autoSyncRequests.collectAsStateWithLifecycle()
 
     val ownFocus = remember { FocusRequester() }
     val firstFocus = entry ?: ownFocus
@@ -122,7 +127,10 @@ fun LocalSyncScreen(
     // accepted. In More the page is shown while the sheet still has focus, so it waits for OK / ▶.
     if (entry == null) LaunchedEffect(Unit) { restoreAfterDialogClose(firstFocus, scrollState, 0) }
     // Which row to put focus back on when a step popup closes.
-    val stepFocus = rememberDialogFocusRestore(anyDialogOpen = vm.step != null || autoSyncFor != null, scrollState = scrollState)
+    val stepFocus = rememberDialogFocusRestore(
+        anyDialogOpen = vm.step != null || autoSyncFor != null || autoSyncRequests.isNotEmpty(),
+        scrollState = scrollState,
+    )
     // The listener runs while this page does, and not a moment longer.
     DisposableEffect(Unit) { onDispose { vm.stopHosting() } }
     BackHandler(enabled = vm.step != null || onBack != null) { if (vm.step != null) vm.cancel() else onBack?.invoke() }
@@ -218,6 +226,20 @@ fun LocalSyncScreen(
         // The auto-sync settings, in the same kind of popup: it is a set of choices to be made
         // before anything happens, and a page under the page would hide the page behind it.
         autoSyncFor?.let { device -> LocalAutoSyncSheet(device, onDismiss = { autoSyncFor = null }) }
+        // Someone at the other end is holding a screen that says "waiting for acceptance". The
+        // question is answered here, on the device that would be synced with — and no by default,
+        // so a stray OK on the remote cannot grant it.
+        autoSyncRequests.firstOrNull()?.let { request ->
+            StageConfirm(
+                title = stringResource(R.string.local_auto_sync_accept_title),
+                body = stringResource(R.string.local_auto_sync_accept_body, request.deviceName),
+                confirm = stringResource(R.string.local_auto_sync_accept),
+                onConfirm = { vm.answerAutoSync(request.id, accepted = true) },
+                onCancel = { vm.answerAutoSync(request.id, accepted = false) },
+                cancel = stringResource(R.string.local_auto_sync_decline),
+                focusCancel = true,
+            )
+        }
         Spacer(Modifier.height(40.mpx))
     }
 }
@@ -761,7 +783,7 @@ private fun Change(labelRes: Int, count: Int) {
     )
 }
 
-private fun SyncFailure.messageRes(): Int = when (this) {
+internal fun SyncFailure.messageRes(): Int = when (this) {
     SyncFailure.Unreachable -> R.string.local_sync_error_unreachable
     SyncFailure.NotAuthorized -> R.string.local_sync_error_unauthorized
     SyncFailure.BadPayload -> R.string.local_sync_error_bad_payload
