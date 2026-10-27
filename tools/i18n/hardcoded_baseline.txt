@@ -35,6 +35,36 @@
 1	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	#FFEB3B
 2	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	#FFFFFF
 1	app/src/main/java/tv/own/owntv/features/shell/components/MediaDetailsScreen.kt	\0
+9	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	\0
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	1080
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	2160
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	265
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	480
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	4K
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	50FPS
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	576
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	60FPS
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	720
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	BACKUP
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	FHD
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	HD
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	HEVC
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	RAW
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	SD
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	UHD
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	VIP
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ]+
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	[|:\\-\\[\\]()]
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	\\b(UHD|4K|2160p|FHD|1080p|1080i|HD|720p|SD|576p|480p|HEVC|H\\.?265|50fps|60fps|RAW|VIP|BACKUP|ALT|SERVER\\s*\\d*|SERV\\s*\\d*|OPT\\s*\\d*|MULTI|M3U|DIRECTO)\\b
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	\\s+
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	^(\\s*(\\[[^\\]]*]|\\([^)]*\\)|[A-Za-z0-9_\\-]{2,10}\\s*[|:\\-•]\\s*))+
+1	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	·
+1	app/src/main/java/tv/own/owntv/player/PlayerHudChrome.kt	Fuentes ($variantsCount)
+1	app/src/main/java/tv/own/owntv/player/PlayerHudControls.kt	📺 $currentQuality ($variantsCount)
+1	app/src/main/java/tv/own/owntv/player/PlayerHudDialogs.kt	${variant.qualityLabel} — ${variant.channel.name}
+1	app/src/main/java/tv/own/owntv/player/PlayerHudDialogs.kt	Fuentes
+1	app/src/main/java/tv/own/owntv/player/PlayerHudDialogs.kt	STD
+1	app/src/main/java/tv/own/owntv/player/PlayerHudDialogs.kt	•
 1	app/src/main/java/tv/own/owntv/ui/components/ColorPicker.kt	#%06X
 1	app/src/main/java/tv/own/owntv/ui/components/TextInputDialog.kt	\0
 1	app/src/main/java/tv/own/owntv/ui/components/TvImeMetrics.kt	$trigger visible=${next.visible} source=${next.source} displayH=$displayHeight

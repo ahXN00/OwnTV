@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -427,9 +428,9 @@ private fun DialogScaffold(
 
 /** `.opt` with a radio: one of a list, the current one ringed. */
 @Composable
-private fun OptionRow(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun OptionRow(label: String, selected: Boolean, subtitle: String? = null, modifier: Modifier = Modifier, onClick: () -> Unit) {
     tv.own.owntv.ui.stage.StagePopupOption(
-        title = label, onClick = onClick, modifier = modifier, chosen = selected,
+        title = label, subtitle = subtitle, onClick = onClick, modifier = modifier, chosen = selected,
         leading = { f -> tv.own.owntv.ui.stage.StagePopupRadio(selected, f) },
     )
 }
@@ -438,4 +439,48 @@ private fun OptionRow(label: String, selected: Boolean, modifier: Modifier = Mod
 @Composable
 private fun ActionRow(label: String, icon: OwnTVIcon, onClick: () -> Unit) {
     tv.own.owntv.ui.stage.StagePopupOption(title = label, onClick = onClick, leading = { tv.own.owntv.ui.stage.StagePopupIcon(icon) })
+}
+
+@Composable
+fun ChannelVariantsDialog(
+    variants: List<ChannelVariant>,
+    currentChannelId: Long,
+    onVariantSelected: (ChannelVariant) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val selectedIndex = remember(variants, currentChannelId) {
+        variants.indexOfFirst { it.channel.id == currentChannelId }
+    }
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex > 0) {
+            listState.scrollToItem(selectedIndex)
+        }
+    }
+
+    DialogScaffold(
+        title = "Fuentes",
+        onDismiss = onDismiss,
+        state = listState,
+    ) {
+        items(variants) { variant ->
+            val isSelected = variant.channel.id == currentChannelId
+            val label = if (variant.qualityLabel.isNotBlank() && variant.qualityLabel != "STD") {
+                "${variant.qualityLabel} — ${variant.channel.name}"
+            } else {
+                variant.channel.name
+            }
+            val sub = listOfNotNull(variant.categoryName, variant.sourceName)
+                .distinct()
+                .filter { it.isNotBlank() }
+                .joinToString(" • ")
+
+            OptionRow(
+                label = label,
+                selected = isSelected,
+                subtitle = sub.ifBlank { null },
+                onClick = { onVariantSelected(variant) },
+            )
+        }
+    }
 }

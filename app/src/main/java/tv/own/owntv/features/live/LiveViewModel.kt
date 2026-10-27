@@ -2086,6 +2086,73 @@ class LiveViewModel(
         }
     }
 
+    // --- Variantes de calidad de canales (Multi-stream / Calidades SD, HD, FHD) ---
+
+    /**
+     * Lista reactiva de variantes del canal actual (mismo canal en distintas calidades o nombres).
+     * Se recalcula automáticamente cada vez que cambia el canal en reproducción (_previewChannel)
+     * o se actualizan las fuentes activas del perfil.
+     */
+    val channelVariants: StateFlow<List<tv.own.owntv.player.ChannelVariant>> = combine(
+        _previewChannel.filterNotNull(),
+        ctx
+    ) { currentChannel, currentCtx ->
+        if (currentCtx.sourceIds.isEmpty()) return@combine emptyList<tv.own.owntv.player.ChannelVariant>()
+
+        withContext(Dispatchers.IO) {
+            val sourceIds = currentCtx.sourceIds
+            val candidates = mutableSetOf<ChannelEntity>()
+
+            // 1. Criterio por EPG Channel ID (si tiene un tvg-id válido y compartido)
+            val epgId = currentChannel.epgChannelId?.trim()?.lowercase()
+            if (!epgId.isNullOrEmpty()) {
+                candidates.addAll(channelDao.byEpgKeys(sourceIds, listOf(epgId)))
+            }
+
+            // 2. Criterio por similitud de nombre base exacto (ej. "ANTENA 3")
+            val baseName = tv.own.owntv.player.ChannelVariantHelper.getBaseName(currentChannel.name)
+            val keyword = tv.own.owntv.player.ChannelVariantHelper.getSearchKeyword(currentChannel.name)
+            
+            if (baseName.length >= 3) {
+                val searchResults = channelDao.searchListDetailed(keyword, sourceIds, 50)
+                for (res in searchResults) {
+                    val candidateBase = tv.own.owntv.player.ChannelVariantHelper.getBaseName(res.channel.name)
+                    // Solo si el nombre base coincide exactamente (evita canal ARG, MX, etc.)
+                    if (candidateBase == baseName) {
+                        candidates.add(res.channel)
+                    }
+                }
+            }
+
+            // Asegurarnos de incluir siempre al canal actual por seguridad
+            candidates.add(currentChannel)
+
+            // Mapear a nuestro modelo ChannelVariant con nombre de categoría y proveedor
+            candidates.map { ch ->
+                val rawName = ch.name
+                val catName = ch.categoryId?.let { categoryDao.getById(it)?.name }
+                tv.own.owntv.player.ChannelVariant(
+                    channel = ch,
+                    qualityLabel = tv.own.owntv.player.ChannelVariantHelper.extractQualityBadge(rawName),
+                    qualityRank = tv.own.owntv.player.ChannelVariantHelper.calculateQualityRank(rawName),
+                    categoryName = catName,
+                    sourceName = sourceById[ch.sourceId]?.name
+                )
+            }.sortedByDescending { it.qualityRank }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    /**
+     * Selecciona y reproduce una variante de calidad elegida desde el submenú del reproductor.
+     */
+    fun selectChannelVariant(variant: tv.own.owntv.player.ChannelVariant) {
+        ensurePlaying(variant.channel)
+    }
+
     fun cancelMove() {
         _moveState.value = null
         // Cancel means nothing changed — including the sort Move switched away from.

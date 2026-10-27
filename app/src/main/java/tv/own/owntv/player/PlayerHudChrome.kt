@@ -332,6 +332,7 @@ internal fun BottomBar(
     onOtherChannels: (() -> Unit)? = null, otherChannelsCount: Int = 0,
     onOpenDialog: (HudDialog) -> Unit, onPip: (() -> Unit)?, onAudioMode: (() -> Unit)?,
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
+    variantsCount: Int = 0, onOpenVariants: (() -> Unit)? = null,
     /** Given to whichever timeline is drawn, so Left/Right with the controls hidden can land on it. */
     seekFocus: FocusRequester? = null,
     onBack: () -> Unit, modifier: Modifier = Modifier,
@@ -498,12 +499,14 @@ internal fun BottomBar(
                         // Stop after a while; tinted while a countdown is running.
                         PlayerControl.SLEEP_TIMER ->
                             CtrlButton(OwnTVIcon.BEDTIME, active = sleepRunning, label = stringResource(R.string.player_sleep_timer)) { onOpenDialog(HudDialog.SLEEP_TIMER) }
-                        // Stream technical info (codec/res/HDR/bitrate/decoder/audio/buffer) —
-                        // toggles the overlay. Parked at the far right, where the redundant
-                        // exit-fullscreen button used to sit (Back already leaves the player, so
-                        // that button never did anything the remote couldn't).
-                        PlayerControl.INFO -> if (onInfo != null) {
-                            CtrlButton(OwnTVIcon.INFO, active = infoOn, label = stringResource(R.string.player_tool_info)) { onInfo() }
+                        // Fuentes / Variantes de calidad del canal IPTV en reproducción.
+                        PlayerControl.INFO -> {
+                            if (variantsCount > 1 && onOpenVariants != null) {
+                                CtrlButton(OwnTVIcon.LIST, label = "Fuentes ($variantsCount)") { onOpenVariants() }
+                            }
+                            if (onInfo != null) {
+                                CtrlButton(OwnTVIcon.INFO, active = infoOn, label = stringResource(R.string.player_tool_info)) { onInfo() }
+                            }
                         }
                         // "Report this stream": copies the readout the user is looking at into the
                         // playback log, so a "this channel judders" complaint carries the

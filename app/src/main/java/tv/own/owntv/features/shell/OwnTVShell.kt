@@ -1613,8 +1613,12 @@ fun OwnTVShell(
                         }
                     }
                 }
+                val liveChannelVariants by liveVm.channelVariants.collectAsStateWithLifecycle()
                 PlayerHud(
                     player = if (liveOnExo) liveVm.previewEngine else mpvEngine, // HUD drives the active engine
+                    currentChannelId = previewChannel?.id ?: -1L,
+                    variants = if (isTunedLive) liveChannelVariants else emptyList(),
+                    onVariantSelected = if (isTunedLive) liveVm::selectChannelVariant else null,
                     onBack = exitPlayer,
                     onPip = dockPlayer, // PiP/dock works for live on either engine now
                     onAudioMode = toAudioMode,

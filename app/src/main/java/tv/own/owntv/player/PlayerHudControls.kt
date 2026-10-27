@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import androidx.tv.material3.Text
 import tv.own.owntv.R
+import tv.own.owntv.ui.stage.StageButton
 import tv.own.owntv.ui.stage.StageFocus
 import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.components.OwnTVIcon
@@ -134,6 +135,37 @@ internal fun TransportCapsule(modifier: Modifier = Modifier, content: @Composabl
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
+}
+
+@Composable
+fun ChannelVariantsButton(
+    variantsCount: Int,
+    currentQuality: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Solo se muestra si hay más de una variante (ej. SD, HD, FHD)
+    if (variantsCount > 1) {
+        androidx.tv.material3.Button(
+            onClick = onClick,
+            modifier = modifier,
+            colors = androidx.tv.material3.ButtonDefaults.colors(
+                containerColor = Color.Black.copy(alpha = 0.6f),
+                contentColor = Color.White
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Icono o texto indicando la calidad actual y el total de opciones
+                Text(
+                    text = "📺 $currentQuality ($variantsCount)",
+                    style = androidx.tv.material3.MaterialTheme.typography.labelMedium
+                )
+            }
+        }
+    }
 }
 
 /**

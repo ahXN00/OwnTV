@@ -866,6 +866,7 @@
 1	technical	app/src/main/java/tv/own/owntv/player/AudioNowPlayingBar.kt	liveDot
 1	technical	app/src/main/java/tv/own/owntv/player/AudioNowPlayingBar.kt	liveDotAlpha
 1	technical	app/src/main/java/tv/own/owntv/player/AudioNowPlayingBar.kt	tnum
+1	regex	app/src/main/java/tv/own/owntv/player/ChannelVariant.kt	STD
 1	log	app/src/main/java/tv/own/owntv/player/FrameRateController.kt	AFR apply failed: ${it.message}
 1	log	app/src/main/java/tv/own/owntv/player/FrameRateController.kt	AFR reset failed: ${it.message}
 1	log	app/src/main/java/tv/own/owntv/player/FrameRateController.kt	AFR: ${fps}fps -> mode $targetId deferred ${waitMs}ms (cooldown)
