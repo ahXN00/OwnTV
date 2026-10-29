@@ -22,6 +22,8 @@ internal object PictureInPictureWindow {
 
     fun attach(activity: ComponentActivity, pip: PictureInPicture) {
         pip.onWindowChanged(activity.isInPictureInPictureMode)
+        // Picture-in-picture is Android 8+ (API 26); Android 7.x has no window to offer.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         if (!pip.supported) return
         activity.addOnPictureInPictureModeChangedListener { info -> pip.onWindowChanged(info.isInPictureInPictureMode) }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
@@ -41,6 +43,7 @@ internal object PictureInPictureWindow {
         })
     }
 
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
     private fun params(aspect: PipAspect?, playerBounds: PipBounds?): PictureInPictureParams {
         val builder = PictureInPictureParams.Builder()
         if (aspect != null) {
