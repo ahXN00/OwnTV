@@ -927,6 +927,27 @@ class LiveViewModel(
         _previewChannel.value = channel
     }
 
+    /** Catch-up channels whose past days the guide may be missing — see [requestArchiveGuide]. */
+    private val archiveRequests = MutableSharedFlow<ChannelEntity>(extraBufferCapacity = 8)
+
+    /**
+     * Fill in [channel]'s past days in the guide from the provider's archive, when its guide feed
+     * stops short of it ([tv.own.owntv.core.repository.EpgRepository.fillArchiveGuide]). Only the
+     * channel the user rests on for 1.5 s is asked for, so moving through a list asks nothing; the
+     * engine itself asks at most once every few hours per channel. The TV Guide asks for the rows it
+     * shows itself ([tv.own.owntv.features.epg.EpgViewModel.queueArchiveGuide]).
+     */
+    private fun requestArchiveGuide(channel: ChannelEntity) {
+        if (channel.catchup) archiveRequests.tryEmit(channel)
+    }
+
+    init {
+        viewModelScope.launch { _previewChannel.filterNotNull().collect(::requestArchiveGuide) }
+        viewModelScope.launch {
+            archiveRequests.debounce(1_500).collect { channel -> epgRepository.fillArchiveGuide(channel, custom.value) }
+        }
+    }
+
     /** Search's "Go to channel": the list scrolls to [reveal] and focuses it, then calls [revealDone]. */
     private val _reveal = MutableStateFlow<tv.own.owntv.features.search.Reveal?>(null)
     val reveal: StateFlow<tv.own.owntv.features.search.Reveal?> = _reveal.asStateFlow()

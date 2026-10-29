@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -300,6 +301,34 @@ class EpgViewModel(
 
     private fun cachedRowCount(): Int = synchronized(rowCache) { rowCache.size }
 
+    private val archiveQueue = ArchiveGuideQueue(ARCHIVE_QUEUE_MAX)
+    // Guarded by archiveQueue; null once the queue ran dry.
+    private var archiveWorker: kotlinx.coroutines.Job? = null
+
+    /**
+     * Ask for the past days a catch-up [channel]'s guide feed lacks, from its provider's archive
+     * ([EpgRepository.fillArchiveGuide]). Called for every row that stays on screen, so the past is
+     * there by the time the user scrolls back to it: one request at a time, spaced, the row seen last
+     * first ([ArchiveGuideQueue]). The engine asks at most once every few hours per channel; a channel
+     * it skips costs no pause.
+     */
+    fun queueArchiveGuide(channel: ChannelEntity) {
+        if (!channel.catchup) return
+        synchronized(archiveQueue) {
+            archiveQueue.add(channel)
+            if (archiveWorker == null) archiveWorker = viewModelScope.launch { drainArchiveQueue() }
+        }
+    }
+
+    private suspend fun drainArchiveQueue() {
+        while (true) {
+            val channel = synchronized(archiveQueue) {
+                archiveQueue.next() ?: run { archiveWorker = null; return }
+            }
+            if (epgRepository.fillArchiveGuide(channel, custom.value) != null) delay(ARCHIVE_SPACING_MS)
+        }
+    }
+
     /** The row prefetch in flight. One at a time — see [prefetchAfter]. */
     private var prefetchJob: kotlinx.coroutines.Job? = null
 
@@ -435,6 +464,17 @@ class EpgViewModel(
             // screen opened, in which case the first value is that sync's result and must be loaded.
             .drop(if (epgActivity.active.value.isEmpty()) 1 else 0)
             .onEach { load() }
+            .launchIn(viewModelScope)
+        // Re-read the rows when a catch-up channel's past days arrive from its provider's archive
+        // (asked for by the rows on screen, see queueArchiveGuide). They are stored apart from every
+        // feed, so the stored count load() compares does not move: the cached rows are dropped
+        // instead. A page of rows filled one after another is re-read once.
+        epgRepository.archiveGuideAdded
+            .debounce(ARCHIVE_REREAD_MS)
+            .onEach {
+                clearRows()
+                _cacheRevision.value++
+            }
             .launchIn(viewModelScope)
         // Reload when a category lock closes or opens (the relock on leaving the app, a PIN entry), so
         // the grid and the zap list armed from it follow. drop(1): the screen triggers the initial load.
@@ -1116,5 +1156,11 @@ class EpgViewModel(
         // Bound values sent to a single `IN (...)`. SQLite's parameter ceiling is 999 on older
         // Android; core chunks its own bulk lookups at the same size.
         private const val QUERY_CHUNK = 500
+        // The archive queue: a pause after each request, so a page of rows is never a burst of them,
+        // and the rows remembered (more than a screen or two scrolled past is dropped).
+        private const val ARCHIVE_SPACING_MS = 300L
+        private const val ARCHIVE_QUEUE_MAX = 24
+        // Rows filled within this of each other are re-read together.
+        private const val ARCHIVE_REREAD_MS = 400L
     }
 }

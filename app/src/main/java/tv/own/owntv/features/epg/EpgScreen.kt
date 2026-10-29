@@ -119,6 +119,9 @@ private fun programmeAt(progs: List<EpgProgrammeEntity>?, time: Long): EpgProgra
 /** Across a gap the cursor moves by half an hour, rather than leaping hours to the next programme. */
 private const val GAP_STEP_MS = 30L * 60 * 1000
 
+/** How long a catch-up row stays on screen before its past days are asked for. */
+private const val ARCHIVE_ROW_VISIBLE_MS = 600L
+
 /** Cursor passed to rows that are not focused, so a cursor move does not recompose them. */
 internal const val NO_CURSOR = -1L
 
@@ -593,6 +596,12 @@ fun EpgScreen(
                         ) {
                             itemsIndexed(state.channels, key = { _, ch -> ch.id }) { index, channel ->
                                 val focus = guideRowFocusArgs(index, focusedRow, cursorTime, inCellMode, gridHasFocus)
+                                // A catch-up row that stays on screen asks for its past days; a row
+                                // flung past does not.
+                                if (channel.catchup) LaunchedEffect(channel.id) {
+                                    delay(ARCHIVE_ROW_VISIBLE_MS)
+                                    vm.queueArchiveGuide(channel)
+                                }
                                 GuideRow(
                                     vm = vm,
                                     channel = channel,
