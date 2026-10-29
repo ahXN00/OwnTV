@@ -1850,6 +1850,17 @@ class LiveViewModel(
     fun catchupWindowOf(ch: ChannelEntity): Int = if (!timeshift.canRewind(ch)) 0 else timeshift.windowSec(ch)
     fun currentCatchupWindowSec(): Int = _previewChannel.value?.let { catchupWindowOf(it) } ?: 0
 
+    /** The start of the programme on air on the channel on screen, from the guide, when the archive
+     *  still reaches it — the first row of the player's "Go back to…" list. Looked up as the list opens
+     *  rather than taken from [nowNext], which is debounced and can still hold the previous channel's
+     *  programme for a moment after a zap. */
+    suspend fun currentProgrammeStart(): CatchupProgrammeStart? {
+        val ch = _previewChannel.value ?: return null
+        if (!ch.catchup || !timeshift.canRewind(ch)) return null
+        val now = epgReader.nowNext(ch, custom.value, epgOffset.value)?.now ?: return null
+        return CatchupProgrammeStart.of(now.title, now.startMs, now.stopMs, System.currentTimeMillis(), timeshift.windowSec(ch))
+    }
+
     /** Jump the channel already on screen to [offsetSec] behind live. */
     fun jumpBackTo(offsetSec: Int) {
         val ch = _previewChannel.value ?: return

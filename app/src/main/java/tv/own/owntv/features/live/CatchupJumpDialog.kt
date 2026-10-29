@@ -39,6 +39,9 @@ internal fun CatchupJumpRows(
     modifier: Modifier = Modifier,
     // Last row: leave the suggestions behind and type an exact day + time. Null hides it.
     onChooseExact: (() -> Unit)? = null,
+    // First row: back to the start of the programme on air, focused when the list opens. Its offset is
+    // taken when pressed. Null hides it.
+    programmeStart: CatchupProgrammeStart? = null,
 ) {
     // One "now" for the whole list: recomputing per row would let the clock tick between rows and
     // print two different times for the same offset.
@@ -47,12 +50,23 @@ internal fun CatchupJumpRows(
     val timeOnly = rememberBestDateFormatter("Hm")
     val withDay = rememberBestDateFormatter("EEEHm")
     LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(2.mpx)) {
+        if (programmeStart != null) item(key = "programme-start") {
+            tv.own.owntv.ui.stage.StagePopupOption(
+                title = if (programmeStart.title.isEmpty()) stringResource(R.string.content_catchup_jump_programme_start_untitled)
+                else stringResource(R.string.content_catchup_jump_programme_start, programmeStart.title),
+                subtitle = stringResource(R.string.content_catchup_jump_programme_start_at, timeOnly(programmeStart.startMs)),
+                onClick = { onPick(programmeStart.offsetSec(System.currentTimeMillis())) },
+                modifier = Modifier.focusRequester(firstFocus),
+                chosen = true,
+                leading = { tv.own.owntv.ui.stage.StagePopupIcon(tv.own.owntv.ui.components.OwnTVIcon.SKIP_PREVIOUS) },
+            )
+        }
         items(offsetsSec, key = { it }) { offset ->
             val at = CatchupJumps.instantFor(offset, nowMs)
             tv.own.owntv.ui.stage.StagePopupOption(
                 title = if (CatchupJumps.crossesDay(offset, nowMs, zone)) withDay(at) else timeOnly(at),
                 onClick = { onPick(offset) },
-                modifier = if (offset == offsetsSec.first()) Modifier.focusRequester(firstFocus) else Modifier,
+                modifier = if (programmeStart == null && offset == offsetsSec.first()) Modifier.focusRequester(firstFocus) else Modifier,
                 leading = { tv.own.owntv.ui.stage.StagePopupIcon(tv.own.owntv.ui.components.OwnTVIcon.CATCHUP) },
             )
         }
@@ -73,6 +87,7 @@ internal fun CatchupJumpDialog(
     windowSec: Int,
     onPick: (Int) -> Unit,
     onDismiss: () -> Unit,
+    programmeStart: CatchupProgrammeStart? = null,
 ) {
     val firstFocus = remember { FocusRequester() }
     var manual by remember { mutableStateOf(false) }
@@ -100,6 +115,7 @@ internal fun CatchupJumpDialog(
             onPick = onPick,
             modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             onChooseExact = { manual = true },
+            programmeStart = programmeStart,
         )
     }
 }

@@ -150,6 +150,9 @@ fun PlayerHud(
     onPreviousChannel: (() -> Unit)? = null,
     // Archive depth of the current channel, for the exact-time picker's day/HH:MM bounds.
     jumpBackWindowSec: (() -> Int)? = null,
+    // The start of the programme on air, from the guide, offered first in "Go back to…". Looked up as
+    // the list opens; null (or a null answer) = no such row.
+    jumpBackProgrammeStart: (suspend () -> tv.own.owntv.features.live.CatchupProgrammeStart?)? = null,
     // Read as a lambda, not a value: the offset ticks once a second, and taking it as a plain Int?
     // made the shell (the caller) recompose on every tick just to hand it over. Invoked below, so the
     // per-second read lands in the HUD's own scope, which already recomposes with the position clock.
@@ -942,13 +945,20 @@ fun PlayerHud(
         HudDialog.JUMP_BACK -> {
             val options = remember { jumpBackOptions?.invoke().orEmpty() }
             val windowSec = remember { jumpBackWindowSec?.invoke() ?: 0 }
-            if (options.isEmpty()) {
-                dialog = HudDialog.NONE
-            } else {
-                tv.own.owntv.features.live.CatchupJumpDialog(
+            // The list waits for the guide's answer, so the first focus lands on the "Start of …" row
+            // when there is one instead of moving there after the user has started to scroll.
+            val programmeStart by produceState<Result<tv.own.owntv.features.live.CatchupProgrammeStart?>?>(null) {
+                value = runCatching { jumpBackProgrammeStart?.invoke() }
+            }
+            val start = programmeStart?.getOrNull()
+            when {
+                programmeStart == null -> Unit // still waiting for the guide
+                options.isEmpty() && start == null -> dialog = HudDialog.NONE
+                else -> tv.own.owntv.features.live.CatchupJumpDialog(
                     title = stringResource(R.string.content_catchup_jump),
                     offsetsSec = options,
                     windowSec = windowSec,
+                    programmeStart = start,
                     onPick = { dialog = HudDialog.NONE; onJumpBack?.invoke(it) },
                     onDismiss = { dialog = HudDialog.NONE },
                 )
