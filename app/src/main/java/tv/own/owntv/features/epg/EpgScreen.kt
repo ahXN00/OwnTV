@@ -227,10 +227,22 @@ fun EpgScreen(
     val previewArmed by liveVm.previewArmed.collectAsStateWithLifecycle()
     val guidePreview by vm.guidePreview.collectAsStateWithLifecycle()
 
-    // Live TV's Guide view shows Live TV's own category; the TV Guide keeps its own choice.
-    val categoryKey: LiveKey? = if (liveMode) liveSelected.takeUnless { it == LiveKey.All } else categoryFilter
-    LaunchedEffect(liveMode, liveSelected) { if (liveMode) vm.setCategoryFilter(liveSelected) }
-    LaunchedEffect(Unit) { vm.load() } // reload from DB each time the guide is opened
+    // Live TV's Guide view shows Live TV's own category. So does the TV Guide while "Remember last
+    // category — Live TV" is on: one selection, restored and saved by LiveViewModel. Off, it keeps its own.
+    val rememberCategory by liveVm.rememberCategory.collectAsStateWithLifecycle()
+    val sharedCategory = liveMode || rememberCategory
+    val categoryKey: LiveKey? = if (sharedCategory) liveSelected.takeUnless { it == LiveKey.All } else categoryFilter
+    // The first load waits for the shared category, so the guide opens on it rather than loading every
+    // channel's programmes first and then the category's. Later picks follow it.
+    var categorySettled by remember { mutableStateOf(false) }
+    LaunchedEffect(sharedCategory, liveSelected, categorySettled) {
+        if (sharedCategory && categorySettled) vm.setCategoryFilter(liveSelected)
+    }
+    LaunchedEffect(Unit) {
+        if (sharedCategory) vm.setCategoryFilter(liveVm.settledCategory())
+        vm.load() // reload from DB each time the guide is opened
+        categorySettled = true
+    }
 
     // The preview stays on its channel while the guide is browsed; OK on a row brings that row's channel
     // into it, and OK again on the channel already there watches it full screen. Following the focus made
@@ -694,7 +706,7 @@ fun EpgScreen(
                 sheet = true,
                 listState = catListState,
                 onSelect = { idx ->
-                    railItems.getOrNull(idx)?.key?.let { key -> if (liveMode) liveVm.select(key) else vm.setCategoryFilter(key) }
+                    railItems.getOrNull(idx)?.key?.let { key -> if (sharedCategory) liveVm.select(key) else vm.setCategoryFilter(key) }
                     sheetOpen = false
                     focusedRow = 0
                     scope.launch { runCatching { rowListState.scrollToItem(0) } }
