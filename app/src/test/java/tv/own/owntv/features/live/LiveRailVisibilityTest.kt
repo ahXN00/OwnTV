@@ -79,4 +79,25 @@ class LiveRailVisibilityTest {
         assertNull(LiveViewModel.hiddenSelectionFallback(LiveKey.Favorites, rail, false, false))
         assertNull(LiveViewModel.hiddenSelectionFallback(folder.key, listOf(folder), false, false))
     }
+
+    @Test
+    fun `guide sheet drops sealed and hidden builtins, player sheet is open folders only`() {
+        val extra = listOf(
+            LiveRailItem(LiveKey.Folder(1), title = "News"),
+            LiveRailItem(LiveKey.Folder(2), title = "Kids", sealed = true),
+        )
+        val rail = LiveViewModel.railWithCatchup(hasCatchup = true, showAll = false) + extra
+        assertEquals(
+            listOf(LiveKey.Favorites, LiveKey.History, LiveKey.Catchup, LiveKey.Folder(1)),
+            LiveViewModel.guideSheetItems(rail).map { it.key },
+        )
+        assertEquals(listOf(LiveKey.Folder(1) to "News"), LiveViewModel.playerSheetCategories(rail))
+        val withAll = LiveViewModel.railWithCatchup(hasCatchup = true, showAll = true) + extra
+        assertEquals(true, LiveViewModel.guideSheetItems(withAll).any { it.key == LiveKey.All })
+        val noCatchup = LiveViewModel.guideSheetItems(
+            LiveViewModel.railWithCatchup(hasCatchup = true, showAll = true, showCatchup = false) + extra,
+        ).map { it.key }
+        assertEquals(true, LiveKey.All in noCatchup)
+        assertEquals(false, LiveKey.Catchup in noCatchup)
+    }
 }

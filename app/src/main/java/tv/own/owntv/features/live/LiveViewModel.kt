@@ -1090,7 +1090,7 @@ class LiveViewModel(
     /** Categories for the in-player category browser and the Multiview picker: the Live rail's own
      *  folders, so custom categories, renames, hides, kids filtering and the order all match it. */
     val browserCategories: StateFlow<List<Pair<LiveKey, String>>> = railItems
-        .map { items -> items.filter { (it.key is LiveKey.Folder || it.key is LiveKey.Custom) && !it.sealed }.map { it.key to it.title.orEmpty() } }
+        .map { playerSheetCategories(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun showCategories() { _showCategoryBrowser.value = true }
@@ -2182,6 +2182,13 @@ class LiveViewModel(
         /** A built-in entry the user hid (#322) is never left selected: returns [fallbackKey] when [selected] is All with showAll off, or Catch-up with showCatchup off; otherwise null (no change). Folders are not touched here. */
         fun hiddenSelectionFallback(selected: LiveKey, rail: List<LiveRailItem>, showAll: Boolean, showCatchup: Boolean): LiveKey? =
             if ((selected == LiveKey.All && !showAll) || (selected == LiveKey.Catchup && !showCatchup)) fallbackKey(rail) else null
+
+        /** The Guide's category sheet: the Live rail minus sealed folders, so a hidden All / Catch-up (#322) is absent there too. */
+        fun guideSheetItems(rail: List<LiveRailItem>): List<LiveRailItem> = rail.filterNot { it.sealed }
+
+        /** The in-player category browser and Multiview picker: the rail's open folders and custom categories only (never All / Catch-up). */
+        fun playerSheetCategories(rail: List<LiveRailItem>): List<Pair<LiveKey, String>> =
+            rail.filter { (it.key is LiveKey.Folder || it.key is LiveKey.Custom) && !it.sealed }.map { it.key to it.title.orEmpty() }
         const val ZAP_WINDOW_HALF = 50 // channels loaded on each side of the tuned channel for CH+/-
         /**
          * How long a channel that HAS played may stay stalled before it goes to mpv — see
