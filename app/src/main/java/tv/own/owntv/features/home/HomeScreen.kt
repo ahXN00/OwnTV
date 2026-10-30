@@ -31,6 +31,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -394,9 +396,32 @@ fun HomeScreen(
                 contentPadding = PaddingValues(top = if (fullBleed || posterItem != null) 0.dp else NoHeroTop, bottom = 48.mpx),
                 verticalArrangement = Arrangement.spacedBy(RowGap),
             ) {
-                itemsIndexed(renderRows, key = { _, row -> row.name }) { _, row ->
+                itemsIndexed(renderRows, key = { _, row -> row.name }) { index, row ->
                     val firstItemFocusRequester = rowFocusRequester(row)
-                    val rowModifier = if (row == firstRowUnderHero) unfoldOnUp else Modifier
+                    // With no hero above it, the first row is the top of the page: back at it, show the page
+                    // from the top. Bringing the focused card into view alone stopped as soon as the card
+                    // showed, leaving the row's heading (Keep watching) cut off above the screen. A full-bleed
+                    // or poster hero has its own way back up (see [unfoldOnUp]), so this stays out of its way.
+                    val topRow = index == 0 && !fullBleed && posterItem == null
+                    // The row right under a folded hero goes back to the top too, so the folded title
+                    // shows above it again instead of being scrolled away.
+                    val scrollsToTop = topRow || row == firstRowUnderHero
+                    val toTop = Modifier.onFocusChanged { if (it.hasFocus) homeScope.launch { listState.animateScrollToItem(0) } }
+                    val rowModifier = when {
+                        row == firstRowUnderHero -> unfoldOnUp.then(toTop)
+                        topRow -> toTop
+                        else -> Modifier
+                    }
+                    // Focus entering a row also brings the whole row into view, heading included: the
+                    // focused card alone stopped the list as soon as the card showed, so coming back up
+                    // left each row's heading cut off above the screen. Not the Trending row, whose hero
+                    // places itself, nor the rows that scroll the whole page back up instead.
+                    val rowArea = remember { BringIntoViewRequester() }
+                    Box(
+                        if (row == HomeRow.TRENDING || scrollsToTop) Modifier else Modifier
+                            .bringIntoViewRequester(rowArea)
+                            .onFocusChanged { if (it.hasFocus) homeScope.launch { rowArea.bringIntoView() } },
+                    ) {
                     CompositionLocalProvider(LocalBringIntoViewSpec provides rowBringIntoViewSpec) {
                         when (row) {
                             HomeRow.TRENDING -> if (state.trendingItems.size < TrendingDao.MIN_ELIGIBLE_ITEMS) {
@@ -612,6 +637,7 @@ fun HomeScreen(
                                 modifier = rowModifier,
                             )
                         }
+                    }
                     }
                 }
             }
