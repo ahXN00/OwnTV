@@ -895,16 +895,13 @@ class LiveViewModel(
         // #322 — a hidden All / Catch-up (cold start, a remembered key, a playlist switch, or toggled off in Settings) moves to fallbackKey; the identity
         // filter skips the stateIn placeholder so a not-yet-loaded rail can't pick Favorites over the first folder.
         viewModelScope.launch {
-            combine(
-                railItems.filter { it !== defaultRail },
+            reconcileHiddenSelection(
+                railItems,
+                defaultRail,
                 settings.liveShowAllRail,
                 settings.liveShowCatchupRail,
                 _selected,
-            ) { rail, showAll, showCatchup, selected ->
-                hiddenSelectionFallback(selected, rail, showAll, showCatchup)
-            }.collect { next ->
-                if (lockedKey == null && next != null) _selected.value = next
-            }
+            ) { lockedKey != null }
         }
         // Another playlist or profile can leave the selection on a folder the new playlists do not have:
         // its channels stayed listed under a wrong name. Such a folder falls back to All channels.
