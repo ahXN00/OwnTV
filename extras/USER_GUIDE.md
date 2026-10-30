@@ -254,6 +254,8 @@ custom category) and **Play in external player**.
 The Move window opens with that item picked up. **▲ ▼** carry it a row, **CH+ / CH−** a page, and a
 **long press** of them to the first or last place. **OK** puts it down or picks up another, so several
 can move in one go. **Save** keeps the new order; **Cancel** or **Back** leaves it as it was.
+What you moved keeps its place in **A–Z** and **Provider** alike; everything you never moved follows
+the sort around it. **Restore to playlist default** on a category clears its moved items.
 
 ### 🏷️ What the row tells you
 Number, logo, name, the programme on now with its time left and a progress bar, the provider's tags
@@ -300,7 +302,8 @@ then the grid, opened at now with the now-line about a third of the way across.
   steps out. Across an empty stretch, Left/Right move 30 minutes at a time.
 - **Hold OK** on a programme: **Remind me** (upcoming) or **Watch from start** (past), **Record**,
   **Watch channel** and more.
-- **Order:** Provider, A–Z, Catch-up first or Favourites first. **Category** uses Live TV's own list.
+- **Order:** Provider, A–Z, Catch-up first or Favourites first. **Category** uses Live TV's own list,
+  and in Provider or A–Z the channels come in Live TV's order, moved ones in their place.
   Its **Show** group: **Channels without guide**, and **Video preview** — off, the top shows the
   channel's logo instead of playing it (also off whenever Live TV's preview is off).
 - **Rewind mark:** a channel with catch-up shows the rewind icon after its name, as in the channel lists.

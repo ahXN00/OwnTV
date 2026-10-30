@@ -27,6 +27,12 @@
 - **📺 Live TV: the preview keeps playing while you browse the categories** (community PR #270 by @Kevsosmooth)
 
 ### 🐛 Fixes
+- **🗑️ Deleting a download or recording asks first**
+- **↕️ Moved categories, channels, films and series keep their place in A–Z and Provider; the rest follow the sort**
+- **📺 Back to the TV Guide focuses the channel that was playing and previews it**
+- **📋 TV Guide order follows Live TV, moved channels included**
+- **⏱️ "Mark as watched" no longer shows "0 min"**
+- **↕️ Move opens on the item asked for, even far down the list**
 - **Home: the last card of a row stays on screen when it has focus** (community PR #314 by @arch-fan)
 - **Setup: the choice cards line up when one has a shorter line** (community PR #315 by @arch-fan)
 - **The update popup's What's new scrolls with Up and Down** (community PR #291 by @camchis)

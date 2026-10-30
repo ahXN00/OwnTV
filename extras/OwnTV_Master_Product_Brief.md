@@ -322,7 +322,7 @@ Favorites, or one chosen channel.
   30-minute steps. Every programme action (Remind me / Watch from start, Record, Watch channel…) is in
   the Hold-OK menu.
 - Order by Provider, A–Z, Catch-up first or Favourites first; the category filter is Live TV's own
-  list; *Show → Channels without guide* and *Show → Video preview* (off shows the channel's logo
+  list, and Provider/A–Z follow Live TV's order with moved channels in their place; *Show → Channels without guide* and *Show → Video preview* (off shows the channel's logo
   instead of playing it; kept in backups).
 - **Programme reminders** — at the chosen lead time (5 min by default) OwnTV asks to switch, over any
   screen including the player, or switches, or only notifies.
