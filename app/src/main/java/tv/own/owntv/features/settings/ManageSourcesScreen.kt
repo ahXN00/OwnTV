@@ -532,11 +532,12 @@ internal fun ConfirmDialog(
      * offering "Delete", a word with nothing to do with what it would have done.
      */
     @StringRes confirmLabel: Int = R.string.common_delete,
+    modifier: Modifier = Modifier,
 ) {
     // Focus starts on Cancel: a mis-press must not delete anything.
     tv.own.owntv.ui.stage.StageConfirm(
         title = title, body = message, confirm = stringResource(confirmLabel),
-        onConfirm = onConfirm, onCancel = onDismiss, focusCancel = true,
+        onConfirm = onConfirm, onCancel = onDismiss, focusCancel = true, modifier = modifier,
     )
 }
 
