@@ -1,6 +1,7 @@
 package tv.own.owntv.features.live
 
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -123,5 +124,36 @@ class HiddenSelectionReconcilerTest {
         delay(40)
         assertEquals(LiveKey.Folder(1), selected.value)
         job.cancel()
+    }
+
+    @Test
+    fun `a switch waits for a rail without the stale folder then lands on the new first folder`() = runBlocking {
+        val placeholder = LiveViewModel.defaultRail
+        val rail = MutableStateFlow(LiveViewModel.railWithCatchup(false, showAll = false) + LiveRailItem(LiveKey.Folder(1), title = "Old"))
+        val deferred = async { fallbackAfterSwitch(rail, placeholder, LiveKey.Folder(1)) }
+        delay(40)
+        assertEquals(false, deferred.isCompleted)
+        rail.value = LiveViewModel.railWithCatchup(false, showAll = false) + LiveRailItem(LiveKey.Folder(7), title = "New")
+        await("folder 7") { deferred.isCompleted }
+        assertEquals(LiveKey.Folder(7), deferred.await())
+    }
+
+    @Test
+    fun `a switch with All shown lands on All`() = runBlocking {
+        val rail = MutableStateFlow(LiveViewModel.railWithCatchup(false, showAll = true) + LiveRailItem(LiveKey.Folder(7), title = "New"))
+        assertEquals(LiveKey.All, fallbackAfterSwitch(rail, LiveViewModel.defaultRail, LiveKey.Folder(1)))
+    }
+
+    @Test
+    fun `the placeholder is ignored and a timeout returns All`() = runBlocking {
+        val placeholder = LiveViewModel.defaultRail
+        val rail = MutableStateFlow(placeholder)
+        assertEquals(LiveKey.All, fallbackAfterSwitch(rail, placeholder, LiveKey.Folder(1), timeoutMs = 100))
+    }
+
+    @Test
+    fun `a switch with All hidden and no folders lands on Favorites`() = runBlocking {
+        val rail = MutableStateFlow(rail(showAll = false, withFolder = false))
+        assertEquals(LiveKey.Favorites, fallbackAfterSwitch(rail, LiveViewModel.defaultRail, LiveKey.Folder(1)))
     }
 }

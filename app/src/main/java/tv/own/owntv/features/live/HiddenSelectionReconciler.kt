@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import tv.own.owntv.core.live.LiveKey
 
 /**
@@ -29,3 +30,7 @@ internal suspend fun reconcileHiddenSelection(
 }.collect { next ->
     if (!isLocked() && next != null) selected.value = next
 }
+
+/** #322: after a playlist or profile switch drops the selected folder [stale], wait for a loaded rail (not [placeholder]) that no longer lists it and land on its [LiveViewModel.fallbackKey], so a hidden All never picks a folder from the old playlist's rail. All when no such rail arrives within [timeoutMs]. */
+internal suspend fun fallbackAfterSwitch(rail: Flow<List<LiveRailItem>>, placeholder: List<LiveRailItem>, stale: LiveKey, timeoutMs: Long = 5_000): LiveKey =
+    kotlinx.coroutines.withTimeoutOrNull(timeoutMs) { rail.first { r -> r !== placeholder && r.none { it.key == stale } } }?.let(LiveViewModel::fallbackKey) ?: LiveKey.All

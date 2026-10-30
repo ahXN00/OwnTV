@@ -904,12 +904,17 @@ class LiveViewModel(
             ) { lockedKey != null }
         }
         // Another playlist or profile can leave the selection on a folder the new playlists do not have:
-        // its channels stayed listed under a wrong name. Such a folder falls back to All channels.
+        // its channels stayed listed under a wrong name. Such a folder falls back to All channels, or with All hidden to the new rail's first category (#322).
         viewModelScope.launch {
             ctx.filter { it.profileId >= 0 }.map { it.sourceIds }.distinctUntilChanged().drop(1).collect { ids ->
                 suspend fun gone(key: LiveKey?) = key is LiveKey.Folder && categoryDao.getById(key.id)?.sourceId !in ids
                 if (gone(previousKey)) previousKey = LiveKey.All
-                if (lockedKey == null && gone(_selected.value)) _selected.value = LiveKey.All
+                val stale = _selected.value
+                if (lockedKey == null && gone(stale)) {
+                    val next = fallbackAfterSwitch(railItems, defaultRail, stale)
+                    // Don't overwrite a pick the user made while the new rail was loading.
+                    if (lockedKey == null && _selected.value == stale) _selected.value = next
+                }
             }
         }
         // Persist the last focused/interacted channel (debounced), and restore it once at startup so opening
