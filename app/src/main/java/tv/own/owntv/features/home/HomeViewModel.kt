@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
@@ -26,6 +27,7 @@ import kotlinx.coroutines.withContext
 import tv.own.owntv.core.content.AdultCategoryClassifier
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.SectionCustomizations
+import tv.own.owntv.core.database.dao.CatalogBackfillDao
 import tv.own.owntv.core.database.dao.CategoryDao
 import tv.own.owntv.core.database.dao.ChannelDao
 import tv.own.owntv.core.database.dao.MovieDao
@@ -144,6 +146,7 @@ class HomeViewModel(
     private val favoriteDao: tv.own.owntv.core.database.dao.FavoriteDao,
     private val userDataWriter: tv.own.owntv.core.backup.UserDataWriter,
     private val customize: CustomizationStore,
+    private val catalogBackfillDao: CatalogBackfillDao,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -263,6 +266,19 @@ class HomeViewModel(
         _uiState.value = _uiState.value.copy(activeTrendingIndex = index)
         resolveTrendingExtras(items[index])
     }
+
+    /**
+     * Titles stored so far while one of this profile's playlists is still loading in the background
+     * after setup, and 0 once none is. Home shows it so a part-filled library reads as loading, not broken.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val libraryLoadingTitles: StateFlow<Int> = settings.activeProfileId
+        .flatMapLatest { pid -> if (pid < 0) flowOf(emptyList()) else sourceDao.observeForProfile(pid) }
+        .flatMapLatest { sources ->
+            if (sources.isEmpty()) flowOf(0) else catalogBackfillDao.observeTitlesWhileFilling(sources.map { it.id })
+        }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Favourite ids per type, for the hero's ♥ (the same favourites Movies and Series show). */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
