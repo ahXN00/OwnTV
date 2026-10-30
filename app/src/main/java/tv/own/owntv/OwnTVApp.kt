@@ -152,6 +152,11 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             kotlinx.coroutines.delay(SPORTS_START_DELAY_MS)
             runCatching { GlobalContext.get().get<tv.own.owntv.core.sports.SportsRepository>().appStarted() }
         }
+        // Auto-sync: a timer is not kept by the process, so the schedule is put back in front of
+        // WorkManager from the saved settings — and, when the user asked for "immediately", a run
+        // is asked for as soon as the app is here or the network comes back. Core owns what that
+        // means; the app only says that it started.
+        runCatching { GlobalContext.get().get<tv.own.owntv.core.sync.work.LocalAutoSyncStarter>().start() }
         // NOTE: cold start does ZERO heavy DB work. Index + ANALYZE maintenance is piggy-backed onto the
         // operation that actually changes the data — ImportFinalizer.finalize() for normal re-syncs, the
         // deferred content-index worker after a fresh import, the EpgRepository refresh after every EPG

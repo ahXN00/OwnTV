@@ -56,6 +56,7 @@ import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
 import tv.own.owntv.core.backup.BackupManager
 import tv.own.owntv.core.companion.CompanionServerState
+import tv.own.owntv.core.sync.local.PairedDevice
 import tv.own.owntv.core.sync.local.SyncDirection
 import tv.own.owntv.core.sync.local.SyncFailure
 import tv.own.owntv.core.sync.local.shortCodes
@@ -69,6 +70,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.em
+import tv.own.owntv.ui.stage.StageConfirm
 import tv.own.owntv.ui.stage.StagePopupDivider
 import tv.own.owntv.ui.stage.StagePopupIcon
 import tv.own.owntv.ui.stage.StagePopupOption
@@ -88,8 +90,9 @@ import tv.own.owntv.ui.theme.stageText
  * here too — the phone can be found on the network and its PIN typed with the remote — so either
  * device can start a sync.
  *
- * Nothing arrives silently. A container pushed here becomes a summary of what it would change, and
- * waits for someone to press OK.
+ * Nothing arrives silently by hand: a container pushed here becomes a summary of what it would
+ * change, and waits for someone to press OK. The one exception is a device this one has accepted for
+ * automatic sync — that merge is the promise the acceptance made, and it lands without a summary.
  */
 @Composable
 fun LocalSyncScreen(
@@ -101,10 +104,20 @@ fun LocalSyncScreen(
     val vm: LocalSyncViewModel = koinViewModel()
     val paired by vm.paired.collectAsStateWithLifecycle()
     val hosting by vm.hosting.collectAsStateWithLifecycle()
+    // Every device's schedule, for the line under its row and for the sheet that edits one of
+    // them. The sheet uses the same view model — one screen, one set of settings.
+    val autoSyncVm: LocalAutoSyncViewModel = koinViewModel()
+    val autoSync by autoSyncVm.settings.collectAsStateWithLifecycle()
+    // A request from a paired device to sync here automatically. It arrives only while this
+    // device is hosting, and it is answered right here — the far side is waiting on it.
+    val autoSyncRequests by vm.autoSyncRequests.collectAsStateWithLifecycle()
 
     val ownFocus = remember { FocusRequester() }
     val firstFocus = entry ?: ownFocus
     val connectFocus = remember { FocusRequester() }
+    // The auto-sync sheet is a popup over this page, exactly like the steps below, and it edits
+    // one device — the row that opened it.
+    var autoSyncFor by remember { mutableStateOf<PairedDevice?>(null) }
     val scrollState = rememberScrollState()
     // Deliberately NOT started on entry. Which device hosts is the user's choice, on both apps and in
     // the same words — a television that quietly opened a listener the moment you looked at the
@@ -114,7 +127,10 @@ fun LocalSyncScreen(
     // accepted. In More the page is shown while the sheet still has focus, so it waits for OK / ▶.
     if (entry == null) LaunchedEffect(Unit) { restoreAfterDialogClose(firstFocus, scrollState, 0) }
     // Which row to put focus back on when a step popup closes.
-    val stepFocus = rememberDialogFocusRestore(anyDialogOpen = vm.step != null, scrollState = scrollState)
+    val stepFocus = rememberDialogFocusRestore(
+        anyDialogOpen = vm.step != null || autoSyncFor != null || autoSyncRequests.isNotEmpty(),
+        scrollState = scrollState,
+    )
     // The listener runs while this page does, and not a moment longer.
     DisposableEffect(Unit) { onDispose { vm.stopHosting() } }
     BackHandler(enabled = vm.step != null || onBack != null) { if (vm.step != null) vm.cancel() else onBack?.invoke() }
@@ -149,7 +165,6 @@ fun LocalSyncScreen(
                 modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(connectFocus),
             ) { OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx)) }
         }
-
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
             Column(Modifier.weight(1f)) {
                 if (paired.isNotEmpty()) {
@@ -173,9 +188,17 @@ fun LocalSyncScreen(
                                 }
                             },
                             title = codes[device.id]?.let { stringResource(R.string.local_sync_device_with_code, device.name, it) } ?: device.name,
-                            line = listOfNotNull(device.address.takeIf { it.isNotBlank() }, lastSyncedText(device.lastSyncAt)).joinToString(sep),
+                            // The schedule is part of what the row says about the device: "last
+                            // synced an hour ago" and "daily by itself" are both true, and the
+                            // user should not have to open the sheet to find the second one.
+                            line = listOfNotNull(
+                                device.address.takeIf { it.isNotBlank() },
+                                lastSyncedText(device.lastSyncAt),
+                                autoSync[device.id].takeIf { it.enabled }?.let { stringResource(it.timing.labelRes()) },
+                            ).joinToString(sep),
                             actions = listOf(
                                 tv.own.owntv.features.more.RowAction(stringResource(R.string.settings_sync_now), OwnTVIcon.REFRESH) { stepFocus.value = rowFocus; vm.chooseDevice(device) },
+                                tv.own.owntv.features.more.RowAction(stringResource(R.string.local_auto_sync_title), OwnTVIcon.CLOCK) { stepFocus.value = rowFocus; autoSyncFor = device },
                                 tv.own.owntv.features.more.RowAction(stringResource(R.string.more_sync_unpair), OwnTVIcon.CLOSE) { vm.unpair(device) },
                             ),
                         )
@@ -199,6 +222,23 @@ fun LocalSyncScreen(
             is LocalSyncViewModel.Step.ChooseSections -> StepPopup(vm::cancel) { SectionsBlock(vm, step) }
             is LocalSyncViewModel.Step.Confirm -> StepPopup(vm::cancel) { ConfirmBlock(vm, step) }
             is LocalSyncViewModel.Step.Result -> StepPopup(vm::cancel) { ResultBlock(vm, step) }
+        }
+        // The auto-sync settings, in the same kind of popup: it is a set of choices to be made
+        // before anything happens, and a page under the page would hide the page behind it.
+        autoSyncFor?.let { device -> LocalAutoSyncSheet(device, onDismiss = { autoSyncFor = null }) }
+        // Someone at the other end is holding a screen that says "waiting for acceptance". The
+        // question is answered here, on the device that would be synced with — and no by default,
+        // so a stray OK on the remote cannot grant it.
+        autoSyncRequests.firstOrNull()?.let { request ->
+            StageConfirm(
+                title = stringResource(R.string.local_auto_sync_accept_title),
+                body = stringResource(R.string.local_auto_sync_accept_body, request.deviceName),
+                confirm = stringResource(R.string.local_auto_sync_accept),
+                onConfirm = { vm.answerAutoSync(request.id, accepted = true) },
+                onCancel = { vm.answerAutoSync(request.id, accepted = false) },
+                cancel = stringResource(R.string.local_auto_sync_decline),
+                focusCancel = true,
+            )
         }
         Spacer(Modifier.height(40.mpx))
     }
@@ -743,14 +783,15 @@ private fun Change(labelRes: Int, count: Int) {
     )
 }
 
-private fun SyncFailure.messageRes(): Int = when (this) {
+internal fun SyncFailure.messageRes(): Int = when (this) {
     SyncFailure.Unreachable -> R.string.local_sync_error_unreachable
     SyncFailure.NotAuthorized -> R.string.local_sync_error_unauthorized
     SyncFailure.BadPayload -> R.string.local_sync_error_bad_payload
     SyncFailure.Unknown -> R.string.local_sync_error_unknown
 }
 
-private fun BackupManager.Section.labelRes(): Int = when (this) {
+/** The words the backup sections are named by, everywhere in the app. */
+internal fun BackupManager.Section.labelRes(): Int = when (this) {
     BackupManager.Section.SOURCES -> R.string.settings_backup_section_sources
     BackupManager.Section.CUSTOMIZE -> R.string.settings_backup_section_customize
     BackupManager.Section.FAVORITES -> R.string.settings_backup_section_favorites
