@@ -68,6 +68,7 @@ fun BackupScreen(
     /** More › Backup & Restore: what OK / ▶ on the sheet focuses. Settings passes none and gets focus on open. */
     entry: FocusRequester? = null,
 ) {
+    tv.own.owntv.features.automation.SensitiveScreenMarker()
     val vm: BackupViewModel = koinViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     // A restore can bring a different icon colour than the launcher shows: offer the restart.
@@ -414,7 +415,6 @@ fun BackupScreen(
             onDismiss = { vm.reset() },
         )
     }
-
 
     // Remote export step 2: password prompt, then export to cache + start serving the file.
     if (showRemoteExportPassword) {

@@ -32,16 +32,20 @@ import org.koin.androidx.compose.koinViewModel
 import androidx.tv.material3.Text
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ProfileEntity
+import tv.own.owntv.features.automation.ApiProfileChoice
+import tv.own.owntv.features.automation.ProfileGateMarker
 import tv.own.owntv.ui.components.OwnTVAvatar
 import tv.own.owntv.ui.components.OwnTVIcon
 
 /**
  * The "Who's watching?" launch gate. Shown when more than one profile exists. Picking a
  * profile makes it active (and prompts for a PIN if it's locked); [onEnter] records the selected
- * profile id and proceeds into the shell.
+ * profile id and proceeds into the shell. No profile is open to the automation API meanwhile
+ * ([ProfileGateMarker]).
  */
 @Composable
 fun ProfileGate(onEnter: (Long) -> Unit, onAddProfile: () -> Unit, modifier: Modifier = Modifier) {
+    ProfileGateMarker()
     val vm: ProfilesViewModel = koinViewModel()
     val profiles by vm.profiles.collectAsStateWithLifecycle()
 
@@ -61,6 +65,7 @@ fun ProfileGate(onEnter: (Long) -> Unit, onAddProfile: () -> Unit, modifier: Mod
             vm.switchTo(p) { onEnter(p.id) }
         }
     }
+    ApiProfileChoice(profiles) { choose(it) }
 
     Box(
         modifier = modifier.fillMaxSize().background(tv.own.owntv.ui.theme.LocalStagePalette.current.page),

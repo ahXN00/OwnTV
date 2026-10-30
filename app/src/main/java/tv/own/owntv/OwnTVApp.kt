@@ -26,6 +26,10 @@ import tv.own.owntv.core.di.coreModule
 import tv.own.owntv.core.di.databaseModule
 import tv.own.owntv.core.di.dataModule
 import tv.own.owntv.di.appModule
+import tv.own.owntv.di.automationModule
+import tv.own.owntv.di.automationSetupModule
+import tv.own.owntv.di.automationUiModule
+import tv.own.owntv.di.automationVodModule
 import tv.own.owntv.di.playerModule
 import tv.own.owntv.ui.theme.subtitleFontResource
 
@@ -126,9 +130,11 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.ERROR else Level.NONE)
             androidContext(this@OwnTVApp)
-            modules(coreModule, appModule, databaseModule, dataModule, playerModule)
+            modules(coreModule, appModule, automationModule, automationUiModule, automationVodModule, automationSetupModule, databaseModule, dataModule, playerModule)
         }
         Perf.stamp("koin-started")
+        // Automation API: back on after a process restart when the user left it on.
+        GlobalContext.get().get<tv.own.owntv.features.automation.AutomationController>().startIfEnabled()
         // A chosen icon colour ("Later", the first-run pick, a restore) reaches the launcher when the app
         // is next in the background, never while it is on screen.
         tv.own.owntv.core.brand.AppIconSwitcher.start(this, GlobalContext.get().get())

@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +33,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
-import androidx.tv.material3.Text
 import tv.own.owntv.R
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.features.settings.StageFullPage
@@ -48,7 +46,6 @@ import tv.own.owntv.features.settings.StageAction
 import tv.own.owntv.features.settings.StageActionColumn
 import tv.own.owntv.features.settings.SpanHelpBlock
 import tv.own.owntv.core.model.MediaType
-import tv.own.owntv.features.profiles.PinDialog
 import tv.own.owntv.features.profiles.PinLockedScreen
 import tv.own.owntv.features.settings.PickerDialog
 import tv.own.owntv.features.settings.SettingsViewModel
@@ -513,48 +510,20 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     BulkRenameFlow(vm.bulk, returnFocus = dialogReturn)
 
     editingPin?.let { mode ->
-        when (mode) {
-            PinEdit.REMOVE -> PinConfirmDialog(
-                title = stringResource(R.string.settings_customize_remove_pin_title),
-                message = stringResource(R.string.settings_customize_remove_pin_message) + " " + stringResource(R.string.settings_customize_remove_pin_locks),
-                confirmLabel = stringResource(R.string.settings_customize_remove),
-                onConfirm = { vm.setPin(null); editingPin = null },
-                onDismiss = { editingPin = null },
-            )
-            // SET and CHANGE are the same flow (enter a new PIN, then confirm). To reach here with a
-            // PIN already set the user unlocked the screen, so neither verifies the old PIN.
-            PinEdit.SET, PinEdit.CHANGE -> {
-                if (confirmPinStage) {
-                    key("confirm", pinMismatch) {
-                        PinDialog(
-                            title = stringResource(if (pinMismatch) R.string.settings_customize_pin_mismatch else R.string.settings_customize_confirm_pin),
-                            onSubmit = { entered ->
-                                if (entered == firstPin) {
-                                    vm.setPin(entered); editingPin = null
-                                } else {
-                                    pinMismatch = true
-                                }
-                            },
-                            onDismiss = { editingPin = null },
-                            compact = true,
-                        )
-                    }
-                } else {
-                    key("first") {
-                        PinDialog(
-                            title = stringResource(R.string.settings_customize_new_pin),
-                            onSubmit = { entered ->
-                                firstPin = entered
-                                confirmPinStage = true
-                                pinMismatch = false
-                            },
-                            onDismiss = { editingPin = null },
-                            compact = true,
-                        )
-                    }
-                }
-            }
-        }
+        CustomizePinEditor(
+            mode = mode,
+            firstPin = firstPin,
+            confirmStage = confirmPinStage,
+            mismatch = pinMismatch,
+            onSetPin = { vm.setPin(it); editingPin = null },
+            onFirstPin = { entered ->
+                firstPin = entered
+                confirmPinStage = true
+                pinMismatch = false
+            },
+            onMismatch = { pinMismatch = true },
+            onDismiss = { editingPin = null },
+        )
     }
     } // else (selectedCategory == null)
 }
@@ -653,15 +622,12 @@ private fun CategoryRow(
     )
 }
 
-/** PIN lock editing flow opened from the Customize header. */
-private enum class PinEdit { SET, CHANGE, REMOVE }
-
 /**
  * Generic Yes/No confirmation scrim used to remove the Customize PIN lock. Mirrors [RangeHideDialog]'s
  * structure so D-pad focus and the back button behave the same way as the other scrim dialogs here.
  */
 @Composable
-private fun PinConfirmDialog(
+internal fun PinConfirmDialog(
     title: String,
     message: String,
     confirmLabel: String,

@@ -40,6 +40,826 @@
 1	file-path	app/src/main/java/tv/own/owntv/OwnTVApp.kt	image_cache
 1	performance	app/src/main/java/tv/own/owntv/OwnTVApp.kt	koin-started
 3	empty	app/src/main/java/tv/own/owntv/core/i18n/LocalizedContent.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/di/AutomationSetupModule.kt	profiles
+1	technical	app/src/main/java/tv/own/owntv/di/AutomationSetupModule.kt	setup
+1	technical	app/src/main/java/tv/own/owntv/di/AutomationUiModule.kt	ui
+1	technical	app/src/main/java/tv/own/owntv/di/AutomationVodModule.kt	vod
+1	log	app/src/main/java/tv/own/owntv/features/automation/AcceptLoop.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/AcceptLoop.kt	accept failed: ${t.javaClass.name}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AcceptLoop.kt	connection setup failed: ${t.javaClass.name}
+4	empty	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	Body must be a JSON object
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	OFF
+1	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	default
+3	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	epgUrl
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	epgUrl must be an http(s) address
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	m3u
+1	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	name is required (up to ${ApiValues.MAX_NAME} characters)
+1	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	password
+1	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	refresh
+3	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	server
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	server must be an http(s) address
+1	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	type
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	type must be "m3u" or "xtream"
+3	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	url
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	url must be an http(s) address
+2	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	userAgent
+1	json	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	username
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	username and password are required
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AddPlaylistRequest.kt	xtream
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	${AutomationRoutes.PREFIX}/$pattern
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	A private screen is open on the TV (logins, PINs, profiles, network, backups or pairing); close it there first
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	Body must be a JSON object
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	No $what with id $id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	No profile is open on the TV; pick one there first (private)
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	OwnTV is in the background and may not open itself; open it on the TV, or grant it once:
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	Set up by Automation is not open on the TV; start it there and pair from that page
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	adb shell appops set <package> SYSTEM_ALERT_WINDOW allow
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	body
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	error
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	id
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	method
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	path
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	status
+1	json	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	summary
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiRoute.kt	{
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	accent_color
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	accent_custom
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	afr_match_resolution
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	afr_pause_secs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ambient_glow_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ambient_glow_pulse
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	android_tv_home
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	animation_level
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	app_icon
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	audio_delay_ms
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	audio_on_mobile_data
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	audio_on_screen_off
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	audio_passthrough
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	audio_per_channel
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	auto_frame_rate
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	auto_frame_rate_prompted
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	auto_play_next
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	background_playback
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	bg_accent_light
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	bg_blur
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	bg_dim
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	bg_look
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	bg_style
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	brand_accent_triangle
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	catchup_offset_minutes
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	catchup_player
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	catchup_timezone
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ch_nav_down_skip
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ch_nav_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ch_nav_up_skip
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	cinematic_details_movies
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	cinematic_details_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	cinematic_sheet_movies
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	cinematic_sheet_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	clock_date_color
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	clock_time_color
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	clock_weather_color
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	data_saver
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	default_volume
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	default_zoom
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	detailed_diagnostics
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	direct_tune
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	download_watch_choice
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	downloads_wifi_only
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	epg_offset_minutes
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	episode_view_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	external_player
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	external_player_live
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	external_player_movies
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	external_player_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	focus_highlight_color
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	focus_highlight_width
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	font_size_percent
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	gesture_sensitivity_pct
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_allow_full_transparency
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_alpha
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_blur
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_depth_effects
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_glint
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_highlight
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_preset
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	glass_scope
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_days_to_keep
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_density_pct
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_show_empty
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_view
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_width_channels
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_width_epg
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	guide_width_on
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	hdr_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	hero_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	hw_decoding
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	last_live_category
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	last_movies_category
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	last_series_category
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_engine
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_latency_custom_secs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_latency_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_layout
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_left_right_rewinds
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_preroll_secs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_preview_audio
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_rewind_step_sec
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_stage_list
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_stage_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_stage_sheet
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_tune_timeout_secs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	live_view
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	main_font_family
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	max_video_height
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	measured_stream_stats
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	metadata_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	metadata_language
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	metadata_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	mini_player_position
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	mini_player_size_pct
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	mini_player_style
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	mobile_data_max_video_height
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	multiview_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	multiview_tiles
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	multiview_warning_accepted
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_hide_after_ms
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_length
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_menu_hidden
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_menu_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_size
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_style
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	nav_widen
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	night_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_live_cat
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_live_list
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_live_on
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_live_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_movies_cat
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_movies_list
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_movies_on
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_movies_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_series_cat
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_series_list
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_series_on
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	panel_w_series_preview
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	phone_nav_hide_on_scroll
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	phone_nav_labels
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	pip_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	pip_on_back
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	pip_size
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	pip_snap
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	popup_font_family
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	popup_font_size_percent
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	popup_size_percent
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	pref_audio_lang
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	pref_sub_lang
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	recent_searches
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	record_what_im_watching
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	recording_over_mobile_data
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	recording_post_roll_minutes
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	recording_pre_roll_minutes
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	recording_reserve_connection
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remember_cat_live
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remember_cat_movies
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remember_cat_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remember_last_live
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remember_last_movies
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remember_last_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	reminder_lead_min
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	reminder_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	remote_shortcut_bindings
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	resume_last_channel
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	resume_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	seek_step_sec
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	settings_menu_order_episode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	settings_menu_order_live
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	settings_menu_order_movie
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	settings_menu_order_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	settings_quick_pinned
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sheet_counts
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	software_decode_above_1080p
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sort_guide
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sort_live
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sort_movies
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sort_series
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_bg_opacity
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_color
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_font
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_position
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_scale
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_scale_exo
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_scale_mpv
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_search_filter
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_search_langs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	sub_style_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	surround_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	surround_sound
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	theme_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	timeshift_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	timeshift_resume_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	timeshift_window_minutes
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	tunneled_playback
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ui_language
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	ui_zoom_percent
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	update_check_on_start
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_buffer_secs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_engine
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_grid_columns
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_layout
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_network_timeout_secs
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_prefer_exo
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_reconnects
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	vod_view_mode
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	volume_levelling
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	weather_enabled
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	weather_fahrenheit
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/ApiSettingKeys.kt	weather_location
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	${it.first} is the shortened or masked copy the API shows; send the full address
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	${it.first} must be up to $MAX_URL characters
+1	url	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	http
+1	url	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	https
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	password cannot be blank
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	username cannot be blank
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ApiValues.kt	username must be up to $MAX_USERNAME characters
+1	log	app/src/main/java/tv/own/owntv/features/automation/AppLauncher.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/AppLauncher.kt	app
+1	log	app/src/main/java/tv/own/owntv/features/automation/AppLauncher.kt	open link=${link?.host ?: "app"}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AppLauncher.kt	tv.own.owntv.automation.WAKE
+1	empty	app/src/main/java/tv/own/owntv/features/automation/AutomationAccess.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationAccess.kt	%02x
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationAccess.kt	.
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationAccess.kt	Bearer
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationAccess.kt	SHA-256
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationAccess.kt	authorization
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationAppSettings.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationAppSettings.kt	settings changed: ${changes.keys().asSequence().joinToString()}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationCache.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationCache.kt	cache cleared: ${targets.joinToString { it.apiName }}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationChannels.kt	OwnTVAutomation
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationChannels.kt	channels
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationChannels.kt	play channelId=$id
+1	assertion	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	GuideRequest.parse guarantees a url when adding
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	OwnTVAutomation
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	add
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	guide
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	guide add id=${source.id}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	guide delete id=$id
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	guide update id=$id
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	manual_resync
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationGuide.kt	update
+3	empty	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Accepted
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Bad Request
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Cache-Control: no-store
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Conflict
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Connection: close
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Content-Length: ${body.size}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Content-Type: application/json; charset=utf-8
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Forbidden
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	HTTP/1.
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	HTTP/1.1 ${response.status} ${reason(response.status)}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Internal Server Error
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Method Not Allowed
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Not Found
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	OK
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Too Many Requests
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	UTF-8
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Unauthorized
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	Unsupported Media Type
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	content-length
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationHttp.kt	transfer-encoding
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	--pid=${Process.myPid()}
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	-d
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	-t
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	atMs
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	codec
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	crash
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	decoder
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	detail
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	engine
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	entries
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	hardwareDecoder
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	kind
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	lines
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	live
+1	technical	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	logcat
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	reason
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationLogs.kt	resolution
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	active
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	audioTracks
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	bufferedMs
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	buffering
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	codec
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	detail
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	durationMs
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	engine
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	error
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	fps
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	id
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	inFront
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	kind
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	label
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	language
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	playing
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	positionMs
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	reason
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	selected
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	subtitle
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	subtitles
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	title
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	video
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlayer.kt	volume
+1	empty	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	Could not reach the server
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	Import ended in state ${state::class.simpleName}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	OwnTV
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	OwnTVAutomation
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	The server refused the username or password
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	The subscription has expired
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	app
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	automation import failed
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	channels
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	default
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	delete sourceId=$id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	done
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	epgUrl
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	error
+5	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	failed
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	httpReferer
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	idle
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	lastImport
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	mac
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	movies
+4	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	name
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	password
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	playlists
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	preferHls
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	profileId
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	refresh
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	resync sourceId=$id clean=$clean
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	running
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	series
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	sourceId
+4	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	state
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	syncLive
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	syncMovies
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	syncSeries
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	update sourceId=$id fields=${patchedFields(patch)}
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	url
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	userAgent
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	username
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationPlaylists.kt	version
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationProfiles.kt	OwnTVAutomation
+1	assertion	app/src/main/java/tv/own/owntv/features/automation/AutomationProfiles.kt	profile $id was not saved
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationProfiles.kt	profile add id=$id
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationProfiles.kt	profile use id=$id result=$use
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationProfiles.kt	profiles
+1	empty	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	\0
+1	url	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	$PREFIX/
+1	url	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	$PREFIX/pair
+1	url	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	/api/v1
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Authorization: Bearer <token>, from POST $PAIR while Pair a device is open on the TV
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Method not allowed
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Missing or unknown key
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Not found
+1	url	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Not found; GET $PREFIX lists every endpoint
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	OwnTV automation
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Pair this device
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Pairing is only allowed from the home network
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	This key is not allowed from this address
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	This list
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Too many failed attempts; try again later
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	Wrong PIN, or pairing is not open on the TV
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	api
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	auth
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	body
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	deviceId
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	endpoints
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	method
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	name
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	path
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	pin
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	summary
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	token
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationRoutes.kt	{"pin","name"}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationServer.kt	OwnTVAutomation
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationServer.kt	Port $PORT is in use
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationServer.kt	bind $PORT failed
+1	url	app/src/main/java/tv/own/owntv/features/automation/AutomationServer.kt	http://${it.hostAddress}:$PORT
+1	empty	app/src/main/java/tv/own/owntv/features/automation/AutomationServerText.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationServerText.kt	port ${AutomationServer.PORT}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationService.kt	OwnTVAutomation
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/AutomationService.kt	automation_api
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationService.kt	could not start the automation service
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationSetup.kt	OwnTVAutomation
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationSetup.kt	done
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationSetup.kt	profileId
+1	json	app/src/main/java/tv/own/owntv/features/automation/AutomationSetup.kt	profiles
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationSetup.kt	setup finished profile=$profileId
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	address
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	allow_tailscale
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	automation_api
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	devices
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	enabled
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	hash
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	id
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	name
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	off_before_setup
+2	json	app/src/main/java/tv/own/owntv/features/automation/AutomationStore.kt	pairedAt
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationUi.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationUi.kt	navigate to=${target.apiName}
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationVod.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationVod.kt	open seriesId=$id
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationVod.kt	play episodeId=$id
+1	log	app/src/main/java/tv/own/owntv/features/automation/AutomationVod.kt	play movieId=$id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	"${it.apiName}"
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	Empty caches: images (logos, posters) and metadata (movie and series details); both by default
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	Unknown cache "$it"
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	cache/clear
+1	json	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	cleared
+1	json	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	images
+1	json	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	metadata
+2	json	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	targets
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	targets must be a non-empty list
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/CacheRoutes.kt	{"targets"?:[${CacheTarget.entries.joinToString { "\\"${it.apiName}\\"" }}]}
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	catchup
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	categoryId
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	hasGuide
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	id
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	logoUrl
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	name
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	number
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelJson.kt	playlistId
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	Search live channels by name: ${SEARCH.hint}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	Tune the TV to this channel, full screen
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	channel
+1	json	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	channels
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	channels/{id}/play
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ChannelRoutes.kt	tuning
+1	empty	app/src/main/java/tv/own/owntv/features/automation/ConnectionLimiter.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ConnectionLimiter.kt	%02x
+1	technical	app/src/main/java/tv/own/owntv/features/automation/ConnectionLimiter.kt	/64
+1	log	app/src/main/java/tv/own/owntv/features/automation/FocusedWindowKeys.kt	no OwnTV window has focus
+2	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	channels
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	id
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	idle
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	lastError
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	lastSyncAt
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	name
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	previousProgrammes
+2	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	programmes
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	refresh
+2	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	state
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	sync
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	syncing
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	url
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideJson.kt	userAgent
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	Nothing to change
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	Unknown fields: ${unknown.joinToString()}; allowed: ${FIELDS.joinToString()}
+2	json	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	name must be up to ${ApiValues.MAX_NAME} characters
+2	json	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	refresh
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	refresh must be one of ${ApiValues.epgRefreshModes()} (MANUAL:<days> for a day count)
+4	json	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	url
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	url is required
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	url must be an http(s) address
+3	json	app/src/main/java/tv/own/owntv/features/automation/GuideRequest.kt	userAgent
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	Add a guide source and download it
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	Cancel a running guide download
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	DELETE
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	Delete a guide source and its programmes
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	Download the guide now
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	Edit a guide source; a new name, url or user agent re-downloads it
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	Guide sources with programme counts, schedule, last result and sync state
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	One guide source
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	PATCH
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	cancelled
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	deleting
+2	json	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	guide
+5	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	guide source
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	guide/{id}
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	guide/{id}/sync
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	saved
+1	json	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	status
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	syncing
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	{"name"?,"url"?,"userAgent"?,"refresh"?}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/GuideRoutes.kt	{"url","name"?,"userAgent"?,"refresh"?}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/HeaderValue.kt	$field cannot contain line breaks or other control characters
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/HeaderValue.kt	$field must be up to $MAX_LENGTH characters
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/HostHeader.kt	:
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/HostHeader.kt	::
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/HostHeader.kt	[
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/HostHeader.kt	]
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/JsonFields.kt	$key must be $expected
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/JsonFields.kt	a list of strings
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/JsonFields.kt	a string
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/JsonFields.kt	a whole number
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/JsonFields.kt	true or false
+1	log	app/src/main/java/tv/own/owntv/features/automation/KeyGate.kt	OwnTVAutomation
+1	log	app/src/main/java/tv/own/owntv/features/automation/KeyGate.kt	key not sent, the focused window is not OwnTV's: ${e.message}
+1	log	app/src/main/java/tv/own/owntv/features/automation/KeyGate.kt	keys refused, another call still had the turn after $turnWaitMs ms
+1	log	app/src/main/java/tv/own/owntv/features/automation/KeyGate.kt	pressed ${keys.size} keys
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	Clear the playback error log
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	DELETE
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	Playback errors and stream reports, newest first
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	The last crash report, or null
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	This app's own log, newest last: ?lines=1..$MAX_LINES (default $DEFAULT_LINES). May hold stream addresses.
+1	json	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	cleared
+1	json	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	lines
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	lines must be 1 to $MAX_LINES
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	logs/app
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	logs/crash
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/LogRoutes.kt	logs/playback
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	"${it.name}"
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Another key request is still running; try again
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	No audio track with id $id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	No subtitle with id $id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	OwnTV is not in front on the TV
+6	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Pause or resume
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Pick a subtitle by its id from GET player, or null for off
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Pick an audio track by its id from GET player
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Player volume
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Press remote buttons on OwnTV, in order. OwnTV must be the app in front; refused while a private screen is open on the TV (logins, PINs, profiles, network, backups or pairing)
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Remote buttons are paused while a private screen (logins, PINs, profiles, network, backups or pairing) is open on the TV
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Send 1 to ${RemoteKey.MAX_PER_CALL} keys
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Stop playback and leave full screen
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	Unknown key "$it"; see GET ${AutomationRoutes.PREFIX}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	What is playing: title, state, position, video, tracks, and whether OwnTV is in front
+4	json	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	id is required: a subtitle id from GET player, or null for off
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	id must be a subtitle id or null
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	id must be a track id from GET player
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	keys
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	keys must be a list of button names
+5	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	ok
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	percent
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	percent must be a whole number from 0 to 100
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player/audio
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player/keys
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player/play-pause
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player/stop
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player/subtitles
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	player/volume
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	pressed
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	{"id":<id>|null}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	{"id"}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	{"keys":[${RemoteKey.entries.joinToString { "\\"${it.name}\\"" }}]} (digits also as "0".."9")
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlayerRoutes.kt	{"percent":0..100}
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	channels
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	default
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	epgUrl
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	hasMac
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	hasPassword
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	httpReferer
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	id
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	idle
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	lastSyncAt
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	live
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	movies
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	name
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	preferHls
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	previousTotal
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	processed
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	refresh
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	series
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	state
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	sync
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	syncLive
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	syncMovies
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	syncSeries
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	syncing
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	type
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	url
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	userAgent
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistJson.kt	username
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	a new ${newLogin.joinToString(" or ")} is a new login, so send password with it
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	and
+1	url	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	https
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	mac
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	mac applies only to Stalker playlists
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	or
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	password
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	url points to another server, so send ${missing.joinToString(" and ")} again with it
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistMove.kt	username
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	Nothing to change
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	Unknown fields: ${unknown.joinToString()}; allowed: ${FIELDS.joinToString()}
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	default
+4	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	epgUrl
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	epgUrl must be an http(s) address or empty
+4	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	httpReferer
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	mac
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	mac must be 12 letters or digits, such as 00:1A:79:12:34:56
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	name must be 1 to ${ApiValues.MAX_NAME} characters
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	password
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	preferHls
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	refresh
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	refresh must be one of ${ApiValues.playlistRefreshModes()} (MANUAL:<days> for a day count)
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	syncLive
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	syncMovies
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	syncSeries
+4	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	url
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	url must be an http(s) address
+3	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	userAgent
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistPatchRequest.kt	username
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	"$it"?
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Add a playlist; the import runs in the background (see status.lastImport)
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Another import is still running
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	App version, active profile and the last import's outcome
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Cancel a running refresh
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	DELETE
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Delete a playlist and everything synced from it
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Edit a playlist; send only the fields to change
+4	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	One playlist; passwords are never returned
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	PATCH
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Refresh progress: idle, or syncing with item counts
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	Refresh the playlist now; clean also drops items the provider removed
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	The active profile's playlists with counts, schedule and sync state
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	cancelled
+1	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	clean
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	deleting
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	importing
+6	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	playlist
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	playlists
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	playlists/{id}
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	playlists/{id}/sync
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	saved
+2	json	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	status
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	syncing
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	{
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	{"clean"?:false}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	{"type":"m3u|xtream","name","url" (m3u) | "server","username","password" (xtream),"epgUrl"?,"userAgent"?,"refresh"?,"default"?}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/PlaylistRoutes.kt	}
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileJson.kt	active
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileJson.kt	hasPin
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileJson.kt	id
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileJson.kt	kids
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileJson.kt	name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	A PIN cannot be set through the API; add one on the TV
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	Unknown fields: ${unknown.joinToString()}; allowed: ${FIELDS.joinToString()}
+2	json	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	avatar
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	avatar must be ${NewProfile.NO_AVATAR} (a letter tile) to ${OwnTVAvatars.COUNT - 1}
+2	json	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	kids
+2	json	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	name cannot hold control or invisible format characters
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	name is required
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	name must be up to ${ApiValues.MAX_NAME} characters
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileRequest.kt	pin
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	A profile named "${parsed.profile.name}" already exists
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	During setup, add a profile without a PIN; it gets every playlist, as in Settings › Profiles
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	Open a profile without a PIN; during setup, choose the one setup opens
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	Profiles can only be added on the TV after setup
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	Profiles: id, name, kids, whether a PIN locks it, and the one the API acts for
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	This profile has a PIN; open it on the TV
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	active
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	chosen
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	profile
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	profileId
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	profiles
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	profiles/{id}/use
+1	json	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	status
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	switching
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/ProfileRoutes.kt	{"name","kids"?,"avatar"?}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/RemoteKey.kt	DIGIT_$normalized
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/RequestFailures.kt	Internal error
+1	log	app/src/main/java/tv/own/owntv/features/automation/RequestFailures.kt	OwnTVAutomation
+1	json	app/src/main/java/tv/own/owntv/features/automation/RequestFailures.kt	error
+1	log	app/src/main/java/tv/own/owntv/features/automation/RequestFailures.kt	request failed
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	Address the TV by its IP address, not a host name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	Pairing from a web page is not allowed
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	Send the pairing request as application/json
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	application/json
+1	json	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	content-type
+1	json	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	host
+1	json	app/src/main/java/tv/own/owntv/features/automation/RequestGuard.kt	origin
+1	compiler	app/src/main/java/tv/own/owntv/features/automation/ScreenWaker.kt	DEPRECATION
+1	log	app/src/main/java/tv/own/owntv/features/automation/ScreenWaker.kt	OwnTV:automation-wake
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SearchParams.kt	?q=&playlist=<id>&limit=1..$maxLimit (default $defaultLimit)
+1	json	app/src/main/java/tv/own/owntv/features/automation/SearchParams.kt	limit
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SearchParams.kt	limit must be 1 to $maxLimit
+1	json	app/src/main/java/tv/own/owntv/features/automation/SearchParams.kt	playlist
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SearchParams.kt	playlist must be a playlist id
+1	json	app/src/main/java/tv/own/owntv/features/automation/SearchParams.kt	q
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	Change settings, using the keys from GET settings
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	Changed settings the API may edit, by key; keys not listed are at their default
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	Not settable through the API: ${rejected.joinToString()}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	Nothing to change
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	PATCH
+1	json	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	applied
+1	json	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	notApplied
+2	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	settings
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SettingsRoutes.kt	{"<key>":<value>,...}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	$key must be $min to $max in steps of $step
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	Unknown fields: ${unknown.joinToString()}; allowed: ${FIELDS.joinToString()}
+4	json	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	fontSize
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	font_size_percent
+3	json	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	language
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	language must be "" (the system's) or one of ${languages.filter { it.isNotEmpty() }.sorted().joinToString()}
+4	json	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	uiZoom
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	ui_language
+1	preference-key	app/src/main/java/tv/own/owntv/features/automation/SetupFinishRequest.kt	ui_zoom_percent
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	Add a profile without a PIN first (POST profiles)
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	Finish first-run setup: apply language and sizes, open the profile and go Home
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	Setup is already finished
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	Whether first-run setup is done, and how many profiles there are
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	setup
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	setup/finish
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/SetupRoutes.kt	{"language"?,"uiZoom"?,"fontSize"?}
+1	technical	app/src/main/java/tv/own/owntv/features/automation/TailscaleInterface.kt	ipsec
+1	technical	app/src/main/java/tv/own/owntv/features/automation/TailscaleInterface.kt	ppp
+1	technical	app/src/main/java/tv/own/owntv/features/automation/TailscaleInterface.kt	tailscale
+1	technical	app/src/main/java/tv/own/owntv/features/automation/TailscaleInterface.kt	tun
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	activePlaylist
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	focused
+2	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	id
+3	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	inFront
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	name
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	other
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	player
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	playing
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	private
+2	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	screen
+3	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	screenOn
+2	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	sensitive
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	settings
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	title
+1	json	app/src/main/java/tv/own/owntv/features/automation/UiJson.kt	type
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	Open a section on the TV, bringing OwnTV forward
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	Settings cannot be opened from the API
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	Unknown section "$to"; to must be one of $TARGETS
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	What the TV shows: screen, player, focused and playing item, active playlist
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	settings
+2	json	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	to
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	to is required: one of $TARGETS
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	ui
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	ui/navigate
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	{"to":"$TARGET_HINT"}
+1	technical	app/src/main/java/tv/own/owntv/features/automation/UiRoutes.kt	|
+1	empty	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	\0
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	$1$HIDDEN
+1	regex	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	(\\b(?:password|pass|pwd|token|key|mac|auth|sig|signature)=)[^&#\\s"'<>]*
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	***
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	/…
+1	regex	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	://[^/?#\\s:]*:[^/?#\\s]+@
+1	regex	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	[A-Za-z][A-Za-z0-9+.-]{0,31}://[^\\s"'<>]+
+1	regex	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	^(?:\\[[0-9A-Fa-f:.]*\\]|[A-Za-z0-9._~%-]*)(?::\\d{1,5})?
+1	regex	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	^[A-Za-z][A-Za-z0-9+.-]{0,31}://
+1	technical	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	•••
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/UrlMask.kt	…
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	episode
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	episodes
+2	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	id
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	movies
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	playlistId
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	poster
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	season
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	series
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	seriesId
+2	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	title
+1	json	app/src/main/java/tv/own/owntv/features/automation/VodJson.kt	year
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	GET
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	Open this show's page on the TV
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	POST
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	Play this episode on the TV, full screen
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	Play this movie on the TV, full screen
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	Search movies by name: ${SEARCH.hint}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	Search series by name: ${SEARCH.hint}
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	This show's episodes, by season
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	episode
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	episodes/{id}/play
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	movie
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	movies
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	movies/{id}/play
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	opening
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	playing
+3	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	series
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	series/{id}/episodes
+1	protocol	app/src/main/java/tv/own/owntv/features/automation/VodRoutes.kt	series/{id}/open
 1	log	app/src/main/java/tv/own/owntv/features/categorylock/CategoryLockViewModel.kt	CategoryLock
 1	log	app/src/main/java/tv/own/owntv/features/categorylock/CategoryLockViewModel.kt	home rows refresh after a lock change failed profile=$pid
 1	empty	app/src/main/java/tv/own/owntv/features/customize/CustomizeItemsScreen.kt	\0
@@ -52,7 +872,10 @@
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeMoreMenu.kt	PIN_REMOVE
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeMoreMenu.kt	PIN_SET
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeMoreMenu.kt	SETTINGS_PIN
-5	empty	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	\0
+1	empty	app/src/main/java/tv/own/owntv/features/customize/CustomizePinEditor.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizePinEditor.kt	confirm
+1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizePinEditor.kt	first
+4	empty	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	BULK
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	BULK_CLEANUP
 3	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	HIDE
@@ -62,8 +885,6 @@
 2	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	PIN_SET
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	SETTINGS_PIN
 2	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	SHOW
-1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	confirm
-1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	first
 1	technical	app/src/main/java/tv/own/owntv/features/customize/CustomizeScreen.kt	▶
 1	empty	app/src/main/java/tv/own/owntv/features/customize/CustomizeViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/downloads/DownloadsScreen.kt	\0
@@ -279,6 +1100,7 @@
 2	empty	app/src/main/java/tv/own/owntv/features/settings/AccentPopup.kt	\0
 4	technical	app/src/main/java/tv/own/owntv/features/settings/AccentPopup.kt	#
 1	technical	app/src/main/java/tv/own/owntv/features/settings/AccentPopup.kt	4E952A
+1	url	app/src/main/java/tv/own/owntv/features/settings/AdvancedMetadataPopup.kt	https://your-worker.example.workers.dev
 3	empty	app/src/main/java/tv/own/owntv/features/settings/BackupScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/BackupScreen.kt	dMMMyyyy
 1	empty	app/src/main/java/tv/own/owntv/features/settings/ChNavSettingsScreen.kt	\0
@@ -331,7 +1153,6 @@
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	he
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	hi
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	hr
-1	url	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	https://your-worker.example.workers.dev
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	hu
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	id
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	it
@@ -533,9 +1354,6 @@
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	SettingsViewModel
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	delete sourceId=${source.id}
 1	url	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	https://www.gstatic.com/generate_204
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	manual_clean_resync
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	manual_resync
-1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	refreshActiveTvHome profile=$pid allowBrowsable=$allowBrowsableRequest
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	resync cancel sourceId=${source.id}
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	resync enqueue sourceId=${source.id} clean=$clean
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	runImport profile=$pid
@@ -543,6 +1361,11 @@
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	setAndroidTvHomeEnabled enabled=$enabled
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	timed out
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	unknown host
+1	log	app/src/main/java/tv/own/owntv/features/settings/SourceActions.kt	OwnTVHome
+1	protocol	app/src/main/java/tv/own/owntv/features/settings/SourceActions.kt	manual_clean_resync
+1	protocol	app/src/main/java/tv/own/owntv/features/settings/SourceActions.kt	manual_resync
+1	log	app/src/main/java/tv/own/owntv/features/settings/SourceActions.kt	refreshActiveTvHome profile=$pid allowBrowsable=$allowBrowsableRequest
+6	empty	app/src/main/java/tv/own/owntv/features/settings/SourceEdit.kt	\0
 15	empty	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	\0
 5	technical	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	${src.name} · $value
 1	locale	app/src/main/java/tv/own/owntv/features/settings/VideoPlayerSettingsScreen.kt	,
@@ -613,9 +1436,13 @@
 1	technical	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	◀ ▶
 2	empty	app/src/main/java/tv/own/owntv/features/setup/RemoteSetupScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/setup/RemoteSetupScreen.kt	…
+2	empty	app/src/main/java/tv/own/owntv/features/setup/SetupAutomationStep.kt	\0
+2	empty	app/src/main/java/tv/own/owntv/features/setup/SetupBackupSteps.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/setup/SetupDisplaySizeStep.kt	+
+1	empty	app/src/main/java/tv/own/owntv/features/setup/SetupImportSteps.kt	\0
+2	empty	app/src/main/java/tv/own/owntv/features/setup/SetupProfileStep.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/setup/SetupProfileStep.kt	+
 12	empty	app/src/main/java/tv/own/owntv/features/setup/SetupViewModel.kt	\0
-5	empty	app/src/main/java/tv/own/owntv/features/setup/SetupWizard.kt	\0
-2	technical	app/src/main/java/tv/own/owntv/features/setup/SetupWizard.kt	+
 3	technical	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	\0
 1	protocol	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	ass
 1	performance	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	epg-preload

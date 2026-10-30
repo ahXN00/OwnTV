@@ -30,7 +30,6 @@ import tv.own.owntv.player.AudioOutputPolicy
 import tv.own.owntv.core.player.SurroundMode
 import tv.own.owntv.core.database.dao.SourceDao
 import tv.own.owntv.core.database.entity.SourceEntity
-import tv.own.owntv.core.repository.SourceEditor
 import tv.own.owntv.core.repository.SourceRepository
 import tv.own.owntv.core.repository.SourceTestResult
 import tv.own.owntv.core.setup.SourceImporter
@@ -94,7 +93,7 @@ class SettingsViewModel(
     private val enginePool: tv.own.owntv.player.LiveEnginePool,
     // Adding a playlist is core's sequence, not a copy of it — see [importState].
     private val importer: SourceImporter,
-    private val sourceEditor: SourceEditor,
+    private val sourceActions: SourceActions,
 ) : ViewModel() {
     companion object {
         private const val TAG = "OwnTVHome"
@@ -1070,8 +1069,8 @@ class SettingsViewModel(
     }
 
     /**
-     * Edit an existing source's settings. Blank fields keep what is stored; saving, the Stalker
-     * session drop and the resync decision are core's [SourceEditor].
+     * Edit an existing source's settings; [SourceActions.update] applies them, the same path the
+     * automation API uses.
      */
     fun updateSource(
         id: Long,
@@ -1095,37 +1094,13 @@ class SettingsViewModel(
         httpReferer: String = "",
     ) {
         viewModelScope.launch {
-            val existing = sourceDao.getById(id) ?: return@launch
-            // A Stalker edit re-canonicalizes the MAC; a garbled edit keeps the stored one.
-            val newMac = tv.own.owntv.core.stalker.StalkerClient.canonicalizeMac(mac) ?: existing.mac
-            val updated = existing.copy(
-                name = name.ifBlank { existing.name },
-                url = urlOrServer.trim().ifBlank { existing.url },
-                username = user.trim().takeIf { it.isNotBlank() } ?: existing.username,
-                password = pass.takeIf { it.isNotBlank() } ?: existing.password,
-                mac = newMac,
-                stalkerSerialNumber = stalkerSerialNumber.trim().takeIf { it.isNotBlank() },
-                stalkerDeviceId = stalkerDeviceId.trim().takeIf { it.isNotBlank() },
-                stalkerDeviceId2 = stalkerDeviceId2.trim().takeIf { it.isNotBlank() },
-                stalkerSignature = stalkerSignature.trim().takeIf { it.isNotBlank() },
-                userAgent = userAgent.trim().takeIf { it.isNotBlank() },
-                httpReferer = httpReferer.trim().takeIf { it.isNotEmpty() },
-                epgUrl = epgUrl.trim().takeIf { it.isNotBlank() },
-                syncLive = syncLive,
-                syncMovies = syncMovies,
-                syncSeries = syncSeries,
-                preferHls = preferHls,
+            sourceActions.update(
+                SourceEdit(
+                    id, name, urlOrServer, user, pass, userAgent, epgUrl, autoRefresh, isDefault, mac,
+                    stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2, stalkerSignature,
+                    syncLive, syncMovies, syncSeries, preferHls, httpReferer,
+                ),
             )
-            sourceEditor.save(existing, updated)
-            settings.setPlaylistAutoRefresh(id, autoRefresh)
-            // Apply the "Default playlist" toggle: on → this becomes the active playlist; off → if this was
-            // the default, clear it back to All. Leaves another playlist's default untouched.
-            when {
-                isDefault -> settings.setDefaultSource(id)
-                settings.defaultSourceId.first() == id -> settings.setDefaultSource(-1L)
-            }
-            // Hidden sections must drop from the Android TV launcher immediately.
-            runCatching { refreshActiveTvHome(allowBrowsableRequest = true) }
         }
     }
 
@@ -1351,16 +1326,7 @@ class SettingsViewModel(
      */
     fun resync(source: SourceEntity, clean: Boolean = false) {
         Log.d(TAG, "resync enqueue sourceId=${source.id} clean=$clean")
-        viewModelScope.launch {
-            val counts = importFinalizer.contentCounts(source.id)
-            catalogSyncScheduler.enqueueSync(
-                source.id,
-                reason = if (clean) "manual_clean_resync" else "manual_resync",
-                contentTypes = SyncContentTypes.enabledOf(source),
-                baseItemCount = counts.channels + counts.movies + counts.series,
-                forcePrune = clean,
-            )
-        }
+        viewModelScope.launch { sourceActions.resync(source, clean) }
     }
 
     fun cancelResync(source: SourceEntity) {
@@ -1382,15 +1348,7 @@ class SettingsViewModel(
             Log.d(TAG, "delete sourceId=${source.id}")
             _deletingSourceIds.value = _deletingSourceIds.value + source.id
             try {
-                catalogSyncScheduler.cancelSync(source.id)
-                stalkerAuth.invalidate(source.id)
-                // NonCancellable: once confirmed, finish the cascade even if the user leaves the
-                // screen mid-delete — an interrupted half-deleted source is worse than a short wait.
-                withContext(NonCancellable) {
-                    sourceRepository.deleteSource(source)
-                    if (defaultSourceId.value == source.id) settings.setDefaultSource(-1L)
-                    refreshActiveTvHome(allowBrowsableRequest = true)
-                }
+                sourceActions.delete(source)
             } finally {
                 _deletingSourceIds.value = _deletingSourceIds.value - source.id
             }
@@ -1406,11 +1364,8 @@ class SettingsViewModel(
         importer.reset()
     }
 
-    private suspend fun refreshActiveTvHome(allowBrowsableRequest: Boolean = true) {
-        val pid = profileDao.resolveExistingProfileId(settings.activeProfileId.first()) ?: return
-        Log.d(TAG, "refreshActiveTvHome profile=$pid allowBrowsable=$allowBrowsableRequest")
-        launcherIntegrationRepository.refreshProfile(pid, allowBrowsableRequest)
-    }
+    private suspend fun refreshActiveTvHome(allowBrowsableRequest: Boolean = true) =
+        sourceActions.refreshTvHome(allowBrowsableRequest)
 
     // --- Global proxy (Approach 1 — one app-wide HTTP proxy) ---
 

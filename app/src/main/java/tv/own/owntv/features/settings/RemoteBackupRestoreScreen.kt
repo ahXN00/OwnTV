@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import tv.own.owntv.R
 import tv.own.owntv.core.companion.CompanionLink
 import tv.own.owntv.core.companion.CompanionServerState
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 import java.io.File
 
 /**
@@ -37,6 +38,7 @@ fun RemoteBackupRestoreScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    SensitiveScreenMarker()
     val actionFocus = remember { FocusRequester() }
     LaunchedEffect(state::class) { runCatching { actionFocus.requestFocus() } }
 

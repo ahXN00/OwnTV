@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="automation_title">Automation</string>
+    <string name="automation_description">Paired devices on your home network can manage playlists and guides, change most settings, control playback, press remote buttons and read the app logs.</string>
+    <string name="automation_notification_text">Listening for paired devices on the home network</string>
+    <string name="automation_switch">Automation API</string>
+    <string name="automation_off">Off. Nothing is listening.</string>
+    <string name="automation_starting">Starting…</string>
+    <string name="automation_listening">Listening at %1$s</string>
+    <string name="automation_failed">Could not start: %1$s</string>
+    <string name="automation_pair">Pair a device</string>
+    <string name="automation_pair_desc">Shows a one-time PIN for 3 minutes. Send it from the device you want to pair.</string>
+    <string name="automation_pair_action">Pair</string>
+    <string name="automation_pair_cancel">Cancel</string>
+    <string name="automation_pin_hint">POST it to /api/v1/pair. Closes in %1$d:%2$02d.</string>
+    <string name="automation_tailscale">Allow over Tailscale</string>
+    <string name="automation_tailscale_desc">Paired devices may also connect from Tailscale addresses (100.64.x.x).</string>
+    <string name="automation_devices">Paired devices</string>
+    <string name="automation_no_devices">No paired devices.</string>
+    <string name="automation_device_desc">%1$s · paired %2$s</string>
+    <string name="automation_remove">Remove</string>
+    <string name="automation_remove_confirm">Press OK again to remove</string>
+    <string name="automation_remove_all">Remove all devices (hold OK)</string>
+    <string name="automation_notice_playing">Remote: playing %1$s</string>
+    <string name="automation_notice_opened">Remote: opened %1$s</string>
+</resources>

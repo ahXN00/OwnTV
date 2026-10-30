@@ -32,6 +32,7 @@ import androidx.tv.material3.Text
 import tv.own.owntv.R
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.core.database.entity.ProfileEntity
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 import tv.own.owntv.ui.components.OwnTVAvatar
 import tv.own.owntv.ui.components.OwnTVAvatars
 
@@ -49,9 +50,11 @@ internal fun ProfileScrim(
 }
 
 /** Numeric PIN entry. Calls [onSubmit] with the entered digits. [compact] renders the small
- *  popup-menu treatment (narrow panel, Caladea font) used by the Customize screen. */
+ *  popup-menu treatment (narrow panel, Caladea font) used by the Customize screen. Private for the
+ *  automation API while open ([SensitiveScreenMarker]): its keys cannot type a PIN here. */
 @Composable
 internal fun PinDialog(title: String, onSubmit: (String) -> Unit, onDismiss: () -> Unit, compact: Boolean = false) {
+    SensitiveScreenMarker()
     val dialog: @Composable () -> Unit = { PinDialogBody(title, onSubmit, onDismiss, compact) }
     if (compact) tv.own.owntv.ui.theme.PopupFontTheme(content = dialog) else dialog()
 }
@@ -103,6 +106,9 @@ private fun PinDialogBody(title: String, onSubmit: (String) -> Unit, onDismiss: 
  * [takenNames] are the OTHER profiles' names (lowercased) — profile names must be unique (they're the
  * merge key for backup restore), so a collision blocks Create/Save with an inline error.
  *
+ * Private for the automation API while open ([SensitiveScreenMarker]): editing does not ask for the old
+ * PIN, so its keys could otherwise remove another profile's PIN or turn Kids off.
+ *
  * A picture of the user's own: on an existing profile [onPickPicture] / [onClearPicture] apply it at
  * once, as the phone does, and [customPath] is the one it has now. A new profile has no id to store
  * one under yet, so the dialog holds the chosen file and hands it to [onConfirm] with the rest.
@@ -117,6 +123,7 @@ internal fun ProfileEditorDialog(
     onPickPicture: ((java.io.File) -> Unit)? = null,
     onClearPicture: (() -> Unit)? = null,
 ) {
+    SensitiveScreenMarker()
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var avatarId by remember { mutableIntStateOf(initial?.avatarId ?: -1) } // new profiles default to no avatar
     var isKids by remember { mutableStateOf(initial?.isKids ?: false) }

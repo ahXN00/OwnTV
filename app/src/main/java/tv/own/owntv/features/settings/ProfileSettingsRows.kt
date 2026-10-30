@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ProfileEntity
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 import tv.own.owntv.features.profiles.ProfileEditorDialog
 import tv.own.owntv.features.profiles.ProfileGateSessionViewModel
 import tv.own.owntv.features.profiles.ProfilesViewModel
@@ -138,6 +139,8 @@ internal fun ProfileSettingsRows() {
         )
     }
     confirmDelete?.let { p ->
+        // Private for the automation API: its keys must not delete a profile (ProfileEditorDialog marks itself).
+        SensitiveScreenMarker()
         ConfirmDialog(
             title = stringResource(R.string.profiles_delete_title, p.name),
             message = stringResource(R.string.profiles_delete_message),

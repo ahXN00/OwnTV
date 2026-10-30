@@ -927,6 +927,14 @@ account, no cloud. **Both devices must open the Local sync screen**; you see exa
 before it changes. On a brand-new television this is offered during setup instead — see
 **From another device** under *Start here*.
 
+### 🤖 Automation (home server, scripts, Home Assistant)
+**Where:** ⋯ More → Keep it safe → **Automation**
+Off by default. Once on, a computer you pair with a one-time PIN can add and refresh playlists and
+TV guides, change settings, tune a channel or play a film, and control the player — over your own
+network only. PIN, login, profile, network, backup and pairing screens stay private: a paired
+device cannot press keys or read the screen while one is open. Endpoints, pairing and examples:
+[AUTOMATION_API.md](AUTOMATION_API.md).
+
 ---
 
 ## 🛠️ Build your own M3U playlist

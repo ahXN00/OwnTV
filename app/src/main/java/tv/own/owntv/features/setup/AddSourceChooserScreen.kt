@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.stringResource
 import tv.own.owntv.R
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 import tv.own.owntv.features.settings.SettingHelp
 import tv.own.owntv.features.settings.SettingValue
 import tv.own.owntv.features.settings.StageFullPage
@@ -24,6 +25,7 @@ fun AddSourceChooserScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    SensitiveScreenMarker()
     val rowsFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { rowsFocus.requestFocus() } }
     val playlists = stringResource(R.string.settings_playlists)

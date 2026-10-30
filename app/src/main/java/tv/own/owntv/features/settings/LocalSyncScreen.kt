@@ -98,10 +98,10 @@ fun LocalSyncScreen(
     /** More › Local sync: what OK / ▶ on the sheet focuses. Settings passes none and gets focus on open. */
     entry: FocusRequester? = null,
 ) {
+    tv.own.owntv.features.automation.SensitiveScreenMarker()
     val vm: LocalSyncViewModel = koinViewModel()
     val paired by vm.paired.collectAsStateWithLifecycle()
     val hosting by vm.hosting.collectAsStateWithLifecycle()
-
     val ownFocus = remember { FocusRequester() }
     val firstFocus = entry ?: ownFocus
     val connectFocus = remember { FocusRequester() }
@@ -245,8 +245,8 @@ private fun SyncTile(
  */
 @Composable
 fun SetupLocalSyncScreen(onRestored: () -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    tv.own.owntv.features.automation.SensitiveScreenMarker()
     val vm: LocalSyncViewModel = koinViewModel()
-
     // Straight into discovery: arriving here IS the decision to look for the other device, so a
     // screen that then asked the user to press "Find a device" would be asking twice.
     var started by remember { mutableStateOf(false) }

@@ -18,6 +18,7 @@ import androidx.compose.ui.res.pluralStringResource
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.core.network.DohPresets
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 
 /** This screen's rows as Settings search finds them. */
 internal val DNS_SEARCH_ROWS: List<Int> =
@@ -25,6 +26,7 @@ internal val DNS_SEARCH_ROWS: List<Int> =
 
 @Composable
 fun DnsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    SensitiveScreenMarker()
     val vm: SettingsViewModel = koinViewModel()
 
     val dnsConfig by vm.dnsConfig.collectAsStateWithLifecycle()

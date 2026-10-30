@@ -1075,7 +1075,7 @@ fun OwnTVShell(
                 .focusRestorer()
                 .focusGroup(),
         ) {
-          if (isOffline) OfflineBanner()
+          if (isOffline) tv.own.owntv.features.shell.components.OfflineBanner()
           val selectFromNav: (MainSection) -> Unit = { section ->
               if (trendingSearchActive || section == MainSection.SEARCH) {
                   searchVm.setQuery("")
@@ -1950,6 +1950,16 @@ fun OwnTVShell(
             }
         }
       }
+      // The automation API: publishes what is on screen, applies its navigation, shows its notices.
+      ShellAutomationBridge(
+          section = selectedSection,
+          onNavigate = { section -> if (playerMode == PlayerMode.FULLSCREEN) exitPlayer(); openShortcutSection(section) },
+          onOpenSeries = { id ->
+              if (playerMode == PlayerMode.FULLSCREEN) exitPlayer()
+              seriesVm.openSeriesById(id); restoreFocus = true; onSelectSection(MainSection.SERIES)
+          },
+          modifier = Modifier.align(Alignment.TopEnd),
+      )
 
     if (showExit) {
         ExitDialog(onConfirm = onExitApp, onDismiss = { showExit = false })

@@ -29,6 +29,7 @@ import tv.own.owntv.R
 import tv.own.owntv.core.companion.CompanionLink
 import tv.own.owntv.core.companion.CompanionPayload
 import tv.own.owntv.core.companion.CompanionServerState
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 import tv.own.owntv.features.settings.SettingHelp
 import tv.own.owntv.features.settings.SettingPanelHeading
 import tv.own.owntv.features.settings.SettingValue
@@ -58,6 +59,7 @@ fun RemoteSetupScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    SensitiveScreenMarker()
     val rowsFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (state == CompanionServerState.Idle) onStartListener(CompanionLink.DEFAULT_PORT)

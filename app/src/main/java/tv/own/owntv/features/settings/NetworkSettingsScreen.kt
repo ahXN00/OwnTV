@@ -18,6 +18,7 @@ import tv.own.owntv.R
 import androidx.compose.ui.res.pluralStringResource
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.features.automation.SensitiveScreenMarker
 
 /** This screen's rows as Settings search finds them (the host/port fields are found by the proxy keywords). */
 internal val PROXY_SEARCH_ROWS: List<Int> = listOf(R.string.settings_use_proxy, R.string.settings_test_proxy)
@@ -28,6 +29,7 @@ internal val PROXY_SEARCH_ROWS: List<Int> = listOf(R.string.settings_use_proxy, 
  */
 @Composable
 fun NetworkSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    SensitiveScreenMarker()
     val vm: SettingsViewModel = koinViewModel()
     val config by vm.proxyConfig.collectAsStateWithLifecycle()
     val testState by vm.proxyTest.collectAsStateWithLifecycle()

@@ -35,6 +35,12 @@
         android:name="android.software.leanback"
         android:required="false" />
 
+    <!-- Automation API: a LAN listener kept alive by a foreground service. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Lets the API bring OwnTV forward to tune a channel. Never requested: the user grants it once with adb. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Lets the API wake the TV from a screensaver or standby (ScreenWaker); newer Android asks for it. -->
+    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />
     <!-- Voice search hands the listening to the system's speech recogniser, so no microphone permission
          is needed. From Android 11 the app can only see that recogniser if it names the action here;
          without it Search would hide the microphone even where one exists. -->
@@ -364,6 +370,23 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".features.automation.AutomationService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Local-network API for the user's own paired devices to manage playlists" />
+        </service>
+
+        <!-- Exported because BOOT_COMPLETED is a system broadcast. -->
+        <receiver
+            android:name=".features.automation.AutomationBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

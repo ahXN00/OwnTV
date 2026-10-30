@@ -13,7 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,7 +54,6 @@ import tv.own.owntv.core.settings.PlaylistAutoRefresh
 import tv.own.owntv.core.settings.PlaylistRefresh
 import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.ui.components.BrowseMode
-import tv.own.owntv.ui.components.DayStepperDialog
 import tv.own.owntv.ui.components.StorageBrowser
 
 private enum class SourceKind { XTREAM, M3U, STALKER }
@@ -68,7 +66,6 @@ private sealed interface HlsTestUi {
     data class Complete(val test: HlsTest) : HlsTestUi
     data class Failed(val rawMessage: String) : HlsTestUi
 }
-
 
 @Composable
 fun AddSourceScreen(
@@ -118,6 +115,7 @@ fun AddSourceScreen(
         series: SyncScopeChoice,
     ) -> Unit)? = null,
 ) {
+    tv.own.owntv.features.automation.SensitiveScreenMarker()
     val editing = initial != null
     var kind by remember {
         mutableStateOf(
@@ -700,76 +698,4 @@ fun AddSourceScreen(
           )
       }
     }
-}
-
-/** Picker entry for a mode. Manual reads as an ellipsis label — it opens the day stepper. */
-@Composable
-private fun refreshModeLabel(mode: PlaylistAutoRefresh): String = stringResource(
-    when (mode) {
-        PlaylistAutoRefresh.OFF -> R.string.settings_sources_refresh_off
-        PlaylistAutoRefresh.STARTUP -> R.string.settings_sources_refresh_startup
-        PlaylistAutoRefresh.HOURS_6 -> R.string.settings_sources_refresh_6h
-        PlaylistAutoRefresh.HOURS_12 -> R.string.settings_sources_refresh_12h
-        PlaylistAutoRefresh.MANUAL -> R.string.settings_sources_refresh_manual
-    },
-)
-
-/** The chosen selection as shown on a row: Manual spells out the day count it resolved to. */
-@Composable
-internal fun playlistAutoRefreshLabel(refresh: PlaylistRefresh): String =
-    if (refresh.mode == PlaylistAutoRefresh.MANUAL) {
-        pluralStringResource(R.plurals.settings_sources_refresh_days, refresh.manualDays, refresh.manualDays)
-    } else {
-        refreshModeLabel(refresh.mode)
-    }
-
-/**
- * Day stepper for the Manual auto-refresh interval — [DayStepperDialog] with the playlist's own
- * wording and bounds.
- */
-@Composable
-private fun ManualDaysDialog(initialDays: Int, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
-    DayStepperDialog(
-        title = stringResource(R.string.settings_sources_refresh_days_title),
-        hint = stringResource(R.string.settings_sources_refresh_days_hint),
-        initialDays = initialDays,
-        minDays = PlaylistRefresh.MIN_MANUAL_DAYS,
-        maxDays = PlaylistRefresh.MAX_MANUAL_DAYS,
-        label = { days -> pluralStringResource(R.plurals.settings_sources_refresh_days, days, days) },
-        onConfirm = onConfirm,
-        onDismiss = onDismiss,
-    )
-}
-
-/** What to sync, one row per section: ◀ ▶ (or OK) step Now / Later / Off — On / Off while editing. */
-@Composable
-private fun SyncScopeStageRow(
-    icon: OwnTVIcon,
-    label: String,
-    desc: String,
-    value: SyncScopeChoice,
-    editing: Boolean,
-    help: tv.own.owntv.features.settings.SettingHelp,
-    modifier: Modifier,
-    onChange: (SyncScopeChoice) -> Unit,
-) {
-    val options = if (editing) listOf(SyncScopeChoice.Now, SyncScopeChoice.Off) else listOf(SyncScopeChoice.Now, SyncScopeChoice.Later, SyncScopeChoice.Off)
-    val labels = options.map {
-        when (it) {
-            SyncScopeChoice.Now -> stringResource(if (editing) R.string.setup_on else R.string.setup_now)
-            SyncScopeChoice.Later -> stringResource(R.string.setup_later)
-            SyncScopeChoice.Off -> stringResource(R.string.setup_off)
-        }
-    }
-    val at = options.indexOf(value).coerceAtLeast(0)
-    StageSettingRow(
-        icon = icon,
-        title = label,
-        desc = desc,
-        value = SettingValue.Segmented(labels, at),
-        onClick = { onChange(options[(at + 1) % options.size]) },
-        onStep = { step -> onChange(options[(at + step).coerceIn(0, options.lastIndex)]) },
-        modifier = modifier,
-        help = help,
-    )
 }

@@ -33,6 +33,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import tv.own.owntv.core.util.Perf
 import tv.own.owntv.core.launcher.LauncherDeepLink
+import tv.own.owntv.features.profiles.AddProfileOnboarding
 import tv.own.owntv.features.profiles.ProfileGate
 import tv.own.owntv.features.profiles.ProfileGateSessionViewModel
 import tv.own.owntv.features.profiles.ProfilesViewModel
@@ -117,12 +118,17 @@ open class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        automationWake.wakeIfAsked(intent)
         pendingDeepLink = LauncherDeepLink.parse(intent.data)
         Log.d(TAG, "onNewIntent deepLinkHost=${intent.data?.host} deepLinkType=${pendingDeepLink?.javaClass?.simpleName ?: "none"}")
     }
 
+    /** Turns the screen on for an API start, until OwnTV stops. */
+    private val automationWake by lazy { tv.own.owntv.features.automation.AutomationWake(this, get()) }
+
     override fun onStop() {
         super.onStop()
+        automationWake.drop()
         // Backgrounded (Home / another app), exited, logged out, or the picture-in-picture window closed:
         // stop playback and free the demuxer cache + decoder buffers — holding them while invisible got
         // the process LMK-killed on real TVs. Every engine: mpv, the Live engine (its audio must stop
@@ -202,6 +208,7 @@ open class MainActivity : ComponentActivity() {
             // Then until the shell is on the start-up screen, so Home does not flash first.
             !startupSettled && now < readyAt + STARTUP_SETTLE_TIMEOUT_MS
         }
+        automationWake.wakeIfAsked(intent)
         pendingDeepLink = LauncherDeepLink.parse(intent.data)
         Log.d(TAG, "onCreate deepLinkHost=${intent.data?.host} deepLinkType=${pendingDeepLink?.javaClass?.simpleName ?: "none"}")
         val dbError = probeDatabase()
@@ -416,12 +423,7 @@ open class MainActivity : ComponentActivity() {
                         when {
                             profile == null || !profilesLoaded -> Unit // active id / Room list loading
                             // Adding a profile from the gate → onboard the new profile.
-                            addingProfile -> Onboarding(
-                                firstRun = false,
-                                onDone = { profileId -> gateSession.completeAddingProfile(profileId) },
-                                onCancel = { gateSession.cancelAddingProfile() },
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                            addingProfile -> AddProfileOnboarding(gateSession, Modifier.fillMaxSize())
                             // First run (no profile yet) → full onboarding.
                             profile < 0L -> Onboarding(
                                 firstRun = true,

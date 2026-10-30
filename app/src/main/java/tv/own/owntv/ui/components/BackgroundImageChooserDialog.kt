@@ -74,7 +74,9 @@ fun BackgroundImageChooserDialog(
  * Remote background upload: opens the LAN companion server in image-upload mode and shows the PIN,
  * a QR of the URL, and the URL text — the same flow as Remote backup restore. When an image arrives,
  * [onImageReceived] hands the saved cache file to the host (which ingests it as the background and
- * closes this dialog). The server stops automatically when the dialog leaves composition.
+ * closes this dialog). The server stops automatically when the dialog leaves composition. Private for
+ * the automation API ([tv.own.owntv.features.automation.SensitiveScreenMarker]): its PIN lets a phone
+ * upload a file.
  */
 @Composable
 fun RemoteBackgroundDialog(
@@ -85,6 +87,7 @@ fun RemoteBackgroundDialog(
     onImageReceived: (File) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    tv.own.owntv.features.automation.SensitiveScreenMarker()
     val firstFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { firstFocus.requestFocus() } }
     // Open a fresh image-upload session on entry; stop it when the dialog leaves.

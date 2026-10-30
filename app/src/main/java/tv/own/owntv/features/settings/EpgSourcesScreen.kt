@@ -27,6 +27,7 @@ import tv.own.owntv.core.sync.work.EpgSyncState
  */
 @Composable
 fun EpgSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier, startOnAdd: Boolean = false) {
+    tv.own.owntv.features.automation.SensitiveScreenMarker()
     val vm: EpgSourcesViewModel = koinViewModel()
     val sources by vm.sources.collectAsStateWithLifecycle()
     val autoRefreshMap by vm.autoRefresh.collectAsStateWithLifecycle()

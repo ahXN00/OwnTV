@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Translators: Secondary button on the first setup screen, beside "Get started". It turns on the Automation API so a computer on the home network can set up the TV. "Automation" is the name of the feature in Settings. -->
+    <string name="setup_automation_action">Set up by Automation</string>
+    <!-- Translators: Heading above the PIN and the TV's network address on the "Set up by Automation" page. Shown in capitals. -->
+    <string name="setup_automation_heading">Pair from your computer</string>
+    <!-- Translators: Row title on the "Set up by Automation" page while no computer has paired yet. -->
+    <string name="setup_automation_waiting">Waiting for your computer</string>
+    <!-- Translators: Shown once a computer has paired on the "Set up by Automation" page. %1$s is the name the computer gave itself, for example "NAS". The TV then waits for that computer to finish setup. -->
+    <string name="setup_automation_paired">Paired with %1$s. Finish setup from that device.</string>
+    <!-- Translators: Line under the paired message on the "Set up by Automation" page: what happens next. -->
+    <string name="setup_automation_paired_line">OwnTV opens Home when setup is finished.</string>
+    <!-- Translators: Line on the "Set up by Automation" page when the 3-minute pairing PIN has run out or was entered wrong too often. "New PIN" is the label of the row below it. -->
+    <string name="setup_automation_expired">The PIN has closed. Choose New PIN for another one.</string>
+    <!-- Translators: Row title on the "Set up by Automation" page after a computer paired: leave this page and set up with the remote instead. -->
+    <string name="setup_automation_here">Set up here instead</string>
+    <!-- Translators: Line under "Set up here instead": the normal setup steps follow. -->
+    <string name="setup_automation_here_line">Make a profile and add a playlist on this TV</string>
+    <!-- Translators: Line under "Cancel" on the "Set up by Automation" page: pairing closes and setup goes back to its first screen. -->
+    <string name="setup_automation_cancel_line">Close pairing and go back</string>
+    <!-- Translators: Help text on the "Set up by Automation" page. "Automation" is the name of the feature; "More", "Keep it safe" and "Automation" are the names of the screens where it can be turned off. -->
+    <string name="setup_automation_note">A computer you pair can add profiles, playlists and TV guides, change settings and finish setup. Automation stays on afterwards; turn it off in More › Keep it safe › Automation.</string>
+</resources>
