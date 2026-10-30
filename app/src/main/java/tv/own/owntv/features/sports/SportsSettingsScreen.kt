@@ -38,6 +38,7 @@ import tv.own.owntv.features.settings.StageSettingsHeading
 import tv.own.owntv.features.settings.StageSettingsNote
 import tv.own.owntv.features.settings.settingHelp
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.theme.mpx
 
 /** The pages of Settings → Sports: the main page and the ones its rows open. */
@@ -357,6 +358,8 @@ private fun MovePopup(list: MoveList, title: String, onDone: () -> Unit, onCance
     val accent = tv.own.owntv.ui.theme.stageAccent.accent
     tv.own.owntv.ui.stage.StagePopup(
         onDismiss = onCancel, title = title, body = stringResource(R.string.sports_move_instructions), width = 760.mpx, scroll = false,
+        // Opened by a held OK: the guard keeps its repeats from dropping the item it opens carrying.
+        modifier = Modifier.longPressMenuGuard(),
         buttons = {
             tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_cancel), onClick = onCancel, height = 56.mpx, textSize = 19)
             tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_save), height = 56.mpx, textSize = 19, tinted = true,
