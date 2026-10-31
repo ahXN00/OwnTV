@@ -1035,6 +1035,18 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setRememberCategoryLive(enabled) }
     }
 
+    val liveShowAllRail: StateFlow<Boolean> =
+        settings.liveShowAllRail.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    fun setLiveShowAllRail(enabled: Boolean) {
+        viewModelScope.launch { settings.setLiveShowAllRail(enabled) }
+    }
+
+    val liveShowCatchupRail: StateFlow<Boolean> =
+        settings.liveShowCatchupRail.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    fun setLiveShowCatchupRail(enabled: Boolean) {
+        viewModelScope.launch { settings.setLiveShowCatchupRail(enabled) }
+    }
+
     fun setRememberCategoryMovies(enabled: Boolean) {
         viewModelScope.launch { settings.setRememberCategoryMovies(enabled) }
     }
