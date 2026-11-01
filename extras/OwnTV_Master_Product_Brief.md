@@ -517,7 +517,7 @@ manual check, and installation on the TV itself.
 | Area | Choice |
 |---|---|
 | Language | Kotlin 2.4.20 (no `kotlin-android` plugin; the Compose compiler plugin pulls the Kotlin Gradle plugin to this version) |
-| Build | AGP 9.4.0 / Gradle 9.7.1, KSP2 2.3.11 |
+| Build | AGP 9.4.0 / Gradle 9.8.2, KSP2 2.3.11, JDK 25 |
 | UI | Jetpack Compose for TV (`androidx.tv:tv-material` 1.1.0), Compose BOM 2026.08.00 |
 | Media | libmpv (FFmpeg) — `tv.own.owntv:libmpv`, OwnTV's own build (newest mpv + FFmpeg 9, monthly) · ExoPlayer/Media3 1.11.1 |
 | Database | Room 2.8.5 + Paging 3.5.1 + FTS4 (WAL) |

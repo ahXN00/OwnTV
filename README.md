@@ -132,7 +132,7 @@ More in **[extras/screenshots/](extras/screenshots/)**.
 | Area | Choice |
 |------|--------|
 | Language | Kotlin 2.4.20 (no `kotlin-android` plugin) |
-| Build | AGP 9.4.0 / Gradle 9.7.1, KSP2 2.3.11 |
+| Build | AGP 9.4.0 / Gradle 9.8.2, KSP2 2.3.11, JDK 25 |
 | UI | Jetpack Compose for TV (`androidx.tv:tv-material` 1.1.0), Compose BOM 2026.08.00 |
 | Media | **libmpv** (FFmpeg) · **ExoPlayer/Media3** 1.11.1 |
 | Database | Room 2.8.5 + Paging 3.5.1 + FTS4 |
