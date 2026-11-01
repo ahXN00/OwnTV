@@ -210,8 +210,9 @@ just above it checks whether your provider really serves it.
 
 ### 📡 Stalker portals
 **Where:** Add source → Stalker (MAC)
-Portal URL plus MAC. Stricter portals also take Serial Number, Device ID, Device ID2 and Signature
-under **Advanced device identification**.
+Portal URL plus MAC. A portal that also asks for a login takes it in **Username** and **Password**,
+right under the MAC; leave both empty otherwise. Stricter portals also take Serial Number, Device ID,
+Device ID2 and Signature under **Advanced device identification**.
 > **"Portal refused the login"?** Check the MAC, and check the TV's **date & time** — Stalker
 > validates timestamps and a clock a few minutes out fails the handshake.
 

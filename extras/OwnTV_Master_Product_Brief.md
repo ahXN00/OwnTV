@@ -21,7 +21,7 @@ OwnTV is a native **Android TV** IPTV player written in Kotlin with Jetpack Comp
 **ExoPlayer (Media3)** for near-instant Live TV.
 
 It is a **player only**. You supply an Xtream login, an M3U playlist (URL or a local file) or a
-Stalker/Ministra portal (Portal URL + MAC, with optional Serial Number, Device ID, Device ID2 and
+Stalker/Ministra portal (Portal URL + MAC, with an optional username and password, and optional Serial Number, Device ID, Device ID2 and
 Signature for stricter portals).
 
 **Key principles**
@@ -249,11 +249,14 @@ status, expiry, trial and connections in use, and writes nothing.
 
 ### 3.4 Stalker / Ministra portals
 
-A third source type alongside M3U and Xtream: Portal URL + MAC, with optional Serial Number, Device
+A third source type alongside M3U and Xtream: Portal URL + MAC, with an optional login (username +
+password, for portals that ask for one) and optional Serial Number, Device
 ID, Device ID2 and Signature. MAG handshake auth with in-memory tokens and User-Agent presets. Play
 links are minted per play and silently re-resolved on expiry, so long sessions, downloads with range
 resume, and cross-engine fallback all survive token resets. Full feature parity: downloads, external
-player, TMDB, backup, auto refresh and the playlist switcher.
+player, TMDB, backup, auto refresh and the playlist switcher. The catalogue crawl backs off when a
+portal refuses parallel requests and remembers that limit per playlist; a portal with no series
+section gets the series it files among its films.
 
 ### 3.5 Layout
 
@@ -493,7 +496,7 @@ downloaded subtitle files. An optional **backup password** encrypts the whole co
 proxy passwords, Stalker identity, TMDB and OpenSubtitles credentials, PIN hashes. Restore accepts
 `.own` and legacy `.json` — from a file on this TV or sent from a phone (**Remote**) — detected by
 content rather than extension, and **merge-restore remaps
-every id** the file carries. Sources are matched on type + URL + username, plus the MAC for Stalker.
+every id** the file carries. Sources are matched on type + URL + username; a Stalker portal on type + URL + MAC.
 
 > Android's automatic backup is deliberately **disabled**: the raw stores hold plaintext credentials,
 > so this screen is the single explicit, encryptable path off the device.

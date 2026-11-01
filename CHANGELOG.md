@@ -25,6 +25,7 @@
 - **🔐 Ask for the PIN to open Settings** (community PR #286 by @Kevsosmooth)
 - **🪟 Picture-in-picture when leaving the app** (community PR #278 by @Kevsosmooth)
 - **📺 Live TV: the preview keeps playing while you browse the categories** (community PR #270 by @Kevsosmooth)
+- **🔑 Stalker portals: an optional username and password**
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**
@@ -51,6 +52,9 @@
 - **A new playlist with a name already in use is numbered: "My IPTV 2"**
 - **Renamed channels, films and series keep their name on Home and in Continue**
 - **Stalker portals behind a redirect stay signed in; their posters load**
+- **Stalker sync slows down on portals that refuse parallel requests and loses no page; fast portals keep full speed**
+- **Stalker series listed among the films go to Series when the portal has no series section**
+- **Playlist rows show the full catalogue once the background download finishes**
 
 ## v5.2.1 — 2026-10-21
 
