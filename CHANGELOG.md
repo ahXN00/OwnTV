@@ -25,8 +25,21 @@
 - **🔐 Ask for the PIN to open Settings** (community PR #286 by @Kevsosmooth)
 - **🪟 Picture-in-picture when leaving the app** (community PR #278 by @Kevsosmooth)
 - **📺 Live TV: the preview keeps playing while you browse the categories** (community PR #270 by @Kevsosmooth)
+- **🔑 Stalker portals: an optional username and password**
+- **🏆 Sports: Scores | Calendar | Leagues tabs**
+- **📅 Sports Calendar: the month of every followed league, with the day's matches**
+- **🗂️ Sports Leagues: tables, fixtures and results; F1 drivers, constructors and races; tennis rankings**
+- **👕 Team pages: fixtures, results, next match, last five and table place**
+- **🆕 54 more leagues, with Volleyball and Lacrosse**
+- **🔄 Calendar refresh setting**
 
 ### 🐛 Fixes
+- **🗑️ Deleting a download or recording asks first**
+- **↕️ Moved categories, channels, films and series keep their place in A–Z and Provider; the rest follow the sort**
+- **📺 Back to the TV Guide focuses the channel that was playing and previews it**
+- **📋 TV Guide order follows Live TV, moved channels included**
+- **⏱️ "Mark as watched" no longer shows "0 min"**
+- **↕️ Move opens on the item asked for, even far down the list**
 - **Home: the last card of a row stays on screen when it has focus** (community PR #314 by @arch-fan)
 - **Setup: the choice cards line up when one has a shorter line** (community PR #315 by @arch-fan)
 - **The update popup's What's new scrolls with Up and Down** (community PR #291 by @camchis)
@@ -45,6 +58,12 @@
 - **A new playlist with a name already in use is numbered: "My IPTV 2"**
 - **Renamed channels, films and series keep their name on Home and in Continue**
 - **Stalker portals behind a redirect stay signed in; their posters load**
+- **Stalker sync slows down on portals that refuse parallel requests and loses no page; fast portals keep full speed**
+- **Stalker series listed among the films go to Series when the portal has no series section**
+- **Playlist rows show the full catalogue once the background download finishes**
+- **A live channel whose decoder fails to start is retried a few more times before giving up (#321)**
+- **Dolby Vision profile 5 films and series play with the right colours on mpv (#313)**
+- **Apple FairPlay channels say why they cannot play; FairPlay-labelled ClearKey channels play**
 
 ## v5.2.1 — 2026-10-21
 

@@ -601,6 +601,9 @@ fun OwnTVShell(
         player.stop()
         subtitleController.clear() // leaving the player drops the OpenSubtitles item context
         if (selectedSection != MainSection.LIVE_TV) liveVm.clearLiveOnExo()
+        // Closing back into a guide: it focuses the channel that was playing (zapped-to included).
+        epgVm.playerClosed = selectedSection == MainSection.EPG ||
+            (selectedSection == MainSection.LIVE_TV && liveVm.liveView.value == tv.own.owntv.core.settings.SettingsRepository.LiveView.GUIDE)
         restoreFocus = true
         focusRail()
         Unit
@@ -1214,6 +1217,10 @@ fun OwnTVShell(
                             onEpgAddConsumed = { openEpgAdd = false },
                             start = settingsStart,
                             onStartConsumed = { settingsStart = null },
+                            onOpenSportsTeam = { t ->
+                                sportsMatchRequests.pendingTeam.value = t
+                                onSelectSection(MainSection.SPORTS)
+                            },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }

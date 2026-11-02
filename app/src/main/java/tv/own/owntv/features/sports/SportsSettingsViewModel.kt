@@ -33,6 +33,7 @@ class SportsSettingsViewModel(
     private val settings: SettingsRepository,
     private val source: SportsSource,
     private val repository: SportsRepository,
+    private val calendar: tv.own.owntv.core.sports.SportsCalendar,
     activity: SportsActivityTracker,
     sourceDao: SourceDao,
 ) : ViewModel() {
@@ -53,7 +54,11 @@ class SportsSettingsViewModel(
     val rebuilding: StateFlow<Boolean> = activity.rebuild.map { it is RebuildState.Running }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    fun rebuild() = repository.rebuild()
+    /** Refresh sports data now: the board built again, and the saved current and future calendar months marked out of date. */
+    fun rebuild() {
+        repository.rebuild()
+        calendar.markStale()
+    }
 
     /** The app's language, which ranks first until the user picks commentary languages. */
     val appLanguage: String get() = Locale.getDefault().language

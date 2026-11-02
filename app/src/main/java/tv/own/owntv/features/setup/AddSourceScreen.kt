@@ -116,6 +116,8 @@ fun AddSourceScreen(
         live: SyncScopeChoice,
         movies: SyncScopeChoice,
         series: SyncScopeChoice,
+        login: String,
+        password: String,
     ) -> Unit)? = null,
 ) {
     val editing = initial != null
@@ -234,6 +236,8 @@ fun AddSourceScreen(
                 stalkerDeviceId = opt(stalkerDeviceId),
                 stalkerDeviceId2 = opt(stalkerDeviceId2),
                 stalkerSignature = opt(stalkerSignature),
+                username = opt(username),
+                password = password.takeIf { opt(username) != null && it.isNotEmpty() },
                 userAgent = ua,
                 httpReferer = ref,
             )
@@ -346,6 +350,8 @@ fun AddSourceScreen(
                     stalkerDeviceId = payload.deviceId
                     stalkerDeviceId2 = payload.deviceId2
                     stalkerSignature = payload.signature
+                    username = payload.user
+                    password = payload.pass
                     syncLive = payload.syncLive
                     syncMovies = payload.syncMovies
                     syncSeries = payload.syncSeries
@@ -402,6 +408,7 @@ fun AddSourceScreen(
             SourceKind.STALKER -> onStartStalker?.invoke(
                 name, portalUrl, mac, stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2,
                 stalkerSignature, userAgent, referer, autoRefresh, isDefault, syncLive, syncMovies, syncSeries,
+                username, password,
             )
         }
     }
@@ -515,6 +522,9 @@ fun AddSourceScreen(
                     placeholder = stringResource(R.string.setup_mac_example),
                     about = if (mac.isNotBlank() && !macValid) stringResource(R.string.setup_mac_invalid) else null,
                 )
+                // Only for portals that ask for a login on top of the MAC; most do not.
+                field(stringResource(R.string.settings_username_optional), username, { username = it })
+                field(stringResource(R.string.settings_password_optional), password, { password = it }, password = true)
                 StageSettingsHeading(stringResource(R.string.setup_stalker_advanced_identity), 5)
                 field(stringResource(R.string.setup_stalker_serial_number_optional), stalkerSerialNumber, { stalkerSerialNumber = it })
                 field(stringResource(R.string.setup_stalker_device_id_optional), stalkerDeviceId, { stalkerDeviceId = it })
