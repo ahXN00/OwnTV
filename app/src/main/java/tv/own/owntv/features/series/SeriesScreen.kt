@@ -1395,8 +1395,13 @@ private fun EpisodeView(
         (if (metadataMode.tmdbWins) tmdb ?: own else own ?: tmdb)
             ?: resources.getString(R.string.player_episode_number, ep.episodeNumber)
     }
+    // Without the provider's length, the one playback learned. "Mark as watched" replaces that progress with a
+    // 1 ms marker, which read as "0 min", so the marker is skipped and the learned length kept while open.
+    val learnedSecs = remember(series.id) { HashMap<Long, Int>() }
     val durationSecs: (EpisodeEntity) -> Int? = { ep ->
-        ep.durationSecs?.takeIf { it > 0 } ?: episodeProgress[ep.id]?.durationMs?.takeIf { it > 0 }?.let { (it / 1000).toInt() }
+        ep.durationSecs?.takeIf { it > 0 }
+            ?: episodeProgress[ep.id]?.durationMs?.takeIf { it >= 60_000 }?.let { (it / 1000).toInt() }?.also { learnedSecs[ep.id] = it }
+            ?: learnedSecs[ep.id]
     }
     // What is left of a started episode, at least a minute ("12 min left").
     val secondsLeft: (EpisodeEntity) -> Int? = { ep ->

@@ -183,11 +183,12 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING
                 },
-                onStartStalker = { name, portalUrl, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, refresh, _, live, movies, series ->
+                onStartStalker = { name, portalUrl, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, refresh, _, live, movies, series, login, password ->
                     importName = name.ifBlank { defaultPortalName }
                     vm.startStalker(
                         importName!!, portalUrl, mac, serialNumber, deviceId,
                         deviceId2, signature, ua, refresh, live, movies, series, httpReferer = ref,
+                        login = login, password = password,
                     )
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING

@@ -30,6 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -96,6 +101,7 @@ fun SportsMatchScreen(
     onPlayChannel: (ChannelEntity, List<ChannelEntity>) -> Unit,
     onOpenFilters: () -> Unit,
     onOpenLeague: (Match) -> Unit,
+    onOpenTeam: (TeamRef) -> Unit,
     onAddPlaylist: () -> Unit,
     onBack: () -> Unit,
     contentStart: Dp,
@@ -117,6 +123,10 @@ fun SportsMatchScreen(
     var focused by remember { mutableStateOf<WatchOption?>(null) }
     val firstRow = remember { FocusRequester() }
     val tabFocus = remember { FocusRequester() }
+    // A side of the score box under focus: the key hints say OK opens its team page.
+    var sideFocused by remember { mutableStateOf(false) }
+    // The league name in the crumb: ▲ from a side reaches it (the list around the score box would not hand it on).
+    val crumbFocus = remember { FocusRequester() }
 
     // The focused channel plays in the box above after the focus settles, exactly as in Live TV.
     val previewOn by liveVm.livePreviewEnabled.collectAsStateWithLifecycle()
@@ -154,15 +164,24 @@ fun SportsMatchScreen(
                         Text(
                             stringResource(R.string.sports_title), style = stageText(21, 600), color = stageAccent.accent, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
-                        Text(
-                            sep + leagueName(m),
-                            style = stageText(21, 400), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
+                        Text(sep, style = stageText(21, 400), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // The league name opens that league in the Leagues tab.
+                        val inCatalog = tv.own.owntv.core.sports.SportsCatalog.league(tv.own.owntv.core.sports.model.League.keyOf(m.sport, m.leagueSlug)) != null
+                        StageSurface(onClick = { onOpenLeague(m) }, radius = 10.mpx, enabled = inCatalog, modifier = Modifier.focusRequester(crumbFocus)) { f ->
+                            Text(
+                                leagueName(m),
+                                style = stageText(21, 400), color = if (f) stageAccent.onAccent else StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 8.mpx, vertical = 4.mpx),
+                            )
+                        }
                     }
                 }
             LazyColumn(Modifier.fillMaxWidth().weight(1f).padding(bottom = 84.mpx).focusGroup(), contentPadding = PaddingValues(bottom = 24.mpx)) {
                 item {
-                    ScoreHeader(m, state.summary, hidden = state.config.spoilerFree && !revealed, onReveal = { revealed = true })
+                    ScoreHeader(
+                        m, state.summary, hidden = state.config.spoilerFree && !revealed, onReveal = { revealed = true },
+                        onOpenTeam = onOpenTeam, onSideFocus = { sideFocused = it }, up = crumbFocus,
+                    )
                 }
                 item {
                     Row(
@@ -265,7 +284,13 @@ fun SportsMatchScreen(
                 }
             }
         }
-        if (state.hasPlaylist && shown.isNotEmpty()) {
+        if (sideFocused) {
+            StageKeyHints(
+                listOf(stringResource(R.string.common_ok) to stringResource(R.string.sports_team_page)),
+                Modifier.align(Alignment.BottomEnd).padding(end = 60.mpx, bottom = 27.mpx),
+                textSize = 18,
+            )
+        } else if (state.hasPlaylist && shown.isNotEmpty()) {
             StageKeyHints(
                 listOf(
                     stringResource(R.string.common_ok) to stringResource(R.string.sports_watch_full_screen),
@@ -369,10 +394,19 @@ internal fun languageName(code: String): String {
 
 /**
  * The score header: crest (93) and name each side, the score 81 px, LIVE · minute, and each side's scorers
- * under it. Spoiler-free: the score is a dash until OK on the header.
+ * under it. Spoiler-free: the score is a dash until OK on the header. Once shown, each side with a team
+ * page takes focus, and OK opens it.
  */
 @Composable
-private fun ScoreHeader(m: Match, summary: MatchSummary?, hidden: Boolean, onReveal: () -> Unit) {
+private fun ScoreHeader(
+    m: Match,
+    summary: MatchSummary?,
+    hidden: Boolean,
+    onReveal: () -> Unit,
+    onOpenTeam: (TeamRef) -> Unit,
+    onSideFocus: (Boolean) -> Unit,
+    up: FocusRequester,
+) {
     val r = 24.mpx
     StageSurface(
         onClick = onReveal,
@@ -389,7 +423,7 @@ private fun ScoreHeader(m: Match, summary: MatchSummary?, hidden: Boolean, onRev
             val home = m.home
             val away = m.away
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Side(home?.team, Modifier.weight(1f))
+                Side(m, home?.team, !hidden, onOpenTeam, onSideFocus, Modifier.weight(1f).onPreviewKeyEvent { e -> e.key == Key.DirectionUp && e.type == KeyEventType.KeyDown && runCatching { up.requestFocus() }.getOrDefault(false) })
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     val score = when {
                         m.competitors.size < 2 -> m.title
@@ -409,7 +443,7 @@ private fun ScoreHeader(m: Match, summary: MatchSummary?, hidden: Boolean, onRev
                         style = stageText(17, 700), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Side(away?.team, Modifier.weight(1f))
+                Side(m, away?.team, !hidden, onOpenTeam, onSideFocus, Modifier.weight(1f).onPreviewKeyEvent { e -> e.key == Key.DirectionUp && e.type == KeyEventType.KeyDown && runCatching { up.requestFocus() }.getOrDefault(false) })
             }
             // Kick-off, round, venue (ESPN's), in the box rather than the crumb.
             val locale = LocalConfiguration.current.locales[0]
@@ -432,12 +466,29 @@ private fun ScoreHeader(m: Match, summary: MatchSummary?, hidden: Boolean, onRev
     }
 }
 
+/** One side of the score box: crest and name, focusable ([enabled]) when the side has a team page. */
 @Composable
-private fun Side(team: tv.own.owntv.core.sports.model.Team?, modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.mpx)) {
-        if (team != null) {
-            Crest(team, 93)
-            Text(team.name, style = stageText(22.5f, 700), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun Side(
+    m: Match,
+    team: tv.own.owntv.core.sports.model.Team?,
+    enabled: Boolean,
+    onOpenTeam: (TeamRef) -> Unit,
+    onFocus: (Boolean) -> Unit,
+    modifier: Modifier,
+) {
+    val ref = team?.let { teamRefOf(m, it) }
+    StageSurface(
+        onClick = { ref?.let(onOpenTeam) },
+        radius = 18.mpx,
+        enabled = enabled && ref != null,
+        contentAlignment = Alignment.Center,
+        modifier = modifier.onFocusChanged { onFocus(it.isFocused) },
+    ) { focused ->
+        Column(Modifier.padding(vertical = 9.mpx), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.mpx)) {
+            if (team != null) {
+                Crest(team, 93)
+                Text(team.name, style = stageText(22.5f, 700), color = if (focused) stageAccent.onAccent else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }

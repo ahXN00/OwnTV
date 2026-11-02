@@ -132,10 +132,12 @@ class SetupViewModel(
         movies: SyncScopeChoice = SyncScopeChoice.Later,
         series: SyncScopeChoice = SyncScopeChoice.Later,
         httpReferer: String = "",
+        login: String = "",
+        password: String = "",
     ) = runImport {
         importer.stalker(
             name, portalUrl, mac, serialNumber, deviceId, deviceId2, signature, userAgent,
-            autoRefresh, live, movies, series, httpReferer = httpReferer,
+            autoRefresh, live, movies, series, httpReferer = httpReferer, login = login, password = password,
         )
     }
 
