@@ -124,11 +124,12 @@ fun StageConfirm(
     width: Dp = 760.mpx,
     /** What Back does, when it is not the same as [cancel] (the resume prompt: Back closes, Start over restarts). */
     onBack: () -> Unit = onCancel,
+    modifier: Modifier = Modifier,
 ) {
     val first = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
     androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
     StagePopup(
-        onDismiss = onBack, title = title, body = body, eyebrow = eyebrow, width = width,
+        onDismiss = onBack, title = title, body = body, eyebrow = eyebrow, width = width, modifier = modifier,
         buttons = {
             StageButton(cancel, onClick = onCancel, height = 56.mpx, textSize = 19, modifier = if (focusCancel) Modifier.focusRequester(first) else Modifier)
             StageButton(confirm, onClick = onConfirm, height = 56.mpx, textSize = 19, tinted = true, modifier = if (focusCancel) Modifier else Modifier.focusRequester(first))
