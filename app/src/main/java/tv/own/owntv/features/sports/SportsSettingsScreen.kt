@@ -278,7 +278,6 @@ private fun LeaguePicker(vm: SportsSettingsViewModel, c: SportsConfig, rowsFocus
     val sportNames = sports.map { sportLabel(it) }
     val cricketName = stringResource(R.string.sports_sport_cricket)
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
-    val newTag = stringResource(R.string.sports_new_badge).uppercase(locale)
     fun startMove(list: MoveList) { moving = list }
     fun leagueName(l: tv.own.owntv.core.sports.model.League) = if (l.key == "cricket/all") cricketName else l.name
     androidx.compose.foundation.layout.Row(modifier, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(18.mpx)) {
@@ -297,8 +296,6 @@ private fun LeaguePicker(vm: SportsSettingsViewModel, c: SportsConfig, rowsFocus
                     }
                     StageSettingRow(
                         icon = OwnTVIcon.SPORTS, title = label, desc = null, value = value,
-                        // A sport whose every league is new this version.
-                        tag = newTag.takeIf { SportsCatalog.leaguesOf(s).all { it.key in SportsCatalog.newLeagueKeys } },
                         onClick = { runCatching { leaguesFocus.requestFocus() } },
                         onLongClick = {
                             startMove(MoveList(label, sports.map { it.name }, sportNames, i) { keys ->
@@ -337,7 +334,6 @@ private fun LeaguePicker(vm: SportsSettingsViewModel, c: SportsConfig, rowsFocus
                     }
                     StageSettingRow(
                         icon = OwnTVIcon.SPORTS, title = name, desc = l.country, value = value,
-                        tag = newTag.takeIf { l.key in SportsCatalog.newLeagueKeys },
                         onClick = { vm.toggleLeague(l.key) },
                         // Only a chosen league has a place in the order, and only with another one to swap with.
                         // Never null: switching between a plain and a long-click handler drops the focus.

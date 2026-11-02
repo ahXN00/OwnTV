@@ -292,8 +292,6 @@ internal fun SportsHeader(
         Row(horizontalArrangement = Arrangement.spacedBy(26.mpx), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.sports_title), style = stageText(48, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             SportsTabs(tab, onTab, tabFocus, onTabFocus)
-            val locale = LocalConfiguration.current.locales[0]
-            StageTag(stringResource(R.string.sports_new_badge).uppercase(locale), tint = stageAccent.accent)
         }
         Spacer(Modifier.height(9.mpx))
         subtitle()

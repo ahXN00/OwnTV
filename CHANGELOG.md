@@ -30,7 +30,7 @@
 - **📅 Sports Calendar: the month of every followed league, with the day's matches**
 - **🗂️ Sports Leagues: tables, fixtures and results; F1 drivers, constructors and races; tennis rankings**
 - **👕 Team pages: fixtures, results, next match, last five and table place**
-- **🆕 54 more leagues, Volleyball and Lacrosse, marked NEW in Sports and leagues**
+- **🆕 54 more leagues, with Volleyball and Lacrosse**
 - **🔄 Calendar refresh setting**
 
 ### 🐛 Fixes

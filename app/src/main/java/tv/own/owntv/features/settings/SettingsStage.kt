@@ -634,8 +634,6 @@ fun StageSettingRow(
     marked: Boolean = false,
     /** Keep the panel on this row while focus is in its actions (list pages). */
     keepPanel: Boolean = false,
-    /** A tag after the title ("NEW"), in the accent. */
-    tag: String? = null,
 ) {
     val a = stageAccent
     val panel = LocalSettingsPanel.current
@@ -686,7 +684,6 @@ fun StageSettingRow(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.mpx), verticalAlignment = Alignment.CenterVertically) {
                     Text(title, style = stageText(21, 700), color = if (enabled) StageColors.Text else StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (pinned) Box(Modifier.size(7.mpx).background(a.accent, CircleShape))
-                    if (tag != null) tv.own.owntv.ui.stage.StageTag(tag, tint = a.accent)
                 }
                 if (!desc.isNullOrBlank()) {
                     Text(

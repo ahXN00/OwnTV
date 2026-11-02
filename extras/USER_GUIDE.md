@@ -512,7 +512,7 @@ switched on. In the Move window, **▲ ▼** choose a row, **OK** picks it up an
 (every 1–30 days, 7 at first) is how often a saved current or coming month is downloaded again;
 past months never are. **Live refresh** updates live scores every 30–120 seconds while something
 sports is on screen. **Refresh sports data now** shows when it last updated, and also marks the saved
-months out of date. Leagues and sports new in this version carry a **NEW** tag in Sports and leagues.
+months out of date.
 Also here: My teams, goal alerts, playlist and channel filters.
 
 ### 🏠 Sports on Home
