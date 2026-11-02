@@ -15,13 +15,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -160,9 +158,7 @@ class SettingsViewModel(
 
     /** Content counts (channels/movies/series) for a source — shown on each Playlists row. */
     fun contentCounts(sourceId: Long): kotlinx.coroutines.flow.Flow<SyncCounts> =
-        catalogSyncScheduler.observeSync(sourceId)
-            .onStart { emit(CatalogSyncState.Idle) }
-            .filter { !it.isActive }
+        catalogSyncScheduler.catalogueSettled(sourceId)
             .map { importFinalizer.contentCounts(sourceId) }
 
     fun syncState(sourceId: Long): kotlinx.coroutines.flow.Flow<CatalogSyncState> =
@@ -1098,11 +1094,14 @@ class SettingsViewModel(
             val existing = sourceDao.getById(id) ?: return@launch
             // A Stalker edit re-canonicalizes the MAC; a garbled edit keeps the stored one.
             val newMac = tv.own.owntv.core.stalker.StalkerClient.canonicalizeMac(mac) ?: existing.mac
+            // A Stalker login is optional, so a cleared username removes it (and its password).
+            val stalker = existing.type == tv.own.owntv.core.model.SourceType.STALKER
+            val newUser = user.trim().takeIf { it.isNotBlank() } ?: existing.username.takeUnless { stalker }
             val updated = existing.copy(
                 name = name.ifBlank { existing.name },
                 url = urlOrServer.trim().ifBlank { existing.url },
-                username = user.trim().takeIf { it.isNotBlank() } ?: existing.username,
-                password = pass.takeIf { it.isNotBlank() } ?: existing.password,
+                username = newUser,
+                password = if (stalker && newUser == null) null else pass.takeIf { it.isNotBlank() } ?: existing.password,
                 mac = newMac,
                 stalkerSerialNumber = stalkerSerialNumber.trim().takeIf { it.isNotBlank() },
                 stalkerDeviceId = stalkerDeviceId.trim().takeIf { it.isNotBlank() },
@@ -1296,13 +1295,15 @@ class SettingsViewModel(
         movies: SyncScopeChoice = SyncScopeChoice.Later,
         series: SyncScopeChoice = SyncScopeChoice.Later,
         httpReferer: String = "",
+        login: String = "",
+        password: String = "",
     ) = runImport {
         importer.stalker(
             name = name, portalUrl = portalUrl, mac = mac,
             serialNumber = serialNumber, deviceId = deviceId, deviceId2 = deviceId2,
             signature = signature, userAgent = userAgent, autoRefresh = autoRefresh,
             live = live, movies = movies, series = series, makeDefault = isDefault,
-            httpReferer = httpReferer,
+            httpReferer = httpReferer, login = login, password = password,
         )
     }
 
