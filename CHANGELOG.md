@@ -26,6 +26,12 @@
 - **🪟 Picture-in-picture when leaving the app** (community PR #278 by @Kevsosmooth)
 - **📺 Live TV: the preview keeps playing while you browse the categories** (community PR #270 by @Kevsosmooth)
 - **🔑 Stalker portals: an optional username and password**
+- **🏆 Sports: Scores | Calendar | Leagues tabs**
+- **📅 Sports Calendar: the month of every followed league, with the day's matches**
+- **🗂️ Sports Leagues: tables, fixtures and results; F1 drivers, constructors and races; tennis rankings**
+- **👕 Team pages: fixtures, results, next match, last five and table place**
+- **🆕 54 more leagues, Volleyball and Lacrosse, marked NEW in Sports and leagues**
+- **🔄 Calendar refresh setting**
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**

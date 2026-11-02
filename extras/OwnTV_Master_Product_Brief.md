@@ -235,6 +235,11 @@ sports and leagues the profile follows (none at first; Settings → App → Spor
 score, venue, timeline, stats, line-ups, table, form and Broadcasts, and **Find channels** ranks the
 channels in the user's own guide that show it (from 30 minutes before kick-off), with a filter by
 language, country, picture and playlist. Matching runs on the device; no playlist data leaves it.
+The page has three tabs sharing one set of sport and league buttons: **Scores** (the above),
+**Calendar** (a month grid of the followed leagues with the chosen day's matches; months saved on the
+device and fetched again per the Calendar refresh setting) and **Leagues** (league cards, then one
+league's table, fixtures and results; Formula 1 drivers, constructors and races; tennis rankings).
+Teams have their own pages: the season's fixtures and results, next match, last five and table place.
 A Home **Sports** row shows followed matches that are live or about to start.
 
 **More** — a glass section list with the profile row: Settings, Favourites, History, Backup &

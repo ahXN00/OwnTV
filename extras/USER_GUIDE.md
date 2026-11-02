@@ -454,12 +454,39 @@ left and switch on its leagues on the right. The more you choose, the longer loa
 **Sport buttons → All sports** fetches every league instead.
 
 ### 🗂️ The Sports page
-Two rows of buttons filter the page: sports (and ★ My teams) on top, that sport's leagues below.
+Three tabs sit after the title: **Scores | Calendar | Leagues**. Sports always opens on **Scores**;
+**▲** from the sport buttons reaches the tabs, **OK** opens one, **Back** on Calendar or Leagues
+returns to Scores.
+Two rows of buttons filter every tab: sports (and ★ My teams) on top, that sport's leagues below.
 **OK** switches a button on or off, so you can pick Bundesliga and Premier League together; none
-chosen shows everything. The choice stays until you close the app. **⟳** at the end of the top row
-rebuilds the sports data now; the bottom status pill says **Rebuilding sports…** while it runs.
-Rows: **Live now** (red LIVE mark), **Sport on your channels now** (from your guide) and
-**Starting soon**. **OK** on a match opens its page.
+chosen shows everything. The choice stays across the tabs until you close the app. **⟳** at the end
+of the top row rebuilds the sports data now; the bottom status pill says **Rebuilding sports…** while
+it runs.
+**Scores** rows: **Live now** (red LIVE mark), **Sport on your channels now** (from your guide) and
+**Starting soon**. **OK** on a match opens its page; **hold OK** offers Follow, Remind me (once Find
+channels has found a channel), each side's team page and the match page.
+
+### 📅 Calendar
+The month on the left — each day with how many matches each sport has (one league chosen: the
+pairings), ★ for a day one of My teams plays, a red dot while something is live — and the chosen day's
+matches on the right, by league. **◀ ▶** move a day, **▲ ▼** a week; past the last week the month
+turns. **OK** or **▶** from the last column goes into the day's list, **◀** comes back. **‹ ›** and
+**Today** at the top change month; months go back to the season's start. **OK** on a league heading
+opens that league in Leagues. Finished matches show the result; with Spoiler-free on, **OK** shows it.
+A month is downloaded when you open it and saved on the TV; without internet the saved copy shows.
+
+### 🏆 Leagues
+One card per followed league: who leads and what is next. **OK** opens the league in the tab,
+**hold OK** follows or unfollows it. A league shows **Table | Fixtures | Results** (Formula 1:
+**Drivers | Constructors | Races** with the next race weekend; other racing: Drivers | Races; ATP and
+WTA: **Rankings | Matches**). **OK** on a table row opens that team's page. A match page's **Table**
+tab and its league name at the top open the league here.
+
+### 👕 Team pages
+**Fixtures | Results** for the whole season, cups included, with the next match, the last five
+results and the team's place in the table. Open one from a match page's team (▲ from the tabs, then
+**OK**), a table row, **hold OK** on a match, or **Settings → App → Sports → My teams** (hold OK there
+stops following). Racing drivers, tennis players, fighters and cricket teams have none.
 
 ### 📋 A match page
 The box at the top shows the score, the time, the round and the venue with its city and country.
@@ -481,9 +508,12 @@ switched on. In the Move window, **▲ ▼** choose a row, **OK** picks it up an
 **Save** keeps the new order. The Sports page and the Home row follow it.
 
 ### ⚙️ Settings → App → Sports
-**Auto rebuild** every 1, 2, 4 or 8 hours, on every app start, or by hand. **Live refresh** updates
-live scores every 30–120 seconds while something sports is on screen. **Refresh sports data now**
-shows when it last updated. Also here: My teams, goal alerts, playlist and channel filters.
+**Auto rebuild** every 1, 2, 4 or 8 hours, on every app start, or by hand. **Calendar refresh**
+(every 1–30 days, 7 at first) is how often a saved current or coming month is downloaded again;
+past months never are. **Live refresh** updates live scores every 30–120 seconds while something
+sports is on screen. **Refresh sports data now** shows when it last updated, and also marks the saved
+months out of date. Leagues and sports new in this version carry a **NEW** tag in Sports and leagues.
+Also here: My teams, goal alerts, playlist and channel filters.
 
 ### 🏠 Sports on Home
 **Settings → Layout → Home screen** can show a **Sports** row: live and upcoming matches of your leagues and teams,
