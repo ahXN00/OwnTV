@@ -74,7 +74,9 @@ Each engine is chosen automatically by content type, with fallback between them.
   decides whether HD is served. Such an item is pinned to ExoPlayer, outranks every other preference,
   and never leaves for an external player. It also **cannot be recorded** — the CDM decrypts only
   into a secure decoder for immediate display, so a recording is refused before it starts rather than
-  left as a file that will not play.
+  left as a file that will not play. Apple FairPlay has no Android CDM: such an item shows its own
+  message at once instead of failing like a broken stream, and ClearKey keys filed under a FairPlay
+  label play as ClearKey.
 - **Container is decided from evidence, not from the file extension** — the declared
   `manifest_type`, then what the response actually turns out to be, then what the same provider has
   already been caught serving. This is what lets a DASH channel published at an extensionless address

@@ -288,7 +288,8 @@ Widevine and ClearKey channels play with nothing to set up — your TV does the 
 includes ClearKey channels whose playlist writes the key itself (`license_key=kid:key`); a playlist
 added before this update needs one refresh to pick the key up. They always
 use ExoPlayer, so the engine toggle is hidden for them. Some cheaper boxes only allow standard
-definition; that is the device's decision, not OwnTV's.
+definition; that is the device's decision, not OwnTV's. Apple FairPlay channels cannot play on any
+Android device — OwnTV says so instead of a general error; those playlists are made for Apple devices.
 
 ---
 
