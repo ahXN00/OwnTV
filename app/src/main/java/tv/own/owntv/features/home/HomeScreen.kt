@@ -415,9 +415,11 @@ fun HomeScreen(
                     // Focus entering a row also brings the whole row into view, heading included: the
                     // focused card alone stopped the list as soon as the card showed, so coming back up
                     // left each row's heading cut off above the screen. Not the Trending row, whose hero
-                    // places itself, nor the rows that scroll the whole page back up instead.
+                    // places itself, nor the rows that scroll the whole page back up instead. A Column, not a
+                    // Box: the Posters layout's Trending item is two children, the folded title line and the
+                    // poster row, and they must stack as they do directly in the list.
                     val rowArea = remember { BringIntoViewRequester() }
-                    Box(
+                    Column(
                         if (row == HomeRow.TRENDING || scrollsToTop) Modifier else Modifier
                             .bringIntoViewRequester(rowArea)
                             .onFocusChanged { if (it.hasFocus) homeScope.launch { rowArea.bringIntoView() } },
