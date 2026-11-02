@@ -620,10 +620,15 @@ fun HomeScreen(
         }
         // While a large playlist keeps loading in the background, say so where Now Trending will appear:
         // an empty top of Home with no explanation reads as broken. Only at the top of the list, so the
-        // rows never scroll under it, and gone once Trending shows or the library is whole.
+        // rows never scroll under it, and gone once Trending shows or the library is whole. Trending is
+        // promised only while its row is switched on.
         val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
         if (libraryLoadingTitles > 0 && state.trendingItems.size < TrendingDao.MIN_ELIGIBLE_ITEMS && atTop) {
-            LibraryLoadingBanner(libraryLoadingTitles, Modifier.align(Alignment.TopStart).padding(start = contentStart, top = 40.mpx))
+            LibraryLoadingBanner(
+                libraryLoadingTitles,
+                trendingOn = HomeRow.TRENDING in orderedRows,
+                modifier = Modifier.align(Alignment.TopStart).padding(start = contentStart, top = 40.mpx),
+            )
         }
     }
 
@@ -1472,19 +1477,21 @@ private fun AllRowsHiddenState(
     }
 }
 
-/** The "Loading your library" note at the top of Home: the count so far, and when Now Trending will show. */
+/** The "Loading your library" note at the top of Home: the count so far, and — [trendingOn] — when Now Trending will show. */
 @Composable
-private fun LibraryLoadingBanner(titles: Int, modifier: Modifier = Modifier) {
+private fun LibraryLoadingBanner(titles: Int, trendingOn: Boolean, modifier: Modifier = Modifier) {
     val count = java.text.NumberFormat.getIntegerInstance(LocalConfiguration.current.locales[0]).format(titles)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.mpx)) {
         Text(
             pluralStringResource(R.plurals.home_library_loading, titles, count),
             style = stageText(18, 600), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            stringResource(R.string.home_library_loading_trending),
-            style = stageText(15, 500), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+        if (trendingOn) {
+            Text(
+                stringResource(R.string.home_library_loading_trending),
+                style = stageText(15, 500), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
