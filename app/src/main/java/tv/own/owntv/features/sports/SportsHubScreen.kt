@@ -84,12 +84,6 @@ import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.ui.theme.stageAccent
 import tv.own.owntv.ui.theme.stageText
 
-/** One chip of the hub's first row: the followed teams, or one sport (none chosen = everything). */
-internal sealed interface HubChip {
-    data object MyTeams : HubChip
-    data class One(val sport: Sport) : HubChip
-}
-
 /** Sports whose score is a line (sets, innings), not one number a side. */
 private val LINE_SCORE_SPORTS = setOf(Sport.TENNIS, Sport.CRICKET, Sport.GOLF, Sport.RACING)
 
@@ -97,7 +91,7 @@ private val LINE_SCORE_SPORTS = setOf(Sport.TENNIS, Sport.CRICKET, Sport.GOLF, S
 private const val SPORT_CHIPS = 8
 
 /**
- * The Sports hub: title and today's counts, sport chips ending in ⟳ (rebuild),
+ * The Sports hub (the Scores tab): title, tabs and today's counts, sport chips ending in ⟳ (rebuild),
  * *Live now* with the featured first card, *Sport on your channels now* from the guide, *Starting soon*,
  * and the key hints. Focus enters on the featured card. OK and the Play key open a match (channels are
  * found there), Hold OK follows or reminds. With nothing followed, a note says where to choose.
@@ -105,7 +99,10 @@ private const val SPORT_CHIPS = 8
 @Composable
 fun SportsHubScreen(
     vm: SportsViewModel,
+    onTab: (SportsTab) -> Unit,
+    tabFocus: FocusRequester,
     onOpenMatch: (Match) -> Unit,
+    onOpenTeam: (TeamRef) -> Unit,
     onPlayChannel: (ChannelEntity, List<ChannelEntity>) -> Unit,
     onChildFocused: () -> Unit,
     onEntryHook: (((() -> Boolean)?) -> Unit)?,
@@ -126,38 +123,18 @@ fun SportsHubScreen(
     }
     val config = state.config
     val now = System.currentTimeMillis()
-    val playback = org.koin.compose.koinInject<SportsPlayback>()
-    // Both chip rows are multi-select: OK toggles a chip, nothing chosen = All. Kept while the app runs.
-    @Suppress("UNCHECKED_CAST")
-    var chips by remember { mutableStateOf(playback.hubChip as? Set<HubChip> ?: emptySet()) }
-    @Suppress("UNCHECKED_CAST")
-    var leagues by remember { mutableStateOf(playback.hubLeague as? Set<String> ?: emptySet()) }
-    androidx.compose.runtime.LaunchedEffect(chips, leagues) { playback.hubChip = chips; playback.hubLeague = leagues }
-    var showAllSports by rememberSaveable { mutableStateOf(false) }
+    val chips by vm.chips.collectAsStateWithLifecycle()
+    val leagues by vm.leagues.collectAsStateWithLifecycle()
     var menuFor by remember { mutableStateOf<Match?>(null) }
     // The menu's Remind me needs a channel: one Find channels already found for that match, if any.
     var menuChannels by remember { mutableStateOf<List<WatchOption>>(emptyList()) }
     androidx.compose.runtime.LaunchedEffect(menuFor) { menuChannels = menuFor?.let { vm.channelsFound(it) }.orEmpty() }
+    // The tab under focus in the header, for the key hints.
+    var tabFocused by remember { mutableStateOf<SportsTab?>(null) }
 
-    val myTeamKeys = remember(config.teams) { config.teams.map { it.key }.toSet() }
-    fun Match.isMine() = competitors.any { FollowedTeam(sport, it.team.id, it.team.name).key in myTeamKeys }
-    val chosenSports = chips.filterIsInstance<HubChip.One>().map { it.sport }.toSet()
-    val sportLeagues = config.followedLeagues().mapNotNull(tv.own.owntv.core.sports.SportsCatalog::league).filter { it.sport in chosenSports }
-        .sortedWith(compareBy({ config.rankOf(it.sport, it.key).first }, { config.rankOf(it.sport, it.key).second }))
-    // A remembered league the profile no longer follows filters nothing.
-    val activeLeagues = leagues.filterTo(HashSet()) { k -> sportLeagues.any { it.key == k } }
-    fun toggle(c: HubChip) { chips = if (c in chips) chips - c else chips + c }
-    fun toggleLeague(k: String) { leagues = if (k in activeLeagues) activeLeagues - k else activeLeagues + k }
-    /**
-     * Row 1: a match passes when no chip is chosen, or its sport is chosen, or My teams is chosen and it
-     * is one of theirs. Row 2: a chosen sport with leagues chosen keeps only those leagues.
-     */
-    fun Match.passes(): Boolean {
-        if (chips.isEmpty()) return true
-        val bySport = sport in chosenSports && activeLeagues.filterTo(HashSet()) { k -> sportLeagues.any { it.key == k && it.sport == sport } }
-            .let { mine -> mine.isEmpty() || feed in mine }
-        return bySport || (HubChip.MyTeams in chips && isMine())
-    }
+    val filter = remember(config, chips, leagues) { ChipFilter(config, chips, leagues) }
+    fun Match.isMine() = filter.isMine(this)
+    fun Match.passes() = filter.passes(this)
     // ESPN's tennis and golf feeds list a whole tournament; "today" is what is live or starts today.
     val today = state.board.today.values.flatten().distinctBy { it.key }.filter { it.isLive || isToday(it.startMs) }
     val live = today.filter { it.isLive && it.passes() }
@@ -165,7 +142,6 @@ fun SportsHubScreen(
     val soon = state.board.matches.filter { it.state == MatchState.PRE && it.startMs > now && it.passes() }
         .sortedWith(compareBy<Match>({ config.rankOf(it.sport, it.feed).first }, { config.rankOf(it.sport, it.feed).second }, { it.startMs })).take(12)
     val onNow = state.onNow.values.flatten().take(6)
-    val followedSports = remember(config) { vm.followedSports(config) }
 
     val featuredFocus = remember { FocusRequester() }
     val chipFocus = remember { FocusRequester() }
@@ -179,51 +155,17 @@ fun SportsHubScreen(
             Modifier.fillMaxSize().focusGroup(),
             contentPadding = PaddingValues(top = 39.mpx, bottom = 110.mpx),
         ) {
+            // The header and the chips are one item, so the tabs are always composed when ▲ leaves the chips.
             item(key = "head") {
-                Column(Modifier.padding(start = contentStart, end = 360.mpx)) {
-                    Text(stringResource(R.string.sports_title), style = stageText(48, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Spacer(Modifier.height(9.mpx))
-                    HubSubtitle(today.filter { it.passes() })
-                    if (state.board.paused) {
-                        Spacer(Modifier.height(6.mpx))
-                        Text(stringResource(R.string.sports_paused), style = stageText(18, 600), color = StageColors.Warn, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-            item(key = "chips") {
-                val shownSports = if (showAllSports) followedSports else followedSports.take(SPORT_CHIPS)
-                LazyRow(
-                    // Nothing above the chips takes focus; without this, focus search found the rail.
-                    Modifier.padding(top = 24.mpx).focusRestorer().focusProperties { up = FocusRequester.Cancel }.focusGroup(),
-                    contentPadding = PaddingValues(start = contentStart, end = 64.mpx),
-                    horizontalArrangement = Arrangement.spacedBy(12.mpx),
-                ) {
-                    item { SportsChip(stringResource(R.string.content_epg_all), chips.isEmpty(), Modifier.focusRequester(chipFocus)) { chips = emptySet(); leagues = emptySet() } }
-                    item { SportsChip(stringResource(R.string.sports_my_teams), HubChip.MyTeams in chips, icon = OwnTVIcon.STAR) { toggle(HubChip.MyTeams) } }
-                    items(shownSports, key = { it.name }) { s ->
-                        SportsChip("${sportEmoji(s)} ${sportLabel(s)}", HubChip.One(s) in chips) { toggle(HubChip.One(s)) }
-                    }
-                    if (!showAllSports && followedSports.size > SPORT_CHIPS) {
-                        item { SportsChip("+${followedSports.size - SPORT_CHIPS}", false, dim = true) { showAllSports = true } }
-                    }
-                    // ⟳: build the whole board again; its progress shows in the bottom status pill.
-                    item { SportsChip("", false, icon = OwnTVIcon.REFRESH) { vm.rebuild() } }
-                }
-            }
-
-            if (sportLeagues.size > 1) {
-                item(key = "leagues") {
-                    LazyRow(
-                        Modifier.padding(top = 12.mpx).focusRestorer().focusGroup(),
-                        contentPadding = PaddingValues(start = contentStart, end = 64.mpx),
-                        horizontalArrangement = Arrangement.spacedBy(12.mpx),
-                    ) {
-                        item { SportsChip(stringResource(R.string.content_epg_all), activeLeagues.isEmpty()) { leagues = emptySet() } }
-                        items(sportLeagues, key = { it.key }) { l ->
-                            val name = if (l.key == "cricket/all") stringResource(R.string.sports_sport_cricket) else l.name
-                            SportsChip(name, l.key in activeLeagues) { toggleLeague(l.key) }
+                Column {
+                    SportsHeader(SportsTab.SCORES, onTab, tabFocus, { tabFocused = it }, Modifier.padding(start = contentStart, end = 360.mpx)) {
+                        HubSubtitle(today.filter { it.passes() })
+                        if (state.board.paused) {
+                            Spacer(Modifier.height(6.mpx))
+                            Text(stringResource(R.string.sports_paused), style = stageText(18, 600), color = StageColors.Warn, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
+                    SportsChipRows(vm, filter, contentStart, tabFocus, chipFocus)
                 }
             }
 
@@ -312,7 +254,7 @@ fun SportsHubScreen(
         }
 
         StageKeyHints(
-            listOf(
+            tabHints(SportsTab.SCORES, tabFocused) ?: listOf(
                 stringResource(R.string.common_ok) to stringResource(R.string.sports_hint_match_page),
                 stringResource(R.string.content_key_hold_ok) to stringResource(R.string.sports_hint_follow_remind),
             ),
@@ -322,12 +264,158 @@ fun SportsHubScreen(
     }
 
     menuFor?.let { m ->
-        FollowRemindMenu(
+        MatchMenu(
             match = m, config = config, channels = menuChannels, now = now,
             onFollow = { vm.toggleTeam(it) },
             onRemind = { vm.remind(m, menuChannels) },
+            onOpenTeam = onOpenTeam,
+            onOpenMatch = { onOpenMatch(m) },
             onDismiss = { menuFor = null },
         )
+    }
+}
+
+/**
+ * `.ph`: "Sports", then the Scores | Calendar | Leagues tabs and the NEW tag, then [subtitle] below.
+ * [tabFocus] sits on the open tab; [onTabFocus] reports the tab under focus (null once focus leaves).
+ */
+@Composable
+internal fun SportsHeader(
+    tab: SportsTab,
+    onTab: (SportsTab) -> Unit,
+    tabFocus: FocusRequester,
+    onTabFocus: (SportsTab?) -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: @Composable () -> Unit,
+) {
+    Column(modifier) {
+        Row(horizontalArrangement = Arrangement.spacedBy(26.mpx), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.sports_title), style = stageText(48, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            SportsTabs(tab, onTab, tabFocus, onTabFocus)
+        }
+        Spacer(Modifier.height(9.mpx))
+        subtitle()
+    }
+}
+
+/** `.seg`: the three tabs in one capsule, each with its mark; the open one on white 13%. Focused = FILLED. */
+@Composable
+private fun SportsTabs(tab: SportsTab, onTab: (SportsTab) -> Unit, tabFocus: FocusRequester, onTabFocus: (SportsTab?) -> Unit) {
+    val a = stageAccent
+    val segmentOn = tv.own.owntv.ui.theme.LocalStagePalette.current.segmentOn
+    Row(
+        Modifier
+            // Coming in from the chips lands on the open tab, not the nearest one.
+            .focusProperties { onEnter = { runCatching { tabFocus.requestFocus() } } }
+            .onFocusChanged { if (!it.hasFocus) onTabFocus(null) }
+            .focusGroup()
+            .background(StageColors.ControlFill, RoundedCornerShape(16.mpx))
+            .padding(4.mpx),
+        horizontalArrangement = Arrangement.spacedBy(2.mpx),
+    ) {
+        SportsTab.entries.forEach { t ->
+            val on = t == tab
+            StageSurface(
+                onClick = { onTab(t) },
+                radius = 12.mpx,
+                modifier = Modifier.height(42.mpx)
+                    .then(if (on) Modifier.focusRequester(tabFocus) else Modifier)
+                    .onFocusChanged { if (it.isFocused) onTabFocus(t) },
+                idle = if (on) Modifier.background(segmentOn, RoundedCornerShape(12.mpx)) else Modifier,
+            ) { focused ->
+                val color = when {
+                    focused -> a.onAccent
+                    on -> StageColors.Text
+                    else -> StageColors.Muted
+                }
+                Row(
+                    Modifier.padding(horizontal = 20.mpx),
+                    horizontalArrangement = Arrangement.spacedBy(9.mpx),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    tv.own.owntv.ui.components.OwnTVIcon(t.icon, color, Modifier.size(19.mpx))
+                    Text(tabLabel(t), style = stageText(19, 700), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+private val SportsTab.icon: OwnTVIcon
+    get() = when (this) {
+        SportsTab.SCORES -> OwnTVIcon.LIST
+        SportsTab.CALENDAR -> OwnTVIcon.CALENDAR
+        SportsTab.LEAGUES -> OwnTVIcon.SPORTS
+    }
+
+@Composable
+private fun tabLabel(t: SportsTab): String = stringResource(
+    when (t) {
+        SportsTab.SCORES -> R.string.sports_tab_scores
+        SportsTab.CALENDAR -> R.string.sports_tab_calendar
+        SportsTab.LEAGUES -> R.string.sports_tab_leagues
+    },
+)
+
+/** The key hints while the tabs have focus: "OK Calendar" (on another tab than the open one), "▼ Sport chips". Null otherwise. */
+@Composable
+internal fun tabHints(open: SportsTab, focused: SportsTab?): List<Pair<String, String>>? {
+    if (focused == null) return null
+    val down = "▼" to stringResource(R.string.sports_hint_sport_chips)
+    return if (focused == open) listOf(down) else listOf(stringResource(R.string.common_ok) to tabLabel(focused), down)
+}
+
+/**
+ * The chip rows every tab shares. Row 1: All, My teams, the followed sports (eight, then "+N") and ⟳.
+ * Row 2, when the chosen sports follow more than one league: All and those leagues. Both multi-select,
+ * nothing chosen = All. ▲ from row 1 reaches the tabs ([tabFocus]); [chipFocus] is on All.
+ */
+@Composable
+internal fun SportsChipRows(
+    vm: SportsViewModel,
+    filter: ChipFilter,
+    contentStart: Dp,
+    tabFocus: FocusRequester,
+    chipFocus: FocusRequester,
+) {
+    val config = filter.config
+    val chips = filter.chips
+    val leagues by vm.leagues.collectAsStateWithLifecycle()
+    val followedSports = remember(config) { vm.followedSports(config) }
+    var showAllSports by rememberSaveable { mutableStateOf(false) }
+    val sportLeagues = filter.sportLeagues
+    val activeLeagues = filter.activeLeagues
+    fun toggle(c: HubChip) = vm.setChips(if (c in chips) chips - c else chips + c, leagues)
+    fun toggleLeague(k: String) = vm.setChips(chips, if (k in activeLeagues) activeLeagues - k else activeLeagues + k)
+    val shownSports = if (showAllSports) followedSports else followedSports.take(SPORT_CHIPS)
+    LazyRow(
+        Modifier.padding(top = 24.mpx).focusRestorer().focusProperties { up = tabFocus }.focusGroup(),
+        contentPadding = PaddingValues(start = contentStart, end = 64.mpx),
+        horizontalArrangement = Arrangement.spacedBy(12.mpx),
+    ) {
+        item { SportsChip(stringResource(R.string.content_epg_all), chips.isEmpty(), Modifier.focusRequester(chipFocus)) { vm.setChips(emptySet(), emptySet()) } }
+        item { SportsChip(stringResource(R.string.sports_my_teams), HubChip.MyTeams in chips, icon = OwnTVIcon.STAR) { toggle(HubChip.MyTeams) } }
+        items(shownSports, key = { it.name }) { s ->
+            SportsChip("${sportEmoji(s)} ${sportLabel(s)}", HubChip.One(s) in chips) { toggle(HubChip.One(s)) }
+        }
+        if (!showAllSports && followedSports.size > SPORT_CHIPS) {
+            item { SportsChip("+${followedSports.size - SPORT_CHIPS}", false, dim = true) { showAllSports = true } }
+        }
+        // ⟳: build the whole board again; its progress shows in the bottom status pill.
+        item { SportsChip("", false, icon = OwnTVIcon.REFRESH) { vm.rebuild() } }
+    }
+    if (sportLeagues.size > 1) {
+        LazyRow(
+            Modifier.padding(top = 12.mpx).focusRestorer().focusGroup(),
+            contentPadding = PaddingValues(start = contentStart, end = 64.mpx),
+            horizontalArrangement = Arrangement.spacedBy(12.mpx),
+        ) {
+            item { SportsChip(stringResource(R.string.content_epg_all), activeLeagues.isEmpty()) { vm.setChips(chips, emptySet()) } }
+            items(sportLeagues, key = { it.key }) { l ->
+                val name = if (l.key == "cricket/all") stringResource(R.string.sports_sport_cricket) else l.name
+                SportsChip(name, l.key in activeLeagues) { toggleLeague(l.key) }
+            }
+        }
     }
 }
 
@@ -559,43 +647,70 @@ private fun OnChannelsRow(item: GuideSportItem, now: Long, modifier: Modifier, o
     }
 }
 
-/** Hold OK on a card: follow either side (or stop following), and "Remind me" for a match still to come. */
+/**
+ * Hold OK on a match (a Scores card, a Calendar row): "Remind me" for a match still to come, follow
+ * either side (or stop following), each side's team page, and the match page. A finished match offers
+ * only the team pages and the match page.
+ */
 @Composable
-private fun FollowRemindMenu(
+internal fun MatchMenu(
     match: Match,
     config: SportsConfig,
     channels: List<WatchOption>,
     now: Long,
     onFollow: (FollowedTeam) -> Unit,
     onRemind: () -> Unit,
+    onOpenTeam: (TeamRef) -> Unit,
+    onOpenMatch: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val first = remember { FocusRequester() }
     androidx.compose.runtime.LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
+    val over = match.state == MatchState.POST || match.off
+    val remind = match.state == MatchState.PRE && match.startMs > now && channels.isNotEmpty()
     OwnTVPopup(onDismissRequest = onDismiss, stageLayout = true) {
         Box(Modifier.fillMaxSize().background(StageColors.Scrim).longPressMenuGuard(), contentAlignment = Alignment.Center) {
             StageMenu(Modifier.width(560.mpx).trapAllFocusExit().focusGroup()) {
                 StageMenuHeader(MatchNotifications.pair(LocalContext.current, match), leagueName(match))
-                match.competitors.forEachIndexed { i, c ->
-                    val team = FollowedTeam(match.sport, c.team.id, c.team.name, c.team.abbreviation)
-                    val following = config.teams.any { it.key == team.key }
-                    StageMenuItem(
-                        text = c.team.name,
-                        icon = OwnTVIcon.STAR,
-                        iconFilled = following,
-                        value = stringResource(if (following) R.string.sports_following else R.string.sports_follow),
-                        onClick = { onFollow(team); onDismiss() },
-                        modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
-                    )
-                }
-                if (match.state == MatchState.PRE && match.startMs > now && channels.isNotEmpty()) {
+                if (remind) {
                     StageMenuItem(
                         text = stringResource(R.string.content_remind_me),
                         icon = OwnTVIcon.BELL,
+                        value = pluralStringResource(R.plurals.recording_minutes, config.reminderLeadMinutes, config.reminderLeadMinutes),
                         onClick = { onRemind(); onDismiss() },
-                        modifier = if (match.competitors.isEmpty()) Modifier.focusRequester(first) else Modifier,
+                        modifier = Modifier.focusRequester(first),
                     )
                 }
+                if (!over) {
+                    match.competitors.forEachIndexed { i, c ->
+                        val team = FollowedTeam(match.sport, c.team.id, c.team.name, c.team.abbreviation)
+                        val following = config.teams.any { it.key == team.key }
+                        StageMenuItem(
+                            text = c.team.name,
+                            icon = OwnTVIcon.STAR,
+                            iconFilled = following,
+                            value = stringResource(if (following) R.string.sports_following else R.string.sports_follow),
+                            onClick = { onFollow(team); onDismiss() },
+                            modifier = if (i == 0 && !remind) Modifier.focusRequester(first) else Modifier,
+                        )
+                    }
+                }
+                val pages = match.competitors.mapNotNull { teamRefOf(match, it.team) }
+                pages.forEachIndexed { i, ref ->
+                    StageMenuItem(
+                        text = ref.team.name,
+                        icon = OwnTVIcon.HOME,
+                        value = stringResource(R.string.sports_team_page),
+                        onClick = { onDismiss(); onOpenTeam(ref.copy(from = match.key)) },
+                        modifier = if (i == 0 && over) Modifier.focusRequester(first) else Modifier,
+                    )
+                }
+                StageMenuItem(
+                    text = stringResource(R.string.sports_open_match_page),
+                    icon = OwnTVIcon.CHEVRON,
+                    onClick = { onDismiss(); onOpenMatch() },
+                    modifier = if ((over && pages.isEmpty()) || (!over && !remind && match.competitors.isEmpty())) Modifier.focusRequester(first) else Modifier,
+                )
             }
         }
     }
