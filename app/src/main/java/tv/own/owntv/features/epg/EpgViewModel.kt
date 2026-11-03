@@ -117,6 +117,7 @@ class EpgViewModel(
     /** "Recently watched" in the category list reads the same history Live TV does. */
     private val historyDao: tv.own.owntv.core.database.dao.HistoryDao,
     private val reminderManager: tv.own.owntv.core.reminder.ReminderManager,
+    private val archiveGuide: tv.own.owntv.core.epg.ArchiveGuideFiller,
 ) : ViewModel() {
 
     /** The categories' search text, held here so it survives the player (see LiveViewModel). */
@@ -299,6 +300,26 @@ class EpgViewModel(
 
     private fun cachedRowCount(): Int = synchronized(rowCache) { rowCache.size }
 
+    /**
+     * Ask for the past days a catch-up [channel]'s guide feed lacks, from its provider's archive. Called
+     * for a row that stays on screen, so the past is there by the time the user scrolls back to it; the
+     * queue, its pacing and the "once every few hours per channel" rule are core's
+     * ([tv.own.owntv.core.epg.ArchiveGuideFiller]).
+     */
+    fun requestArchiveGuide(channel: ChannelEntity) = archiveGuide.request(channel, custom.value)
+
+    /** Drop the cached rows of one channel (every shift), so the next read of that row goes to the DB. */
+    private fun dropRows(channelId: Long) {
+        val prefix = "$channelId|"
+        synchronized(rowCache) { rowCache.keys.removeAll { it.startsWith(prefix) } }
+    }
+
+    override fun onCleared() {
+        // Rows of a guide nobody is looking at any more are not asked for.
+        archiveGuide.forgetPending()
+        super.onCleared()
+    }
+
     /** The row prefetch in flight. One at a time — see [prefetchAfter]. */
     private var prefetchJob: kotlinx.coroutines.Job? = null
 
@@ -434,6 +455,16 @@ class EpgViewModel(
             // screen opened, in which case the first value is that sync's result and must be loaded.
             .drop(if (epgActivity.active.value.isEmpty()) 1 else 0)
             .onEach { load() }
+            .launchIn(viewModelScope)
+        // Re-read a row when its channel's past days arrive from the provider's archive (asked for by the
+        // rows on screen, see requestArchiveGuide). They are stored apart from every feed, so the stored
+        // count load() compares does not move: that channel's cached rows are dropped instead, and the
+        // other visible rows answer from the cache.
+        archiveGuide.added
+            .onEach {
+                dropRows(it)
+                _cacheRevision.value++
+            }
             .launchIn(viewModelScope)
         // Reload when a category lock closes or opens (the relock on leaving the app, a PIN entry), so
         // the grid and the zap list armed from it follow. drop(1): the screen triggers the initial load.
