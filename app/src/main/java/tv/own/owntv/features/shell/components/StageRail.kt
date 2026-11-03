@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -60,7 +59,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 import tv.own.owntv.R
 import tv.own.owntv.core.nav.MainSection
 import tv.own.owntv.core.settings.SettingsRepository.NavLength
@@ -177,6 +175,11 @@ fun StageRail(
     val slideSpec: androidx.compose.animation.core.AnimationSpec<Float> = ownTvTween(320)
     val capsuleWidth = 84.mpx
     val openWidth = size.openWidth.mpx
+    // The width the names are laid out at. A compact rail that widens on focus is handed Compact again the
+    // moment it starts to close, and its rows measured at 84 squeezed the icons for the whole narrowing; the
+    // last width with names stays until the rail is back in its capsule.
+    var namesWidth by remember { mutableStateOf(maxOf(openWidth, NavSize.NORMAL.openWidth.mpx)) }
+    if (openWidth > capsuleWidth) namesWidth = openWidth
     val hidden = state == RailState.HIDDEN
     val railWidth = remember { Animatable(if (open) openWidth else capsuleWidth, Dp.VectorConverter) }
     val widthSpec: androidx.compose.animation.core.AnimationSpec<Dp> = ownTvTween(320)
@@ -193,13 +196,11 @@ fun StageRail(
     // instead of re-centring the icons in a rail that is still wide. Derived, so the rail recomposes when
     // this flips, not on every frame of the widening.
     val shown by remember(open, capsuleWidth) { derivedStateOf { open || railWidth.value > capsuleWidth } }
-    // The capsule's content height, kept from its last layout so the open rail's height can grow from it.
-    val capsuleHeight = remember { IntArray(1) }
     // Names fade in over the second half of the widening (and out over the first half of the narrowing),
     // so a rail too narrow for them never shows them squeezed down to an ellipsis. A lambda, read in
     // each label's draw layer only.
     val namesAlpha: () -> Float = {
-        ((railWidth.value - capsuleWidth) / (openWidth - capsuleWidth).coerceAtLeast(1.mpx) * 2f - 1f).coerceIn(0f, 1f)
+        ((railWidth.value - capsuleWidth) / (namesWidth - capsuleWidth).coerceAtLeast(1.mpx) * 2f - 1f).coerceIn(0f, 1f)
     }
 
     Box(modifier.fillMaxSize()) {
@@ -264,33 +265,18 @@ fun StageRail(
                 }
                 .focusGroup()
                 .stageGlass(if (shown) 34.mpx else 42.mpx, overContent = true)
-                .padding(horizontal = if (shown) 16.mpx else 0.mpx)
+                // The open rail keeps the capsule's vertical sizes (16 padding, 58 rows, the same gaps), so
+                // opening and closing only change the width: the rail never grows or shrinks in height.
+                .padding(horizontal = if (shown) 16.mpx else 0.mpx, vertical = 16.mpx)
                 // While it widens, the rows are laid out at the open rail's width and clipped to the
-                // current one, so the icons are never squeezed in a rail still too narrow for them; the
-                // height and the top and bottom padding grow from the capsule's to the open rail's over the
-                // same 320 ms instead of jumping when the names appear.
+                // current one, so the icons are never squeezed in a rail still too narrow for them.
                 .clipToBounds()
                 .layout { measurable, constraints ->
-                    val progress = ((railWidth.value - capsuleWidth) / (openWidth - capsuleWidth).coerceAtLeast(1.mpx)).coerceIn(0f, 1f)
-                    val padV = lerp(16.mpx, 22.mpx, progress).roundToPx()
-                    val innerWidth = if (shown) (openWidth - 32.mpx).roundToPx().coerceAtLeast(0) else null
-                    val fixedHeight = constraints.hasFixedHeight
+                    val innerWidth = if (shown) (namesWidth - 32.mpx).roundToPx().coerceAtLeast(0) else null
                     val placeable = measurable.measure(
-                        constraints.copy(
-                            minWidth = innerWidth ?: constraints.minWidth,
-                            maxWidth = innerWidth ?: constraints.maxWidth,
-                            minHeight = if (fixedHeight) (constraints.maxHeight - 2 * padV).coerceAtLeast(0) else 0,
-                            maxHeight = if (constraints.hasBoundedHeight) (constraints.maxHeight - 2 * padV).coerceAtLeast(0) else constraints.maxHeight,
-                        ),
+                        constraints.copy(minWidth = innerWidth ?: constraints.minWidth, maxWidth = innerWidth ?: constraints.maxWidth),
                     )
-                    if (!shown) capsuleHeight[0] = placeable.height
-                    val inner = if (shown && !fixedHeight && capsuleHeight[0] > 0) {
-                        (capsuleHeight[0] + (placeable.height - capsuleHeight[0]) * progress).roundToInt()
-                    } else {
-                        placeable.height
-                    }
-                    val height = (inner + 2 * padV).coerceIn(constraints.minHeight, constraints.maxHeight)
-                    layout(constraints.maxWidth, height) { placeable.place(0, padV + (inner - placeable.height) / 2) }
+                    layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
                 },
             horizontalAlignment = if (shown) Alignment.Start else Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.mpx),
@@ -373,7 +359,7 @@ private fun ColumnScope.RailBrand(open: Boolean, namesAlpha: () -> Float) {
         return
     }
     Row(
-        Modifier.padding(start = 10.mpx, end = 10.mpx, bottom = 18.mpx),
+        Modifier.padding(start = 10.mpx, end = 10.mpx, bottom = 12.mpx),
         horizontalArrangement = Arrangement.spacedBy(14.mpx),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -387,7 +373,7 @@ private fun ColumnScope.RailBrand(open: Boolean, namesAlpha: () -> Float) {
 private fun RailSeparator(open: Boolean) {
     Box(
         Modifier
-            .then(if (open) Modifier.fillMaxWidth().padding(horizontal = 14.mpx, vertical = 10.mpx) else Modifier.padding(vertical = 8.mpx).width(34.mpx))
+            .then(if (open) Modifier.fillMaxWidth().padding(horizontal = 14.mpx, vertical = 8.mpx) else Modifier.padding(vertical = 8.mpx).width(34.mpx))
             .height(1.mpx)
             .background(StageColors.Ink.copy(alpha = 0.12f)),
     )
@@ -418,7 +404,7 @@ private fun RailItem(
         radius = r,
         // At least 60, not exactly: with a large font size the name and its detail line need more, and a
         // fixed height cut the detail line off (#7.2).
-        modifier = modifier.then(if (open) Modifier.fillMaxWidth().heightIn(min = 60.mpx) else Modifier.size(58.mpx)),
+        modifier = modifier.then(if (open) Modifier.fillMaxWidth().heightIn(min = 58.mpx) else Modifier.size(58.mpx)),
         idle = if (active) Modifier.background(a.accent.copy(alpha = 0.14f), RoundedCornerShape(r)) else Modifier,
         contentAlignment = if (open) Alignment.CenterStart else Alignment.Center,
     ) { focused ->
@@ -489,7 +475,7 @@ private fun RailProfile(open: Boolean, namesAlpha: () -> Float, name: String, li
         onClick = onSwitchProfile,
         onLongClick = onPickAvatar,
         radius = if (open) 20.mpx else 23.mpx,
-        modifier = if (open) Modifier.fillMaxWidth() else Modifier.padding(top = 4.mpx).size(46.mpx),
+        modifier = if (open) Modifier.padding(top = 4.mpx).fillMaxWidth().heightIn(min = 46.mpx) else Modifier.padding(top = 4.mpx).size(46.mpx),
         // Alone in the capsule the avatar covers a fill, so it takes the ring instead.
         focusStyle = if (open) StageFocus.FILLED else StageFocus.POSTER,
         contentAlignment = if (open) Alignment.CenterStart else Alignment.Center,
@@ -499,7 +485,7 @@ private fun RailProfile(open: Boolean, namesAlpha: () -> Float, name: String, li
             return@StageSurface
         }
         Row(
-            Modifier.padding(start = 12.mpx, end = 12.mpx, top = 10.mpx, bottom = 6.mpx),
+            Modifier.padding(horizontal = 12.mpx),
             horizontalArrangement = Arrangement.spacedBy(14.mpx),
             verticalAlignment = Alignment.CenterVertically,
         ) {
