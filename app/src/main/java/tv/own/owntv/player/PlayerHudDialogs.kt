@@ -323,7 +323,7 @@ internal fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismi
     DialogScaffold(
         title = stringResource(R.string.settings_player_zoom),
         onDismiss = onDismiss,
-        listModifier = Modifier.longPressMenuGuard(),
+        modifier = Modifier.longPressMenuGuard(),
     ) {
         items(ZoomMode.entries.size) { index ->
             val mode = ZoomMode.entries[index]
@@ -459,13 +459,13 @@ private fun StepButton(label: String, enabled: Boolean, modifier: Modifier = Mod
 private fun DialogScaffold(
     title: String,
     onDismiss: () -> Unit,
-    state: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     // Applied to the list, so it sees the rows' keys first (a guard against a still-held OK).
-    listModifier: Modifier = Modifier,
+    modifier: Modifier = Modifier,
+    state: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     tv.own.owntv.ui.stage.StagePopup(onDismiss = onDismiss, title = title, eyebrow = null, width = 640.mpx, scroll = false) {
-        LazyColumn(state = state, modifier = Modifier.weight(1f, fill = false).then(listModifier), verticalArrangement = Arrangement.spacedBy(4.mpx), content = content)
+        LazyColumn(state = state, modifier = Modifier.weight(1f, fill = false).then(modifier), verticalArrangement = Arrangement.spacedBy(4.mpx), content = content)
     }
 }
 
