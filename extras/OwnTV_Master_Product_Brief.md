@@ -136,7 +136,7 @@ External subtitles come from **OpenSubtitles** (own account, remote sign-in by Q
 ### 2.5 Player HUD
 
 Scrubbable seek bar · previous/next through the episode queue · play/pause · audio, subtitle and
-speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3) · volume
+speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3 — a press steps to the next, hold OK for the list) · **Sources** (the same channel in another quality, category or playlist, from core) · volume
 with mute · favourite the current item · **stream info overlay** (codec, resolution, fps, bit depth,
 HDR type, interlacing on mpv, bitrate, decoder, audio, buffer, dropped frames, masked source URL) · a **clock** in every
 mode, becoming *Programme time* + *Current time* during a replay · auto-hiding controls, with **Back**
@@ -331,6 +331,8 @@ Favorites, or one chosen channel.
   another; an empty stretch is a focusable "No program at this time" cell that Left/Right cross in
   30-minute steps. Every programme action (Remind me / Watch from start, Record, Watch channel…) is in
   the Hold-OK menu.
+- Catch-up rows on screen ask core for their **past days from the provider's archive** (one request at a
+  time, a week back at most), so the guide reaches as far back as the recordings.
 - Order by Provider, A–Z, Catch-up first or Favourites first; the category filter is Live TV's own
   list, and Provider/A–Z follow Live TV's order with moved channels in their place; *Show → Channels without guide* and *Show → Video preview* (off shows the channel's logo
   instead of playing it; kept in backups).
@@ -537,6 +539,9 @@ manual check, and installation on the TV itself.
 ---
 
 ## 12. Architecture
+**Re-test** measures for real, and a measured limit outranks the Xtream panel's own number at the next
+sync. **Ignore connection limit** (per playlist) lets Multiview and recordings try more streams than
+the playlist reports; the provider's refusal still stops a stream with its sentence.
 
 ### 12.1 Three repositories
 

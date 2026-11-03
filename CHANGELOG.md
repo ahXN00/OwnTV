@@ -38,9 +38,18 @@
 - **👁️ Long-press menus: hide actions, and the default order matches the menus**
 - **📺 Hide All channels or Catch-up from the Live TV categories (#322)** (community PR #337 by @sarmadsoomro)
 - **⬇️ Allow downloads per profile; a whole show or season asks first with the episode count (#339)**
+- **📅 TV Guide: catch-up channels show their past days from the provider's archive** (community PR #324 by @Zangetsu-Sama)
+- **⏮️ "Start of the programme" first in "Go back to…"** (community PR #326 by @Zangetsu-Sama)
+- **🖼️ Aspect: a press steps to the next mode, hold OK for the list (#319)**
+- **🎞️ Auto frame rate: separate switches for films and series, and Live TV (#318)**
+- **🔓 Ignore connection limit, per playlist (#244)**
+- **🔀 Sources: switch to another version of the channel playing** (community PR #317 by @Aaronnn17)
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**
+- **📺 Expanding the mini player returns to the channel playing, not the one browsed (#307)**
+- **🔁 Re-test measures the connection limit on Xtream, and the next sync keeps it (#244)**
+- **🕘 "Live now" shows the programme's start and end**
 - **↕️ Moved categories, channels, films and series keep their place in A–Z and Provider; the rest follow the sort**
 - **📺 Back to the TV Guide focuses the channel that was playing and previews it**
 - **📋 TV Guide order follows Live TV, moved channels included**

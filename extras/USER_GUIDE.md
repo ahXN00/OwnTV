@@ -347,7 +347,9 @@ finishes, and the review window is waiting when you come back.
 How many days of upcoming guide the app stores, 1–14, seven by default. The same number decides how
 much is downloaded, how much is kept, and how far the grid scrolls — so raising it gives you a longer
 guide, and lowering it frees space. Old programmes are kept only on channels with catch-up, since
-those are the only ones that can play them back.
+those are the only ones that can play them back. For catch-up channels whose guide stops a day back,
+OwnTV asks the provider's archive for the rest of the week as their rows come on screen, so the guide
+reaches back as far as the recordings do.
 
 ### 🕰️ Guide time offset
 **Where:** Settings → Sources & guide → **EPG time offset** (global) · long-press a channel (just that one)
@@ -370,7 +372,8 @@ provider actually keeps.
 ### 🕐 Go back to a time
 **Where:** full-screen player → **Go back to…**
 Offers times counted back from now — `21:30`, `19:00`, `Sun 20:00`. The last row opens a
-day/hour/minute picker. **This works even on channels with no guide at all.**
+day/hour/minute picker. **This works even on channels with no guide at all.** When the guide knows what
+is on, the first row is **Start of “…”** — back to the beginning of the programme on air.
 
 ### ⏸️ Pause and rewind channels without catch-up
 **Where:** **Settings → Live TV → Pause and rewind live TV**
@@ -438,7 +441,10 @@ A tile that cannot start says why rather than sitting blank.
 ### 🔌 How many channels your provider allows
 **Where:** Settings → Sources & guide → Playlists → **Info**
 OwnTV measures this once, at a playlist's first sync, and warns before refusing a stream. **Re-test**
-is inside Info — it stops anything playing and takes a few minutes.
+is inside Info — it stops anything playing and takes a few minutes; what it measures is kept, even when
+the provider's own number says less. **Ignore connection limit**, beside Re-test, lets Multiview and
+recordings try more streams than the playlist reports — for a provider that allows more than it says.
+A stream the provider refuses still says so.
 
 ---
 
@@ -724,6 +730,8 @@ and **Download all episodes** first ask "Download N episodes?".
 | Clock (and programme time on a replay) | top centre, always |
 | Engine pill **⇄ MPV/EXO** | control bar |
 | **Go back to…** | control bar, catch-up channels |
+| **Sources** | control bar, live channels — the same channel in another quality, category or playlist; pick one to switch. Locked and hidden channels are left out |
+| **Aspect** | control bar — a press steps to the next mode (Fit, Fill, Stretch, Original, 16:9, 4:3) and names it; **hold OK** for the list |
 | ⓘ **Stream info** | right-most button — codec, resolution, HDR, bitrate, decoder, audio, buffer; on mpv also **Interlacing** (none, deinterlaced by the player or by the TV, or not deinterlaced) |
 | **Record** | control bar, live channels, once enabled |
 | **Multiview** | control bar, once enabled |
@@ -734,7 +742,7 @@ and **Download all episodes** first ask "Download N episodes?".
 - **Remote transport keys** work — play/pause, next, previous, from the remote, a headset or a voice
   assistant.
 - **A notification won't pause your film** — the sound dips and comes back.
-- **Mini-player** — subtitles show in it too. Get back to it from any screen via **Now Playing**.
+- **Mini-player** — subtitles show in it too. Get back to it from any screen via **Now Playing**. Browsing Live TV or the Guide behind it does not change it: expanded, the player, its guide card, Record and CH± are still about the channel playing.
 - **Picture-in-picture** — with Settings → Watching & recording → **Picture-in-picture when leaving
   the app** on (off by default), pressing **Home** while a video plays full screen or in the mini-player
   keeps it playing in a small window. Open OwnTV again for full screen; close the window to stop. Not
@@ -938,7 +946,7 @@ all settings** lists every setting whose name contains what you type, with its p
 | **Catch-up time zone per playlist** | Sources & guide | One provider's archive on a different clock (quarter-hour zones such as +05:30 included) |
 | **Hardware decoder** | Picture | On for smooth 4K; off only to diagnose |
 | **Prefer SDR** | Picture | When a stream offers both SDR and HDR, play the SDR one. Off by default |
-| **Auto frame rate** | Picture | Match the TV's refresh rate to the content. Off by default |
+| **Auto frame rate for films and series** · **for Live TV** | Picture | Match the TV's refresh rate to the content, separately for films and episodes and for live channels. Off by default; an earlier single setting carries into both |
 | **Pause during the display switch** · **Match resolution** | Picture | Films only: hold the film while the TV re-syncs (off–5 s); also switch to the film's resolution, never above the TV's own |
 | **Seek step / Live rewind step** | Watching & recording | How far the skip buttons jump |
 | **Left and right rewind live TV** | Live TV | Off by default — Left/Right open the channel list and history |
