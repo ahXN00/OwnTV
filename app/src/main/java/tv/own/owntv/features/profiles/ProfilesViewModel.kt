@@ -23,6 +23,13 @@ class ProfilesViewModel(
     private val manager: ProfileManager,
 ) : ViewModel() {
 
+    /** Whether [profileId] may download (Settings › Profile › the profile › Allow downloads). */
+    fun downloadsAllowed(profileId: Long): kotlinx.coroutines.flow.Flow<Boolean> = settings.downloadsAllowed(profileId)
+
+    fun setDownloadsAllowed(profileId: Long, allowed: Boolean) {
+        viewModelScope.launch { settings.setDownloadsAllowed(profileId, allowed) }
+    }
+
     // Eagerly on purpose: MainActivity's splash gate blocks the first frame on this list, so the
     // query has to start when the ViewModel is built, not on first collection inside composition.
     // Measured: WhileSubscribed here cost ~1.3s of cold start.

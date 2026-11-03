@@ -27,6 +27,7 @@ import tv.own.owntv.core.sports.SportsCatalog
 import tv.own.owntv.core.sports.model.League
 import tv.own.owntv.core.sports.model.Match
 import tv.own.owntv.core.sports.model.MatchState
+import tv.own.owntv.core.sports.model.RaceSession
 import tv.own.owntv.core.sports.model.Score
 import tv.own.owntv.core.sports.model.Sport
 import tv.own.owntv.core.sports.model.Team
@@ -98,6 +99,23 @@ internal fun sportLabel(sport: Sport): String = stringResource(
         Sport.LACROSSE -> R.string.sports_sport_lacrosse
     },
 )
+
+/** A racing session's name ("Practice 1", "Qualifying"), from ESPN's code on the match; null when it has none. */
+@Composable
+@ReadOnlyComposable
+internal fun sessionLabel(m: Match): String? = RaceSession.of(m.subtitle)?.let { s ->
+    stringResource(
+        when (s) {
+            RaceSession.PRACTICE_1 -> R.string.sports_session_practice_1
+            RaceSession.PRACTICE_2 -> R.string.sports_session_practice_2
+            RaceSession.PRACTICE_3 -> R.string.sports_session_practice_3
+            RaceSession.SPRINT_QUALIFYING -> R.string.sports_session_sprint_qualifying
+            RaceSession.SPRINT -> R.string.sports_session_sprint
+            RaceSession.QUALIFYING -> R.string.sports_session_qualifying
+            RaceSession.RACE -> R.string.sports_session_race
+        },
+    )
+}
 
 /** The chip emoji per sport. */
 internal fun sportEmoji(sport: Sport): String = when (sport) {

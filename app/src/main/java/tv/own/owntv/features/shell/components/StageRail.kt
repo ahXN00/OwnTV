@@ -1,7 +1,9 @@
 package tv.own.owntv.features.shell.components
 
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +50,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -163,14 +168,39 @@ fun StageRail(
     }
     val items = StageRailOrder.filter { it == MainSection.SEARCH || it in visibleSections } + MainSection.MORE
 
-    // Slide in from the edge (320 ms, or a snap with animations off): the capsule when it leaves
-    // HIDDEN, the open rail each time it opens.
+    // Slide in from the edge (320 ms, or a snap with animations off) when the rail leaves HIDDEN. A rail
+    // that opens from the capsule already on screen widens in place instead: sliding it in from off-screen
+    // made the capsule vanish and come back, a visible double take.
     val slide = remember { Animatable(0f) }
     val slideSpec: androidx.compose.animation.core.AnimationSpec<Float> = ownTvTween(320)
-    LaunchedEffect(open, state == RailState.HIDDEN) {
-        val target = if (state == RailState.HIDDEN) -1f else 0f
-        if (open) slide.snapTo(-1f)
-        slide.animateTo(target, slideSpec)
+    val capsuleWidth = 84.mpx
+    val openWidth = size.openWidth.mpx
+    // The width the names are laid out at. A compact rail that widens on focus is handed Compact again the
+    // moment it starts to close, and its rows measured at 84 squeezed the icons for the whole narrowing; the
+    // last width with names stays until the rail is back in its capsule.
+    var namesWidth by remember { mutableStateOf(maxOf(openWidth, NavSize.NORMAL.openWidth.mpx)) }
+    if (openWidth > capsuleWidth) namesWidth = openWidth
+    val hidden = state == RailState.HIDDEN
+    val railWidth = remember { Animatable(if (open) openWidth else capsuleWidth, Dp.VectorConverter) }
+    val widthSpec: androidx.compose.animation.core.AnimationSpec<Dp> = ownTvTween(320)
+    var wasHidden by remember { mutableStateOf(hidden) }
+    LaunchedEffect(open, hidden, openWidth) {
+        val target = if (open) openWidth else capsuleWidth
+        // In or out of HIDDEN the rail only slides, at its final width, exactly as before: growing while
+        // it slides in would be two motions at once.
+        if (hidden || wasHidden) railWidth.snapTo(target) else launch { railWidth.animateTo(target, widthSpec) }
+        wasHidden = hidden
+        slide.animateTo(if (hidden) -1f else 0f, slideSpec)
+    }
+    // Names stay laid out until the width has closed back to the capsule, so collapsing mirrors opening
+    // instead of re-centring the icons in a rail that is still wide. Derived, so the rail recomposes when
+    // this flips, not on every frame of the widening.
+    val shown by remember(open, capsuleWidth) { derivedStateOf { open || railWidth.value > capsuleWidth } }
+    // Names fade in over the second half of the widening (and out over the first half of the narrowing),
+    // so a rail too narrow for them never shows them squeezed down to an ellipsis. A lambda, read in
+    // each label's draw layer only.
+    val namesAlpha: () -> Float = {
+        ((railWidth.value - capsuleWidth) / (namesWidth - capsuleWidth).coerceAtLeast(1.mpx) * 2f - 1f).coerceIn(0f, 1f)
     }
 
     Box(modifier.fillMaxSize()) {
@@ -179,16 +209,21 @@ fun StageRail(
         }
         if (state == RailState.HIDDEN) RailEdgeGlow(Modifier.align(Alignment.CenterStart))
 
-        val width = if (open) size.openWidth.mpx else 84.mpx
-        val edge = if (open) 24.mpx else 28.mpx
+        val edge = if (shown) 24.mpx else 28.mpx
         Column(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .offset(x = edge)
                 .then(if (full) Modifier.padding(vertical = 24.mpx).fillMaxHeight() else Modifier)
-                .width(width)
+                // The animated width is read here, in layout, so each frame of the widening re-lays the
+                // rail out without recomposing it.
+                .layout { measurable, constraints ->
+                    val w = railWidth.value.roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
+                    val placeable = measurable.measure(constraints.copy(minWidth = w, maxWidth = w))
+                    layout(w, placeable.height) { placeable.place(0, 0) }
+                }
                 .graphicsLayer {
-                    val travel = (width + edge).toPx()
+                    val travel = (railWidth.value + edge).toPx()
                     translationX = slide.value * travel * (if (rtl) -1f else 1f)
                 }
                 // Fades as it slides out, so its shadow never lingers at the edge once hidden.
@@ -229,27 +264,37 @@ fun StageRail(
                     true
                 }
                 .focusGroup()
-                .stageGlass(if (open) 34.mpx else 42.mpx, overContent = true)
-                .padding(
-                    horizontal = if (open) 16.mpx else 0.mpx,
-                    vertical = if (open) 22.mpx else 16.mpx,
-                ),
-            horizontalAlignment = if (open) Alignment.Start else Alignment.CenterHorizontally,
+                .stageGlass(if (shown) 34.mpx else 42.mpx, overContent = true)
+                // The open rail keeps the capsule's vertical sizes (16 padding, 58 rows, the same gaps), so
+                // opening and closing only change the width: the rail never grows or shrinks in height.
+                .padding(horizontal = if (shown) 16.mpx else 0.mpx, vertical = 16.mpx)
+                // While it widens, the rows are laid out at the open rail's width and clipped to the
+                // current one, so the icons are never squeezed in a rail still too narrow for them.
+                .clipToBounds()
+                .layout { measurable, constraints ->
+                    val innerWidth = if (shown) (namesWidth - 32.mpx).roundToPx().coerceAtLeast(0) else null
+                    val placeable = measurable.measure(
+                        constraints.copy(minWidth = innerWidth ?: constraints.minWidth, maxWidth = innerWidth ?: constraints.maxWidth),
+                    )
+                    layout(constraints.maxWidth, placeable.height) { placeable.place(0, 0) }
+                },
+            horizontalAlignment = if (shown) Alignment.Start else Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.mpx),
         ) {
-            RailBrand(open)
+            RailBrand(shown, namesAlpha)
             if (nowPlaying != null) {
                 RailItem(
                     icon = if (nowPlaying.audioMode) OwnTVIcon.EQ else OwnTVIcon.PLAY,
                     label = stringResource(R.string.shell_now_playing),
                     trailing = if (nowPlaying.audioMode && counts) stringResource(R.string.shell_now_playing_audio) else null,
                     detail = null,
-                    open = open,
+                    open = shown,
+                    namesAlpha = namesAlpha,
                     active = false,
                     accentIcon = true,
                     onClick = onNowPlaying,
                 )
-                RailSeparator(open)
+                RailSeparator(shown)
             }
             items.forEach { section ->
                 RailItem(
@@ -257,7 +302,8 @@ fun StageRail(
                     label = stringResource(section.labelRes),
                     trailing = if (counts) count(section)?.let { NumberFormat.getIntegerInstance(LocalConfiguration.current.locales[0]).format(it) } else null,
                     detail = if (details) detail(section) else null,
-                    open = open,
+                    open = shown,
+                    namesAlpha = namesAlpha,
                     active = section == selected ||
                         (section == MainSection.MORE && selected == MainSection.SETTINGS),
                     onClick = { onSelect(section) },
@@ -266,8 +312,8 @@ fun StageRail(
             }
             // Full height: the profile sits at the bottom, after the last separator.
             if (full) Spacer(Modifier.weight(1f))
-            RailSeparator(open)
-            RailProfile(open, profileName, profileLine.takeIf { counts }, avatarId, avatarPath, onSwitchProfile, onPickAvatar)
+            RailSeparator(shown)
+            RailProfile(shown, namesAlpha, profileName, profileLine.takeIf { counts }, avatarId, avatarPath, onSwitchProfile, onPickAvatar)
         }
     }
 }
@@ -306,20 +352,20 @@ private fun RailEdgeGlow(modifier: Modifier) {
 
 /** The mark (50), with the wordmark beside it when the rail is open (`.brandrow`, 0 10 18 padding). */
 @Composable
-private fun ColumnScope.RailBrand(open: Boolean) {
+private fun ColumnScope.RailBrand(open: Boolean, namesAlpha: () -> Float) {
     val icon = rememberAppliedIcon()
     if (!open) {
         BrandMark(icon, 50.mpx, Modifier.padding(bottom = 12.mpx))
         return
     }
     Row(
-        Modifier.padding(start = 10.mpx, end = 10.mpx, bottom = 18.mpx),
+        Modifier.padding(start = 10.mpx, end = 10.mpx, bottom = 12.mpx),
         horizontalArrangement = Arrangement.spacedBy(14.mpx),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BrandMark(icon, 50.mpx)
         // The wordmark, 130 wide (`.brandrow`, `wordmarkC()`).
-        Wordmark(130.mpx)
+        Box(Modifier.graphicsLayer { alpha = namesAlpha() }) { Wordmark(130.mpx) }
     }
 }
 
@@ -327,7 +373,7 @@ private fun ColumnScope.RailBrand(open: Boolean) {
 private fun RailSeparator(open: Boolean) {
     Box(
         Modifier
-            .then(if (open) Modifier.fillMaxWidth().padding(horizontal = 14.mpx, vertical = 10.mpx) else Modifier.padding(vertical = 8.mpx).width(34.mpx))
+            .then(if (open) Modifier.fillMaxWidth().padding(horizontal = 14.mpx, vertical = 8.mpx) else Modifier.padding(vertical = 8.mpx).width(34.mpx))
             .height(1.mpx)
             .background(StageColors.Ink.copy(alpha = 0.12f)),
     )
@@ -345,6 +391,7 @@ private fun RailItem(
     trailing: String?,
     detail: String?,
     open: Boolean,
+    namesAlpha: () -> Float,
     active: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -357,7 +404,7 @@ private fun RailItem(
         radius = r,
         // At least 60, not exactly: with a large font size the name and its detail line need more, and a
         // fixed height cut the detail line off (#7.2).
-        modifier = modifier.then(if (open) Modifier.fillMaxWidth().heightIn(min = 60.mpx) else Modifier.size(58.mpx)),
+        modifier = modifier.then(if (open) Modifier.fillMaxWidth().heightIn(min = 58.mpx) else Modifier.size(58.mpx)),
         idle = if (active) Modifier.background(a.accent.copy(alpha = 0.14f), RoundedCornerShape(r)) else Modifier,
         contentAlignment = if (open) Alignment.CenterStart else Alignment.Center,
     ) { focused ->
@@ -377,7 +424,7 @@ private fun RailItem(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OwnTVIcon(icon, iconTint, Modifier.size(26.mpx))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).graphicsLayer { alpha = namesAlpha() }) {
                 Text(
                     label,
                     style = stageText(21, 600),
@@ -396,7 +443,7 @@ private fun RailItem(
                 }
             }
             if (trailing != null) {
-                Text(trailing, style = stageText(16, 600), color = if (focused) a.onAccent else StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(trailing, style = stageText(16, 600), color = if (focused) a.onAccent else StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.graphicsLayer { alpha = namesAlpha() })
             }
         }
     }
@@ -421,14 +468,14 @@ private fun RailActiveDot(modifier: Modifier) {
  * switch ›" under it from Size Wide up ([line]). OK switches profile; a long press changes the avatar.
  */
 @Composable
-private fun RailProfile(open: Boolean, name: String, line: String?, avatarId: Int, avatarPath: String, onSwitchProfile: () -> Unit, onPickAvatar: () -> Unit) {
+private fun RailProfile(open: Boolean, namesAlpha: () -> Float, name: String, line: String?, avatarId: Int, avatarPath: String, onSwitchProfile: () -> Unit, onPickAvatar: () -> Unit) {
     val a = stageAccent
     val initial = name.trim().take(1).uppercase().ifEmpty { "?" }
     StageSurface(
         onClick = onSwitchProfile,
         onLongClick = onPickAvatar,
         radius = if (open) 20.mpx else 23.mpx,
-        modifier = if (open) Modifier.fillMaxWidth() else Modifier.padding(top = 4.mpx).size(46.mpx),
+        modifier = if (open) Modifier.padding(top = 4.mpx).fillMaxWidth().heightIn(min = 46.mpx) else Modifier.padding(top = 4.mpx).size(46.mpx),
         // Alone in the capsule the avatar covers a fill, so it takes the ring instead.
         focusStyle = if (open) StageFocus.FILLED else StageFocus.POSTER,
         contentAlignment = if (open) Alignment.CenterStart else Alignment.Center,
@@ -438,12 +485,12 @@ private fun RailProfile(open: Boolean, name: String, line: String?, avatarId: In
             return@StageSurface
         }
         Row(
-            Modifier.padding(start = 12.mpx, end = 12.mpx, top = 10.mpx, bottom = 6.mpx),
+            Modifier.padding(horizontal = 12.mpx),
             horizontalArrangement = Arrangement.spacedBy(14.mpx),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RailAvatar(initial, avatarId = avatarId, imagePath = avatarPath)
-            Column {
+            Column(Modifier.graphicsLayer { alpha = namesAlpha() }) {
                 Text(name, style = stageText(19, 700), color = if (focused) a.onAccent else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (line != null) {
                     Text("$line ›", style = stageText(15, 400), color = if (focused) a.onAccent else StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)

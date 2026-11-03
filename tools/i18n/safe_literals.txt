@@ -312,7 +312,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/LocalSyncScreen.kt	localSyncBusy
 1	technical	app/src/main/java/tv/own/owntv/features/settings/LocalSyncScreen.kt	localSyncBusyAngle
 1	technical	app/src/main/java/tv/own/owntv/features/settings/LocalSyncScreen.kt	…
-7	empty	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	\0
+5	empty	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/ManageSourcesScreen.kt	▶
 10	technical	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	\0
 2	locale	app/src/main/java/tv/own/owntv/features/settings/MetadataSettingsScreen.kt	ar
@@ -524,7 +524,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	▲ ▼
 2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	▶
 3	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsStage.kt	◀ ▶
-32	empty	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	\0
+34	empty	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	FIT
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	Metadata cache wipe after language change failed: ${it.message}
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	Network is unreachable
@@ -540,7 +540,6 @@
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	resync enqueue sourceId=${source.id} clean=$clean
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	runImport profile=$pid
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	runImport sync success sourceId=${done.source?.id} profile=$pid
-1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	scope_edit
 1	log	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	setAndroidTvHomeEnabled enabled=$enabled
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	timed out
 1	protocol	app/src/main/java/tv/own/owntv/features/settings/SettingsViewModel.kt	unknown host
@@ -614,7 +613,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/setup/AddSourceScreen.kt	◀ ▶
 2	empty	app/src/main/java/tv/own/owntv/features/setup/RemoteSetupScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/setup/RemoteSetupScreen.kt	…
-12	empty	app/src/main/java/tv/own/owntv/features/setup/SetupViewModel.kt	\0
+14	empty	app/src/main/java/tv/own/owntv/features/setup/SetupViewModel.kt	\0
 5	empty	app/src/main/java/tv/own/owntv/features/setup/SetupWizard.kt	\0
 2	technical	app/src/main/java/tv/own/owntv/features/setup/SetupWizard.kt	+
 3	technical	app/src/main/java/tv/own/owntv/features/shell/OwnTVShell.kt	\0
@@ -774,23 +773,60 @@
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/WeatherConditionIcon.kt	snow
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/WeatherConditionIcon.kt	sunny
 1	technical	app/src/main/java/tv/own/owntv/features/shell/components/WeatherConditionIcon.kt	thunder
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	${scoreText(m.sport, m.home?.score)} – ${scoreText(m.sport, m.away?.score)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	${sportEmoji(s)} ${bySport[s].orEmpty().size}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	${sportEmoji(sport)} ${name.uppercase(locale)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	+${matches.size - 2}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	EEEEdMMMM
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	EEEdMMMHHmm
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	MMMMyyyy
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	h:$feed
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	–
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	• – •
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	▲▼
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	◀
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	◀▶
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsCalendarScreen.kt	★
 1	empty	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	${scoreText(m.sport, home.score)} – ${scoreText(m.sport, away.score)}
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	${sportEmoji(s)} ${sportLabel(s)}
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	+${followedSports.size - SPORT_CHIPS}
-2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	UNCHECKED_CAST
-1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	chips
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	cricket/all
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	empty
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	head
-1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	leagues
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	live
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	none
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	onNow
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	soon
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	–
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	– : –
-2	empty	app/src/main/java/tv/own/owntv/features/sports/SportsLeagueScreen.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsHubScreen.kt	▼
+3	empty	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	$sep$it $pts
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${dm.format(first)} – ${dm.format(last)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${scoreText(m.sport, m.home?.score)} – ${scoreText(m.sport, m.away?.score)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${sportEmoji(card.league.sport)} ${sportLabel(card.league.sport)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${top.won}–${top.lost}
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	EEEdMMM
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	a:${it.name}:${it.sessions.first().key}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	dMMM
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	e:${it.name}:${it.sessions.first().key}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	f1
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	m:${it.key}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	name
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	r:${it.rank}:${it.team.id}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	s:${it.key}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	t:${g.name}:${it.team.id}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	w:$heading
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	–
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	• – •
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	›
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	▲
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	▶
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	★
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	★ ${row.team.shortName}$sep#${row.rank}$sep${row.points} $pts
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	🏆
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	🏆 $winner
 6	empty	app/src/main/java/tv/own/owntv/features/sports/SportsMatchScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsMatchScreen.kt	${h.value}–${a.value}
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsMatchScreen.kt	${scoreText(m.sport, home?.score)} – ${scoreText(m.sport, away?.score)}
@@ -868,7 +904,17 @@
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsSettingsScreen.kt	UR
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsSettingsScreen.kt	US
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsSettingsScreen.kt	cricket/all
-1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTable.kt	#
+1	empty	app/src/main/java/tv/own/owntv/features/sports/SportsTable.kt	\0
+2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTable.kt	#
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTable.kt	—
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTable.kt	−${-gap}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTable.kt	★
+5	empty	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	\0
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	${month.year}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	${scoreText(m.sport, m.home?.score)} – ${scoreText(m.sport, m.away?.score)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	m:$month
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	• – •
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	⌂
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsViewModel.kt	$startMs|$title
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	ai_translated
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	attributes

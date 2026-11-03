@@ -1161,7 +1161,8 @@ fun LiveScreen(
  * = the logo plate, "256 · Sky Cinema Premieren" and "category · playlist"; the actions in the groups
  * WATCH · CHANNEL · GUIDE DATA · ORGANISE with their values (Catch-up "7 days", Match EPG "Auto",
  * EPG time offset "Global"). The order and visibility are the user's (Settings › Long-press menus ›
- * Live TV); a group label is drawn wherever the group changes.
+ * Live TV); in the shipped order a group label is drawn wherever the group changes, in the user's own
+ * order there are none.
  */
 @Composable
 private fun ChannelContextMenu(
@@ -1257,8 +1258,9 @@ private fun ChannelContextMenu(
                     },
                 )
                 var previousGroup: Int? = null
-                arranged(ContentMenu.LIVE, actions).forEachIndexed { index, action ->
-                    if (action.group != previousGroup) tv.own.owntv.ui.stage.StageGroupLabel(groupLabels[action.group])
+                val menu = arranged(ContentMenu.LIVE, actions)
+                menu.actions.forEachIndexed { index, action ->
+                    if (menu.headings && action.group != previousGroup) tv.own.owntv.ui.stage.StageGroupLabel(groupLabels[action.group])
                     previousGroup = action.group
                     tv.own.owntv.ui.stage.StageMenuItem(
                         text = action.label,

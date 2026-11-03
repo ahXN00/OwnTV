@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
@@ -120,7 +121,7 @@ class SeriesViewModel(
     val categoryQuery: kotlinx.coroutines.flow.StateFlow<String> = _categoryQuery
     fun setCategoryQuery(query: String) { _categoryQuery.value = query }
 
-    data class SeriesMoveState(val items: List<SeriesEntity>, val activeIndex: Int, val contextKey: String)
+    data class SeriesMoveState(val items: List<SeriesEntity>, val activeIndex: Int, val contextKey: String, val carried: Set<Long> = emptySet())
     private val _moveState = MutableStateFlow<SeriesMoveState?>(null)
     val moveState: StateFlow<SeriesMoveState?> = _moveState.asStateFlow()
 
@@ -272,6 +273,21 @@ class SeriesViewModel(
 
     private val _selected = MutableStateFlow<LiveKey>(LiveKey.All)
     val selectedKey: StateFlow<LiveKey> = _selected.asStateFlow()
+
+    // A playlist switch can leave a category of the previous playlist selected. The rail no longer lists
+    // it, so the heading fell back to the rail's first row while the titles kept coming from that old
+    // category. Back to All whenever the selected folder is not on one of the playlists now shown.
+    init {
+        viewModelScope.launch {
+            ctx.filter { it.profileId >= 0L }.map { it.sourceIds }.distinctUntilChanged().drop(1).collect { ids ->
+                // The hero shows the focused title until another takes focus: not one the rail no longer has.
+                if (_selectedSeries.value?.sourceId?.let { it !in ids } == true) _selectedSeries.value = null
+                val key = _selected.value as? LiveKey.Folder ?: return@collect
+                val sourceId = categoryDao.getById(key.id)?.sourceId
+                if (sourceId == null || sourceId !in ids) _selected.value = LiveKey.All
+            }
+        }
+    }
 
     // Bumped after a favourite/history mutation so the pager rebuilds its (manual, non-reactive)
     // PagingSource. Without this, unfavouriting on the Favorites category leaves the removed series in
@@ -498,13 +514,13 @@ class SeriesViewModel(
                 sortMode,
                 profileDao.observeById(c.profileId),
             ) { cats, cust, sort, profile ->
-                // A–Z also sorts the category folders (custom categories included); manually moved
-                // categories stay pinned first. Custom categories ride the SAME customization keys,
-                // so renames/hides/reorders apply to them with no extra code.
+                // The categories follow the sort chip too (A–Z by shown name, custom categories
+                // included); a category the user moved keeps its place in either sort. Custom categories
+                // ride the SAME customization keys, so renames/hides/reorders apply to them too.
                 val folders = cats.railCategories(
                     cust,
                     kids = profile?.isKids == true,
-                    alphaRest = sort == SettingsRepository.SortMode.ALPHA,
+                    alphabetical = sort == SettingsRepository.SortMode.ALPHA,
                 )
                 val multiSourceNames = c.sourceNames.takeIf { it.size > 1 }.orEmpty()
                 val categoriesById = cats.associateBy { it.id }
@@ -1141,10 +1157,32 @@ class SeriesViewModel(
         }
     }
 
-    fun downloadSeries(series: SeriesEntity) = downloadEpisodes(series, null)
+    /** Whether the profile in use may download; every Download button follows it. */
+    val downloadsAllowed: StateFlow<Boolean> =
+        settings.activeDownloadsAllowed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-    /** "Download season" on the series page: only [season]'s episodes. */
-    fun downloadSeason(series: SeriesEntity, season: Int) = downloadEpisodes(series, season)
+    /** A whole show or season waiting for the user to confirm it, with how many episodes that is. */
+    data class BulkDownloadAsk(val series: SeriesEntity, val season: Int?, val episodes: Int)
+
+    private val _bulkDownloadAsk = MutableStateFlow<BulkDownloadAsk?>(null)
+    val bulkDownloadAsk: StateFlow<BulkDownloadAsk?> = _bulkDownloadAsk.asStateFlow()
+
+    /**
+     * "Download all episodes" ([season] null) or "Download season" (only [season]'s episodes). Asks
+     * first, saying how many, because one press queues every file of the show and can fill the box.
+     */
+    fun askBulkDownload(series: SeriesEntity, season: Int?) {
+        viewModelScope.launch {
+            val episodes = seriesDao.episodesBySeries(series.id).first().count { season == null || it.seasonNumber == season }
+            if (episodes > 0) _bulkDownloadAsk.value = BulkDownloadAsk(series, season, episodes)
+        }
+    }
+
+    fun answerBulkDownload(confirmed: Boolean) {
+        val ask = _bulkDownloadAsk.value ?: return
+        _bulkDownloadAsk.value = null
+        if (confirmed) downloadEpisodes(ask.series, ask.season)
+    }
 
     private fun downloadEpisodes(series: SeriesEntity, season: Int?) {
         val showDir = StorageAccess.sanitize(series.name)
@@ -1196,7 +1234,7 @@ class SeriesViewModel(
         val pid = currentProfileId() ?: return CategoryRestorePlan()
         return planCategoryRestore(customize, contentOrderDao, pid, MediaType.SERIES, contextKey, customCategoryDao) {
             when (key) {
-                is LiveKey.Folder -> seriesDao.snapshotByCategoryManual(key.id, pid, contextKey, Int.MAX_VALUE)
+                is LiveKey.Folder -> seriesDao.snapshotByCategoryManual(key.id, pid, contextKey, false, Int.MAX_VALUE)
                     .mapTo(HashSet()) { CustomizeKeys.series(it) }
                 else -> customCategoryDao.stableItemKeys(pid, contextKey).toSet()
             }
@@ -1220,7 +1258,7 @@ class SeriesViewModel(
                 profileId = c.profileId,
                 sourceIds = c.sourceIds,
                 type = MediaType.SERIES,
-                alphaRest = sortMode.value == SettingsRepository.SortMode.ALPHA,
+                alphabetical = sortMode.value == SettingsRepository.SortMode.ALPHA,
                 key = key,
             )
         }
@@ -1230,7 +1268,7 @@ class SeriesViewModel(
         val s = _categoryMoveState.value ?: return
         if (from !in s.rows.indices || to !in s.rows.indices || from == to) return
         val rows = s.rows.toMutableList().apply { add(to, removeAt(from)) }
-        _categoryMoveState.value = s.copy(rows = rows, activeIndex = to, targetKey = rows[to].key)
+        _categoryMoveState.value = s.copy(rows = rows, activeIndex = to, targetKey = rows[to].key, carried = s.carried + s.rows[from].key)
     }
 
     fun commitCategoryMove() {
@@ -1238,7 +1276,7 @@ class SeriesViewModel(
         _categoryMoveState.value = null
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            customize.setCategoryOrder(pid, MediaType.SERIES, s.keys)
+            customize.saveCategoryMove(pid, MediaType.SERIES, s.keys, s.carried)
         }
     }
 
@@ -1255,24 +1293,18 @@ class SeriesViewModel(
                 LiveKey.Favorites -> ContentOrderEntity.FAV_CONTEXT
                 else -> return@launch
             }
+            val alpha = sortMode.value == SettingsRepository.SortMode.ALPHA
             val items = when (key) {
-                is LiveKey.Folder -> seriesDao.snapshotByCategoryManual(key.id, pid, contextKey, 5000)
-                is LiveKey.Custom -> customCategoryDao.snapshotSeries(pid, key.id, ctx.value.sourceIds.ifEmpty { listOf(-1L) }, 5000)
+                is LiveKey.Folder -> seriesDao.snapshotByCategoryManual(key.id, pid, contextKey, alpha, 5000)
+                is LiveKey.Custom -> customCategoryDao.snapshotSeries(pid, key.id, ctx.value.sourceIds.ifEmpty { listOf(-1L) }, alpha, 5000)
                 LiveKey.Favorites -> seriesDao.snapshotFavoritesManual(pid, contextKey, ctx.value.sourceIds.ifEmpty { listOf(-1L) }, 5000)
                 LiveKey.History, LiveKey.All -> return@launch
             }
             val idx = items.indexOfFirst { it.id == series.id }
             if (idx < 0) return@launch
             _moveState.value = SeriesMoveState(items, idx, contextKey)
-            // Manual order is only visible in playlist order, so Move switches the list to it — but that
-            // is a means, not a choice the user made. Remember what they had so Cancel can put it back.
-            sortBeforeMove = sortMode.value
-            settings.setSortSeries(SettingsRepository.SortMode.PLAYLIST)
         }
     }
-
-    /** The sort the user was on before [enterMoveMode] switched the list to playlist order. */
-    private var sortBeforeMove: SettingsRepository.SortMode? = null
 
     /** Takes the item being moved out and puts it back at [target]; the rest close up around it. */
     /** Takes the item at [from] out and puts it back at [to]; the rest close up around it. */
@@ -1280,34 +1312,20 @@ class SeriesViewModel(
         val s = _moveState.value ?: return
         if (from !in s.items.indices || to !in s.items.indices || from == to) return
         val list = s.items.toMutableList().apply { add(to, removeAt(from)) }
-        _moveState.value = s.copy(items = list, activeIndex = to)
+        _moveState.value = s.copy(items = list, activeIndex = to, carried = s.carried + s.items[from].id)
     }
 
     fun commitMove() {
         val s = _moveState.value ?: return
         _moveState.value = null
-        sortBeforeMove = null // the new order IS playlist order — staying on it is the point
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            contentOrderDao.replaceContext(
-                profileId = pid,
-                type = MediaType.SERIES,
-                contextKey = s.contextKey,
-                rows = s.items.mapIndexed { i, ser ->
-                    ContentOrderEntity(profileId = pid, mediaType = MediaType.SERIES, contextKey = s.contextKey, itemId = ser.id, position = i)
-                },
-            )
+            contentOrderDao.saveMove(pid, MediaType.SERIES, s.contextKey, s.items.map { it.id }, s.carried)
         }
     }
 
     fun cancelMove() {
         _moveState.value = null
-        // Cancel means nothing changed — including the sort Move switched away from.
-        val previous = sortBeforeMove ?: return
-        sortBeforeMove = null
-        if (previous != SettingsRepository.SortMode.PLAYLIST) {
-            viewModelScope.launch { settings.setSortSeries(previous) }
-        }
     }
 
     /** Hide the series from all lists (undo via Settings → Customize → Hidden items). */
@@ -1347,16 +1365,16 @@ class SeriesViewModel(
             }
             LiveKey.Favorites -> seriesDao.pagingFavoritesManual(c.profileId, ContentOrderEntity.FAV_CONTEXT, ids)
             LiveKey.History -> seriesDao.pagingHistory(c.profileId, ids)
-            is LiveKey.Custom -> customCategoryDao.pagingSeries(c.profileId, key.id, ids)
+            is LiveKey.Custom -> customCategoryDao.pagingSeries(c.profileId, key.id, ids, alpha = !playlist)
             is LiveKey.Folder -> {
                 val ctxKey = folderContextKeys.value[key.id] ?: ""
                 when {
                     rating -> seriesDao.pagingByCategoryRating(key.id)
                     dateAdded -> seriesDao.pagingByCategoryDateAdded(key.id)
                     // Fast path: no manual order in this folder → the plain indexed query has
-                    // the identical (sortOrder, name) order without the join-sort.
-                    ctxKey !in orderedContexts.value -> seriesDao.pagingByCategory(key.id)
-                    else -> seriesDao.pagingByCategoryManual(key.id, c.profileId, ctxKey)
+                    // the identical order without the join-sort.
+                    ctxKey !in orderedContexts.value -> if (playlist) seriesDao.pagingByCategory(key.id) else seriesDao.pagingByCategoryAlpha(key.id)
+                    else -> seriesDao.pagingByCategoryManual(key.id, c.profileId, ctxKey, alpha = !playlist)
                 }
             }
         } else when (key) {

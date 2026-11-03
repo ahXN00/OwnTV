@@ -38,6 +38,7 @@ import tv.own.owntv.features.settings.StageSettingsHeading
 import tv.own.owntv.features.settings.StageSettingsNote
 import tv.own.owntv.features.settings.settingHelp
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.theme.mpx
 
 /** The pages of Settings → Sports: the main page and the ones its rows open. */
@@ -56,7 +57,13 @@ private val COUNTRIES = listOf("DE", "AT", "CH", "UK", "US", "FR", "BE", "ES", "
  * sports data. Every value is the profile's; backups carry it.
  */
 @Composable
-fun SportsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier, vm: SportsSettingsViewModel = koinViewModel()) {
+fun SportsSettingsScreen(
+    onBack: () -> Unit,
+    /** OK on a followed team: its page in the Sports section. */
+    onOpenTeam: (FollowedTeam) -> Unit,
+    modifier: Modifier = Modifier,
+    vm: SportsSettingsViewModel = koinViewModel(),
+) {
     val c by vm.config.collectAsStateWithLifecycle()
     val shown by vm.shownInMenu.collectAsStateWithLifecycle()
     var page by rememberSaveable { mutableStateOf(SportsSettingsPage.MAIN) }
@@ -91,7 +98,7 @@ fun SportsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier, vm: 
             onBack = main, modifier = modifier, rowsFocus = rowsFocus,
         ) {
             when (page) {
-                SportsSettingsPage.TEAMS -> TeamRows(vm, c)
+                SportsSettingsPage.TEAMS -> TeamRows(vm, c, onOpenTeam)
                 SportsSettingsPage.ALERTS -> AlertRows(vm, c)
                 SportsSettingsPage.LANGUAGES -> CodeRows(LANGUAGES, c.preferredLanguages(vm.appLanguage), { languageName(it) }) { code ->
                     vm.update { s -> val now = s.preferredLanguages(vm.appLanguage); s.copy(languages = if (code in now) now - code else now + code) }
@@ -130,8 +137,8 @@ private fun Row(icon: OwnTVIcon, title: String, desc: String?, value: SettingVal
     )
 }
 
-/** Rows on the main page (the "N settings" beside its title): 5 + 6 + 3 + 2 + 4. */
-private const val MAIN_ROWS = 20
+/** Rows on the main page (the "N settings" beside its title): 5 + 6 + 3 + 2 + 5. */
+private const val MAIN_ROWS = 21
 
 /** The main page: What to show · Watching · While watching · Channels · Data. */
 @Composable
@@ -200,11 +207,15 @@ private fun MainRows(vm: SportsSettingsViewModel, c: SportsConfig, shown: Boolea
         vm.update { it.copy(showLikely = !it.showLikely) }
     }
 
-    StageSettingsHeading(stringResource(R.string.sports_settings_data), 4)
+    StageSettingsHeading(stringResource(R.string.sports_settings_data), 5)
     val modes = AutoRebuild.entries
     val stepMode: (Int) -> Unit = { d -> vm.update { s -> s.copy(autoRebuild = modes[(s.autoRebuild.ordinal + d).mod(modes.size)]) } }
     Row(OwnTVIcon.HISTORY, stringResource(R.string.sports_auto_rebuild), stringResource(R.string.sports_auto_rebuild_description),
         SettingValue.Stepper(rebuildLabel(c.autoRebuild)), onStep = stepMode) { stepMode(1) }
+    val days = SportsConfig.CALENDAR_REFRESH_CHOICES
+    val stepDays: (Int) -> Unit = { d -> vm.update { s -> s.copy(calendarRefreshDays = days[(days.indexOf(s.calendarRefreshDays).coerceAtLeast(0) + d).mod(days.size)]) } }
+    Row(OwnTVIcon.CALENDAR, stringResource(R.string.sports_calendar_refresh), stringResource(R.string.sports_calendar_refresh_description),
+        SettingValue.Stepper(pluralStringResource(R.plurals.sports_calendar_refresh_days, c.calendarRefreshDays, c.calendarRefreshDays)), onStep = stepDays) { stepDays(1) }
     val refresh = SportsRefreshPolicy.LIVE_SECONDS_CHOICES
     val stepRefresh: (Int) -> Unit = { d -> vm.update { s -> s.copy(liveRefreshSeconds = refresh[(refresh.indexOf(s.liveRefreshSeconds).coerceAtLeast(0) + d).mod(refresh.size)]) } }
     Row(OwnTVIcon.LIVE_TV, stringResource(R.string.sports_live_refresh), stringResource(R.string.sports_live_refresh_description),
@@ -267,6 +278,7 @@ private fun LeaguePicker(vm: SportsSettingsViewModel, c: SportsConfig, rowsFocus
     val back = stringResource(R.string.common_back) to stringResource(R.string.common_nav_settings)
     val sportNames = sports.map { sportLabel(it) }
     val cricketName = stringResource(R.string.sports_sport_cricket)
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     fun startMove(list: MoveList) { moving = list }
     fun leagueName(l: tv.own.owntv.core.sports.model.League) = if (l.key == "cricket/all") cricketName else l.name
     androidx.compose.foundation.layout.Row(modifier, horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(18.mpx)) {
@@ -357,6 +369,8 @@ private fun MovePopup(list: MoveList, title: String, onDone: () -> Unit, onCance
     val accent = tv.own.owntv.ui.theme.stageAccent.accent
     tv.own.owntv.ui.stage.StagePopup(
         onDismiss = onCancel, title = title, body = stringResource(R.string.sports_move_instructions), width = 760.mpx, scroll = false,
+        // Opened by a held OK: the guard keeps its repeats from dropping the item it opens carrying.
+        modifier = Modifier.longPressMenuGuard(),
         buttons = {
             tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_cancel), onClick = onCancel, height = 56.mpx, textSize = 19)
             tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_save), height = 56.mpx, textSize = 19, tinted = true,
@@ -407,9 +421,12 @@ private fun PlaylistRows(vm: SportsSettingsViewModel, c: SportsConfig) {
     }
 }
 
-/** My teams: the followed ones (OK stops following), a search over the followed leagues' teams, and suggestions. */
+/**
+ * My teams: a search over the followed leagues' teams, the followed ones (OK opens the team's page,
+ * Hold OK stops following), and suggestions.
+ */
 @Composable
-private fun TeamRows(vm: SportsSettingsViewModel, c: SportsConfig) {
+private fun TeamRows(vm: SportsSettingsViewModel, c: SportsConfig, onOpenTeam: (FollowedTeam) -> Unit) {
     var query by remember { mutableStateOf("") }
     val searchTitle = stringResource(R.string.sports_search_teams)
     StageFieldRow(
@@ -423,7 +440,23 @@ private fun TeamRows(vm: SportsSettingsViewModel, c: SportsConfig) {
     }
     if (c.teams.isNotEmpty()) {
         StageSettingsHeading(stringResource(R.string.sports_my_teams), c.teams.size)
-        c.teams.forEach { t -> Row(OwnTVIcon.STAR, t.name, sportLabel(t.sport), SettingValue.Switch(true)) { vm.toggleTeam(t) } }
+        val holdOk = stringResource(R.string.content_key_hold_ok)
+        val unfollow = stringResource(R.string.sports_hint_follow_unfollow)
+        val pageHint = stringResource(R.string.common_ok) to stringResource(R.string.sports_team_page)
+        c.teams.forEach { t ->
+            // A team with a page: OK opens it, Hold OK stops following. Athletes have none: OK stops following.
+            if (hasTeamPages(t.sport)) {
+                val value = SettingValue.Opens(stringResource(R.string.sports_team_page))
+                StageSettingRow(
+                    icon = OwnTVIcon.STAR, title = t.name, desc = sportLabel(t.sport), value = value,
+                    onClick = { onOpenTeam(t) },
+                    onLongClick = { vm.toggleTeam(t) },
+                    help = settingHelp(null, t.name, sportLabel(t.sport), value, pinnable = false).copy(hints = listOf(pageHint, holdOk to unfollow)),
+                )
+            } else {
+                Row(OwnTVIcon.STAR, t.name, sportLabel(t.sport), SettingValue.Switch(true)) { vm.toggleTeam(t) }
+            }
+        }
     }
     val suggestions = vm.suggestions(c)
     if (suggestions.isNotEmpty()) {
