@@ -431,7 +431,7 @@ internal fun BottomBar(
                         // The same channel in another quality, category or playlist. Live only; the
                         // list is read when it opens.
                         PlayerControl.SOURCES -> if (hasSources) {
-                            CtrlButton(OwnTVIcon.SWAP, label = stringResource(R.string.player_tool_sources)) { onOpenDialog(HudDialog.SOURCES) }
+                            CtrlButton(OwnTVIcon.PLAYLIST, label = stringResource(R.string.player_tool_sources)) { onOpenDialog(HudDialog.SOURCES) }
                         }
                         // Belongs to the tools cluster; `clusterFor` never hands them to this loop.
                         PlayerControl.BRIGHTNESS, PlayerControl.CHANNEL_LIST, PlayerControl.ENGINE,
