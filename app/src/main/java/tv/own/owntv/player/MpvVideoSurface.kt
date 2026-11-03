@@ -71,7 +71,9 @@ private class MpvSurfaceView(context: Context, private val player: OwnTVPlayer) 
 fun MpvVideoSurface(
     player: OwnTVPlayer,
     modifier: Modifier = Modifier,
-    autoFrameRate: Boolean = true,
+    // Settings › Picture › Frame rate: one switch for films and series, one for Live TV.
+    autoFrameRateFilms: Boolean = true,
+    autoFrameRateLive: Boolean = true,
     // Auto frame rate's two film extras (Settings › Picture › Frame rate). Ignored on live.
     afrMatchResolution: Boolean = false,
     afrHoldSecs: Int = 0,
@@ -86,6 +88,7 @@ fun MpvVideoSurface(
     // composition, and a new item always recomposes (its size arrives), so live vs film is current.
     val engine = androidx.compose.runtime.remember(player) { MpvPlaybackEngine(player) }
     val film = engine.takeIf { !player.isLiveContent }
+    val autoFrameRate = if (film != null) autoFrameRateFilms else autoFrameRateLive
     AutoFrameRateEffect(fps, autoFrameRate, film = film, videoSize = videoSize, matchResolution = afrMatchResolution, holdSecs = afrHoldSecs)
 
     BoxWithConstraints(modifier.background(Color.Black).clipToBounds(), contentAlignment = Alignment.Center) {

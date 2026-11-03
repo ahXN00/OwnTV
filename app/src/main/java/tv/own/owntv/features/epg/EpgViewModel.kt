@@ -317,7 +317,6 @@ class EpgViewModel(
     override fun onCleared() {
         // Rows of a guide nobody is looking at any more are not asked for.
         archiveGuide.forgetPending()
-        super.onCleared()
     }
 
     /** The row prefetch in flight. One at a time — see [prefetchAfter]. */
