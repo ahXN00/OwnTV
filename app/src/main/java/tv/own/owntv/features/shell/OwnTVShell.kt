@@ -179,6 +179,7 @@ fun OwnTVShell(
     var restoreTrendingSearchFocus by remember { mutableStateOf(false) }
     var trendingSearchActive by remember { mutableStateOf(false) }
     val player = koinInject<OwnTVPlayer>()
+    val channelVersions = koinInject<tv.own.owntv.core.live.ChannelVersions>()
     // Docked mini-player size (% of screen width) + position, configurable in Settings and from the
     // mini-player's own controls. Read straight from settings so both entry points stay in sync.
     val settingsRepo = koinInject<tv.own.owntv.core.settings.SettingsRepository>()
@@ -1814,6 +1815,11 @@ fun OwnTVShell(
                     onOtherChannels = matchSession?.takeIf { it.options.size > 1 }?.let { { showOtherChannels = true } },
                     otherChannelsCount = (matchSession?.options?.size ?: 1) - 1,
                     onToastOk = goalToast?.let { a -> { switchToMatch(a.match) } },
+                    // The channel's other versions, read when the button is pressed; a pick is an
+                    // ordinary tune, the same as picking it in the channel list.
+                    sources = previewChannel?.takeIf { isTunedLive }?.let { ch ->
+                        tv.own.owntv.player.HudSources(load = { channelVersions.of(ch) }, playingId = ch.id, onPick = liveVm::ensurePlaying)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
                 goalToast?.let { a ->

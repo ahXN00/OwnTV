@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -332,6 +333,41 @@ internal fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismi
 }
 
 /** Auto (Settings → Maximum video quality), then every height this stream offers, highest first. */
+/**
+ * "Sources": the playing channel and its other versions, best picture first, the one on screen ringed.
+ * Each row names the version, then its category and playlist, with the provider's quality marks at the
+ * end. Opens once the list is read (a quick indexed lookup, then cached for the channel).
+ */
+@Composable
+internal fun SourcesDialog(sources: HudSources, onDismiss: () -> Unit) {
+    val versions by produceState<List<tv.own.owntv.core.live.ChannelVersion>?>(null) { value = sources.load() }
+    val list = versions ?: return
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { requestFocusRetrying(focus) }
+    BackHandler { onDismiss() }
+    val separator = stringResource(R.string.content_epg_bits_separator)
+    val focusIndex = list.indexOfFirst { it.channel.id == sources.playingId }.coerceAtLeast(0)
+    DialogScaffold(title = stringResource(R.string.player_tool_sources), onDismiss = onDismiss) {
+        items(list.size) { index ->
+            val v = list[index]
+            val playing = v.channel.id == sources.playingId
+            tv.own.owntv.ui.stage.StagePopupOption(
+                title = v.name,
+                subtitle = listOfNotNull(v.categoryName, v.playlistName).filter { it.isNotBlank() }.distinct().joinToString(separator).ifEmpty { null },
+                value = v.tags.joinToString(" ").ifEmpty { null },
+                chosen = playing,
+                modifier = if (index == focusIndex) Modifier.focusRequester(focus) else Modifier,
+                leading = { f -> tv.own.owntv.ui.stage.StagePopupRadio(playing, f) },
+                onClick = { onDismiss(); if (!playing) sources.onPick(v.channel) },
+            )
+        }
+        // Only the channel itself: say so, rather than leave a list of one that looks like a fault.
+        if (list.size <= 1) item {
+            tv.own.owntv.ui.stage.StagePopupOption(title = stringResource(R.string.player_sources_none), onClick = onDismiss, enabled = false)
+        }
+    }
+}
+
 @Composable
 internal fun QualityDialog(heights: List<Int>, current: Int?, onSelect: (Int?) -> Unit, onDismiss: () -> Unit) {
     val focus = remember { FocusRequester() }

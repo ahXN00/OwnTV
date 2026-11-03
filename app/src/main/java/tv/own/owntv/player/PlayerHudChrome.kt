@@ -330,6 +330,7 @@ internal fun BottomBar(
     favorite: Boolean = false, onToggleFavorite: (() -> Unit)? = null,
     onPreviousChannel: (() -> Unit)? = null,
     onOtherChannels: (() -> Unit)? = null, otherChannelsCount: Int = 0,
+    hasSources: Boolean = false,
     onOpenDialog: (HudDialog) -> Unit, onPip: (() -> Unit)?, onAudioMode: (() -> Unit)?,
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
     /** Given to whichever timeline is drawn, so Left/Right with the controls hidden can land on it. */
@@ -427,6 +428,11 @@ internal fun BottomBar(
                         }
                         // Not shown on the TV: Back from the player already returns to the match page.
                         PlayerControl.MATCH -> Unit
+                        // The same channel in another quality, category or playlist. Live only; the
+                        // list is read when it opens.
+                        PlayerControl.SOURCES -> if (hasSources) {
+                            CtrlButton(OwnTVIcon.SWAP, label = stringResource(R.string.player_tool_sources)) { onOpenDialog(HudDialog.SOURCES) }
+                        }
                         // Belongs to the tools cluster; `clusterFor` never hands them to this loop.
                         PlayerControl.BRIGHTNESS, PlayerControl.CHANNEL_LIST, PlayerControl.ENGINE,
                         PlayerControl.ASPECT, PlayerControl.QUALITY, PlayerControl.MINI_PLAYER, PlayerControl.AUDIO_ONLY,
@@ -526,7 +532,7 @@ internal fun BottomBar(
                         PlayerControl.GO_LIVE, PlayerControl.VOLUME, PlayerControl.BRIGHTNESS,
                         PlayerControl.SPEED, PlayerControl.SUBTITLES, PlayerControl.AUDIO,
                         PlayerControl.FAVOURITE, PlayerControl.CATCH_UP, PlayerControl.PREVIOUS_CHANNEL,
-                        PlayerControl.OTHER_CHANNELS, PlayerControl.MATCH, PlayerControl.CHANNEL_LIST,
+                        PlayerControl.OTHER_CHANNELS, PlayerControl.MATCH, PlayerControl.SOURCES, PlayerControl.CHANNEL_LIST,
                         -> Unit
                     }
                 }
