@@ -109,6 +109,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -216,6 +217,15 @@ fun SeriesScreen(
             lockedKey = lockedKey,
             onEntryHook = onEntryHook,
             modifier = modifier,
+        )
+    }
+    vm.bulkDownloadAsk.collectAsStateWithLifecycle().value?.let { ask ->
+        tv.own.owntv.features.settings.ConfirmDialog(
+            title = pluralStringResource(R.plurals.content_download_episodes_confirm, ask.episodes, ask.episodes),
+            message = stringResource(R.string.content_download_episodes_confirm_message),
+            onConfirm = { vm.answerBulkDownload(true) },
+            onDismiss = { vm.answerBulkDownload(false) },
+            confirmLabel = R.string.content_download,
         )
     }
 }
@@ -930,7 +940,7 @@ private fun SeriesGrid(
                 vm.toggleFavorite(s); contextSeries = null
             })
             add(MenuAction("download", stringResource(R.string.content_download_all_episodes), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
-                vm.downloadSeries(s); contextSeries = null
+                vm.askBulkDownload(s, null); contextSeries = null
             })
             add(MenuAction("remove_history", stringResource(R.string.content_remove_history), OwnTVIcon.HISTORY, group = VodGroupLibrary) {
                 vm.removeFromHistory(s.id); contextSeries = null
@@ -1233,6 +1243,7 @@ private fun EpisodeView(
     val refetchingTmdbMessage = stringResource(R.string.content_refetching_tmdb)
     val researchingTmdbMessage = stringResource(R.string.content_researching_tmdb)
     val episodes by vm.episodes.collectAsStateWithLifecycle()
+    val downloadsAllowed by vm.downloadsAllowed.collectAsStateWithLifecycle()
     val loading by vm.episodesLoading.collectAsStateWithLifecycle()
     val episodesFailure by vm.episodesFailure.collectAsStateWithLifecycle()
     val favoriteIds by vm.favoriteIds.collectAsStateWithLifecycle()
@@ -1471,10 +1482,10 @@ private fun EpisodeView(
                     onClick = { vm.toggleFavorite(series) },
                     icon = OwnTVIcon.FAVORITE, iconFilled = favourite, height = 60.mpx, textSize = 20,
                 )
-                if (visibleEpisodes.isNotEmpty() || seasonEpisodes.isNotEmpty()) {
+                if (downloadsAllowed && (visibleEpisodes.isNotEmpty() || seasonEpisodes.isNotEmpty())) {
                     StageButton(
                         text = stringResource(R.string.content_download_season),
-                        onClick = { vm.downloadSeason(series, activeSeason) },
+                        onClick = { vm.askBulkDownload(series, activeSeason) },
                         icon = OwnTVIcon.DOWNLOADS, height = 60.mpx, textSize = 20,
                     )
                 }
@@ -1777,7 +1788,7 @@ private fun EpisodeView(
                 vm.toggleFavorite(series); close()
             })
             add(MenuAction("download", stringResource(R.string.content_download_all_episodes), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
-                vm.downloadSeries(series); close()
+                vm.askBulkDownload(series, null); close()
             })
             add(MenuAction("remove_history", stringResource(R.string.content_remove_history), OwnTVIcon.HISTORY, group = VodGroupLibrary) {
                 vm.removeFromHistory(series.id); close()
