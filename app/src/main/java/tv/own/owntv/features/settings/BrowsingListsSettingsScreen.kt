@@ -15,8 +15,9 @@ import tv.own.owntv.R
 import tv.own.owntv.ui.components.OwnTVIcon
 
 /**
- * Settings › Layout › Browsing lists as a Stage page (six switches are not a popup): what
+ * Settings › Layout › Browsing lists as a Stage page (eight switches are not a popup): what
  * each section remembers — its last category, then its last item — one switch per section.
+ * The last section shows or hides the built-in Live TV categories (#322).
  */
 @Composable
 fun BrowsingListsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -27,12 +28,14 @@ fun BrowsingListsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifie
     val itemLive by vm.rememberLastLive.collectAsStateWithLifecycle()
     val itemMovies by vm.rememberLastMovies.collectAsStateWithLifecycle()
     val itemSeries by vm.rememberLastSeries.collectAsStateWithLifecycle()
+    val showAll by vm.liveShowAllRail.collectAsStateWithLifecycle()
+    val showCatchup by vm.liveShowCatchupRail.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     StageFullPage(
         parents = listOf(stringResource(R.string.settings_group_layout)),
         title = stringResource(R.string.settings_browsing_lists),
-        count = pluralStringResource(R.plurals.settings_setting_count, 6, 6),
+        count = pluralStringResource(R.plurals.settings_setting_count, 8, 8),
         onBack = onBack,
         modifier = modifier,
     ) {
@@ -51,6 +54,11 @@ fun BrowsingListsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifie
         BrowsingSwitch(OwnTVIcon.LIVE_TV, live, item, itemHelp, itemLive) { vm.setRememberLastLive(!itemLive) }
         BrowsingSwitch(OwnTVIcon.MOVIES, movies, item, itemHelp, itemMovies) { vm.setRememberLastMovies(!itemMovies) }
         BrowsingSwitch(OwnTVIcon.SERIES, series, item, itemHelp, itemSeries) { vm.setRememberLastSeries(!itemSeries) }
+        val liveCats = stringResource(R.string.settings_browsing_live_categories)
+        val liveCatsHelp = stringResource(R.string.settings_browsing_live_categories_description)
+        StageSettingsHeading(liveCats, 2)
+        BrowsingSwitch(OwnTVIcon.CATCHUP, stringResource(R.string.content_catchup), liveCats, liveCatsHelp, showCatchup) { vm.setLiveShowCatchupRail(!showCatchup) }
+        BrowsingSwitch(OwnTVIcon.LIVE_TV, stringResource(R.string.content_category_all_channels), liveCats, liveCatsHelp, showAll) { vm.setLiveShowAllRail(!showAll) }
     }
 }
 
