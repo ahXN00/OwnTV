@@ -23,6 +23,7 @@ import tv.own.owntv.features.profiles.ProfileEditorDialog
 import tv.own.owntv.features.profiles.ProfileGateSessionViewModel
 import tv.own.owntv.features.profiles.ProfilesViewModel
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.stage.StageTag
 import tv.own.owntv.ui.theme.StageColors
 import tv.own.owntv.ui.theme.mpx
@@ -70,8 +71,10 @@ internal fun ProfileSettingsRows() {
     val help = SettingHelp(
         title = stringResource(R.string.profiles_title),
         text = stringResource(R.string.settings_help_profiles),
-        hints = listOf(
+        hints = listOfNotNull(
             stringResource(R.string.common_ok) to stringResource(R.string.common_edit),
+            // The only way to delete a profile, so it has to be shown; never for the last one.
+            if (profiles.size > 1) stringResource(R.string.content_key_hold_ok) to stringResource(R.string.common_delete) else null,
             stringResource(R.string.common_back) to stringResource(R.string.common_nav_settings),
         ),
     )
@@ -148,6 +151,9 @@ internal fun ProfileSettingsRows() {
                 confirmDelete = null
             },
             onDismiss = { confirmDelete = null },
+            // Opened by a held OK: without the guard its repeats press Cancel, so the confirmation
+            // closed the moment it appeared and a profile could never be deleted.
+            modifier = Modifier.longPressMenuGuard(),
         )
     }
 }

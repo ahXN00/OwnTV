@@ -356,6 +356,19 @@ class LiveViewModel(
     private val _selected = MutableStateFlow<LiveKey>(LiveKey.All)
     val selectedKey: StateFlow<LiveKey> = _selected.asStateFlow()
 
+    // A playlist switch can leave a category of the previous playlist selected. The rail no longer lists
+    // it, so the heading fell back to the rail's first row while the titles kept coming from that old
+    // category. Back to All whenever the selected folder is not on one of the playlists now shown.
+    init {
+        viewModelScope.launch {
+            ctx.filter { it.profileId >= 0L }.map { it.sourceIds }.distinctUntilChanged().drop(1).collect { ids ->
+                val key = _selected.value as? LiveKey.Folder ?: return@collect
+                val sourceId = categoryDao.getById(key.id)?.sourceId
+                if (sourceId == null || sourceId !in ids) _selected.value = LiveKey.All
+            }
+        }
+    }
+
     private val _search = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _search.asStateFlow()
 
