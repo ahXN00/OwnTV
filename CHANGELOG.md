@@ -35,6 +35,9 @@
 - **📚 Home says the library is still loading, with the titles so far** (community PR #333 by @DevenP)
 - **🧭 The menu widens in place from its capsule, at a steady height** (community PR #328 by @DevenP)
 - **🏷️ Home rows show their heading when focus enters them** (community PR #332 by @DevenP)
+- **👁️ Long-press menus: hide actions, and the default order matches the menus**
+- **📺 Hide All channels or Catch-up from the Live TV categories (#322)** (community PR #337 by @sarmadsoomro)
+- **⬇️ Allow downloads per profile; a whole show or season asks first with the episode count (#339)**
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**

@@ -704,6 +704,11 @@ Pick a drawn avatar, or **Your own picture** — a file on this TV or a photo se
 A new profile can have its picture straight away: **Your own picture** is also in the window that
 creates a profile, and in Settings → **Profile** when you edit one.
 
+### ⬇️ Allow downloads
+**Where:** Settings → **Profile** → OK on a profile → **Allow downloads**
+Off takes every Download button and menu item away from that profile. With it on, **Download season**
+and **Download all episodes** first ask "Download N episodes?".
+
 ### 🚀 Where a profile opens
 **Where:** Settings → App → **App startup**
 **Home**, **Last channel** (full screen), **Last channel · TV Guide** or **Last channel · Live TV**
@@ -892,13 +897,17 @@ Hide, rename, reorder, and **unhide**. Highlights:
   until OwnTV goes to the background or you switch profile. **Remove lock** in the same menu asks the
   PIN, and removing this screen's PIN unlocks every category. 5 wrong PINs → a 30 s wait.
 
-### 🔀 Reorder the long-press menus
+### 🔀 Reorder or hide the long-press menus
 **Where:** Settings → Layout → **Long-press menus**
-Put the actions you use most at the top.
+Each menu starts in the order it shows today. **OK** on an action shows or hides it (hidden ones stay
+in the list, dimmed); **hold OK** picks it up to move it. **Reset** brings back every menu as shipped.
+Some actions only appear where they apply — Catch-up on catch-up channels, Remove from history in History.
 
 ### 📋 Browsing & lists
 **Where:** Settings → Layout → **Browsing & lists**
-Whether each section remembers the last category and item.
+Whether each section remembers the last category and item. **Live TV categories:** switch off
+**Catch-up** or **All channels** to drop them from Live TV, the guide, the player and Multiview; without All
+channels, Live TV opens on your first category (or Favorites).
 
 ### 🎞️ Animations
 **Where:** Settings → Appearance → **Animations** (a switch)

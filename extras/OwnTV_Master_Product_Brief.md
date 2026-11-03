@@ -206,7 +206,7 @@ List or Guide.
 
 **Movies and Series** — Cinematic or Separate panels (3.5), a sort tool, a title menu (Watch /
 Library / Organise / Details). A **series page** carries the backdrop, Resume/Play, Favourite,
-**Download season** and series options, season tabs with counts (Specials last and uncounted; an
+**Download season** (it asks first with the episode count; gone for a profile with downloads off) and series options, season tabs with counts (Specials last and uncounted; an
 unstarted show plays from Season 1 Episode 1 and auto-play reaches the Specials after the finale),
 Grid | List and an Episode order menu (oldest/newest, hide watched); episode titles are cleaned of
 "Show – S01E03 –" prefixes, with TMDB's title filling a gap. Page and hero headlines drop a leading
