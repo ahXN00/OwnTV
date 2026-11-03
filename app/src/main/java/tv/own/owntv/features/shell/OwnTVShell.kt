@@ -377,14 +377,14 @@ fun OwnTVShell(
         var mpvLiveChannel: tv.own.owntv.core.database.entity.ChannelEntity? = null
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_STOP -> mpvLiveChannel = liveVm.previewChannel.value?.takeIf {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> mpvLiveChannel = liveVm.playingChannel?.takeIf {
                     currentPlayerMode != PlayerMode.NONE && !liveVm.liveOnExo.value && player.isLiveContent
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_START -> mpvLiveChannel?.let { channel ->
                     mpvLiveChannel = null
                     shellVm.afterSealCheck {
                         // A relock that sealed it cleared the channel; a stream already back needs nothing.
-                        if (liveVm.previewChannel.value?.id == channel.id && player.currentMediaUrl == null) {
+                        if (liveVm.playingChannel?.id == channel.id && player.currentMediaUrl == null) {
                             liveVm.ensurePlaying(channel)
                         }
                     }
@@ -585,7 +585,14 @@ fun OwnTVShell(
         runCatching { liveVm.previewEngine.exitAudioOnly() }
     }
     // The mini-player's own expand button always maximizes.
-    val expandPlayer = { resumeVideo(); restoreFocus = false; playerMode = PlayerMode.FULLSCREEN }
+    val expandPlayer = {
+        // Before the mode flips, so the HUD's first frame already shows the channel playing, not the
+        // row last highlighted behind the mini player.
+        liveVm.onPlayerMode(mini = false, open = true)
+        resumeVideo(); restoreFocus = false; playerMode = PlayerMode.FULLSCREEN
+    }
+    // Every other mode change (the mini player opening, the player closing) reaches Live TV here.
+    LaunchedEffect(playerMode) { liveVm.onPlayerMode(mini = playerMode == PlayerMode.MINI, open = playerMode != PlayerMode.NONE) }
     val exitPlayer = {
         // Flush the resume position BEFORE the stream is torn down — stop() drops the loaded item's
         // identity, after which neither view model can tell the position was theirs. Both calls are

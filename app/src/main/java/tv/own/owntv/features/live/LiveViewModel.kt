@@ -377,6 +377,40 @@ class LiveViewModel(
     private val _previewChannel = MutableStateFlow<ChannelEntity?>(null)
     val previewChannel: StateFlow<ChannelEntity?> = _previewChannel.asStateFlow()
 
+    /**
+     * The channel the mini player is playing while the user browses Live TV or the Guide behind it.
+     * Focus still moves [_previewChannel] (the info pane follows the highlighted row), so the playing
+     * channel is kept here and put back when the player is expanded: the HUD's guide card, Record,
+     * CH+/-, Multiview and catch-up all read [_previewChannel] and must act on what is playing, not on
+     * the row last highlighted. Null when no browse moved away from it.
+     */
+    @Volatile private var miniPlaying: ChannelEntity? = null
+    @Volatile private var miniOpen = false
+
+    /** The channel the player is on: during a mini-player browse, the one playing, not the one highlighted. */
+    val playingChannel: ChannelEntity? get() = miniPlaying ?: _previewChannel.value
+
+    /** The shell's player mode: [mini] while the mini player is up, [open] while any player is. */
+    fun onPlayerMode(mini: Boolean, open: Boolean) {
+        miniOpen = mini
+        if (mini) return
+        val playing = miniPlaying ?: return
+        miniPlaying = null
+        if (open && _previewChannel.value?.id != playing.id) _previewChannel.value = playing
+    }
+
+    /** Focus moved [_previewChannel] to [channel]; keep what the mini player is playing first. */
+    private fun browseTo(channel: ChannelEntity) {
+        if (miniOpen && miniPlaying == null) _previewChannel.value?.takeIf { it.id != channel.id }?.let { miniPlaying = it }
+        _previewChannel.value = channel
+    }
+
+    /** [channel] is being tuned: it is what plays now, wherever the player is. */
+    private fun tuned(channel: ChannelEntity) {
+        miniPlaying = null
+        _previewChannel.value = channel
+    }
+
     /** Every guide read this screen makes, and the now/next cache that used to live here — see
      *  [LiveEpgReader]. The shift it applies is passed in at each call, so this view model stays the
      *  single place that knows a customization changed. */
@@ -932,7 +966,8 @@ class LiveViewModel(
         // to start at the top don't also get yanked to a saved channel on re-entry. The category restore
         // above is a separate toggle ("Remember last category — Live TV").
         viewModelScope.launch {
-            _previewChannel.drop(1).filterNotNull().map { it.id }.debounce(800).distinctUntilChanged()
+            // A browse behind the mini player is not a channel watched: the playing one stays saved.
+            _previewChannel.drop(1).filterNotNull().map { it.id }.debounce(800).filter { miniPlaying == null }.distinctUntilChanged()
                 .collect { settings.setLastLiveChannelId(it) }
         }
         viewModelScope.launch {
@@ -951,7 +986,7 @@ class LiveViewModel(
 
     fun onChannelFocused(channel: ChannelEntity) {
         _previewArmed.value = true // a real user focus — the in-pane preview may now play
-        _previewChannel.value = channel
+        browseTo(channel)
     }
 
     /** Search's "Go to channel": the list scrolls to [reveal] and focuses it, then calls [revealDone]. */
@@ -965,7 +1000,7 @@ class LiveViewModel(
     fun revealChannel(channel: ChannelEntity) {
         _search.value = ""
         _previewArmed.value = true
-        _previewChannel.value = channel
+        browseTo(channel)
         viewModelScope.launch {
             val c = ctx.first { it.profileId >= 0 }
             val sort = settings.sortLive.first()
@@ -1081,7 +1116,7 @@ class LiveViewModel(
     // they apply are shared with the browse lists and belong beside them.
     private val zapList = LiveZapList(
         scope = viewModelScope,
-        playingChannelId = { _previewChannel.value?.id },
+        playingChannelId = { playingChannel?.id },
         loadForChannel = ::channelsAroundChannel,
         loadForCategory = ::channelsInCategory,
         loadWindowAround = ::buildZapList,
@@ -1346,7 +1381,7 @@ class LiveViewModel(
      * costs at most two opens — the first step and the channel the user stops on.
      */
     private fun zapTo(channel: ChannelEntity) {
-        _previewChannel.value = channel
+        tuned(channel)
         val now = android.os.SystemClock.elapsedRealtime()
         val delayMs = zapTuneDelayMs(lastZapPressMs, now)
         // Logged only: single-connection panels follow the same rule (see ZAP_ISOLATED_PRESS_MS).
@@ -1387,7 +1422,7 @@ class LiveViewModel(
      */
     suspend fun tuneByNumber(number: Int): tv.own.owntv.player.DirectTuneResult {
         try {
-            val currentChannel = _previewChannel.value ?: return tv.own.owntv.player.DirectTuneResult.NotFound(number)
+            val currentChannel = playingChannel ?: return tv.own.owntv.player.DirectTuneResult.NotFound(number)
             val snapshotSourceIds = ctx.value.sourceIds
             // Snapshot the zap list at lookup START so the resolver's zap-context tiebreaker is
             // stable for the duration of the IO query. After the lookup completes and context
@@ -1590,7 +1625,7 @@ class LiveViewModel(
         // A protected channel stays in-app whatever this setting says: no standard intent extra
         // carries a licence URL, so the external player would open it and fail immediately.
         if (externalPlayerOn.value && channel.drmConfig == null) { playExternal(channel); return }
-        _previewChannel.value = channel
+        tuned(channel)
         clearTimeshift() // normal live = not timeshifted
         _catchupActive.value = false // tuning live ends any archive playback the HUD was showing
         // Core routes it (DRM, the pin, a learned panel refusal, the playlist, the setting), arms the
@@ -1749,7 +1784,7 @@ class LiveViewModel(
             // .m3u8 vs an extension-less panel endpoint), so log it redacted — it's the first thing
             // needed when the HUD's engine toggle can't get a catch-up programme playing.
             Log.i(ENGINE_TAG, "catch-up '${ch.name}' prog='${programme.title}' -> ${tv.own.owntv.core.network.HttpClient.redactUrl(url)}")
-            _previewChannel.value = ch
+            tuned(ch)
             clearTimeshift()                 // a fixed programme replaces any live rewind in progress
             _catchupActive.value = true      // HUD: VOD engine toggle, not the live compatibility toggle
             playingCatchupProgramme = programme // …and the anchor auto-play continues from
@@ -1904,7 +1939,7 @@ class LiveViewModel(
         if (!ch.catchup) return
         if (ch.categoryId != null && ch.categoryId in hiddenCategoryIds.value) return
         zapList.armFor(ch)
-        _previewChannel.value = ch
+        tuned(ch)
         _catchupActive.value = false
         timeshift.beginAt(ch, offsetSec)
         recordLiveHistory(ch, immediate = true)
@@ -1948,7 +1983,7 @@ class LiveViewModel(
         if (timeshift.offsetSec.value == null) return null // user jumped back to live meanwhile
         // Keep the rewind instant semantic. The player HUD formats it with the current
         // localized context, so an in-session locale switch updates an already-visible subtitle.
-        _previewChannel.value = ch
+        tuned(ch)
         clearLiveOnExo() // archive plays as a VOD-style mpv stream, not the live ExoPlayer channel
         player.play(
             url = archive.url,
