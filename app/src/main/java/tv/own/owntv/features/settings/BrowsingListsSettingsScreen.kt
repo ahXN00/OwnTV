@@ -17,7 +17,7 @@ import tv.own.owntv.ui.components.OwnTVIcon
 /**
  * Settings › Layout › Browsing lists as a Stage page (eight switches are not a popup): what
  * each section remembers — its last category, then its last item — one switch per section.
- * The last section shows or hides the built-in Live TV categories (#322).
+ * The last section shows or hides the built-in Live TV categories.
  */
 @Composable
 fun BrowsingListsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -28,8 +28,9 @@ fun BrowsingListsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifie
     val itemLive by vm.rememberLastLive.collectAsStateWithLifecycle()
     val itemMovies by vm.rememberLastMovies.collectAsStateWithLifecycle()
     val itemSeries by vm.rememberLastSeries.collectAsStateWithLifecycle()
-    val showAll by vm.liveShowAllRail.collectAsStateWithLifecycle()
-    val showCatchup by vm.liveShowCatchupRail.collectAsStateWithLifecycle()
+    val builtIns by vm.liveBuiltIns.collectAsStateWithLifecycle()
+    val showAll = builtIns.showAll
+    val showCatchup = builtIns.showCatchup
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
     StageFullPage(

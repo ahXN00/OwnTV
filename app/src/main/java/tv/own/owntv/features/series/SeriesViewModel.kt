@@ -1157,10 +1157,32 @@ class SeriesViewModel(
         }
     }
 
-    fun downloadSeries(series: SeriesEntity) = downloadEpisodes(series, null)
+    /** Whether the profile in use may download; every Download button follows it. */
+    val downloadsAllowed: StateFlow<Boolean> =
+        settings.activeDownloadsAllowed.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
-    /** "Download season" on the series page: only [season]'s episodes. */
-    fun downloadSeason(series: SeriesEntity, season: Int) = downloadEpisodes(series, season)
+    /** A whole show or season waiting for the user to confirm it, with how many episodes that is. */
+    data class BulkDownloadAsk(val series: SeriesEntity, val season: Int?, val episodes: Int)
+
+    private val _bulkDownloadAsk = MutableStateFlow<BulkDownloadAsk?>(null)
+    val bulkDownloadAsk: StateFlow<BulkDownloadAsk?> = _bulkDownloadAsk.asStateFlow()
+
+    /**
+     * "Download all episodes" ([season] null) or "Download season" (only [season]'s episodes). Asks
+     * first, saying how many, because one press queues every file of the show and can fill the box.
+     */
+    fun askBulkDownload(series: SeriesEntity, season: Int?) {
+        viewModelScope.launch {
+            val episodes = seriesDao.episodesBySeries(series.id).first().count { season == null || it.seasonNumber == season }
+            if (episodes > 0) _bulkDownloadAsk.value = BulkDownloadAsk(series, season, episodes)
+        }
+    }
+
+    fun answerBulkDownload(confirmed: Boolean) {
+        val ask = _bulkDownloadAsk.value ?: return
+        _bulkDownloadAsk.value = null
+        if (confirmed) downloadEpisodes(ask.series, ask.season)
+    }
 
     private fun downloadEpisodes(series: SeriesEntity, season: Int?) {
         val showDir = StorageAccess.sanitize(series.name)

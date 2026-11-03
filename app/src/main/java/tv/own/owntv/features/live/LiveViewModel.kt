@@ -91,6 +91,8 @@ import tv.own.owntv.player.OwnTVPlayer
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.core.live.LiveTimeshift
 import tv.own.owntv.core.live.LiveKey
+import tv.own.owntv.core.live.LiveBuiltIns
+import tv.own.owntv.core.live.liveLandingKey
 import tv.own.owntv.features.search.positionOf
 import tv.own.owntv.core.live.isChannelVisible
 import tv.own.owntv.core.live.liveCountFlow
@@ -593,12 +595,12 @@ class LiveViewModel(
             else combine(
                 categoryDao.observe(c.sourceIds, MediaType.LIVE),
                 custom,
-                combine(sortMode, settings.liveShowAllRail, settings.liveShowCatchupRail) { s, a, c -> Triple(s, a, c) },
+                combine(sortMode, settings.liveBuiltIns) { s, b -> s to b },
                 // Catch-up sits between History and All, but ONLY when the provider actually advertises
                 // an archive — otherwise every user without catch-up gets a folder that can never fill.
                 channelDao.lockAwareCatchupCount(c.sourceIds.ifEmpty { listOf(-1L) }, sealedCategoryIds).distinctUntilChanged(),
                 profileDao.observeById(c.profileId),
-            ) { cats, cust, (sort, showAll, showCatchup), catchupCount, profile ->
+            ) { cats, cust, (sort, builtIns), catchupCount, profile ->
                 // The categories follow the sort chip too (A–Z by shown name, custom categories
                 // included); a category the user moved keeps its place in either sort. Custom categories
                 // ride the SAME customization keys, so renames/hides/reorders apply to them too.
@@ -609,7 +611,7 @@ class LiveViewModel(
                 )
                 val multiSourceNames = c.sourceNames.takeIf { it.size > 1 }.orEmpty()
                 val categoriesById = cats.associateBy { it.id }
-                railWithCatchup(catchupCount > 0, showAll, showCatchup) + folders.map { e ->
+                railWithCatchup(catchupCount > 0, builtIns) + folders.map { e ->
                     LiveRailItem(
                         key = e.categoryId?.let { LiveKey.Folder(it) } ?: LiveKey.Custom(e.customId!!),
                         title = e.displayName, locked = e.locked, sealed = e.sealed,
@@ -905,19 +907,13 @@ class LiveViewModel(
                 _selected.value = saved
             }
         }
-        // #322 — a hidden All / Catch-up (cold start, a remembered key, a playlist switch, or toggled off in Settings) moves to fallbackKey; the identity
-        // filter skips the stateIn placeholder so a not-yet-loaded rail can't pick Favorites over the first folder.
+        // A hidden All / Catch-up — at a cold start, from a remembered key, after a playlist switch or
+        // when switched off in Settings — is never left selected: it moves to fallbackKey.
         viewModelScope.launch {
-            reconcileHiddenSelection(
-                railItems,
-                defaultRail,
-                settings.liveShowAllRail,
-                settings.liveShowCatchupRail,
-                _selected,
-            ) { lockedKey != null }
+            reconcileHiddenSelection(railItems, defaultRail, settings.liveBuiltIns, _selected) { lockedKey != null }
         }
         // Another playlist or profile can leave the selection on a folder the new playlists do not have:
-        // its channels stayed listed under a wrong name. Such a folder falls back to All channels, or with All hidden to the new rail's first category (#322).
+        // its channels stayed listed under a wrong name. Such a folder falls back to All channels, or with All hidden to the new list's first category.
         viewModelScope.launch {
             ctx.filter { it.profileId >= 0 }.map { it.sourceIds }.distinctUntilChanged().drop(1).collect { ids ->
                 suspend fun gone(key: LiveKey?) = key is LiveKey.Folder && categoryDao.getById(key.id)?.sourceId !in ids
@@ -962,8 +958,10 @@ class LiveViewModel(
     private val _reveal = MutableStateFlow<tv.own.owntv.features.search.Reveal?>(null)
     val reveal: StateFlow<tv.own.owntv.features.search.Reveal?> = _reveal.asStateFlow()
 
-    /** Open [channel] where it lives: its own category, or All channels when that category is not in
-     *  the rail or the channel is not in it. It becomes the preview, as if the user had walked there. */
+    /** Open [channel] where it lives: its own category, or the landing list (All channels while it is
+     *  shown) when that category is not in the rail or the channel is not in it. It becomes the
+     *  preview, as if the user had walked there. With All hidden and the channel's own category hidden
+     *  too, no list holds it: the list stays where it is and only the preview changes. */
     fun revealChannel(channel: ChannelEntity) {
         _search.value = ""
         _previewArmed.value = true
@@ -985,11 +983,12 @@ class LiveViewModel(
 
     fun revealDone() { _reveal.value = null }
 
-    /** The rail entry [channel] lives in: its own category, or All channels when that category is not in the rail. */
+    /** The rail entry [channel] lives in: its own category, or the landing list when that category is
+     *  not in the rail — never a hidden All, which would only be moved off again a moment later. */
     suspend fun railKeyOf(channel: ChannelEntity): LiveKey {
-        val folder = channel.categoryId?.let { LiveKey.Folder(it) } ?: return LiveKey.All
+        val folder = channel.categoryId?.let { LiveKey.Folder(it) } ?: return fallbackKey(railItems.value)
         val inRail = kotlinx.coroutines.withTimeoutOrNull(2_000) { railItems.first { list -> list.any { it.key == folder } } } != null
-        return if (inRail) folder else LiveKey.All
+        return if (inRail) folder else fallbackKey(railItems.value)
     }
 
     // The in-pane preview only plays once the user has actually focused a channel — so restoring the last
@@ -1108,7 +1107,7 @@ class LiveViewModel(
     /** Categories for the in-player category browser and the Multiview picker: the Live rail's own
      *  folders, so custom categories, renames, hides, kids filtering and the order all match it. */
     val browserCategories: StateFlow<List<Pair<LiveKey, String>>> = railItems
-        .map { playerSheetCategories(it) }
+        .map { items -> items.filter { (it.key is LiveKey.Folder || it.key is LiveKey.Custom) && !it.sealed }.map { it.key to it.title.orEmpty() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun showCategories() { _showCategoryBrowser.value = true }
@@ -2173,40 +2172,20 @@ class LiveViewModel(
             LiveRailItem(LiveKey.All),
         )
 
-        /** [defaultRail] plus Catch-up before All when [hasCatchup]; drop All unless [showAll], drop Catch-up unless [showCatchup] (#322). */
-        fun railWithCatchup(hasCatchup: Boolean, showAll: Boolean = true, showCatchup: Boolean = true): List<LiveRailItem> {
+        /** [defaultRail] with the Catch-up entry inserted before All when [hasCatchup], minus whichever
+         *  of the two the user hid ([builtIns]). */
+        fun railWithCatchup(hasCatchup: Boolean, builtIns: LiveBuiltIns = LiveBuiltIns()): List<LiveRailItem> {
             val base =
                 if (!hasCatchup) defaultRail
                 // CATCHUP (a TV with a replay loop), not EPG or a calendar: this rail is the guide-free
                 // route, and a calendar next to Favorites/History would read as "schedule" — the one thing
                 // it deliberately is not.
                 else defaultRail.dropLast(1) + LiveRailItem(LiveKey.Catchup, icon = OwnTVIcon.CATCHUP) + defaultRail.last()
-            if (showAll && showCatchup) return base
-            return base.filter { item ->
-                when (item.key) {
-                    LiveKey.All -> showAll
-                    LiveKey.Catchup -> showCatchup
-                    else -> true
-                }
-            }
+            return if (builtIns == LiveBuiltIns()) base else base.filter { builtIns.shows(it.key) }
         }
 
-        /** Where Live TV lands when nothing else is chosen: All channels if the rail shows it, else the first folder or custom category that is not sealed, else Favorites (always in the rail). (#322) */
-        fun fallbackKey(rail: List<LiveRailItem>): LiveKey =
-            rail.firstOrNull { it.key == LiveKey.All }?.key
-                ?: rail.firstOrNull { !it.sealed && (it.key is LiveKey.Folder || it.key is LiveKey.Custom) }?.key
-                ?: LiveKey.Favorites
-
-        /** A built-in entry the user hid (#322) is never left selected: returns [fallbackKey] when [selected] is All with showAll off, or Catch-up with showCatchup off; otherwise null (no change). Folders are not touched here. */
-        fun hiddenSelectionFallback(selected: LiveKey, rail: List<LiveRailItem>, showAll: Boolean, showCatchup: Boolean): LiveKey? =
-            if ((selected == LiveKey.All && !showAll) || (selected == LiveKey.Catchup && !showCatchup)) fallbackKey(rail) else null
-
-        /** The Guide's category sheet: the Live rail minus sealed folders, so a hidden All / Catch-up (#322) is absent there too. */
-        fun guideSheetItems(rail: List<LiveRailItem>): List<LiveRailItem> = rail.filterNot { it.sealed }
-
-        /** The in-player category browser and Multiview picker: the rail's open folders and custom categories only (never All / Catch-up). */
-        fun playerSheetCategories(rail: List<LiveRailItem>): List<Pair<LiveKey, String>> =
-            rail.filter { (it.key is LiveKey.Folder || it.key is LiveKey.Custom) && !it.sealed }.map { it.key to it.title.orEmpty() }
+        /** Where Live TV lands when nothing else is chosen — core's rule, shared with the phone. */
+        fun fallbackKey(rail: List<LiveRailItem>): LiveKey = liveLandingKey(rail, { it.key }, { it.sealed })
         const val ZAP_WINDOW_HALF = 50 // channels loaded on each side of the tuned channel for CH+/-
         /**
          * How long a channel that HAS played may stay stalled before it goes to mpv — see

@@ -9,10 +9,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import tv.own.owntv.core.live.LiveBuiltIns
 import tv.own.owntv.core.live.LiveKey
 
 /**
- * #322 selection move when All or Catch-up is hidden. No view model — the flows are the inputs.
+ * The selection move when All or Catch-up is hidden. No view model — the flows are the inputs.
  */
 class HiddenSelectionReconcilerTest {
 
@@ -29,19 +30,18 @@ class HiddenSelectionReconcilerTest {
     }
 
     private fun rail(showAll: Boolean, showCatchup: Boolean = true, hasCatchup: Boolean = false, withFolder: Boolean = true) =
-        LiveViewModel.railWithCatchup(hasCatchup, showAll, showCatchup).let { if (withFolder) it + folder else it }
+        LiveViewModel.railWithCatchup(hasCatchup, LiveBuiltIns(showAll, showCatchup)).let { if (withFolder) it + folder else it }
 
     @Test
     fun `hiding All moves to the first folder and unhiding does not jump back`() = runBlocking {
         val rail = MutableStateFlow(rail(showAll = false))
-        val showAll = MutableStateFlow(false)
-        val showCatchup = MutableStateFlow(true)
+        val builtIns = MutableStateFlow(LiveBuiltIns(showAll = false))
         val selected = MutableStateFlow<LiveKey>(LiveKey.All)
         val job = launch {
-            reconcileHiddenSelection(rail, LiveViewModel.defaultRail, showAll, showCatchup, selected) { false }
+            reconcileHiddenSelection(rail, LiveViewModel.defaultRail, builtIns, selected) { false }
         }
         await("folder") { selected.value == LiveKey.Folder(1) }
-        showAll.value = true
+        builtIns.value = LiveBuiltIns()
         rail.value = rail(showAll = true)
         delay(40)
         assertEquals(LiveKey.Folder(1), selected.value)
@@ -53,7 +53,7 @@ class HiddenSelectionReconcilerTest {
         val rail = MutableStateFlow(rail(showAll = false, withFolder = false))
         val selected = MutableStateFlow<LiveKey>(LiveKey.All)
         val job = launch {
-            reconcileHiddenSelection(rail, LiveViewModel.defaultRail, MutableStateFlow(false), MutableStateFlow(true), selected) { false }
+            reconcileHiddenSelection(rail, LiveViewModel.defaultRail, MutableStateFlow(LiveBuiltIns(showAll = false)), selected) { false }
         }
         await("favorites") { selected.value == LiveKey.Favorites }
         job.cancel()
@@ -62,14 +62,14 @@ class HiddenSelectionReconcilerTest {
     @Test
     fun `hiding Catch-up moves to All when All is shown`() = runBlocking {
         val rail = MutableStateFlow(rail(showAll = true, showCatchup = true, hasCatchup = true))
-        val showCatchup = MutableStateFlow(true)
+        val builtIns = MutableStateFlow(LiveBuiltIns())
         val selected = MutableStateFlow<LiveKey>(LiveKey.Catchup)
         val job = launch {
-            reconcileHiddenSelection(rail, LiveViewModel.defaultRail, MutableStateFlow(true), showCatchup, selected) { false }
+            reconcileHiddenSelection(rail, LiveViewModel.defaultRail, builtIns, selected) { false }
         }
         delay(40)
         assertEquals(LiveKey.Catchup, selected.value)
-        showCatchup.value = false
+        builtIns.value = LiveBuiltIns(showCatchup = false)
         await("all") { selected.value == LiveKey.All }
         job.cancel()
     }
@@ -80,7 +80,7 @@ class HiddenSelectionReconcilerTest {
         val rail = MutableStateFlow(placeholder)
         val selected = MutableStateFlow<LiveKey>(LiveKey.All)
         val job = launch {
-            reconcileHiddenSelection(rail, placeholder, MutableStateFlow(false), MutableStateFlow(true), selected) { false }
+            reconcileHiddenSelection(rail, placeholder, MutableStateFlow(LiveBuiltIns(showAll = false)), selected) { false }
         }
         delay(40)
         assertEquals(LiveKey.All, selected.value)
@@ -96,8 +96,7 @@ class HiddenSelectionReconcilerTest {
             reconcileHiddenSelection(
                 MutableStateFlow(rail(showAll = false)),
                 LiveViewModel.defaultRail,
-                MutableStateFlow(false),
-                MutableStateFlow(true),
+                MutableStateFlow(LiveBuiltIns(showAll = false)),
                 selected,
             ) { true }
         }
@@ -109,18 +108,17 @@ class HiddenSelectionReconcilerTest {
     @Test
     fun `a selected folder is never changed`() = runBlocking {
         val selected = MutableStateFlow<LiveKey>(LiveKey.Folder(1))
-        val showAll = MutableStateFlow(false)
+        val builtIns = MutableStateFlow(LiveBuiltIns(showAll = false, showCatchup = false))
         val job = launch {
             reconcileHiddenSelection(
                 MutableStateFlow(rail(showAll = false)),
                 LiveViewModel.defaultRail,
-                showAll,
-                MutableStateFlow(false),
+                builtIns,
                 selected,
             ) { false }
         }
         delay(40)
-        showAll.value = true
+        builtIns.value = LiveBuiltIns(showCatchup = false)
         delay(40)
         assertEquals(LiveKey.Folder(1), selected.value)
         job.cancel()
@@ -129,18 +127,18 @@ class HiddenSelectionReconcilerTest {
     @Test
     fun `a switch waits for a rail without the stale folder then lands on the new first folder`() = runBlocking {
         val placeholder = LiveViewModel.defaultRail
-        val rail = MutableStateFlow(LiveViewModel.railWithCatchup(false, showAll = false) + LiveRailItem(LiveKey.Folder(1), title = "Old"))
+        val rail = MutableStateFlow(LiveViewModel.railWithCatchup(false, LiveBuiltIns(showAll = false)) + LiveRailItem(LiveKey.Folder(1), title = "Old"))
         val deferred = async { fallbackAfterSwitch(rail, placeholder, LiveKey.Folder(1)) }
         delay(40)
         assertEquals(false, deferred.isCompleted)
-        rail.value = LiveViewModel.railWithCatchup(false, showAll = false) + LiveRailItem(LiveKey.Folder(7), title = "New")
+        rail.value = LiveViewModel.railWithCatchup(false, LiveBuiltIns(showAll = false)) + LiveRailItem(LiveKey.Folder(7), title = "New")
         await("folder 7") { deferred.isCompleted }
         assertEquals(LiveKey.Folder(7), deferred.await())
     }
 
     @Test
     fun `a switch with All shown lands on All`() = runBlocking {
-        val rail = MutableStateFlow(LiveViewModel.railWithCatchup(false, showAll = true) + LiveRailItem(LiveKey.Folder(7), title = "New"))
+        val rail = MutableStateFlow(LiveViewModel.railWithCatchup(false) + LiveRailItem(LiveKey.Folder(7), title = "New"))
         assertEquals(LiveKey.All, fallbackAfterSwitch(rail, LiveViewModel.defaultRail, LiveKey.Folder(1)))
     }
 

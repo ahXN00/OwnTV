@@ -128,6 +128,7 @@ internal fun ProfileSettingsRows() {
         )
     }
     editing?.let { p ->
+        val allowDownloads by remember(p.id) { vm.downloadsAllowed(p.id) }.collectAsStateWithLifecycle(null)
         ProfileEditorDialog(
             initial = p,
             onConfirm = { name, avatarId, isKids, pin, _ -> vm.edit(p, name, avatarId, isKids, pin); editing = null },
@@ -138,6 +139,8 @@ internal fun ProfileSettingsRows() {
             customPath = profiles.firstOrNull { it.id == p.id }?.avatarPath.orEmpty(),
             onPickPicture = { file -> vm.setPicture(p.id, file) },
             onClearPicture = { vm.clearPicture(p.id) },
+            allowDownloads = allowDownloads,
+            onAllowDownloads = { vm.setDownloadsAllowed(p.id, it) },
         )
     }
     confirmDelete?.let { p ->

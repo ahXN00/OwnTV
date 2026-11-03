@@ -106,6 +106,9 @@ private fun PinDialogBody(title: String, onSubmit: (String) -> Unit, onDismiss: 
  * A picture of the user's own: on an existing profile [onPickPicture] / [onClearPicture] apply it at
  * once, as the phone does, and [customPath] is the one it has now. A new profile has no id to store
  * one under yet, so the dialog holds the chosen file and hands it to [onConfirm] with the rest.
+ *
+ * [allowDownloads] non-null shows the Allow downloads switch with that value; Save hands the choice
+ * to [onAllowDownloads]. A new profile has no switch: it may download until someone edits it.
  */
 @Composable
 internal fun ProfileEditorDialog(
@@ -116,8 +119,11 @@ internal fun ProfileEditorDialog(
     customPath: String = "",
     onPickPicture: ((java.io.File) -> Unit)? = null,
     onClearPicture: (() -> Unit)? = null,
+    allowDownloads: Boolean? = null,
+    onAllowDownloads: (Boolean) -> Unit = {},
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
+    var downloads by remember(allowDownloads) { mutableStateOf(allowDownloads ?: true) }
     var avatarId by remember { mutableIntStateOf(initial?.avatarId ?: -1) } // new profiles default to no avatar
     var isKids by remember { mutableStateOf(initial?.isKids ?: false) }
     var pin by remember { mutableStateOf("") }
@@ -136,7 +142,10 @@ internal fun ProfileEditorDialog(
             tv.own.owntv.ui.stage.StagePopupButton(stringResource(R.string.common_cancel), onClick = onDismiss, primary = false)
             tv.own.owntv.ui.stage.StagePopupButton(
                 stringResource(if (initial == null) R.string.profiles_create else R.string.profiles_save),
-                onClick = { onConfirm(name, avatarId, isKids, if (removePin) "" else pin.takeIf { it.isNotBlank() }, pendingPicture) },
+                onClick = {
+                    if (allowDownloads != null && downloads != allowDownloads) onAllowDownloads(downloads)
+                    onConfirm(name, avatarId, isKids, if (removePin) "" else pin.takeIf { it.isNotBlank() }, pendingPicture)
+                },
                 enabled = name.isNotBlank() && !nameTaken && (removePin || pin.isEmpty() || pin.length >= 4),
             )
         },
@@ -182,6 +191,9 @@ internal fun ProfileEditorDialog(
         )
         tv.own.owntv.ui.stage.StagePopupDivider()
         ToggleRow(label = stringResource(R.string.profiles_kids), desc = stringResource(R.string.profiles_kids_description), checked = isKids) { isKids = it }
+        if (allowDownloads != null) {
+            ToggleRow(label = stringResource(R.string.profiles_allow_downloads), desc = stringResource(R.string.profiles_allow_downloads_description), checked = downloads) { downloads = it }
+        }
         if (initial?.pinHash != null) {
             ToggleRow(label = stringResource(R.string.profiles_remove_pin), desc = stringResource(R.string.profiles_no_pin), checked = removePin) { removePin = it }
         }
