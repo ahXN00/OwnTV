@@ -622,7 +622,7 @@ fun EpgScreen(
                                 // flung past does not.
                                 if (channel.catchup) LaunchedEffect(channel.id) {
                                     delay(ARCHIVE_ROW_VISIBLE_MS)
-                                    vm.queueArchiveGuide(channel)
+                                    vm.requestArchiveGuide(channel)
                                 }
                                 GuideRow(
                                     vm = vm,

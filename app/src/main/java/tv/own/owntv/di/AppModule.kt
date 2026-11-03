@@ -167,7 +167,34 @@ val appModule = module {
     viewModelOf(::SubtitleSearchViewModel)
     viewModelOf(::DownloadsViewModel)
     viewModelOf(::RecordingsViewModel)
-    viewModelOf(::EpgViewModel)
+    // 23 constructor parameters — past the highest arity viewModelOf generates (see LiveViewModel).
+    viewModel {
+        EpgViewModel(
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+            get(),
+        )
+    }
     viewModelOf(::CustomizeViewModel)
     viewModelOf(::SettingsPinViewModel)
     viewModelOf(::CustomizeItemsViewModel)
