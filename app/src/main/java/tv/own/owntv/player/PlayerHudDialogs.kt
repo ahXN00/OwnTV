@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.R
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.ui.theme.stageText
@@ -317,7 +318,12 @@ internal fun ZoomDialog(current: ZoomMode, onSelect: (ZoomMode) -> Unit, onDismi
     BackHandler { onDismiss() }
     // Land focus on the current mode (not always the first row) so re-opening starts on your selection.
     val selectedIndex = ZoomMode.entries.indexOf(current).coerceAtLeast(0)
-    DialogScaffold(title = stringResource(R.string.settings_player_zoom), onDismiss = onDismiss) {
+    // Opened by holding OK on the aspect button: the hold's repeats must not pick the focused row.
+    DialogScaffold(
+        title = stringResource(R.string.settings_player_zoom),
+        onDismiss = onDismiss,
+        listModifier = Modifier.longPressMenuGuard(),
+    ) {
         items(ZoomMode.entries.size) { index ->
             val mode = ZoomMode.entries[index]
             OptionRow(label = stringResource(mode.labelRes), selected = mode == current, modifier = if (index == selectedIndex) Modifier.focusRequester(focus) else Modifier, onClick = { onSelect(mode) })
@@ -418,10 +424,12 @@ private fun DialogScaffold(
     title: String,
     onDismiss: () -> Unit,
     state: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
+    // Applied to the list, so it sees the rows' keys first (a guard against a still-held OK).
+    listModifier: Modifier = Modifier,
     content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
 ) {
     tv.own.owntv.ui.stage.StagePopup(onDismiss = onDismiss, title = title, eyebrow = null, width = 640.mpx, scroll = false) {
-        LazyColumn(state = state, modifier = Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(4.mpx), content = content)
+        LazyColumn(state = state, modifier = Modifier.weight(1f, fill = false).then(listModifier), verticalArrangement = Arrangement.spacedBy(4.mpx), content = content)
     }
 }
 

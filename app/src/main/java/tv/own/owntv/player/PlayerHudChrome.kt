@@ -458,8 +458,16 @@ internal fun BottomBar(
                         }
                         // Aspect/zoom works in every mode now — direct mode resizes the surface view
                         // itself (see MpvVideoSurface), GL mode scales internally.
+                        // A press steps to the next mode (named beside the label, so each press shows
+                        // where it landed); OK held opens the whole list.
                         PlayerControl.ASPECT ->
-                            CtrlButton(OwnTVIcon.ASPECT, active = zoomMode != ZoomMode.FIT, label = stringResource(R.string.player_tool_aspect)) { onOpenDialog(HudDialog.ZOOM) }
+                            CtrlButton(
+                                OwnTVIcon.ASPECT,
+                                active = zoomMode != ZoomMode.FIT,
+                                label = stringResource(R.string.player_tool_aspect),
+                                value = stringResource(zoomMode.labelRes),
+                                onLongClick = { onOpenDialog(HudDialog.ZOOM) },
+                            ) { player.setZoomModeByUser(ZoomMode.entries[(zoomMode.ordinal + 1) % ZoomMode.entries.size]) }
                         // Only when this stream offers several; tinted while a pick overrides Auto.
                         PlayerControl.QUALITY -> {
                             val qualities by player.videoQualities.collectAsStateWithLifecycle()
