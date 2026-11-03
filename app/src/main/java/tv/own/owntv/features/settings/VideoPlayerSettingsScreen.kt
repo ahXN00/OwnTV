@@ -1,18 +1,12 @@
 package tv.own.owntv.features.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -111,7 +105,7 @@ internal fun videoSectionCounts(vm: SettingsViewModel): List<Int> {
         4 + (if (livePreview) 1 else 0) + (if (timeshift) 1 else 0),
         3 + (if (perPlaylist) 3 else 0),
         2,
-        2 + (if (multiview) 1 else 0),
+        2 + (if (multiview) 1 else 0) + (if (tv.own.owntv.features.pip.PictureInPicture.supported()) 1 else 0),
         9, 3, 2, 2,
     )
 }
@@ -190,6 +184,7 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_multiview", SECTION_MULTIVIEW, OwnTVIcon.LIST_GRID, R.string.settings_multiview, R.string.settings_multiview_description),
     VideoQuickRef("vp_multiview_tiles", SECTION_MULTIVIEW, OwnTVIcon.LIST_GRID, R.string.settings_multiview_tiles_max, R.string.settings_multiview_description),
     VideoQuickRef("vp_mini", SECTION_MULTIVIEW, OwnTVIcon.PIP, R.string.settings_mini_player_root, R.string.settings_mini_player_root_description),
+    VideoQuickRef("vp_pip", SECTION_MULTIVIEW, OwnTVIcon.PIP, R.string.settings_pip_on_leave, R.string.settings_pip_on_leave_description),
     VideoQuickRef("vp_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_default_volume, R.string.settings_default_volume_description),
     VideoQuickRef("vp_reset_volume", SECTION_SOUND, OwnTVIcon.VOLUME_HIGH, R.string.settings_reset_saved_volume, R.string.settings_reset_saved_volume_description),
     VideoQuickRef("vp_surround", SECTION_SOUND, OwnTVIcon.AUDIO, R.string.settings_surround_sound),
@@ -207,8 +202,9 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_autoplay", SECTION_RESUME, OwnTVIcon.AUTOPLAY_NEXT, R.string.settings_autoplay_next, R.string.settings_autoplay_next_description),
     VideoQuickRef("vp_measured_stats", SECTION_DIAGNOSTICS, OwnTVIcon.VIDEO, R.string.settings_measured_stats, R.string.settings_measured_stats_description),
     VideoQuickRef("vp_logging", SECTION_DIAGNOSTICS, OwnTVIcon.INFO, R.string.settings_detailed_playback_logging, R.string.settings_detailed_playback_logging_description),
-    // No row, so nothing to find or pin, on a TV whose decoders cannot tunnel.
+    // No row, so nothing to find or pin, on a TV whose decoders cannot tunnel or has no picture-in-picture.
 ).filter { it.key != "vp_tunneled" || tv.own.owntv.player.Tunneling.supported }
+    .filter { it.key != "vp_pip" || tv.own.owntv.features.pip.PictureInPicture.supported() }
 
 /**
  * What a Video player row pinned to Quick shows and does over there.
@@ -267,6 +263,11 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
         "vp_multiview" -> {
             val on by vm.multiviewEnabled.collectAsStateWithLifecycle()
             toggle(onOff(on), on) { vm.setMultiviewEnabled(!on) }
+        }
+        "vp_pip" -> {
+            val pip = org.koin.compose.koinInject<tv.own.owntv.features.pip.PictureInPicture>()
+            val on by pip.enabled.collectAsStateWithLifecycle()
+            toggle(onOff(on), on) { pip.setEnabled(!on) }
         }
         "vp_multiview_tiles" -> {
             // The ceiling is picked in a dialog, so this one links back to the row rather than
@@ -1193,6 +1194,18 @@ internal fun VideoPlayerGroupRows(
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.MINI_PLAYER)),
             onClick = { savedScroll = scrollState.value; dialog = Dialog.MINI_PLAYER },
         )
+        val pip = org.koin.compose.koinInject<tv.own.owntv.features.pip.PictureInPicture>()
+        if (pip.supported) {
+            val pipOn by pip.enabled.collectAsStateWithLifecycle()
+            KeyedSettingRow(
+                quickKey = "vp_pip",
+                icon = OwnTVIcon.PIP,
+                title = stringResource(R.string.settings_pip_on_leave),
+                desc = stringResource(R.string.settings_pip_on_leave_description),
+                value = SettingValue.Switch(pipOn),
+                onClick = { pip.setEnabled(!pipOn) },
+            )
+        }
                     }
                     SECTION_SOUND -> {
         KeyedSettingRow(
@@ -2083,90 +2096,6 @@ internal fun KeyedSettingRow(
 }
 
 /**
- * A single-select list dialog (value → label), as a Stage popup: the page's eyebrow, the title, an
- * optional line, then one row per choice with a radio (the current one focused first). OK picks;
- * Back closes. [searchable] adds a search field that filters the labels live.
- */
-@Composable
-internal fun PickerDialog(
-    title: String,
-    options: List<Pair<String, String>>,
-    selected: String,
-    onSelect: (String) -> Unit,
-    onDismiss: () -> Unit,
-    searchable: Boolean = false,
-    trailingLabels: Map<String, String> = emptyMap(),
-    leadingIcons: Map<String, OwnTVIcon> = emptyMap(),
-    subtitle: String? = null,
-    descriptions: Map<String, String> = emptyMap(),
-    /** Drawn under an option — the layout chooser's little bar preview. */
-    optionPreview: (@Composable (String) -> Unit)? = null,
-) {
-    // On a Stage settings page the choices open in the page's panel, not in a popup.
-    val picker = PanelPicker(options, selected, onSelect, descriptions, searchable, optionPreview)
-    if (panelEditor(onDismiss) { help -> PanelChoices(picker, help, onDismiss) }) return
-    val fr = remember { FocusRequester() }
-    val searchFr = remember { FocusRequester() }
-    var query by remember { mutableStateOf("") }
-    // When searchable, filter the option labels live (e.g. finding a category among hundreds).
-    val shown = if (searchable && query.isNotBlank()) {
-        options.filter { it.second.contains(query.trim(), ignoreCase = true) }
-    } else {
-        options
-    }
-    val selIndex = shown.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-    val list = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = selIndex)
-    LaunchedEffect(shown, selected, searchable) {
-        // Nested pickers attach in the same frame their opener loses focus. Wait until this popup's
-        // focus window exists, otherwise focus remains on the Add/Remove or Prefix/Suffix button.
-        kotlinx.coroutines.delay(80)
-        runCatching { (if (searchable) searchFr else fr).requestFocus() }
-    }
-    tv.own.owntv.ui.stage.StagePopup(
-        onDismiss = onDismiss,
-        title = title,
-        body = subtitle,
-        width = if (descriptions.isEmpty() && optionPreview == null) 760.mpx else 880.mpx,
-        scroll = false,
-    ) {
-        if (searchable) {
-            tv.own.owntv.ui.stage.StageSearchField(
-                query = query,
-                onQueryChange = { query = it },
-                placeholder = stringResource(R.string.common_search_hint),
-                modifier = Modifier.fillMaxWidth().focusRequester(searchFr),
-                height = 56.mpx,
-                radius = 18.mpx,
-            )
-            Spacer(Modifier.height(14.mpx))
-        }
-        LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false), state = list, verticalArrangement = Arrangement.spacedBy(4.mpx)) {
-            itemsIndexed(shown, key = { _, o -> o.first }) { index, (value, label) ->
-                val isSel = value == selected
-                Column {
-                    tv.own.owntv.ui.stage.StagePopupOption(
-                        title = label,
-                        subtitle = descriptions[value],
-                        onClick = { onSelect(value) },
-                        modifier = if (index == selIndex) Modifier.focusRequester(fr) else Modifier,
-                        leading = { focused ->
-                            tv.own.owntv.ui.stage.StagePopupRadio(on = isSel, focused = focused)
-                            leadingIcons[value]?.let { tv.own.owntv.ui.stage.StagePopupIcon(it) }
-                        },
-                        trailing = trailingLabels[value]?.let { name ->
-                            { _ -> tv.own.owntv.ui.components.ProviderChip(name = name, maxWidth = 160.mpx, compact = true) }
-                        },
-                    )
-                    optionPreview?.let { preview ->
-                        Box(Modifier.padding(start = 64.mpx, end = 22.mpx, top = 4.mpx, bottom = 10.mpx)) { preview(value) }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
  * External player defaults, one independent toggle per section. Unlike [PickerDialog] these aren't
  * mutually exclusive, so the dialog stays open as rows are flipped and closes only on Close/Back.
  * A Stage popup like every other settings popup, so it follows the Glass setting instead of
@@ -2191,27 +2120,6 @@ private fun ExternalPlayerDialog(
     // Three switches: in the page's panel, a Stage popup elsewhere.
     if (panelEditor(onDismiss) { switches() }) return
     tv.own.owntv.ui.stage.StagePopup(onDismiss = onDismiss, title = stringResource(R.string.settings_external_player), body = stringResource(R.string.settings_external_player_description)) { switches() }
-}
-
-/** A +/- stepper dialog for an integer value. */
-@Composable
-internal fun StepperDialog(
-    title: String,
-    value: Int,
-    step: Int,
-    min: Int,
-    max: Int,
-    format: @Composable (Int) -> String,
-    onSet: (Int) -> Unit,
-    onReset: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val stepper: @Composable () -> Unit = {
-        PanelStepper(format(value), onStep = { d -> onSet((value + d * step).coerceIn(min, max)) }, onReset = onReset, onDone = onDismiss)
-    }
-    // On a Stage settings page the value is changed in the page's panel; elsewhere a Stage popup.
-    if (panelEditor(onDismiss) { stepper() }) return
-    tv.own.owntv.ui.stage.StagePopup(onDismiss = onDismiss, title = title) { stepper() }
 }
 
 /** The quick text-color presets offered above the full picker (label → "#RRGGBB"). */

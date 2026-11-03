@@ -34,7 +34,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
@@ -88,13 +87,13 @@ import tv.own.owntv.features.shell.components.VodMeta
 import tv.own.owntv.features.shell.components.VodTitleInfo
 import tv.own.owntv.features.shell.components.vodRating
 import tv.own.owntv.features.shell.components.vodRuntime
+import tv.own.owntv.ui.components.BlurredPoster
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.format.localizedInteger
 import tv.own.owntv.ui.stage.PlaylistMark
 import tv.own.owntv.ui.stage.StageKeyHints
 import tv.own.owntv.ui.stage.StagePlaylistMark
 import tv.own.owntv.ui.stage.StageRow
-import tv.own.owntv.ui.stage.StageSearchField
 import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.stage.StageTab
 import tv.own.owntv.ui.stage.StageTag
@@ -295,16 +294,13 @@ fun SearchScreen(
         } else {
             Text(stringResource(R.string.search_title), style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = titleModifier)
         }
-        StageSearchField(
+        SearchFieldRow(
             query = query,
             onQueryChange = vm::setQuery,
-            placeholder = stringResource(R.string.search_field_hint),
-            modifier = Modifier
-                .padding(start = listX, top = 118.mpx)
-                .width(listW)
-                .focusRequester(fieldFocus)
-                // ▼ lands on a filter button that is on, not whichever one is nearest below.
-                .focusProperties { down = if (searching) filterEntry else if (!showingResults) jumpFocus else FocusRequester.Default },
+            fieldFocus = fieldFocus,
+            // ▼ lands on a filter button that is on, not whichever one is nearest below.
+            focusDown = if (searching) filterEntry else if (!showingResults) jumpFocus else FocusRequester.Default,
+            modifier = Modifier.padding(start = listX, top = 118.mpx).width(listW),
         )
 
         if (!showingResults) {
@@ -631,16 +627,17 @@ private fun PosterPanel(info: VodTitleInfo, series: Boolean, modifier: Modifier 
                 .background(Color.Black),
         ) {
             val frameH = maxHeight
+            val posterUrl = info.posterUrl
             if (!info.backdropUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = info.backdropUrl, contentDescription = null, contentScale = ContentScale.Crop,
                     alignment = BiasAlignment(0f, -0.4f), modifier = Modifier.fillMaxSize(),
                 )
-            } else if (!info.posterUrl.isNullOrBlank()) {
-                AsyncImage(model = info.posterUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(36.mpx))
+            } else if (!posterUrl.isNullOrBlank()) {
+                BlurredPoster(url = posterUrl, modifier = Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                 AsyncImage(
-                    model = info.posterUrl, contentDescription = null, contentScale = ContentScale.Fit,
+                    model = posterUrl, contentDescription = null, contentScale = ContentScale.Fit,
                     modifier = Modifier.align(Alignment.TopEnd).padding(end = 40.mpx, top = 36.mpx).height(frameH - 72.mpx).clip(RoundedCornerShape(14.mpx)),
                 )
             }
