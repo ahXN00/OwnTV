@@ -274,7 +274,10 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setPreferSdr(enabled) }
     }
 
-    val autoFrameRate: StateFlow<Boolean> = settings.autoFrameRate
+    val autoFrameRateFilms: StateFlow<Boolean> = settings.autoFrameRateFilms
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val autoFrameRateLive: StateFlow<Boolean> = settings.autoFrameRateLive
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     // Multiview. The tile count is never reduced behind the user's back: the
@@ -299,8 +302,9 @@ class SettingsViewModel(
         }
     }
 
-    fun setAutoFrameRate(enabled: Boolean) {
-        viewModelScope.launch { settings.setAutoFrameRate(enabled) }
+    /** [live]: the Live TV switch; otherwise films and series. */
+    fun setAutoFrameRate(live: Boolean, enabled: Boolean) {
+        viewModelScope.launch { if (live) settings.setAutoFrameRateLive(enabled) else settings.setAutoFrameRateFilms(enabled) }
     }
 
     // The old surround BOOLEAN is gone from here: [surroundMode] replaced it, and the leftover flow

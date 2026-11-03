@@ -277,7 +277,8 @@ fun OwnTVShell(
     val vodExoActive by player.exoActiveState.collectAsStateWithLifecycle()
     // Auto frame rate: only ever applied to the FULL-SCREEN surface (never the mini-player or the
     // in-pane Live preview) — see FrameRateController.
-    val autoFrameRate by settingsRepo.autoFrameRate.collectAsStateWithLifecycle(initialValue = false)
+    val autoFrameRateFilms by settingsRepo.autoFrameRateFilms.collectAsStateWithLifecycle(initialValue = false)
+    val autoFrameRateLive by settingsRepo.autoFrameRateLive.collectAsStateWithLifecycle(initialValue = false)
     val afrMatchResolution by settingsRepo.afrMatchResolution.collectAsStateWithLifecycle(initialValue = false)
     val afrPauseSecs by settingsRepo.afrPauseSecs.collectAsStateWithLifecycle(initialValue = 0)
     // ...and the one-time suggestion to turn it on, for the 25-fps-on-60-Hz judder the direct render path
@@ -1590,11 +1591,13 @@ fun OwnTVShell(
             if (liveOnExo) {
                 tv.own.owntv.player.ExoPreviewSurface(
                     engine = liveVm.previewEngine, modifier = Modifier.fillMaxSize(),
-                    keepAwake = true, autoFrameRate = isFull && !inPip && autoFrameRate,
+                    keepAwake = true, autoFrameRate = isFull && !inPip && autoFrameRateLive,
                 )
             } else {
                 MpvVideoSurface(
-                    player = player, modifier = Modifier.fillMaxSize(), autoFrameRate = isFull && !inPip && autoFrameRate,
+                    player = player, modifier = Modifier.fillMaxSize(),
+                    autoFrameRateFilms = isFull && !inPip && autoFrameRateFilms,
+                    autoFrameRateLive = isFull && !inPip && autoFrameRateLive,
                     afrMatchResolution = afrMatchResolution, afrHoldSecs = afrPauseSecs,
                 )
             }
@@ -1622,6 +1625,9 @@ fun OwnTVShell(
                     },
                 )
             }
+            // The switch for what is on screen: Live TV's for a channel, films and series' otherwise.
+            val afrLive = liveOnExo || player.isLiveContent
+            val autoFrameRate = if (afrLive) autoFrameRateLive else autoFrameRateFilms
             if (isFull && !inPip && !autoFrameRate && !afrPrompted) {
                 // Frame rate of whichever engine is on screen. On the mpv side this is what the direct
                 // path judders on; on Exo it now survives "Measured stream stats" being off.
@@ -1638,7 +1644,7 @@ fun OwnTVShell(
                     // turned Auto frame rate back off was offered the "once ever" suggestion all over again.
                     onEnable = {
                         scope.launch {
-                            settingsRepo.setAutoFrameRate(true)
+                            if (afrLive) settingsRepo.setAutoFrameRateLive(true) else settingsRepo.setAutoFrameRateFilms(true)
                             settingsRepo.setAutoFrameRatePrompted()
                         }
                     },

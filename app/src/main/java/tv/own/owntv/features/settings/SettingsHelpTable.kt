@@ -63,6 +63,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_zoom" to R.string.settings_line_zoom,
     "vp_reset_zoom" to R.string.settings_line_saved_zoom,
     "vp_afr" to R.string.settings_vp_cat_frame_rate_summary,
+    "vp_afr_live" to R.string.settings_vp_cat_frame_rate_summary,
     "vp_afr_pause" to R.string.settings_line_films_only,
     "vp_afr_resolution" to R.string.settings_line_films_only,
     "vp_volume" to R.string.settings_line_volume,

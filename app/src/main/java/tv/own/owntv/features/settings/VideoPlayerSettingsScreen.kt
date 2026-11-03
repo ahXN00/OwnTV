@@ -160,7 +160,8 @@ internal val VIDEO_QUICK_ROWS: List<VideoQuickRef> = listOf(
     VideoQuickRef("vp_tunneled", SECTION_PICTURE, OwnTVIcon.VIDEO, R.string.settings_tunneled_playback, R.string.settings_tunneled_playback_description),
     VideoQuickRef("vp_zoom", SECTION_PICTURE, OwnTVIcon.ASPECT, R.string.settings_default_zoom, R.string.settings_default_zoom_description),
     VideoQuickRef("vp_reset_zoom", SECTION_PICTURE, OwnTVIcon.ASPECT, R.string.settings_reset_saved_zoom, R.string.settings_reset_saved_zoom_description),
-    VideoQuickRef("vp_afr", SECTION_FRAME_RATE, OwnTVIcon.VIDEO, R.string.settings_auto_frame_rate, R.string.settings_auto_frame_rate_description),
+    VideoQuickRef("vp_afr", SECTION_FRAME_RATE, OwnTVIcon.VIDEO, R.string.settings_auto_frame_rate_films, R.string.settings_auto_frame_rate_films_description),
+    VideoQuickRef("vp_afr_live", SECTION_FRAME_RATE, OwnTVIcon.LIVE_TV, R.string.settings_auto_frame_rate_live, R.string.settings_auto_frame_rate_live_description),
     VideoQuickRef("vp_afr_pause", SECTION_FRAME_RATE, OwnTVIcon.PAUSE, R.string.settings_afr_pause, R.string.settings_afr_pause_description),
     VideoQuickRef("vp_afr_resolution", SECTION_FRAME_RATE, OwnTVIcon.ASPECT, R.string.settings_afr_resolution, R.string.settings_afr_resolution_description),
     VideoQuickRef("vp_vod_buffer", SECTION_STREAMING, OwnTVIcon.DOWNLOADS, R.string.settings_vod_buffer, R.string.settings_vod_buffer_description),
@@ -278,11 +279,12 @@ internal fun videoQuickBinding(key: String, vm: SettingsViewModel): VideoQuickBi
                 tiles > tv.own.owntv.core.live.DEFAULT_MULTIVIEW_TILES,
             )
         }
-        "vp_afr" -> {
-            val on by vm.autoFrameRate.collectAsStateWithLifecycle()
+        "vp_afr", "vp_afr_live" -> {
+            val live = key == "vp_afr_live"
+            val on by (if (live) vm.autoFrameRateLive else vm.autoFrameRateFilms).collectAsStateWithLifecycle()
             // Below Android 12 turning it ON asks first, and that warning lives on the screen itself.
             val needsWarning = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S
-            if (!on && needsWarning) link(onOff(on)) else toggle(onOff(on), on) { vm.setAutoFrameRate(!on) }
+            if (!on && needsWarning) link(onOff(on)) else toggle(onOff(on), on) { vm.setAutoFrameRate(live, !on) }
         }
         "vp_live_engine" -> {
             val engine by vm.liveEnginePreference.collectAsStateWithLifecycle()
@@ -600,7 +602,8 @@ internal fun VideoPlayerGroupRows(
     // The playback settings that Quick and Settings search also offer. Their rows live here, so these
     // groups are the one complete list; a pin or a search result is a shortcut to the same value.
     val hdr by vm.preferSdr.collectAsStateWithLifecycle()
-    val autoFrameRate by vm.autoFrameRate.collectAsStateWithLifecycle()
+    val autoFrameRateFilms by vm.autoFrameRateFilms.collectAsStateWithLifecycle()
+    val autoFrameRateLive by vm.autoFrameRateLive.collectAsStateWithLifecycle()
     val multiviewEnabled by vm.multiviewEnabled.collectAsStateWithLifecycle()
     val multiviewTiles by vm.multiviewTiles.collectAsStateWithLifecycle()
     val multiviewWarningAccepted by vm.multiviewWarningAccepted.collectAsStateWithLifecycle()
@@ -712,11 +715,12 @@ internal fun VideoPlayerGroupRows(
     // for the refresh rates it can reach without blanking it. Turning it off stays immediate. This is
     // the same rule the root row follows, and both go through the same warning popup.
     val afrNeedsWarning = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S
-    val toggleAutoFrameRate = {
-        if (!autoFrameRate && afrNeedsWarning) {
-            savedScroll = scrollState.value; dialog = Dialog.AFR_WARNING
+    val toggleAutoFrameRate = { live: Boolean ->
+        val on = if (live) autoFrameRateLive else autoFrameRateFilms
+        if (!on && afrNeedsWarning) {
+            savedScroll = scrollState.value; dialog = if (live) Dialog.AFR_LIVE_WARNING else Dialog.AFR_WARNING
         } else {
-            vm.setAutoFrameRate(!autoFrameRate)
+            vm.setAutoFrameRate(live, !on)
         }
     }
     // Turning Live preview ON while the layout leaves no room for the preview panel would do nothing
@@ -910,12 +914,22 @@ internal fun VideoPlayerGroupRows(
         KeyedSettingRow(
             quickKey = "vp_afr",
             icon = OwnTVIcon.VIDEO,
-            title = stringResource(R.string.settings_auto_frame_rate),
-            desc = stringResource(R.string.settings_auto_frame_rate_description) +
+            title = stringResource(R.string.settings_auto_frame_rate_films),
+            desc = stringResource(R.string.settings_auto_frame_rate_films_description) +
                 if (afrNeedsWarning) " " + stringResource(R.string.settings_auto_frame_rate_warning_suffix) else "",
-            value = SettingValue.Switch(autoFrameRate),
+            value = SettingValue.Switch(autoFrameRateFilms),
             modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.AFR_WARNING)),
-            onClick = toggleAutoFrameRate,
+            onClick = { toggleAutoFrameRate(false) },
+        )
+        KeyedSettingRow(
+            quickKey = "vp_afr_live",
+            icon = OwnTVIcon.LIVE_TV,
+            title = stringResource(R.string.settings_auto_frame_rate_live),
+            desc = stringResource(R.string.settings_auto_frame_rate_live_description) +
+                if (afrNeedsWarning) " " + stringResource(R.string.settings_auto_frame_rate_warning_suffix) else "",
+            value = SettingValue.Switch(autoFrameRateLive),
+            modifier = Modifier.focusRequester(dialogRowFocus.getValue(Dialog.AFR_LIVE_WARNING)),
+            onClick = { toggleAutoFrameRate(true) },
         )
         // Both only act for a film with Auto frame rate on; shown always, like every row here.
         KeyedSettingRow(
@@ -1872,8 +1886,8 @@ internal fun VideoPlayerGroupRows(
             onConfirm = { vm.clearSavedAudioDelay(); dialog = Dialog.NONE },
             onCancel = { dialog = Dialog.NONE },
         )
-        Dialog.AFR_WARNING -> AutoFrameRateWarningDialog(
-            onEnable = { vm.setAutoFrameRate(true); dialog = Dialog.NONE },
+        Dialog.AFR_WARNING, Dialog.AFR_LIVE_WARNING -> AutoFrameRateWarningDialog(
+            onEnable = { vm.setAutoFrameRate(dialog == Dialog.AFR_LIVE_WARNING, true); dialog = Dialog.NONE },
             onDismiss = { dialog = Dialog.NONE },
         )
         Dialog.MULTIVIEW_TILES -> run {
@@ -1944,6 +1958,7 @@ private fun ConfirmResetDialog(title: String, description: String, onConfirm: ()
 /** The dialog a pinned row opens when Quick jumps into this screen. Null for rows that toggle. */
 private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     "vp_afr" -> Dialog.AFR_WARNING
+    "vp_afr_live" -> Dialog.AFR_LIVE_WARNING
     "vp_multiview_tiles" -> Dialog.MULTIVIEW_TILES
     "vp_live_engine" -> Dialog.LIVE_ENGINE
     "vp_live_engine_sources" -> Dialog.LIVE_ENGINE_SOURCES
@@ -1982,7 +1997,7 @@ private fun dialogForQuickKey(key: String): Dialog? = when (key) {
     else -> null
 }
 
-private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, SURROUND, FFMPEG_AUDIO, AUDIO_SYNC, OUTPUT_AUDIO_DELAY, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, AFR_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, TIMESHIFT_WINDOW, TIMESHIFT_RESUME, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
+private enum class Dialog { NONE, LIVE_ENGINE, LIVE_ENGINE_SOURCES, LIVE_ENGINE_SOURCE, LIVE_LATENCY_SOURCES, LIVE_LATENCY_SOURCE, LIVE_LATENCY_CUSTOM_SOURCE, VOD_ENGINE, VOD_ENGINE_SOURCES, VOD_ENGINE_SOURCE, ZOOM, VOLUME, RESET_SAVED_ZOOM, RESET_SAVED_VOLUME, RESET_SAVED_AUDIO_DELAY, SEEK_STEP, LIVE_REWIND_STEP, SUB_STYLE, SUB_LANG, AUDIO_LANG, SURROUND, FFMPEG_AUDIO, AUDIO_SYNC, OUTPUT_AUDIO_DELAY, RESUME, LIVE_LATENCY, LIVE_CUSTOM, LIVE_PREROLL, LIVE_TUNE_TIMEOUT, LIVE_TUNE_TIMEOUT_SOURCES, LIVE_TUNE_TIMEOUT_SOURCE, LIVE_PREROLL_SOURCES, LIVE_PREROLL_SOURCE, EXTERNAL_PLAYER, RESET_PINS, RESET_LIVE_PINS, AFR_WARNING, AFR_LIVE_WARNING, AFR_PAUSE, VOD_BUFFER, VOD_TIMEOUT, VOD_RECONNECTS, TIMESHIFT_WINDOW, TIMESHIFT_RESUME, MAX_QUALITY, LIVE_PREVIEW_PANEL, MINI_PLAYER, MULTIVIEW_TILES, MULTIVIEW_WARNING }
 
 /** "Auto" for 0, else seconds ("60s") — the film buffer and network timeout choices. */
 @Composable
