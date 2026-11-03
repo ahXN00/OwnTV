@@ -32,6 +32,9 @@
 - **👕 Team pages: fixtures, results, next match, last five and table place**
 - **🆕 54 more leagues, with Volleyball and Lacrosse**
 - **🔄 Calendar refresh setting**
+- **📚 Home says the library is still loading, with the titles so far** (community PR #333 by @DevenP)
+- **🧭 The menu widens in place from its capsule, at a steady height** (community PR #328 by @DevenP)
+- **🏷️ Home rows show their heading when focus enters them** (community PR #332 by @DevenP)
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**
@@ -64,6 +67,12 @@
 - **A live channel whose decoder fails to start is retried a few more times before giving up (#321)**
 - **Dolby Vision profile 5 films and series play with the right colours on mpv (#313)**
 - **Apple FairPlay channels say why they cannot play; FairPlay-labelled ClearKey channels play**
+- **Deleting a profile: the confirmation stays open after the long press** (community PR #329 by @DevenP)
+- **Holding OK on Favorites and on the Sports reorder no longer acts on what opens** (community PR #334 by @DevenP)
+- **Movies and Series no longer keep a category from the playlist you just switched away from**
+- **Large playlists keep loading in the background after a pause, and a minute after playback stops**
+- **Films tagged " - CAM" find their poster**
+- **Stalker series filed under films get their episodes**
 
 ## v5.2.1 — 2026-10-21
 

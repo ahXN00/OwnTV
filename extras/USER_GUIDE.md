@@ -606,6 +606,9 @@ favourite. **Down** reaches the pager under the buttons; **◀ ▶** there chang
 the rows folds the hero small; **Up** from the first row opens it again. **Posters only** shows the
 trending titles as the first poster row instead.
 
+While a large playlist is still loading after setup, Home says **Loading your library** with the
+number of titles stored so far, and that Now Trending appears as the library fills in.
+
 ### ▶️ Keep watching
 Partly-watched films, episodes and recent channels, newest first, as wide pictures with progress and
 "S1 · E2 · 31 min left". Rest on a card for 3 seconds and it plays a preview inside the card.
