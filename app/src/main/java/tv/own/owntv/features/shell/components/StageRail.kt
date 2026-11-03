@@ -1,6 +1,7 @@
 package tv.own.owntv.features.shell.components
 
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.foundation.background
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -58,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.tv.material3.Text
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import tv.own.owntv.R
 import tv.own.owntv.core.nav.MainSection
 import tv.own.owntv.core.settings.SettingsRepository.NavLength
@@ -190,6 +193,8 @@ fun StageRail(
     // instead of re-centring the icons in a rail that is still wide. Derived, so the rail recomposes when
     // this flips, not on every frame of the widening.
     val shown by remember(open, capsuleWidth) { derivedStateOf { open || railWidth.value > capsuleWidth } }
+    // The capsule's content height, kept from its last layout so the open rail's height can grow from it.
+    val capsuleHeight = remember { IntArray(1) }
     // Names fade in over the second half of the widening (and out over the first half of the narrowing),
     // so a rail too narrow for them never shows them squeezed down to an ellipsis. A lambda, read in
     // each label's draw layer only.
@@ -259,10 +264,34 @@ fun StageRail(
                 }
                 .focusGroup()
                 .stageGlass(if (shown) 34.mpx else 42.mpx, overContent = true)
-                .padding(
-                    horizontal = if (shown) 16.mpx else 0.mpx,
-                    vertical = if (shown) 22.mpx else 16.mpx,
-                ),
+                .padding(horizontal = if (shown) 16.mpx else 0.mpx)
+                // While it widens, the rows are laid out at the open rail's width and clipped to the
+                // current one, so the icons are never squeezed in a rail still too narrow for them; the
+                // height and the top and bottom padding grow from the capsule's to the open rail's over the
+                // same 320 ms instead of jumping when the names appear.
+                .clipToBounds()
+                .layout { measurable, constraints ->
+                    val progress = ((railWidth.value - capsuleWidth) / (openWidth - capsuleWidth).coerceAtLeast(1.mpx)).coerceIn(0f, 1f)
+                    val padV = lerp(16.mpx, 22.mpx, progress).roundToPx()
+                    val innerWidth = if (shown) (openWidth - 32.mpx).roundToPx().coerceAtLeast(0) else null
+                    val fixedHeight = constraints.hasFixedHeight
+                    val placeable = measurable.measure(
+                        constraints.copy(
+                            minWidth = innerWidth ?: constraints.minWidth,
+                            maxWidth = innerWidth ?: constraints.maxWidth,
+                            minHeight = if (fixedHeight) (constraints.maxHeight - 2 * padV).coerceAtLeast(0) else 0,
+                            maxHeight = if (constraints.hasBoundedHeight) (constraints.maxHeight - 2 * padV).coerceAtLeast(0) else constraints.maxHeight,
+                        ),
+                    )
+                    if (!shown) capsuleHeight[0] = placeable.height
+                    val inner = if (shown && !fixedHeight && capsuleHeight[0] > 0) {
+                        (capsuleHeight[0] + (placeable.height - capsuleHeight[0]) * progress).roundToInt()
+                    } else {
+                        placeable.height
+                    }
+                    val height = (inner + 2 * padV).coerceIn(constraints.minHeight, constraints.maxHeight)
+                    layout(constraints.maxWidth, height) { placeable.place(0, padV + (inner - placeable.height) / 2) }
+                },
             horizontalAlignment = if (shown) Alignment.Start else Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.mpx),
         ) {
