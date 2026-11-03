@@ -95,6 +95,9 @@ private const val RECONNECT_NOTICE_AFTER_MS = 10_000L
 
 internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, QUALITY, VOLUME, JUMP_BACK, SLEEP_TIMER }
 
+/** The guide's answer for "Go back to…"'s first row; held in a box so "answered: no row" differs from "not answered yet". */
+private class Lookup(val start: tv.own.owntv.core.live.CatchupProgrammeStart?)
+
 /** What the top-left channel OSD shows for direct tune: the digits being typed, the channel a number
  *  resolved to, or a failure message. All three render as the same card as the channel OSD. */
 private sealed interface TuneOsd {
@@ -152,7 +155,7 @@ fun PlayerHud(
     jumpBackWindowSec: (() -> Int)? = null,
     // The start of the programme on air, from the guide, offered first in "Go back to…". Looked up as
     // the list opens; null (or a null answer) = no such row.
-    jumpBackProgrammeStart: (suspend () -> tv.own.owntv.features.live.CatchupProgrammeStart?)? = null,
+    jumpBackProgrammeStart: (suspend () -> tv.own.owntv.core.live.CatchupProgrammeStart?)? = null,
     // Read as a lambda, not a value: the offset ticks once a second, and taking it as a plain Int?
     // made the shell (the caller) recompose on every tick just to hand it over. Invoked below, so the
     // per-second read lands in the HUD's own scope, which already recomposes with the position clock.
@@ -945,12 +948,12 @@ fun PlayerHud(
         HudDialog.JUMP_BACK -> {
             val options = remember { jumpBackOptions?.invoke().orEmpty() }
             val windowSec = remember { jumpBackWindowSec?.invoke() ?: 0 }
-            // The list waits for the guide's answer, so the first focus lands on the "Start of …" row
-            // when there is one instead of moving there after the user has started to scroll.
-            val programmeStart by produceState<Result<tv.own.owntv.features.live.CatchupProgrammeStart?>?>(null) {
-                value = runCatching { jumpBackProgrammeStart?.invoke() }
+            // The list waits for the guide's answer (bounded in core), so the first focus lands on the
+            // "Start of …" row when there is one instead of moving there after the user has started to scroll.
+            val programmeStart by produceState<Lookup?>(null) {
+                value = Lookup(jumpBackProgrammeStart?.invoke())
             }
-            val start = programmeStart?.getOrNull()
+            val start = programmeStart?.start
             when {
                 programmeStart == null -> Unit // still waiting for the guide
                 options.isEmpty() && start == null -> dialog = HudDialog.NONE

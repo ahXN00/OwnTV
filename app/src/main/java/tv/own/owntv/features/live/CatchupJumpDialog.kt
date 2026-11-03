@@ -41,7 +41,7 @@ internal fun CatchupJumpRows(
     onChooseExact: (() -> Unit)? = null,
     // First row: back to the start of the programme on air, focused when the list opens. Its offset is
     // taken when pressed. Null hides it.
-    programmeStart: CatchupProgrammeStart? = null,
+    programmeStart: tv.own.owntv.core.live.CatchupProgrammeStart? = null,
 ) {
     // One "now" for the whole list: recomputing per row would let the clock tick between rows and
     // print two different times for the same offset.
@@ -57,7 +57,6 @@ internal fun CatchupJumpRows(
                 subtitle = stringResource(R.string.content_catchup_jump_programme_start_at, timeOnly(programmeStart.startMs)),
                 onClick = { onPick(programmeStart.offsetSec(System.currentTimeMillis())) },
                 modifier = Modifier.focusRequester(firstFocus),
-                chosen = true,
                 leading = { tv.own.owntv.ui.stage.StagePopupIcon(tv.own.owntv.ui.components.OwnTVIcon.SKIP_PREVIOUS) },
             )
         }
@@ -87,7 +86,7 @@ internal fun CatchupJumpDialog(
     windowSec: Int,
     onPick: (Int) -> Unit,
     onDismiss: () -> Unit,
-    programmeStart: CatchupProgrammeStart? = null,
+    programmeStart: tv.own.owntv.core.live.CatchupProgrammeStart? = null,
 ) {
     val firstFocus = remember { FocusRequester() }
     var manual by remember { mutableStateOf(false) }
