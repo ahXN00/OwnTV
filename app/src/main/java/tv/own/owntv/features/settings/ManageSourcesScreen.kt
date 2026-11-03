@@ -337,14 +337,15 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         }
 
         sourceTest?.let { state ->
+            // Only for a playlist that exists; the measurement and the switch are stored against its row.
+            val src = sources.firstOrNull { it.name == state.sourceName }
             SourceTestDialog(
                 state = state,
                 onDismiss = { vm.dismissSourceTest() },
-                // Only for a playlist that exists; the measurement is stored against its row.
-                onRetest = sources.firstOrNull { it.name == state.sourceName }?.let { src ->
-                    { confirmRetest = src }
-                },
+                onRetest = src?.let { { confirmRetest = it } },
                 onSkip = { vm.skipConnectionMeasurement() },
+                ignoreLimit = src?.ignoreConnectionLimit,
+                onToggleIgnoreLimit = { src?.let { vm.setIgnoreConnectionLimit(it, !it.ignoreConnectionLimit) } },
             )
         }
 
@@ -560,6 +561,9 @@ internal fun SourceTestDialog(
     onRetest: (() -> Unit)? = null,
     /** Abandon a measurement in progress. Falls back to simply closing when not supplied. */
     onSkip: (() -> Unit)? = null,
+    /** The playlist's "Ignore connection limit"; null hides the button (no saved playlist). */
+    ignoreLimit: Boolean? = null,
+    onToggleIgnoreLimit: () -> Unit = {},
 ) {
     val focus = remember { FocusRequester() }
     // Keyed on *which* button carries the requester, not on first composition: while measuring it is
@@ -580,6 +584,15 @@ internal fun SourceTestDialog(
             // race it for the same connection.
             if (onRetest != null && state is SourceTestUi.Done) {
                 tv.own.owntv.ui.stage.StageButton(stringResource(R.string.settings_sources_retest), onClick = onRetest, height = 56.mpx, textSize = 19)
+            }
+            // Beside Re-test: for a provider that allows more than it says, when measuring cannot show it.
+            if (ignoreLimit != null && state is SourceTestUi.Done) {
+                tv.own.owntv.ui.stage.StageButton(
+                    stringResource(R.string.settings_sources_ignore_limit),
+                    onClick = onToggleIgnoreLimit,
+                    trailing = stringResource(if (ignoreLimit) R.string.common_on else R.string.common_off),
+                    height = 56.mpx, textSize = 19,
+                )
             }
             // While measuring, the only honest button abandons it: OK would suggest the answer is in.
             if (state is SourceTestUi.Measuring) {
@@ -602,7 +615,12 @@ internal fun SourceTestDialog(
                 Spacer(Modifier.width(16.mpx))
                 Text(stringResource(R.string.settings_sources_probe_running, state.progress.stream, state.progress.maxStreams), style = line, color = tv.own.owntv.ui.theme.StageColors.Muted)
             }
-            is SourceTestUi.Done -> SourceTestReport(state.result, state.limit)
+            is SourceTestUi.Done -> Column(verticalArrangement = Arrangement.spacedBy(8.mpx)) {
+                SourceTestReport(state.result, state.limit)
+                if (ignoreLimit == true) {
+                    Text(stringResource(R.string.settings_sources_ignore_limit_on), style = tv.own.owntv.ui.theme.stageText(17, 500), color = tv.own.owntv.ui.theme.StageColors.Muted)
+                }
+            }
         }
     }
 }

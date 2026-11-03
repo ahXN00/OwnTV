@@ -1243,6 +1243,11 @@ class SettingsViewModel(
      * A single-connection provider cuts the oldest stream when a new one starts, so a picture left
      * running would both be killed by the measurement and corrupt its result.
      */
+    /** Per-playlist "Ignore connection limit": Multiview and recordings stop counting the provider's limit. */
+    fun setIgnoreConnectionLimit(source: SourceEntity, ignore: Boolean) {
+        viewModelScope.launch { sourceDao.updateIgnoreConnectionLimit(source.id, ignore) }
+    }
+
     fun retestSource(source: SourceEntity) {
         measureJob?.cancel()
         measureJob = viewModelScope.launch {
