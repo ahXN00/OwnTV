@@ -91,6 +91,13 @@ class ShellViewModel(
         }
     }
 
+    /**
+     * Set by the shell while it is up: leaves the player and Multiview and stops the preview. The profile
+     * gate calls it before it takes the screen, because the player's state lives here and outlives the
+     * shell — the profile would otherwise come back to a player whose stream the gate already freed.
+     */
+    internal var leavePlayback: (() -> Unit)? = null
+
     /** Set by the shell while it is up: stops what plays from a category a relock seals. */
     internal var sealedPlayback: SealedPlaybackGuard?
         get() = relock.guard

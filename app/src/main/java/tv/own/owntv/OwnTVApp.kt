@@ -137,7 +137,7 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         tv.own.owntv.core.brand.AppIconSwitcher.start(this, GlobalContext.get().get())
         // Auto start on wake-up: a force stop ends the wake listener, so the next app start brings it back.
         tv.own.owntv.features.autostart.AutoStart.onAppStarted(this)
-        registerActivityLifecycleCallbacks(tv.own.owntv.features.autostart.AutoStartProfileGate())
+        tv.own.owntv.features.autostart.AutoStartProfileGate(this).register()
         // Diagnostics switch and the one-shot settings migrations — core's, shared with the phone, which
         // used to run none of them.
         tv.own.owntv.player.PlaybackStartup.start(
