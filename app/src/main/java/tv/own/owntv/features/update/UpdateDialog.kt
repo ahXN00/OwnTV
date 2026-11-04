@@ -6,15 +6,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -38,6 +45,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.launch
 
 /**
  * The in-app update dialog (used both from Settings → Check for updates and the automatic prompt).
@@ -49,6 +57,8 @@ fun UpdateDialog(onDismiss: () -> Unit, checkOnOpen: Boolean = false) {
     val manager: UpdateManager = koinInject()
     val state by manager.state.collectAsStateWithLifecycle()
     val focus = remember { FocusRequester() }
+    val notesScroll = rememberScrollState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         if (checkOnOpen) manager.check()
@@ -64,6 +74,17 @@ fun UpdateDialog(onDismiss: () -> Unit, checkOnOpen: Boolean = false) {
         title = stringResource(R.string.update_title),
         width = 900.mpx,
         scroll = false,
+        // Focus stays on the buttons, so Up and Down scroll the notes.
+        modifier = Modifier.onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val step = when (e.key) {
+                Key.DirectionDown -> if (notesScroll.canScrollForward) 200f else return@onPreviewKeyEvent false
+                Key.DirectionUp -> if (notesScroll.canScrollBackward) -200f else return@onPreviewKeyEvent false
+                else -> return@onPreviewKeyEvent false
+            }
+            scope.launch { notesScroll.animateScrollBy(step) }
+            true
+        },
         buttons = if (busy) null else ({
             when (val s = state) {
                 UpdateManager.State.UpToDate ->
@@ -101,7 +122,7 @@ fun UpdateDialog(onDismiss: () -> Unit, checkOnOpen: Boolean = false) {
                         style = stageText(17, 400).copy(lineHeight = (17 * 1.5f).mpxSp),
                         color = StageColors.Muted,
                         // The notes scroll; the buttons under them stay on screen.
-                        modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                        modifier = Modifier.weight(1f, fill = false).verticalScroll(notesScroll),
                     )
                 }
             }

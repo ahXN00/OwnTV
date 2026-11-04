@@ -34,7 +34,6 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusDirection
@@ -88,13 +87,13 @@ import tv.own.owntv.features.shell.components.VodMeta
 import tv.own.owntv.features.shell.components.VodTitleInfo
 import tv.own.owntv.features.shell.components.vodRating
 import tv.own.owntv.features.shell.components.vodRuntime
+import tv.own.owntv.ui.components.BlurredPoster
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.format.localizedInteger
 import tv.own.owntv.ui.stage.PlaylistMark
 import tv.own.owntv.ui.stage.StageKeyHints
 import tv.own.owntv.ui.stage.StagePlaylistMark
 import tv.own.owntv.ui.stage.StageRow
-import tv.own.owntv.ui.stage.StageSearchField
 import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.stage.StageTab
 import tv.own.owntv.ui.stage.StageTag
@@ -146,7 +145,7 @@ private sealed interface Entry {
 private const val ALL_TAB_CHANNELS = 4
 
 /**
- * Global search in the Stage design (SR-01 … SR-07): the title band, the field, tabs over grouped
+ * Global search in the Stage design: the title band, the field, tabs over grouped
  * results on the left, and on the right the focused result — Live TV's own preview pane for a channel,
  * the poster panel for a movie or series. Search only shows: OK goes to the item, where
  * playing, downloading and every option already live. Back clears the search first, then leaves.
@@ -281,7 +280,7 @@ fun SearchScreen(
         val panelX = fx(944)
         val panelW = fx(912)
 
-        // Title band: "Search" + "“sky” · 12 results" (SR-01).
+        // Title band: "Search" + "“sky” · 12 results".
         val titleModifier = Modifier.padding(start = fx(84), top = 52.mpx).width(fx(826))
         if (showingResults) {
             val total = shown.channels.size + shown.movies.size + shown.series.size + shown.programmes.size
@@ -295,16 +294,13 @@ fun SearchScreen(
         } else {
             Text(stringResource(R.string.search_title), style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = titleModifier)
         }
-        StageSearchField(
+        SearchFieldRow(
             query = query,
             onQueryChange = vm::setQuery,
-            placeholder = stringResource(R.string.search_field_hint),
-            modifier = Modifier
-                .padding(start = listX, top = 118.mpx)
-                .width(listW)
-                .focusRequester(fieldFocus)
-                // ▼ lands on a filter button that is on, not whichever one is nearest below.
-                .focusProperties { down = if (searching) filterEntry else if (!showingResults) jumpFocus else FocusRequester.Default },
+            fieldFocus = fieldFocus,
+            // ▼ lands on a filter button that is on, not whichever one is nearest below.
+            focusDown = if (searching) filterEntry else if (!showingResults) jumpFocus else FocusRequester.Default,
+            modifier = Modifier.padding(start = listX, top = 118.mpx).width(listW),
         )
 
         if (!showingResults) {
@@ -473,7 +469,7 @@ fun SearchScreen(
             }
         }
 
-        // Key hints, bottom left (SR-01).
+        // Key hints, bottom left.
         val hints = buildList {
             val onFilter = filterFocused
             if (onFilter != null) {
@@ -511,7 +507,7 @@ private fun Entry.channel(): ChannelEntity? = when (this) {
     else -> null
 }
 
-/** The rows in display order; [grouped] puts each kind under its heading (SR-01), else one flat list. */
+/** The rows in display order; [grouped] puts each kind under its heading, else one flat list. */
 @Composable
 private fun searchEntries(results: SearchResults, grouped: Boolean, capChannels: Boolean): List<Entry> {
     val live = stringResource(R.string.common_nav_live_tv)
@@ -613,7 +609,7 @@ private fun SmallPoster(url: String?, placeholder: OwnTVIcon) {
 }
 
 /**
- * The poster panel (SR-02 … 04), in the Live TV preview's frame and place: the backdrop 16:9 (or the
+ * The poster panel, in the Live TV preview's frame and place: the backdrop 16:9 (or the
  * poster blurred, with the sharp poster at the right), a MOVIE / SERIES tag, the title art or name at
  * the bottom left; under it year • genres • runtime • ★ rating and tags, three lines of plot, five cast.
  */
@@ -631,16 +627,17 @@ private fun PosterPanel(info: VodTitleInfo, series: Boolean, modifier: Modifier 
                 .background(Color.Black),
         ) {
             val frameH = maxHeight
+            val posterUrl = info.posterUrl
             if (!info.backdropUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = info.backdropUrl, contentDescription = null, contentScale = ContentScale.Crop,
                     alignment = BiasAlignment(0f, -0.4f), modifier = Modifier.fillMaxSize(),
                 )
-            } else if (!info.posterUrl.isNullOrBlank()) {
-                AsyncImage(model = info.posterUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(36.mpx))
+            } else if (!posterUrl.isNullOrBlank()) {
+                BlurredPoster(url = posterUrl, modifier = Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                 AsyncImage(
-                    model = info.posterUrl, contentDescription = null, contentScale = ContentScale.Fit,
+                    model = posterUrl, contentDescription = null, contentScale = ContentScale.Fit,
                     modifier = Modifier.align(Alignment.TopEnd).padding(end = 40.mpx, top = 36.mpx).height(frameH - 72.mpx).clip(RoundedCornerShape(14.mpx)),
                 )
             }
@@ -686,7 +683,7 @@ private fun PosterPanel(info: VodTitleInfo, series: Boolean, modifier: Modifier 
     }
 }
 
-/** SR-06: JUMP TO (Continue watching · Unwatched · Channels), RECENT SEARCHES as rows, then Clear. */
+/** The empty page: JUMP TO (Continue watching · Unwatched · Channels), RECENT SEARCHES as rows, then Clear. */
 @Composable
 private fun Launcher(
     firstFocus: FocusRequester,
@@ -741,7 +738,7 @@ private fun RecentRow(term: String, onClick: () -> Unit) {
     }
 }
 
-/** SR-06's glass card: what Search does, and where a result takes you. */
+/** The empty page's glass card: what Search does, and where a result takes you. */
 @Composable
 private fun LauncherCard(modifier: Modifier = Modifier) {
     Column(modifier.stageGlass(30.mpx).padding(horizontal = 38.mpx, vertical = 34.mpx)) {
@@ -757,7 +754,7 @@ private fun LauncherCard(modifier: Modifier = Modifier) {
     }
 }
 
-/** SR-05: "Nothing found for “qwzx”" and what search looks in. */
+/** No results: "Nothing found for “qwzx”" and what search looks in. */
 @Composable
 private fun NothingFound(title: String, modifier: Modifier = Modifier) {
     Column(modifier) {

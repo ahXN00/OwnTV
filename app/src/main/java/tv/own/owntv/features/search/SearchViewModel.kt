@@ -84,7 +84,7 @@ class SearchViewModel(
         if (q.isNotBlank()) _intent.value = null // typing overrides an active launcher intent
     }
 
-    // --- Batch 5: empty-state launcher (recent search terms + Continue / Unwatched / Channels) ---
+    // --- Empty-state launcher (recent search terms + Continue / Unwatched / Channels) ---
 
     /** Persisted recent search terms (most-recent first). */
     val recentSearches: StateFlow<List<String>> = settings.recentSearches
@@ -117,7 +117,7 @@ class SearchViewModel(
         return searchReader.search(pid, ctx.value, q)
     }
 
-    // --- Stage page (SR-01 … SR-07) ---
+    // --- Stage page ---
 
     /** The filter buttons switched on; none = everything. Kept across new search text; Back clears it. */
     private val _kinds = MutableStateFlow<Set<SearchKind>>(emptySet())

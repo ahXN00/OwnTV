@@ -11,7 +11,7 @@
                         playlist/proxy passwords and API keys would still be copied to the new
                         device without the user ever typing a backup password.
 
-   Users move OwnTV data with Settings → Backup & Restore, which is explicit and encryptable.
+   Users move OwnTV data with More → Backup & Restore, which is explicit and encryptable.
 -->
 <data-extraction-rules>
     <cloud-backup>

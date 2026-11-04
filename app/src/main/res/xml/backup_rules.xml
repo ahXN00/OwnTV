@@ -12,7 +12,7 @@
    given). Automatic backup silently bypassed that policy: it would copy the raw stores to Google
    Drive or to a new phone/TV with no passphrase involved at all.
 
-   Settings → Backup & Restore is therefore the ONLY way OwnTV data moves between devices, and it is
+   More → Backup & Restore is therefore the ONLY way OwnTV data moves between devices, and it is
    always an explicit, user-driven, optionally encrypted `.own` file.
 -->
 <full-backup-content>

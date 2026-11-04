@@ -19,11 +19,11 @@ body:
         - label: >
             I read the **[User Guide](https://github.com/ahXN00/OwnTV/blob/main/extras/USER_GUIDE.md)**
             and checked the relevant **Settings** and **in-app functions** for this (e.g. the
-            top-bar playlist switcher, per-playlist Default, HDR, Surround, Catch-up time, Video player).
+            top-bar playlist switcher, per-playlist Default, HDR, Surround, Catch-up time, Player).
           required: true
         - label: I searched existing issues and this isn't a duplicate.
           required: true
-        - label: I'm on the latest version (Settings → About) and tried re-syncing the playlist (and EPG, for guide issues).
+        - label: I'm on the latest version (More → About) and tried re-syncing the playlist (and EPG, for guide issues).
           required: true
 
   - type: textarea

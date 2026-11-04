@@ -25,7 +25,7 @@ import java.io.File
  * upload arrives, [onBackupReceived] hands the saved file off to the normal restore flow (section
  * picker, password prompt). The listener stops automatically when this screen leaves composition.
  *
- * Shared by Settings → Backup & Restore and the first-run/add-profile setup wizard.
+ * Shared by More → Backup & Restore and the first-run/add-profile setup wizard.
  */
 @Composable
 fun RemoteBackupRestoreScreen(

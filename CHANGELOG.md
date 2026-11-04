@@ -7,6 +7,108 @@
 > Issue numbers that are part of a title are fine; explanatory parentheticals are not. The detail —
 > what, why, files and verification — belongs in the commit message, never here.
 
+## Unreleased
+
+### ✨ New features
+- **⚡ Search: the poster backdrop is blurred once, and blurred on Android 11 and older too** (community PR #268 by @sarmadsoomro)
+- **🖼️ More posters kept in memory, so Home scrolls cleaner** (community PR #267 by @sarmadsoomro)
+- **📺 Smoother TV Guide scrolling** (community PR #266 by @sarmadsoomro)
+- **✨ Clean channel names: a Names option on each playlist** (community PR #283 by @Kevsosmooth)
+- **📋 EPG Sources: Move up / Move down set the guide priority** (community PR #277 by @Kevsosmooth)
+- **🎯 Guide offers Auto-match when an added guide matches no channel** (community PR #316 by @arch-fan)
+- **⏪ Rewind mark in the TV Guide; Resync now in the playlist menu** (community PR #305 by @sarmadsoomro)
+- **🎛️ Player buttons: choose what OK does, swap channel up/down, number keys on or off** (community PR #287 by @Kevsosmooth)
+- **🚀 Start on the last channel in the TV Guide or Live TV** (community PR #294 by @Kevsosmooth)
+- **🏷️ Menu labels: off, when focused or always** (community PR #280 by @Kevsosmooth)
+- **🎤 Voice search on the Search screen** (community PR #281 by @Kevsosmooth)
+- **🔒 Lock a category with the Customize PIN** (community PR #273 by @Kevsosmooth)
+- **🔐 Ask for the PIN to open Settings** (community PR #286 by @Kevsosmooth)
+- **🪟 Picture-in-picture when leaving the app** (community PR #278 by @Kevsosmooth)
+- **📺 Live TV: the preview keeps playing while you browse the categories** (community PR #270 by @Kevsosmooth)
+- **🔑 Stalker portals: an optional username and password**
+- **🏆 Sports: Scores | Calendar | Leagues tabs**
+- **📅 Sports Calendar: the month of every followed league, with the day's matches**
+- **🗂️ Sports Leagues: tables, fixtures and results; F1 drivers, constructors and races; tennis rankings**
+- **👕 Team pages: fixtures, results, next match, last five and table place**
+- **🆕 54 more leagues, with Volleyball and Lacrosse**
+- **🔄 Calendar refresh setting**
+- **📚 Home says the library is still loading, with the titles so far** (community PR #333 by @DevenP)
+- **🧭 The menu widens in place from its capsule, at a steady height** (community PR #328 by @DevenP)
+- **🏷️ Home rows show their heading when focus enters them** (community PR #332 by @DevenP)
+- **👁️ Long-press menus: hide actions, and the default order matches the menus**
+- **📺 Hide All channels or Catch-up from the Live TV categories (#322)** (community PR #337 by @sarmadsoomro)
+- **⬇️ Allow downloads per profile; a whole show or season asks first with the episode count (#339)**
+- **📅 TV Guide: catch-up channels show their past days from the provider's archive** (community PR #324 by @Zangetsu-Sama)
+- **⏮️ "Start of the programme" first in "Go back to…"** (community PR #326 by @Zangetsu-Sama)
+- **🖼️ Aspect: a press steps to the next mode, hold OK for the list (#319)**
+- **🎞️ Auto frame rate: separate switches for films and series, and Live TV (#318)**
+- **🔓 Ignore connection limit, per playlist (#244)**
+- **🔀 Sources: switch to another version of the channel playing** (community PR #317 by @Aaronnn17)
+
+### 🐛 Fixes
+- **🗑️ Deleting a download or recording asks first**
+- **📺 Expanding the mini player returns to the channel playing, not the one browsed (#307)**
+- **🔁 Re-test measures the connection limit on Xtream, and the next sync keeps it (#244)**
+- **🕘 "Live now" shows the programme's start and end**
+- **↕️ Moved categories, channels, films and series keep their place in A–Z and Provider; the rest follow the sort**
+- **📺 Back to the TV Guide focuses the channel that was playing and previews it**
+- **📋 TV Guide order follows Live TV, moved channels included**
+- **⏱️ "Mark as watched" no longer shows "0 min"**
+- **↕️ Move opens on the item asked for, even far down the list**
+- **Home: the last card of a row stays on screen when it has focus** (community PR #314 by @arch-fan)
+- **Setup: the choice cards line up when one has a shorter line** (community PR #315 by @arch-fan)
+- **The update popup's What's new scrolls with Up and Down** (community PR #291 by @camchis)
+- **Loading spinners use far less of the TV's processor; imports finish sooner**
+- **TV Guide: the now-line reaches the bottom** (community PR #303 by @spotandjake)
+- **Settings no longer shows "0 playlists" while loading**
+- **Live TV no longer keeps showing a category from the playlist you just switched away from**
+- **Wrong PINs for Settings, Customize and the category locks share one wait**
+- **Settings search says what to type instead of showing an empty page**
+- **The channel banner names the new channel at once on CH+/CH−**
+- **An mpv channel comes back after Home, with Resume / Go live, instead of a black screen**
+- **Starting on the last channel no longer flashes Home first on large playlists**
+- **An Xtream playlist with a refused password says so instead of loading empty**
+- **A changed password, server, username or MAC re-syncs the playlist on save**
+- **Restoring a backup without passwords names the playlists that need one**
+- **A new playlist with a name already in use is numbered: "My IPTV 2"**
+- **Renamed channels, films and series keep their name on Home and in Continue**
+- **Stalker portals behind a redirect stay signed in; their posters load**
+- **Stalker sync slows down on portals that refuse parallel requests and loses no page; fast portals keep full speed**
+- **Stalker series listed among the films go to Series when the portal has no series section**
+- **Playlist rows show the full catalogue once the background download finishes**
+- **A live channel whose decoder fails to start is retried a few more times before giving up (#321)**
+- **Dolby Vision profile 5 films and series play with the right colours on mpv (#313)**
+- **Apple FairPlay channels say why they cannot play; FairPlay-labelled ClearKey channels play**
+- **Deleting a profile: the confirmation stays open after the long press** (community PR #329 by @DevenP)
+- **Holding OK on Favorites and on the Sports reorder no longer acts on what opens** (community PR #334 by @DevenP)
+- **Movies and Series no longer keep a category from the playlist you just switched away from**
+- **Large playlists keep loading in the background after a pause, and a minute after playback stops**
+- **Films tagged " - CAM" find their poster**
+- **Stalker series filed under films get their episodes**
+
+## v5.2.1 — 2026-10-21
+
+### ✨ New features
+- **📺 TV Guide: OK brings a channel into the preview, OK again watches it — scrolling no longer changes the preview (#300)**
+- **🎧 Audio delay for each output: HDMI, soundbar, Bluetooth, speakers, headphones**
+- **🎚️ FFmpeg audio for ExoPlayer, as a switch (off by default)**
+- **🌗 Prefer SDR when a stream offers both (replaces the HDR switch)**
+- **💡 A hint to try MPV when a live channel keeps dropping frames**
+
+### 🐛 Fixes
+- **Live H.264 channels no longer freeze or drop frames on some TVs (#284)**
+- **Auto frame rate tells 59.94, 29.97 and 23.976 from 60, 30 and 24, also for films that do not state theirs (#292)**
+- **Each playlist keeps its own category order (#297)**
+- **A re-sync with many custom-category items finishes, instead of locking the database (#288)**
+- **Auto frame rate goes back to the normal mode when a channel has no matching one**
+- **Full frame rate on mpv for H.264 above 30 fps, and after zapping from a 25 fps channel**
+- **H.264 catch-up stays on hardware decoding on mpv**
+- **A saved channel plays again after the TV wakes from standby**
+- **TV Guide search: typing goes into the search field**
+- **"Learned stream fixes" removed: catch-up no longer stays on software decoding for two weeks**
+- **No sound or picture left playing under a live error screen**
+- **Switching channels on mpv no longer holds up the screen**
+
 ## v5.2.0 — 2026-10-17
 
 ### ✨ New features

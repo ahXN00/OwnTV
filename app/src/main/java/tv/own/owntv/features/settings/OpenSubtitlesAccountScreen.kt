@@ -62,7 +62,7 @@ private fun defaultSearchLang(): String {
 }
 
 /**
- * Settings → Video Player → Subtitles → OpenSubtitles account.
+ * Settings › Content & metadata › OpenSubtitles account.
  * The connection is per OwnTV profile; users sign in with their own free OpenSubtitles account.
  */
 @Composable

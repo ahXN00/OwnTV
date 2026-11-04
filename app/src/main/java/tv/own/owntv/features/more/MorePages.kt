@@ -82,6 +82,7 @@ import tv.own.owntv.ui.components.rememberAppliedIcon
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.components.OwnTVPopup
 import tv.own.owntv.ui.components.displayText
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.components.trapAllFocusExit
 import tv.own.owntv.ui.stage.StageFocus
 import tv.own.owntv.ui.stage.StageMenu
@@ -213,9 +214,9 @@ private val SettingsCards = listOf(
     SettingsGroupCard(OwnTVIcon.PALETTE, R.string.settings_group_appearance, R.string.settings_card_appearance, 9),
     SettingsGroupCard(OwnTVIcon.GRID, R.string.settings_group_layout, R.string.settings_card_layout, 10),
     SettingsGroupCard(OwnTVIcon.MOVIES, R.string.settings_group_content_metadata, R.string.settings_card_content, 3),
-    SettingsGroupCard(OwnTVIcon.PLAY_CIRCLE, R.string.settings_vp_cat_player, R.string.settings_card_player, 11),
+    SettingsGroupCard(OwnTVIcon.PLAY_CIRCLE, R.string.settings_vp_cat_player, R.string.settings_card_player, 10),
     SettingsGroupCard(OwnTVIcon.EXPAND, R.string.settings_vp_cat_picture, R.string.settings_card_picture, 9),
-    SettingsGroupCard(OwnTVIcon.HEADPHONES, R.string.settings_group_sound_subtitles, R.string.settings_card_sound, 11),
+    SettingsGroupCard(OwnTVIcon.HEADPHONES, R.string.settings_group_sound_subtitles, R.string.settings_card_sound, 12),
     SettingsGroupCard(OwnTVIcon.LIVE_TV, R.string.settings_live_tv, R.string.settings_card_live, 12),
     SettingsGroupCard(OwnTVIcon.REC, R.string.settings_group_watching_recording, R.string.settings_card_watching, 11),
     SettingsGroupCard(OwnTVIcon.INFO, R.string.settings_group_app, R.string.settings_card_app, 10),
@@ -387,7 +388,8 @@ internal fun FavouritesPage(
             val first = remember { FocusRequester() }
             LaunchedEffect(Unit) { withFrameNanos { }; runCatching { first.requestFocus() } }
             BackHandler { close() }
-            Box(Modifier.fillMaxSize().background(stageTone(Color.Black.copy(alpha = 0.45f), StageColors.Scrim)).trapAllFocusExit().focusGroup(), contentAlignment = Alignment.Center) {
+            // Opened by a held OK: the guard keeps its repeats off the first item (Remove).
+            Box(Modifier.fillMaxSize().background(stageTone(Color.Black.copy(alpha = 0.45f), StageColors.Scrim)).longPressMenuGuard().trapAllFocusExit().focusGroup(), contentAlignment = Alignment.Center) {
                 StageMenu(Modifier.width(440.mpx)) {
                     StageMenuHeader(name, null)
                     StageMenuItem(stringResource(R.string.content_remove_favourite), onClick = { vm.removeFavourite(type, id); returnTo = segFocus; close() }, icon = OwnTVIcon.FAVORITE, modifier = Modifier.focusRequester(first))

@@ -194,7 +194,7 @@ class CustomizeItemsViewModel(
         span.cancel()
     }
 
-    // --- Moves (persist to content_order via replaceContext — the browse Move-mode pattern) ---
+    // --- Moves (persist to content_order via saveMove — the browse Move-mode pattern) ---
 
     /** Moves serialize so a fast second press snapshots the result of the first, never the stale
      *  pre-move order. */
@@ -208,44 +208,32 @@ class CustomizeItemsViewModel(
         if (pid < 0) return null
         if (ci.isCustom) {
             return when (ci.mediaType) {
-                MediaType.LIVE -> customCategoryDao.snapshotChannels(pid, ci.contextKey, ci.sourceIds, SNAPSHOT_LIMIT)
+                MediaType.LIVE -> customCategoryDao.snapshotChannels(pid, ci.contextKey, ci.sourceIds, false, SNAPSHOT_LIMIT)
                     .map { it.id to CustomizeKeys.channel(it) }
-                MediaType.MOVIE -> customCategoryDao.snapshotMovies(pid, ci.contextKey, ci.sourceIds, SNAPSHOT_LIMIT)
+                MediaType.MOVIE -> customCategoryDao.snapshotMovies(pid, ci.contextKey, ci.sourceIds, false, SNAPSHOT_LIMIT)
                     .map { it.id to CustomizeKeys.movie(it) }
-                MediaType.SERIES -> customCategoryDao.snapshotSeries(pid, ci.contextKey, ci.sourceIds, SNAPSHOT_LIMIT)
+                MediaType.SERIES -> customCategoryDao.snapshotSeries(pid, ci.contextKey, ci.sourceIds, false, SNAPSHOT_LIMIT)
                     .map { it.id to CustomizeKeys.series(it) }
                 MediaType.EPISODE -> null
             }
         }
         return when (ci.mediaType) {
-            MediaType.LIVE -> channelDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, SNAPSHOT_LIMIT)
+            MediaType.LIVE -> channelDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, false, SNAPSHOT_LIMIT)
                 .map { it.id to CustomizeKeys.channel(it) }
-            MediaType.MOVIE -> movieDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, SNAPSHOT_LIMIT)
+            MediaType.MOVIE -> movieDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, false, SNAPSHOT_LIMIT)
                 .map { it.id to CustomizeKeys.movie(it) }
-            MediaType.SERIES -> seriesDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, SNAPSHOT_LIMIT)
+            MediaType.SERIES -> seriesDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, false, SNAPSHOT_LIMIT)
                 .map { it.id to CustomizeKeys.series(it) }
             MediaType.EPISODE -> null
         }
     }
 
-    /** Writes the full resulting order for this context (the Move commit point). */
-    private suspend fun persistOrder(ci: CatInfo, orderedIds: List<Long>) {
-        val pid = ctx.value.profileId
-        contentOrderDao.replaceContext(
-            profileId = pid,
-            type = ci.mediaType,
-            contextKey = ci.contextKey,
-            rows = orderedIds.mapIndexed { i, itemId ->
-                ContentOrderEntity(profileId = pid, mediaType = ci.mediaType, contextKey = ci.contextKey, itemId = itemId, position = i)
-            },
-        )
-    }
-
-    private suspend fun runMove(ci: CatInfo, block: (List<Pair<Long, String>>) -> List<Long>?) {
+    /** Saves a move for this context: the moved items keep their place (the Move commit point). */
+    private suspend fun runMove(ci: CatInfo, block: (List<Pair<Long, String>>) -> Pair<List<Long>, Set<Long>>?) {
         moveMutex.withLock {
             val snapshot = orderedSnapshot(ci) ?: return
-            val reordered = block(snapshot) ?: return
-            persistOrder(ci, reordered)
+            val (reordered, carried) = block(snapshot) ?: return
+            contentOrderDao.saveMove(ctx.value.profileId, ci.mediaType, ci.contextKey, reordered, carried)
         }
     }
 
@@ -257,6 +245,7 @@ class CustomizeItemsViewModel(
                 val index = snapshot.indexOfFirst { it.second == row.key }
                 if (index < 0) return@runMove null
                 moveBlock(snapshot, index, index, if (up) MoveKind.UP else MoveKind.DOWN)?.map { it.first }
+                    ?.let { it to setOf(snapshot[index].first) }
             }
         }
     }
@@ -269,6 +258,7 @@ class CustomizeItemsViewModel(
                 val index = snapshot.indexOfFirst { it.second == row.key }
                 if (index < 0) return@runMove null
                 moveBlock(snapshot, index, index, if (top) MoveKind.TOP else MoveKind.BOTTOM)?.map { it.first }
+                    ?.let { it to setOf(snapshot[index].first) }
             }
         }
     }
@@ -285,7 +275,10 @@ class CustomizeItemsViewModel(
                 val endIndex = snapshot.indexOfFirst { it.second == endKey }
                 if (anchorIndex < 0 || endIndex < 0) return@runMove null
                 span.setEndKey(endKey)
-                moveBlock(snapshot, minOf(anchorIndex, endIndex), maxOf(anchorIndex, endIndex), kind)?.map { it.first }
+                val lo = minOf(anchorIndex, endIndex)
+                val hi = maxOf(anchorIndex, endIndex)
+                moveBlock(snapshot, lo, hi, kind)?.map { it.first }
+                    ?.let { it to snapshot.subList(lo, hi + 1).mapTo(HashSet()) { row -> row.first } }
             }
         }
     }
@@ -301,25 +294,25 @@ class CustomizeItemsViewModel(
     private fun pagingSource(categoryId: Long?, info: CatInfo, ordered: Boolean): PagingSource<Int, *> {
         if (info.isCustom) {
             return when (info.mediaType) {
-                MediaType.LIVE -> customCategoryDao.pagingChannels(ctx.value.profileId, info.contextKey, info.sourceIds)
-                MediaType.MOVIE -> customCategoryDao.pagingMovies(ctx.value.profileId, info.contextKey, info.sourceIds)
-                MediaType.SERIES -> customCategoryDao.pagingSeries(ctx.value.profileId, info.contextKey, info.sourceIds)
+                MediaType.LIVE -> customCategoryDao.pagingChannels(ctx.value.profileId, info.contextKey, info.sourceIds, alpha = false)
+                MediaType.MOVIE -> customCategoryDao.pagingMovies(ctx.value.profileId, info.contextKey, info.sourceIds, alpha = false)
+                MediaType.SERIES -> customCategoryDao.pagingSeries(ctx.value.profileId, info.contextKey, info.sourceIds, alpha = false)
                 MediaType.EPISODE -> error("EPISODE not applicable to category items")
             }
         }
         return when (info.mediaType) {
             MediaType.LIVE -> if (ordered) {
-                channelDao.pagingByCategoryManual(categoryId!!, ctx.value.profileId, info.contextKey)
+                channelDao.pagingByCategoryManual(categoryId!!, ctx.value.profileId, info.contextKey, alpha = false)
             } else {
                 channelDao.pagingByCategory(categoryId!!)
             }
             MediaType.MOVIE -> if (ordered) {
-                movieDao.pagingByCategoryManual(categoryId!!, ctx.value.profileId, info.contextKey)
+                movieDao.pagingByCategoryManual(categoryId!!, ctx.value.profileId, info.contextKey, alpha = false)
             } else {
                 movieDao.pagingByCategory(categoryId!!)
             }
             MediaType.SERIES -> if (ordered) {
-                seriesDao.pagingByCategoryManual(categoryId!!, ctx.value.profileId, info.contextKey)
+                seriesDao.pagingByCategoryManual(categoryId!!, ctx.value.profileId, info.contextKey, alpha = false)
             } else {
                 seriesDao.pagingByCategory(categoryId!!)
             }
@@ -435,20 +428,20 @@ class CustomizeItemsViewModel(
         viewModelScope.launch {
             val entries: List<Pair<String, String>> = when {
                 ci.isCustom -> when (ci.mediaType) {
-                    MediaType.LIVE -> customCategoryDao.snapshotChannels(pid, ci.contextKey, ci.sourceIds, SNAPSHOT_LIMIT)
+                    MediaType.LIVE -> customCategoryDao.snapshotChannels(pid, ci.contextKey, ci.sourceIds, false, SNAPSHOT_LIMIT)
                         .map { CustomizeKeys.channel(it) to it.name }
-                    MediaType.MOVIE -> customCategoryDao.snapshotMovies(pid, ci.contextKey, ci.sourceIds, SNAPSHOT_LIMIT)
+                    MediaType.MOVIE -> customCategoryDao.snapshotMovies(pid, ci.contextKey, ci.sourceIds, false, SNAPSHOT_LIMIT)
                         .map { CustomizeKeys.movie(it) to it.name }
-                    MediaType.SERIES -> customCategoryDao.snapshotSeries(pid, ci.contextKey, ci.sourceIds, SNAPSHOT_LIMIT)
+                    MediaType.SERIES -> customCategoryDao.snapshotSeries(pid, ci.contextKey, ci.sourceIds, false, SNAPSHOT_LIMIT)
                         .map { CustomizeKeys.series(it) to it.name }
                     MediaType.EPISODE -> return@launch
                 }
                 else -> when (ci.mediaType) {
-                    MediaType.LIVE -> channelDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, SNAPSHOT_LIMIT)
+                    MediaType.LIVE -> channelDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, false, SNAPSHOT_LIMIT)
                         .map { CustomizeKeys.channel(it) to it.name }
-                    MediaType.MOVIE -> movieDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, SNAPSHOT_LIMIT)
+                    MediaType.MOVIE -> movieDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, false, SNAPSHOT_LIMIT)
                         .map { CustomizeKeys.movie(it) to it.name }
-                    MediaType.SERIES -> seriesDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, SNAPSHOT_LIMIT)
+                    MediaType.SERIES -> seriesDao.snapshotByCategoryManual(ci.categoryId!!, pid, ci.contextKey, false, SNAPSHOT_LIMIT)
                         .map { CustomizeKeys.series(it) to it.name }
                     MediaType.EPISODE -> return@launch
                 }

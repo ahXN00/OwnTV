@@ -52,6 +52,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.R
 import tv.own.owntv.core.i18n.HorizontalDirection
 import tv.own.owntv.core.i18n.horizontalDirection
+import tv.own.owntv.core.settings.PlayerRemoteOptions
 import tv.own.owntv.core.settings.RemoteShortcutAction
 import tv.own.owntv.core.settings.RemoteShortcutPress
 import tv.own.owntv.ui.components.LocalRemoteShortcuts
@@ -66,35 +67,6 @@ import tv.own.owntv.ui.theme.gradientWash
  * sibling files: [PlayerHudChrome] (top bar, OSD cards, transport, bottom bar), [PlayerHudControls]
  * (buttons, seek bars, shared formatters) and [PlayerHudDialogs] (every dialog the HUD opens).
  */
-
-@Composable
-internal fun MediaSpec.displayText(): String {
-    val decoderText = decoder?.let {
-        when (it) {
-            is DecoderSpec.Hardware -> buildList {
-                add(stringResource(R.string.player_decoder_hardware))
-                if (it.direct) add(stringResource(R.string.player_decoder_direct))
-            }.joinToString(stringResource(R.string.player_metadata_separator))
-            is DecoderSpec.Software -> buildList {
-                add(stringResource(R.string.player_decoder_software))
-                if (it.gpu) add(stringResource(R.string.player_decoder_gpu))
-            }.joinToString(stringResource(R.string.player_metadata_separator))
-            is DecoderSpec.Named -> buildList {
-                add(
-                    when (it.value.lowercase()) {
-                        "exoplayer" -> stringResource(R.string.settings_player_exoplayer)
-                        "mpv" -> stringResource(R.string.settings_player_mpv)
-                        else -> it.value
-                    },
-                )
-                if (it.hardware) add(stringResource(R.string.player_decoder_hardware))
-                if (it.direct) add(stringResource(R.string.player_decoder_direct))
-            }.joinToString(stringResource(R.string.player_metadata_separator))
-        }
-    }
-    return listOfNotNull(codec, resolution, decoderText)
-        .joinToString(stringResource(R.string.player_metadata_separator))
-}
 
 @Composable
 private fun PlaybackFailure.displayText(): String {
@@ -121,7 +93,21 @@ private const val TRACK_POLL_TRIES = 20
  *  Counted from the stall, which itself only starts once the buffer (~10s) has run dry. */
 private const val RECONNECT_NOTICE_AFTER_MS = 10_000L
 
-internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, QUALITY, VOLUME, JUMP_BACK, SLEEP_TIMER }
+internal enum class HudDialog { NONE, AUDIO, SUBS, SPEED, ZOOM, QUALITY, VOLUME, JUMP_BACK, SLEEP_TIMER, SOURCES }
+
+/**
+ * "Sources": the other versions of the live channel playing ([tv.own.owntv.core.live.ChannelVersions]).
+ * [load] is read as the list opens, never on a zap; [playingId] marks the one on screen; [onPick]
+ * tunes the pick through Live TV's normal tune.
+ */
+class HudSources(
+    val load: suspend () -> List<tv.own.owntv.core.live.ChannelVersion>,
+    val playingId: Long,
+    val onPick: (tv.own.owntv.core.database.entity.ChannelEntity) -> Unit,
+)
+
+/** The guide's answer for "Go back to…"'s first row; held in a box so "answered: no row" differs from "not answered yet". */
+private class Lookup(val start: tv.own.owntv.core.live.CatchupProgrammeStart?)
 
 /** What the top-left channel OSD shows for direct tune: the digits being typed, the channel a number
  *  resolved to, or a failure message. All three render as the same card as the channel OSD. */
@@ -178,6 +164,9 @@ fun PlayerHud(
     onPreviousChannel: (() -> Unit)? = null,
     // Archive depth of the current channel, for the exact-time picker's day/HH:MM bounds.
     jumpBackWindowSec: (() -> Int)? = null,
+    // The start of the programme on air, from the guide, offered first in "Go back to…". Looked up as
+    // the list opens; null (or a null answer) = no such row.
+    jumpBackProgrammeStart: (suspend () -> tv.own.owntv.core.live.CatchupProgrammeStart?)? = null,
     // Read as a lambda, not a value: the offset ticks once a second, and taking it as a plain Int?
     // made the shell (the caller) recompose on every tick just to hand it over. Invoked below, so the
     // per-second read lands in the HUD's own scope, which already recomposes with the position clock.
@@ -186,6 +175,7 @@ fun PlayerHud(
     onTuneToNumber: (suspend (Int) -> DirectTuneResult)? = null,
     // Channel identity key for direct tune: changing this cancels any in-flight submission.
     directTuneContextKey: Long = 0L,
+    remoteOptions: PlayerRemoteOptions = PlayerRemoteOptions(), // Settings › Remote shortcuts › Player buttons
     // Live "compatibility mode": pin this channel to the mpv engine (fixes UHD artifacts / undecodable
     // streams ExoPlayer can't handle). null = not a live channel; true = currently pinned to mpv.
     compatMode: Boolean? = null,
@@ -210,6 +200,9 @@ fun PlayerHud(
     liveEpgCard: (@Composable () -> Unit)? = null,
     // Now/next lines for the channel-change banner (the playing channel's guide). Null = name only.
     zapGuide: (@Composable () -> Unit)? = null,
+    // The channel a CH+/- step moved to. The banner names it at once; the engine's metadata still
+    // names the previous channel until the new stream opens, next to [zapGuide]'s new programme.
+    zapChannel: DirectTuneChannelInfo? = null,
     // The archive's own wall-clock instant while catch-up/rewind is playing; null means the picture is
     // the present, and only the real clock shows. Drives the second, framed clock at top centre.
     // Lambda for the same reason as [timeshiftOffsetSec]: this instant advances every second too.
@@ -228,6 +221,8 @@ fun PlayerHud(
     // The match page.
     // A goal toast for another followed match is up: OK switches to it instead of showing the controls.
     onToastOk: (() -> Unit)? = null,
+    // Live only: the Sources button and its list. Null hides the button.
+    sources: HudSources? = null,
     modifier: Modifier = Modifier,
 ) {
     // Nothing that ticks is read in this root scope: with the controls hidden it used to recompose
@@ -306,6 +301,17 @@ fun PlayerHud(
     var engineMsg by remember { mutableStateOf<String?>(null) }
     var engineFlash by remember { mutableIntStateOf(0) }
     LaunchedEffect(engineFlash) { if (engineFlash > 0) { delay(1800); engineMsg = null } }
+    // A channel juddering on ExoPlayer: say once that the other engine may play it smoothly. Longer than
+    // the switch confirmation — this one has to be read.
+    val smoothnessHint by player.smoothnessHint.collectAsStateWithLifecycle()
+    val smoothnessHintText = stringResource(R.string.player_smoothness_hint)
+    LaunchedEffect(smoothnessHint) {
+        if (smoothnessHint) {
+            engineMsg = smoothnessHintText
+            delay(6_000)
+            if (engineMsg == smoothnessHintText) engineMsg = null
+        }
+    }
     // Wrap the engine toggles so a click also surfaces the toast naming the engine we're switching TO.
     val toggleCompat: (() -> Unit)? = onToggleCompatMode?.let { cb -> {
         engineMsg = if (compatMode == true) switchedToExo else switchedToMpv; engineFlash++; cb()
@@ -451,6 +457,7 @@ fun PlayerHud(
     val remoteShortcuts = LocalRemoteShortcuts.current
     var shortcutKeyCode by remember { mutableIntStateOf(android.view.KeyEvent.KEYCODE_UNKNOWN) }
     var shortcutPressedAt by remember { mutableStateOf(0L) }
+    val okPress = remember { PlayerOkPressTracker() }
     val dispatchPlayerShortcut: (RemoteShortcutAction) -> Unit = { action ->
         when (action) {
             RemoteShortcutAction.OPEN_SUBTITLE_CONTROLS -> { controlsVisible = true; dialog = HudDialog.SUBS }
@@ -507,7 +514,7 @@ fun PlayerHud(
             // cannot temporarily claim it. KeyUp is swallowed too, keeping the complete press inside the HUD.
             if (canZap && (e.key == Key.ChannelUp || e.key == Key.ChannelDown)) {
                 if (e.type == KeyEventType.KeyDown) {
-                    zap(if (e.key == Key.ChannelUp) 1 else -1)
+                    zap(zapDirection(up = e.key == Key.ChannelUp, remoteOptions))
                 }
                 return@onPreviewKeyEvent true
             }
@@ -546,6 +553,19 @@ fun PlayerHud(
                     }
                 }
             }
+            // Player buttons: OK with the controls hidden. No plan (the default) leaves OK to the code below.
+            if (isPlayerOkKey(e.key) && e.type != KeyEventType.Unknown) {
+                val okPlan = if (controlsVisible || showNextCard || inert || dialog != HudDialog.NONE || digitsActive || onToastOk != null) null
+                    else playerOkPlan(remoteOptions, PlayerOkTargets(channelList = onOpenChannelList != null, guide = isLive, programmeInfo = isLive))
+                val ok = okPress.onKey(e.type == KeyEventType.KeyDown, e.nativeKeyEvent.repeatCount, e.nativeKeyEvent.eventTime, okPlan)
+                if (ok is PlayerOkResult.Fire) when (ok.outcome) {
+                    PlayerOkOutcome.SHOW_CONTROLS -> controlsVisible = true
+                    PlayerOkOutcome.CHANNEL_LIST -> onOpenChannelList?.invoke()
+                    PlayerOkOutcome.GUIDE -> dispatchPlayerShortcut(RemoteShortcutAction.OPEN_GUIDE)
+                    PlayerOkOutcome.PROGRAMME_INFO -> channelFlash++
+                }
+                if (ok != PlayerOkResult.Pass) return@onPreviewKeyEvent true
+            }
             // ---- Existing key handling (unchanged, but skip for digit KeyUp already consumed above) ----
             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when {
@@ -555,14 +575,14 @@ fun PlayerHud(
                 // this is the only way to change channels on remotes without CH keys (e.g. Fire TV).
                 //
                 // Direction is channel-number order, not list-position order: "up" (CH+, D-pad Up) is
-                // always the NEXT channel — further down an ascending list, delta +1 — matching the
-                // de facto TV convention (Live Channels, YouTube TV, Pluto TV). All of these keys move
-                // the same way; there is deliberately no split between CH+ and D-pad Up. Wrapping is
+                // the NEXT channel — further down an ascending list, delta +1 — matching the
+                // de facto TV convention (Live Channels, YouTube TV, Pluto TV). CH and D-pad keys move together:
+                // Swap channel up/down flips both (see zapDirection), never the media keys. Wrapping is
                 // intended: CH-/Down from the first channel lands on the last, and vice versa.
                 canZap && e.key == Key.MediaNext -> { zap(1); true }
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(1); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(-1); true }
+                canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(zapDirection(up = true, remoteOptions)); true }
+                canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(zapDirection(up = false, remoteOptions)); true }
                 // Left/Right with the controls hidden: reveal them on the timeline and take the first
                 // step, so the jump is seen and holding the key goes on scrubbing the bar itself. Physical
                 // keys, like the bars: left is back in time in every locale. A film always does this; a
@@ -623,8 +643,9 @@ fun PlayerHud(
             if (isLive && (tuned != null || (showFlash && !controlsVisible))) {
                 // A fresh tune drives the card from the lookup result, not player metadata: the Stalker and
                 // mpv paths publish their metadata after an async resolve, which would show the old channel.
-                if (tuned != null) {
-                    ChannelOsdCard(title = tuned.name, subtitle = tuned.number?.let { stringResource(R.string.player_channel_number, it) }, logoUrl = tuned.logoUrl, guide = zapGuide)
+                val named = tuned ?: zapChannel
+                if (named != null) {
+                    ChannelOsdCard(title = named.name, subtitle = named.number?.let { stringResource(R.string.player_channel_number, it) }, logoUrl = named.logoUrl, guide = zapGuide)
                 } else {
                     ChannelCard(player, guide = zapGuide)
                 }
@@ -700,6 +721,7 @@ fun PlayerHud(
                     onOpenJumpBack = if (onJumpBack != null) { { dialog = HudDialog.JUMP_BACK } } else null,
                     onPreviousChannel = onPreviousChannel,
                     onOtherChannels = onOtherChannels, otherChannelsCount = otherChannelsCount,
+                    hasSources = sources != null,
                     compatMode = compatMode, onToggleCompatMode = toggleCompat,
                     vodOnExo = vodOnExo, onToggleVodEngine = toggleVod,
                     onInfo = { showInfo = !showInfo }, infoOn = showInfo,
@@ -930,6 +952,9 @@ fun PlayerHud(
             QualityDialog(heights, pick, onSelect = { player.selectVideoQuality(it); dialog = HudDialog.NONE }, onDismiss = { dialog = HudDialog.NONE })
         }
         HudDialog.VOLUME -> VolumeDialog(player, onDismiss = { dialog = HudDialog.NONE })
+        HudDialog.SOURCES -> sources?.let { s ->
+            SourcesDialog(s, onDismiss = { dialog = HudDialog.NONE })
+        } ?: run { dialog = HudDialog.NONE }
         HudDialog.SLEEP_TIMER -> SleepTimerDialog(
             timer = org.koin.compose.koinInject(),
             programmeEndMs = remember { sleepProgrammeEndMs?.invoke() },
@@ -940,13 +965,20 @@ fun PlayerHud(
         HudDialog.JUMP_BACK -> {
             val options = remember { jumpBackOptions?.invoke().orEmpty() }
             val windowSec = remember { jumpBackWindowSec?.invoke() ?: 0 }
-            if (options.isEmpty()) {
-                dialog = HudDialog.NONE
-            } else {
-                tv.own.owntv.features.live.CatchupJumpDialog(
+            // The list waits for the guide's answer (bounded in core), so the first focus lands on the
+            // "Start of …" row when there is one instead of moving there after the user has started to scroll.
+            val programmeStart by produceState<Lookup?>(null) {
+                value = Lookup(jumpBackProgrammeStart?.invoke())
+            }
+            val start = programmeStart?.start
+            when {
+                programmeStart == null -> Unit // still waiting for the guide
+                options.isEmpty() && start == null -> dialog = HudDialog.NONE
+                else -> tv.own.owntv.features.live.CatchupJumpDialog(
                     title = stringResource(R.string.content_catchup_jump),
                     offsetsSec = options,
                     windowSec = windowSec,
+                    programmeStart = start,
                     onPick = { dialog = HudDialog.NONE; onJumpBack?.invoke(it) },
                     onDismiss = { dialog = HudDialog.NONE },
                 )

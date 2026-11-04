@@ -48,6 +48,9 @@ class SettingsSearchRowsTest {
             notRows = setOf("recording_settings_group", "settings_record_watching_warning_title"),
         )
 
+    @Test
+    fun `player button rows are searchable`() = check("PlayerButtonsSettingsScreen.kt", "PLAYER_BUTTONS_SEARCH_ROWS")
+
     // A Stage full page's own title is the screen itself, which has a search entry of its own.
     @Test
     fun `proxy rows are searchable`() = check("NetworkSettingsScreen.kt", "PROXY_SEARCH_ROWS", notRows = setOf("common_proxy"))

@@ -15,13 +15,20 @@ import tv.own.owntv.core.settings.SettingsRepository
 
 /**
  * Profile creation/switching and the launch gate's data. Shared by the "Who's watching?"
- * gate and the Settings → Profiles management screen.
+ * gate and the Settings › Profile page.
  */
 class ProfilesViewModel(
     private val profileDao: ProfileDao,
     private val settings: SettingsRepository,
     private val manager: ProfileManager,
 ) : ViewModel() {
+
+    /** Whether [profileId] may download (Settings › Profile › the profile › Allow downloads). */
+    fun downloadsAllowed(profileId: Long): kotlinx.coroutines.flow.Flow<Boolean> = settings.downloadsAllowed(profileId)
+
+    fun setDownloadsAllowed(profileId: Long, allowed: Boolean) {
+        viewModelScope.launch { settings.setDownloadsAllowed(profileId, allowed) }
+    }
 
     // Eagerly on purpose: MainActivity's splash gate blocks the first frame on this list, so the
     // query has to start when the ViewModel is built, not on first collection inside composition.

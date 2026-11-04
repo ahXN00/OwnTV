@@ -57,7 +57,7 @@ import tv.own.owntv.ui.theme.stageAccent
 import tv.own.owntv.ui.theme.stageText
 
 /**
- * Backup & Restore (Settings → Backup), with selective sections: the user picks what to
+ * Backup & Restore (More → Backup & Restore), with selective sections: the user picks what to
  * back up (profiles & sources / customizations / favorites / history / resume) and, on restore,
  * which of the file's sections to apply. Uses an in-app file picker (no SAF).
  */

@@ -83,6 +83,7 @@ fun SyncStatusPill(modifier: Modifier = Modifier) {
             sportsFailed = false
         }
     }
+    val named = rememberPillNamedTitles(downloadTracker, recordingTracker)
 
 
     val completedQueue = remember { mutableStateListOf<SyncActivityTracker.CompletedSync>() }
@@ -138,8 +139,8 @@ fun SyncStatusPill(modifier: Modifier = Modifier) {
         // collapsed into "+N more" can be watched again in a minute, a programme that is being
         // recorded cannot. Then downloads, which are deliberately started and time-limited. Then the
         // background syncs, which are the ones that can afford to be hidden.
-        activeRecordings.values.sortedBy { it.id }.forEach { add(SyncLine.Recording(it)) }
-        activeDownload?.let { add(SyncLine.Download(it)) }
+        activeRecordings.values.sortedBy { it.id }.forEach { add(SyncLine.Recording(it, it.id in named.recordings)) }
+        activeDownload?.let { add(SyncLine.Download(it, it.id in named.downloads)) }
         activeCatalog.values.sortedBy { it.sourceId }.forEach { add(SyncLine.Catalog(it)) }
         activeTrending.values.sortedBy { it.sourceId }.forEach {
             add(SyncLine.Trending(it))
@@ -232,8 +233,9 @@ fun SyncStatusPill(modifier: Modifier = Modifier) {
  */
 private sealed interface SyncLine {
     data class Catalog(val sync: SyncActivityTracker.ActiveSync) : SyncLine
-    data class Download(val download: DownloadActivityTracker.ActiveDownload) : SyncLine
-    data class Recording(val recording: tv.own.owntv.core.recording.RecordingProgress) : SyncLine
+    /** [named]: the title may show; false while its category is locked and sealed. */
+    data class Download(val download: DownloadActivityTracker.ActiveDownload, val named: Boolean) : SyncLine
+    data class Recording(val recording: tv.own.owntv.core.recording.RecordingProgress, val named: Boolean) : SyncLine
     data class Trending(val build: TrendingActivityTracker.ActiveBuild) : SyncLine
     data class TrendingDetail(val build: TrendingActivityTracker.ActiveBuild) : SyncLine
     data class Epg(val sync: EpgActivityTracker.ActiveEpgSync) : SyncLine
@@ -274,14 +276,18 @@ private fun SyncLine.text(): String = when (this) {
     // With the size as it grows: a recording has no total to count towards, so the bytes already
     // written are the only sign it is moving rather than stuck.
     is SyncLine.Recording -> listOfNotNull(
-        stringResource(R.string.recording_pill_line, recording.title),
+        if (named) stringResource(R.string.recording_pill_line, recording.title) else stringResource(R.string.recording_pill_line_locked),
         recording.bytes.takeIf { it > 0 }
             ?.let { stringResource(R.string.common_size_mb, recordingSizeMb(it)) },
     ).joinToString(stringResource(R.string.content_epg_bits_separator))
     is SyncLine.Download -> {
         val percent = download.progress?.let { (it * 100).toInt() }
-        if (percent == null) stringResource(R.string.sync_status_download, download.title)
-        else stringResource(R.string.sync_status_download_with_progress, download.title, percent)
+        when {
+            percent == null -> if (named) stringResource(R.string.sync_status_download, download.title)
+                else stringResource(R.string.sync_status_download_locked)
+            named -> stringResource(R.string.sync_status_download_with_progress, download.title, percent)
+            else -> stringResource(R.string.sync_status_download_locked_with_progress, percent)
+        }
     }
     is SyncLine.Trending -> when (build.stage) {
         TrendingActivityTracker.Stage.STARTING -> stringResource(R.string.sync_status_trending_starting, build.sourceName)

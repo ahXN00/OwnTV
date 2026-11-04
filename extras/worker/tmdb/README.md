@@ -43,8 +43,8 @@ the public deployment carries (see [`../README.md`](../README.md)).
 
    If you see a wall of movie data (JSON), it works. If you see an error, re-check step 5
    (the secret must be named `TMDB_KEY`).
-8. In OwnTV on your TV: **Settings → Metadata → Advanced → Custom metadata server URL** →
-   enter your worker address (without any `/3/...` part) → **Test lookup** should succeed.
+8. In OwnTV on your TV: **Settings → Content & metadata → Metadata (TMDB) → Get advanced TMDB info** →
+   enter your worker address as **Server** (without any `/3/...` part) → **Test lookup** should succeed.
 
 That's it. Your TMDB key never leaves your Cloudflare account, and repeated lookups are served
 from Cloudflare's cache without hitting TMDB at all.

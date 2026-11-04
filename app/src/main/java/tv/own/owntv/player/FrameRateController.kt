@@ -124,13 +124,15 @@ object FrameRateController {
             // The pending reset is cancelled only once a mode is actually going to be requested. Cancelling
             // up front killed the restore-to-default even when nothing matched this item's frame rate — so
             // leaving a 24p film for something the panel has no mode for kept the display at 24Hz.
-            val choice = pickMode(activity, fps, videoSize?.takeIf { matchResolution }) ?: return
-            val target = choice.mode
+            val choice = pickMode(activity, fps, videoSize?.takeIf { matchResolution })
+            // No match keeps nothing from the last item: a 50p channel after a 30p one on a 60/30 Hz
+            // panel would otherwise stay at 30 Hz and lose every other frame.
+            if (choice != null) cancelPendingReset()
+            val targetId = nextModeId(choice?.mode?.modeId, activity.window.attributes.preferredDisplayModeId) ?: return
             cancelPendingReset()
-            if (target.modeId == activity.window.attributes.preferredDisplayModeId) return
             val waitMs = MODE_CHANGE_COOLDOWN_MS - (android.os.SystemClock.uptimeMillis() - lastChangeAtMs)
             if (lastChangeAtMs != 0L && waitMs > 0) {
-                Log.i(TAG, "AFR: ${fps}fps -> mode ${target.modeId} deferred ${waitMs}ms (cooldown)")
+                Log.i(TAG, "AFR: ${fps}fps -> mode $targetId deferred ${waitMs}ms (cooldown)")
                 // Re-resolve on the way out rather than capturing `target`: by then the fps may have moved
                 // again, and the newest reading is the one worth acting on.
                 val task = Runnable { pendingApply = null; apply(activity, fps, videoSize, matchResolution) }
@@ -138,11 +140,26 @@ object FrameRateController {
                 handler.postDelayed(task, waitMs)
                 return
             }
-            activity.window.attributes = activity.window.attributes.apply { preferredDisplayModeId = target.modeId }
+            activity.window.attributes = activity.window.attributes.apply { preferredDisplayModeId = targetId }
             lastChangeAtMs = android.os.SystemClock.uptimeMillis()
-            Log.i(TAG, "AFR: video ${fps}fps -> display mode ${target.modeId} (${target.physicalWidth}x${target.physicalHeight} ${target.refreshRate}Hz, seamless=${choice.seamless})")
-            onModeSwitched?.invoke(choice.seamless)
+            if (choice == null) {
+                Log.i(TAG, "AFR: video ${fps}fps matches no mode -> display default")
+            } else {
+                val target = choice.mode
+                Log.i(TAG, "AFR: video ${fps}fps -> display mode ${target.modeId} (${target.physicalWidth}x${target.physicalHeight} ${target.refreshRate}Hz, seamless=${choice.seamless})")
+            }
+            onModeSwitched?.invoke(choice?.seamless ?: false)
         }.onFailure { Log.w(TAG, "AFR apply failed: ${it.message}") }
+    }
+
+    /**
+     * The mode id to request next, or null to leave the window alone. [chosenId] is the matching mode
+     * (null when none matches), [requestedId] what the window asks for now (0 = system default).
+     * Pure, so it is unit-tested.
+     */
+    internal fun nextModeId(chosenId: Int?, requestedId: Int): Int? {
+        val target = chosenId ?: 0
+        return target.takeIf { it != requestedId }
     }
 
     /**
@@ -232,12 +249,15 @@ object FrameRateController {
     ): Chosen? {
         fun isSeamless(mode: ModeSpec) = mode.width == current.width && mode.height == current.height &&
             seamlessRates.any { abs(it - mode.hz) <= TOLERANCE_HZ }
+        // Staying on the current mode needs no switch at all, but Android lists only the OTHER rates as
+        // alternatives — so under seamless-only a 30p channel after a 30p one "matched nothing".
+        fun allowed(mode: ModeSpec) = isSeamless(mode) || (seamlessOnly && mode.id == current.id)
         fun bestAt(width: Int, height: Int): ModeSpec? = modes
             .filter { it.width == width && it.height == height }
-            .filter { !seamlessOnly || isSeamless(it) }
+            .filter { !seamlessOnly || allowed(it) }
             .mapNotNull { mode -> multipleOf(mode.hz, fps)?.let { mode to it } }
             .minByOrNull { (mode, mult) ->
-                (if (isSeamless(mode)) 0f else 1_000_000f) + mult * 1000f + abs(mode.hz - mult * fps)
+                (if (allowed(mode)) 0f else 1_000_000f) + mult * 1000f + abs(mode.hz - mult * fps)
             }
             ?.first
         val fitted = video?.takeIf { !seamlessOnly && it.first > 0 && it.second > 0 }?.let { (w, h) ->

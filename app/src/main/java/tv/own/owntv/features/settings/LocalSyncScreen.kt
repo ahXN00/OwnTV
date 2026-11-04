@@ -81,7 +81,7 @@ import tv.own.owntv.ui.theme.stageAccent
 import tv.own.owntv.ui.theme.stageText
 
 /**
- * Settings → Local sync. The television's half of swapping data with the phone over the home Wi-Fi.
+ * More → Local sync. The television's half of swapping data with the phone over the home Wi-Fi.
  *
  * It starts listening as soon as it opens, because that is the role a television usually plays: the
  * PIN and the QR code go on the screen and the phone's camera reads them. The other direction is

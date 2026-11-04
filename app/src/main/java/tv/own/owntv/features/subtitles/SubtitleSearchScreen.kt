@@ -123,7 +123,7 @@ fun SubtitleSearchScreen(
             }
     
 
-    // Sign-in is handled in Settings → Video player → Subtitles → OpenSubtitles only.
+    // Sign-in is handled in Settings › Content & metadata › OpenSubtitles only.
 }
 
 /** Logo + credit line, mirroring the TMDB attribution in Metadata settings. */

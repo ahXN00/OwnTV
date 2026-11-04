@@ -9,7 +9,7 @@ import tv.own.owntv.core.util.classifySyncFailure
 /**
  * Shared semi-auto EPG sync used by both onboarding and Settings → Playlists. Registers the playlist's own
  * guide feed as an [EpgSource][tv.own.owntv.core.epg.EpgSource] in the [store] (re-using an existing entry
- * with the same URL) so it appears in Settings → EPG, then downloads it keyed by that source id while
+ * with the same URL) so it appears in Settings → EPG Sources, then downloads it keyed by that source id while
  * reporting a live programme count through [setState].
  */
 suspend fun runSemiAutoEpgSync(
@@ -27,7 +27,7 @@ suspend fun runSemiAutoEpgSync(
     var anySucceeded = false
     var failure: Exception? = null
     for (url in urls) {
-        // Show up in Settings → EPG like any other feed (so the user can re-sync / delete it there).
+        // Show up in Settings → EPG Sources like any other feed (so the user can re-sync / delete it there).
         // Two feeds of one playlist share its name and are told apart by the URL shown beneath it.
         val epgSource = store.getAll().firstOrNull { it.url == url } ?: store.add(source.name, url, source.userAgent)
         val now = System.currentTimeMillis()
@@ -47,7 +47,7 @@ suspend fun runSemiAutoEpgSync(
         }
     }
     // Only report failure when nothing came through at all; one dead feed beside a working one is
-    // already visible as that feed's error line in Settings → EPG.
+    // already visible as that feed's error line in Settings → EPG Sources.
     val e = failure
     setState(if (e != null && !anySucceeded) EpgSyncUi.Failed(classifySyncFailure(e.message, online = true)) else EpgSyncUi.Done)
 }

@@ -153,7 +153,7 @@ fun cinematicQualityBadges(qualityRank: Int, advertisedCapabilities: String?): L
 
 /** "Movies" 46/800, then the crumb "‹ **Disney+ Kids Movies** · 136 titles" (no ‹ when the column is on screen). */
 @Composable
-internal fun VodHeader(section: String, category: String, count: String, showChevron: Boolean, modifier: Modifier = Modifier) {
+internal fun VodHeader(section: String, category: String, count: String?, showChevron: Boolean, modifier: Modifier = Modifier) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(22.mpx), verticalAlignment = Alignment.Bottom) {
         Text(section, style = stageText(46, 800, (-1).mpxSp), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(
@@ -166,7 +166,7 @@ internal fun VodHeader(section: String, category: String, count: String, showChe
                 category, style = stageText(20, 700), color = stageAccent.accent,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
             )
-            Text("· $count", style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (count != null) Text("· $count", style = stageText(20, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -513,8 +513,8 @@ internal const val VodGroupDetails = 3
 
 /**
  * ☰ Title options, 540 wide at the right: the poster 52×78, the title and "2026 ·
- * Disney+ Kids Movies", then the actions under their group labels, in the order the user set in
- * Settings › Long-press menus. Keys in [disabled] are drawn at 45% and do nothing ("Remove from history"
+ * Disney+ Kids Movies", then the actions in the order the user set in Settings › Long-press menus —
+ * under their group labels while that is the shipped order. Keys in [disabled] are drawn at 45% and do nothing ("Remove from history"
  * for a title never watched); [values] are the dim right-hand values. Focus starts on the favourite.
  */
 @Composable
@@ -541,7 +541,8 @@ internal fun VodOptionsMenu(
         R.string.content_menu_group_watch, R.string.content_menu_group_library,
         R.string.content_menu_group_organise, R.string.content_menu_group_details,
     ).map { stringResource(it).uppercase(locale) }
-    val ordered = arranged(menu, actions)
+    val arrangedMenu = arranged(menu, actions)
+    val ordered = arrangedMenu.actions
     val focusKey = ordered.firstOrNull { it.key == firstFocusKey && it.key !in disabled }?.key ?: ordered.firstOrNull { it.key !in disabled }?.key
     GuideMenuHost(x = x, top = top, width = 540.mpx, onDismiss = onDismiss) {
         StageMenuHeader(
@@ -554,7 +555,7 @@ internal fun VodOptionsMenu(
         )
         var previousGroup: Int? = null
         ordered.forEach { action ->
-            if (action.group != previousGroup) StageGroupLabel(labels[action.group])
+            if (arrangedMenu.headings && action.group != previousGroup) StageGroupLabel(labels[action.group])
             previousGroup = action.group
             StageMenuItem(
                 text = action.label, icon = action.icon, value = values[action.key],
@@ -590,9 +591,9 @@ internal fun vodCategoryEntries(
                 LiveKey.Favorites -> OwnTVIcon.FAVORITE
                 LiveKey.History -> OwnTVIcon.HISTORY
                 LiveKey.All -> if (series) OwnTVIcon.SERIES else OwnTVIcon.MOVIES
-                else -> null
+                else -> if (item.locked) OwnTVIcon.LOCK else null
             },
-            count = counts[item.key],
+            count = if (item.sealed) null else counts[item.key],
             mark = item.sourceId?.let(marks::get),
         )
     }

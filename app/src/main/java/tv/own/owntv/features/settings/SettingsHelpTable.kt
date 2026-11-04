@@ -4,7 +4,7 @@ import tv.own.owntv.R
 
 /*
  * The words of each Settings row on a Stage page, by row key: root rows by their own key
- * ("theme", "tab_SOURCES"), Video player rows by their Quick key ("vp_hw"), Recording rows by "rec_*".
+ * ("theme", "tab_SOURCES"), Video player rows by their Quick key ("vp_hw"), Recording rows by "rec_*", Player buttons rows by "pb_*".
  * A row's own title and description are used wherever a key is missing here; a long description
  * the row used to carry becomes its panel text when [SETTING_HELP] has nothing better.
  */
@@ -14,7 +14,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "quick_live_preview" to R.string.settings_line_quick_live_preview,
     "quick_preview_sound" to R.string.settings_line_preview_sound,
     "quick_channel_numbers" to R.string.settings_line_quick_channel_numbers,
-    "quick_hdr" to R.string.settings_line_hdr,
+    "quick_hdr" to R.string.settings_line_prefer_sdr,
     "quick_autoplay" to R.string.settings_line_quick_autoplay,
     "quick_check_update" to R.string.settings_line_when_app_opens,
     "epg_offset" to R.string.settings_line_epg_offset,
@@ -52,27 +52,29 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_vod_engine" to R.string.settings_line_vod_engine,
     "vp_vod_engine_sources" to R.string.settings_line_override_playlist,
     "vp_reset_pins" to R.string.settings_line_saved_choices,
-    "vp_forget_fixes" to R.string.settings_line_learned_fixes,
     "vp_external" to R.string.settings_line_external,
     "vp_vod_buffer" to R.string.settings_line_vod_buffer,
     "vp_vod_timeout" to R.string.settings_line_vod_timeout,
     "vp_vod_reconnects" to R.string.settings_line_vod_reconnects,
     "vp_hw" to R.string.settings_line_hw,
-    "vp_hdr" to R.string.settings_line_hdr,
+    "vp_hdr" to R.string.settings_line_prefer_sdr,
     "vp_max_quality" to R.string.settings_line_max_quality,
     "vp_tunneled" to R.string.settings_line_tunneled,
     "vp_zoom" to R.string.settings_line_zoom,
     "vp_reset_zoom" to R.string.settings_line_saved_zoom,
     "vp_afr" to R.string.settings_vp_cat_frame_rate_summary,
+    "vp_afr_live" to R.string.settings_vp_cat_frame_rate_summary,
     "vp_afr_pause" to R.string.settings_line_films_only,
     "vp_afr_resolution" to R.string.settings_line_films_only,
     "vp_volume" to R.string.settings_line_volume,
     "vp_reset_volume" to R.string.settings_line_saved_volume,
     "vp_surround" to R.string.settings_line_surround,
     "vp_passthrough" to R.string.settings_line_passthrough,
+    "vp_ffmpeg_audio" to R.string.settings_line_ffmpeg_audio,
     "vp_night_mode" to R.string.settings_line_night_mode,
     "vp_volume_leveling" to R.string.settings_line_leveling,
     "vp_audio_sync" to R.string.settings_line_audio_sync,
+    "vp_output_audio_delay" to R.string.settings_line_output_audio_delay,
     "vp_reset_audio_delay" to R.string.settings_line_saved_audio_sync,
     "vp_audio_lang" to R.string.settings_line_audio_lang,
     "vp_sub_lang" to R.string.settings_line_sub_lang,
@@ -96,6 +98,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_multiview" to R.string.settings_vp_cat_multiview_summary_mobile,
     "vp_multiview_tiles" to R.string.settings_line_tiles,
     "vp_mini" to R.string.settings_line_mini,
+    "vp_pip" to R.string.settings_line_pip,
     "vp_measured_stats" to R.string.settings_line_measured_stats,
     "vp_logging" to R.string.settings_line_logging,
     "rec_reserve" to R.string.settings_line_rec_reserve,
@@ -110,7 +113,6 @@ internal val SETTING_TITLE: Map<String, Int> = mapOf(
     "tab_WEATHER" to R.string.settings_title_date_time_weather,
     "vp_reset_live_pins" to R.string.settings_title_saved_live_choices,
     "vp_reset_pins" to R.string.settings_title_saved_choices,
-    "vp_forget_fixes" to R.string.settings_title_learned_fixes,
     "vp_tunneled" to R.string.settings_title_tunneled,
     "vp_reset_zoom" to R.string.settings_title_saved_zoom,
     "vp_reset_volume" to R.string.settings_title_saved_volume,
@@ -174,6 +176,11 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "vp_seek_step" to R.string.settings_help_seek_step,
     "vp_resume" to R.string.settings_help_resume,
     "vp_mini" to R.string.settings_help_mini,
+    "pb_hold_ok" to R.string.settings_help_player_hold_ok,
+    "pb_short_ok" to R.string.settings_help_player_short_ok,
+    "pb_swap_ch" to R.string.settings_help_player_swap_channel_keys,
+    "pb_number_keys" to R.string.settings_help_player_number_keys_tune,
+    "vp_pip" to R.string.settings_help_pip,
 )
 
 /** For a switch row, whether On is the recommended value (the panel tags it). Absent = no tag. */
