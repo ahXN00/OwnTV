@@ -83,6 +83,8 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     // Within "Add source": null = the Remote|Manual chooser, else the chosen path.
     var addMode by remember { mutableStateOf<AddMode?>(null) }
     var editingSource by remember { mutableStateOf<SourceEntity?>(null) }
+    // Within "Edit source": the Remote page that edits it from a browser on another device.
+    var editRemote by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<SourceEntity?>(null) }
     var resyncChoice by remember { mutableStateOf<SourceEntity?>(null) }
     var nameCleanup by remember { mutableStateOf<SourceEntity?>(null) }
@@ -146,13 +148,28 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     BackHandler {
         when {
             showAdd -> { showAdd = false; addMode = null; vm.stopRemoteListener(); vm.cancelImport() }
-            editingSource != null -> editingSource = null
+            editingSource != null && editRemote -> { vm.stopRemoteListener(); editRemote = false }
+            editingSource != null -> { editingSource = null; vm.consumeRemotePayload() }
             else -> onBack()
         }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (editingSource != null) {
+        if (editingSource != null && editRemote) {
+            val src = editingSource!!
+            RemoteSetupScreen(
+                state = vm.remoteState.collectAsStateWithLifecycle().value,
+                payloads = vm.remotePayloads,
+                onStartListener = { port -> vm.startRemoteEditListener(port, src) },
+                onStopListener = { vm.stopRemoteListener() },
+                // The submission pre-fills the edit form; Save there applies it.
+                onPayloadReceived = { editRemote = false },
+                onBack = { vm.stopRemoteListener(); editRemote = false },
+                modifier = Modifier,
+                parents = listOf(stringResource(R.string.settings_playlists), stringResource(R.string.setup_edit_source)),
+                note = stringResource(R.string.settings_remote_edit_note),
+            )
+        } else if (editingSource != null) {
             val src = editingSource!!
             AddSourceScreen(
                 initial = src,
@@ -180,7 +197,10 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     editingSource = null
                 },
-                onBack = { editingSource = null },
+                remotePayload = vm.remotePayload,
+                onRemotePayloadConsumed = { vm.consumeRemotePayload() },
+                onEditFromPhone = { editRemote = true },
+                onBack = { editingSource = null; vm.consumeRemotePayload() },
                 modifier = Modifier,
             )
         } else if (showAdd) {

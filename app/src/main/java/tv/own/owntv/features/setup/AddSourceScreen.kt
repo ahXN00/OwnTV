@@ -100,6 +100,9 @@ fun AddSourceScreen(
     initialAutoRefresh: PlaylistRefresh = PlaylistRefresh.OFF,
     initialIsDefault: Boolean = false,
     showDefaultToggle: Boolean = true,
+    // Editing only: opens the same playlist's page in a browser on another device. Its submission comes
+    // back on [remotePayload], already merged with what is stored, and fills this form.
+    onEditFromPhone: (() -> Unit)? = null,
     // Stalker portal. Null = the Stalker option is hidden (e.g. the setup wizard).
     onStartStalker: ((
         name: String,
@@ -331,7 +334,38 @@ fun AddSourceScreen(
     // current value to this new collector, so the payload posted before this screen mounted still lands.
     LaunchedEffect(remotePayload) {
         remotePayload?.collect { payload ->
-            if (payload == null || editing) return@collect
+            if (payload == null) return@collect
+            if (editing) {
+                // Only a browser edit of this playlist; a playlist cannot change its type.
+                if (onEditFromPhone == null || payload.type != initial.type) return@collect
+                name = payload.name
+                userAgent = payload.userAgent
+                when (payload.type) {
+                    SourceType.M3U -> {
+                        m3uUrl = payload.server
+                        epgUrl = payload.epgUrl
+                    }
+                    SourceType.STALKER -> {
+                        portalUrl = payload.portalUrl
+                        mac = payload.mac
+                        stalkerSerialNumber = payload.serialNumber
+                        stalkerDeviceId = payload.deviceId
+                        stalkerDeviceId2 = payload.deviceId2
+                        stalkerSignature = payload.signature
+                        username = payload.user
+                        password = payload.pass
+                    }
+                    else -> {
+                        server = payload.server
+                        username = payload.user
+                        password = payload.pass
+                        epgUrl = payload.epgUrl
+                    }
+                }
+                onRemotePayloadConsumed()
+                runCatching { kotlinx.coroutines.delay(150); startImportFocus.requestFocus() }
+                return@collect
+            }
             name = payload.name
             userAgent = payload.userAgent
             epgUrl = payload.epgUrl
@@ -489,6 +523,18 @@ fun AddSourceScreen(
                 if (editing) listOf(back to parent) else listOf("◀ ▶" to stringResource(R.string.settings_key_change), back to parent),
             ),
         )
+        if (editing && onEditFromPhone != null) {
+            val remoteTitle = stringResource(R.string.setup_edit_from_phone)
+            StageSettingRow(
+                icon = OwnTVIcon.PHONE,
+                title = remoteTitle,
+                desc = stringResource(R.string.settings_line_add_from_phone),
+                value = SettingValue.Opens(null),
+                onClick = onEditFromPhone,
+                modifier = toSubmit,
+                help = help(remoteTitle, stringResource(R.string.settings_help_edit_from_phone), openKeys),
+            )
+        }
         field(stringResource(R.string.setup_source_name_optional), name, { name = it }, placeholder = stringResource(R.string.setup_default_iptv))
 
         when (kind) {

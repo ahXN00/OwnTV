@@ -109,6 +109,8 @@ class SettingsViewModel(
     val remotePayload get() = companion.lastPayload
 
     fun startRemoteListener(port: Int) = companion.start(port)
+    /** The same server, serving [source]'s edit page; a submission lands on [remotePayload] already merged. */
+    fun startRemoteEditListener(port: Int, source: SourceEntity) = companion.startForSourceEdit(port, source)
     fun stopRemoteListener() = companion.stop()
     fun consumeRemotePayload() = companion.consumePayload()
 

@@ -664,6 +664,10 @@ fun OwnTVShell(
         sleepTimer.stopPlayback = { stopForSleep() }
         onDispose { sleepTimer.stopPlayback = null }
     }
+    DisposableEffect(shellVm) {
+        shellVm.leavePlayback = { stopForSleep() }
+        onDispose { shellVm.leavePlayback = null }
+    }
     // The kept selection is spent the moment a channel actually starts playing full screen: that
     // press is the "and now open it" the plan describes, and nothing else in the app claims it.
     LaunchedEffect(playerMode, previewChannel?.id, multiviewSelection.size) {
