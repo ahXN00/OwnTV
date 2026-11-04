@@ -315,7 +315,9 @@ Back in the list clears it.
 Search covers Live, Movies and Series together (3.2), with voice search where the device has a speech
 recogniser. Live TV reopens on the category you last used, with focus on the last channel. **App
 startup** is per profile: Home, last channel, the last channel in the TV Guide or Live TV, Live
-Favorites, or one chosen channel.
+Favorites, or one chosen channel. **Auto start** (device-wide, off by default) opens OwnTV when the TV
+boots or wakes from sleep; it needs "Display over other apps", and a profile with a PIN is locked
+again on every wake.
 
 ---
 
@@ -443,7 +445,7 @@ their group.
 | **Sound & subtitles** | Default volume, Surround, Dolby/DTS passthrough, Night mode, Volume leveling, Audio sync (+ saved) · Preferred audio / subtitle language, Subtitle appearance |
 | **Live TV** | Channel numbers, Live preview, Preview audio, Pause and rewind live TV, Rewind length, Resume a saved channel, Left and right rewind · Live latency, Pre-buffer, Give up after (each + per playlist) |
 | **Watching & recording** | Seek step, Live rewind step, Resume playback, Auto-play next episode · Multiview, Max tiles, Mini-player, Picture-in-picture when leaving the app · Recording: keep one stream free, record what I'm watching, start early, keep going after the end |
-| **App** | Language, App icon, Accent-colored logo, App startup, Check for updates (+ on startup) · Proxy, DNS · Measured stream stats, Detailed playback logging |
+| **App** | Language, App icon, Accent-colored logo, App startup, Auto start on boot / on wake-up, Check for updates (+ on startup) · Proxy, DNS · Measured stream stats, Detailed playback logging |
 
 - **Appearance** — any accent colour (presets, hex, a saturation square and hue bar as separate focus
   stops, live re-tint, Cancel restores), a separate **focus highlight**, one font family for the app and
@@ -580,7 +582,9 @@ metered at a single choke point so no endpoint can bypass it. Detail cache keys 
 language, so switching language does not wipe the cache.
 
 A personal TMDB key, and OpenSubtitles credentials, can be handed over from another device by QR +
-PIN rather than typed with a remote. The same companion server can receive an uploaded `.m3u` file.
+PIN rather than typed with a remote. The same companion server can receive an uploaded `.m3u` file,
+and can edit one saved playlist from a browser — secrets are never sent to that page, an empty field
+keeps the stored value, and the TV's own Save applies it.
 
 ### 12.4 Storage
 

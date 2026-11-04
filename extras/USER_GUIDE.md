@@ -171,6 +171,11 @@ phone on the same Wi-Fi, fill the form in the browser there, or upload an `.m3u`
 computer, and press **Send to TV**. The details land in the TV's form and you press **Start Import**.
 *(Idea from community PR #66 by @zarga03.)*
 
+**Editing a saved playlist works the same way:** Playlists → a playlist → **Edit** → **Edit from
+another device**. The page shows only that playlist's details; passwords, MAC addresses and M3U
+playlist addresses are never sent to it — leave those fields empty to keep them. What you send fills
+the edit form on the TV, and nothing changes until you press **Save** there.
+
 ### 🧪 Test connection
 **Where:** inside the Add/Edit form, and on each saved playlist row
 Says whether the account is active, when it expires, whether it's a trial, and how many connections
@@ -726,9 +731,12 @@ off by default. *On boot* opens OwnTV once the TV has started up; *on wake-up* o
 TV comes out of sleep, which is what most TVs do when you press the power button. A cold start lands
 on the App startup choice above; an OwnTV that was still running comes back where you left it, but a
 profile with a PIN asks for it again.
-- Android 10 and newer let an app open by itself only when it may **display over other apps**. OwnTV
-  asks for that when you turn an option on, and until it is allowed the row says so. If your TV has
-  no such screen, the option cannot work there.
+- Android 10 and newer let an app open by itself only when it may **display over other apps**.
+  Turning an option on opens that permission's screen (or the list of apps, where the TV has no page
+  for one app); until it is allowed the row says so. If your TV has no such screen, the option cannot
+  work there. Some TVs also have an auto-start list of their own that has to allow OwnTV for *on boot*.
+- With **App startup** on a channel, *on wake-up* starts that stream every time — also when you woke
+  the TV for another app.
 - *On wake-up* keeps a small background listener, with a silent notification, while it is on. It is
   offered on TVs only. If Android ends the listener, it comes back with the next boot, app start or
   visit to Settings.
