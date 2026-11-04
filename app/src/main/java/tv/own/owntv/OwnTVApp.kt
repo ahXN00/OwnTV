@@ -92,9 +92,14 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
     override fun onCreate() {
         Perf.begin() // zero-point for the OwnTVPerf startup timeline (adb logcat -s OwnTVPerf)
         super.onCreate()
+        // The six icon colours are MainActivity + a suffix (see MainActivityColours.kt); core switches them.
+        // Before the early returns: auto start opens the app from its bare process through this name.
+        tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         // "Restart now" after an icon change runs a few milliseconds in a process of its own; nothing
         // below may start there (core's AppRestartActivity).
         if (tv.own.owntv.core.brand.AppIconSwitcher.isRestartProcess(this)) return
+        // The auto-start wake listener's process stays this bare (see AutoStart.isAutoStartProcess).
+        if (tv.own.owntv.features.autostart.AutoStart.isAutoStartProcess(this)) return
         // Core has its own BuildConfig, which carries none of this: a library gets no version at all,
         // and the edge key and the maintainer switch are the app's build inputs. Hand them over before
         // the first reader — CrashRecorder, two lines down (see CoreBuildInfo).
@@ -121,8 +126,6 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // Four of the five subtitle faces are this app's own res/font files, so the engine asks us for
         // the id rather than owning the assets (see SubtitleFontAssets).
         tv.own.owntv.player.SubtitleFontAssets.resourceOf = { it.subtitleFontResource }
-        // The six icon colours are MainActivity + a suffix (see MainActivityColours.kt); core switches them.
-        tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.ERROR else Level.NONE)
             androidContext(this@OwnTVApp)
@@ -132,6 +135,9 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // A chosen icon colour ("Later", the first-run pick, a restore) reaches the launcher when the app
         // is next in the background, never while it is on screen.
         tv.own.owntv.core.brand.AppIconSwitcher.start(this, GlobalContext.get().get())
+        // Auto start on wake-up: a force stop ends the wake listener, so the next app start brings it back.
+        tv.own.owntv.features.autostart.AutoStart.onAppStarted(this)
+        registerActivityLifecycleCallbacks(tv.own.owntv.features.autostart.AutoStartProfileGate())
         // Diagnostics switch and the one-shot settings migrations — core's, shared with the phone, which
         // used to run none of them.
         tv.own.owntv.player.PlaybackStartup.start(

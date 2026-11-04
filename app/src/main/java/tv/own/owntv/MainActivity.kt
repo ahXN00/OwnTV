@@ -93,8 +93,6 @@ open class MainActivity : ComponentActivity() {
     private var startupSettled = false
 
     private val player: tv.own.owntv.player.OwnTVPlayer by inject()
-    private val previewEngine: tv.own.owntv.player.LivePreviewEngine by inject()
-    private val heroPreviewEngine: tv.own.owntv.player.HeroPreviewEngine by inject()
     private val engines: tv.own.owntv.player.PlaybackEngines by inject()
     private val handOff: tv.own.owntv.features.pip.AppHandOff by inject()
     // Activity-scoped: the same instance Compose retrieves via koinViewModel() inside setContent.
@@ -475,7 +473,7 @@ open class MainActivity : ComponentActivity() {
                                 onStartupSettled = { startupSettled = true },
                                 onSwitchProfile = {
                                     // Stop playback and return to the "Who's watching?" gate — no app restart.
-                                    player.onAppBackgrounded(); player.discardBackgroundRestore(); previewEngine.stop(); previewEngine.discardBackgroundRestore(); heroPreviewEngine.stop()
+                                    tv.own.owntv.features.profiles.stopPlaybackForProfileGate(engines)
                                     // Force the gate open even with a single unpinned profile (cold-start gate would
                                     // skip it). requestSwitchProfile() clears the active profile
                                     // authentication and raises the request.
