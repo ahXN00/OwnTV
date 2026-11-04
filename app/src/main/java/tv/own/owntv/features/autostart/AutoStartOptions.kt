@@ -11,7 +11,9 @@ import androidx.core.content.edit
 internal data class AutoStartOptions(val onBoot: Boolean = false, val onWake: Boolean = false)
 
 /**
- * Where [AutoStartOptions] are kept. SharedPreferences rather than DataStore: [AutoStartReceiver] reads
+ * Where [AutoStartOptions] are kept — in the app, not in core's settings storage, and deliberately so:
+ * both are about this television, not the viewer, so they belong in no profile and in no backup that
+ * may be restored onto another box. SharedPreferences rather than DataStore: [AutoStartReceiver] reads
  * them synchronously in the small `:autostart` process, which starts nothing else of the app.
  * That process only reads them right after it starts (a boot or an update always starts it afresh), so
  * the copy SharedPreferences caches per process is never a stale one.

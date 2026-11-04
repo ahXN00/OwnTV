@@ -92,6 +92,9 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
     override fun onCreate() {
         Perf.begin() // zero-point for the OwnTVPerf startup timeline (adb logcat -s OwnTVPerf)
         super.onCreate()
+        // The six icon colours are MainActivity + a suffix (see MainActivityColours.kt); core switches them.
+        // Before the early returns: auto start opens the app from its bare process through this name.
+        tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         // "Restart now" after an icon change runs a few milliseconds in a process of its own; nothing
         // below may start there (core's AppRestartActivity).
         if (tv.own.owntv.core.brand.AppIconSwitcher.isRestartProcess(this)) return
@@ -123,8 +126,6 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // Four of the five subtitle faces are this app's own res/font files, so the engine asks us for
         // the id rather than owning the assets (see SubtitleFontAssets).
         tv.own.owntv.player.SubtitleFontAssets.resourceOf = { it.subtitleFontResource }
-        // The six icon colours are MainActivity + a suffix (see MainActivityColours.kt); core switches them.
-        tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.ERROR else Level.NONE)
             androidContext(this@OwnTVApp)

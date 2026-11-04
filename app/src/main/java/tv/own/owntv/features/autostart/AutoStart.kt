@@ -82,17 +82,16 @@ internal object AutoStart {
     /**
      * Opens OwnTV the way the launcher does, so the existing App startup choice (Home, last channel, a
      * specific channel) decides what shows on a cold start, and a running OwnTV comes back where it was,
-     * behind the profile PIN again ([AutoStartLaunchMark]).
+     * behind the profile PIN again ([AutoStartLaunchMark]). Through the launcher activity that is enabled
+     * now: with another icon colour chosen, `MainActivity` itself is disabled and opens nothing.
      */
     private fun launch(context: Context) {
-        val pm = context.packageManager
-        val intent = pm.getLeanbackLaunchIntentForPackage(context.packageName)
-            ?: pm.getLaunchIntentForPackage(context.packageName)
-            ?: return
+        val intent = Intent(Intent.ACTION_MAIN)
+            .addCategory(if (isTelevision(context)) Intent.CATEGORY_LEANBACK_LAUNCHER else Intent.CATEGORY_LAUNCHER)
+            .setComponent(tv.own.owntv.core.brand.AppIconSwitcher.launchComponent(context))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         AutoStartLaunchMark.set(context)
-        runCatching {
-            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED))
-        }.onFailure { AutoStartLaunchMark.clear(context) }
+        runCatching { context.startActivity(intent) }.onFailure { AutoStartLaunchMark.clear(context) }
     }
 
     /**

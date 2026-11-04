@@ -28,7 +28,7 @@ internal class AutoStartProfileGate : Application.ActivityLifecycleCallbacks {
             ?.profiles.orEmpty()
         val hasPin = profiles.any { it.id == authenticated && it.pinHash != null }
         if (!AutoStartPolicy.regateOnLaunch(launchMarkAge, hasPin)) return
-        stopPlaybackForProfileGate(activity.get(), activity.get(), activity.get())
+        stopPlaybackForProfileGate(activity.get())
         session.invalidateAuthentication()
     }
 
