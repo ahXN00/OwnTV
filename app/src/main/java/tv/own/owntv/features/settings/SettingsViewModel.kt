@@ -1037,6 +1037,13 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setRememberCategoryLive(enabled) }
     }
 
+    val guideFollowsLiveCategory: StateFlow<Boolean> =
+        settings.guideFollowsLiveCategory.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun setGuideFollowsLiveCategory(enabled: Boolean) {
+        viewModelScope.launch { settings.setGuideFollowsLiveCategory(enabled) }
+    }
+
     val liveBuiltIns: StateFlow<tv.own.owntv.core.live.LiveBuiltIns> =
         settings.liveBuiltIns.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), tv.own.owntv.core.live.LiveBuiltIns())
     fun setLiveShowAllRail(enabled: Boolean) {

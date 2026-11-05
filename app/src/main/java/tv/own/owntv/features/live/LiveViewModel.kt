@@ -97,7 +97,6 @@ import tv.own.owntv.features.search.positionOf
 import tv.own.owntv.core.live.isChannelVisible
 import tv.own.owntv.core.live.liveCountFlow
 import tv.own.owntv.core.live.livePagingSource
-import tv.own.owntv.core.live.parseLiveKey
 import tv.own.owntv.core.live.serialize
 import tv.own.owntv.core.live.EpgNowNext
 import tv.own.owntv.core.live.LiveEpgReader
@@ -623,12 +622,19 @@ class LiveViewModel(
     private val custResolved: StateFlow<CustState?> = combine(customOnceRead, hiddenCategoryIds) { c, h -> c?.let { CustState(it, h) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val railItems: StateFlow<List<LiveRailItem>> = ctx
+    /**
+     * The rail with the context it was built for, so the category restore can tell a rail complete for
+     * this profile and these playlists from the one still on screen from before a switch. Built from that
+     * profile's own category edits, read here rather than through [custom]: that one starts empty and
+     * keeps the previous profile's edits for a moment after a switch, and a rail built from either
+     * lacks the profile's custom categories and shows its hidden ones.
+     */
+    private val railSnapshot: StateFlow<Pair<Ctx?, List<LiveRailItem>>> = ctx
         .flatMapLatest { c ->
-            if (c.profileId < 0) flowOf(defaultRail)
+            if (c.profileId < 0) flowOf(null to defaultRail)
             else combine(
                 categoryDao.observe(c.sourceIds, MediaType.LIVE),
-                custom,
+                customize.visibleOnceRead(c.profileId, MediaType.LIVE).filterNotNull(),
                 combine(sortMode, settings.liveBuiltIns) { s, b -> s to b },
                 // Catch-up sits between History and All, but ONLY when the provider actually advertises
                 // an archive — otherwise every user without catch-up gets a folder that can never fill.
@@ -645,7 +651,7 @@ class LiveViewModel(
                 )
                 val multiSourceNames = c.sourceNames.takeIf { it.size > 1 }.orEmpty()
                 val categoriesById = cats.associateBy { it.id }
-                railWithCatchup(catchupCount > 0, builtIns) + folders.map { e ->
+                c to railWithCatchup(catchupCount > 0, builtIns) + folders.map { e ->
                     LiveRailItem(
                         key = e.categoryId?.let { LiveKey.Folder(it) } ?: LiveKey.Custom(e.customId!!),
                         title = e.displayName, locked = e.locked, sealed = e.sealed,
@@ -657,6 +663,10 @@ class LiveViewModel(
                 }
             }
         }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to defaultRail)
+
+    val railItems: StateFlow<List<LiveRailItem>> = railSnapshot
+        .map { it.second }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), defaultRail)
 
     val channels: Flow<PagingData<ChannelEntity>> = combine(
@@ -910,36 +920,56 @@ class LiveViewModel(
         _selected.value = previous
     }
 
+    /** The user picks [key]: it is shown and remembered (see [LiveCategoryMemory]). Ignored under a pin. */
     fun select(key: LiveKey) {
         if (lockedKey != null) return
+        categoryMemory.picked(key)
         _selected.value = key
     }
 
-    private fun onDefault(): Boolean = _selected.value == LiveKey.All || _selected.value == fallbackKey(railItems.value)
+    /**
+     * Shows [key] for the app rather than the user — a startup choice, the playing channel's category:
+     * not remembered, and it wins over a restore still waiting. Under a More-screen pin it becomes what
+     * [unlock] goes back to.
+     */
+    fun show(key: LiveKey) {
+        categoryMemory.placed()
+        place(key)
+    }
+
+    private fun place(key: LiveKey) {
+        if (lockedKey != null) previousKey = key else _selected.value = key
+    }
+
+    private val categoryMemory = LiveCategoryMemory(viewModelScope) { settings.setLastLiveCategory(it.serialize()) }
+
+    /** The remembered category, or null while "Remember last category — Live TV" is off. */
+    private suspend fun rememberedCategory(): String? =
+        if (settings.rememberCategoryLive.first()) settings.lastLiveCategory.first() else null
+
+    /** The first category list built for [c]'s profile and playlists — not the one left from before a switch. */
+    private suspend fun completeRail(c: Ctx): List<LiveRailItem> =
+        railSnapshot.first { (built, _) -> built?.profileId == c.profileId && built.sourceIds == c.sourceIds }.second
+
+    /** "TV Guide follows Live TV" on: whether the TV Guide shares this screen's remembered category. */
+    val guideFollowsLive: StateFlow<Boolean> = settings.guideFollowsLiveCategory
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** The category the TV Guide opens on, or null to keep its own (see [LiveCategoryMemory.guideOpening]). */
+    suspend fun guideOpeningKey(): LiveKey? {
+        if (!settings.guideFollowsLiveCategory.first()) return null
+        val c = ctx.first { it.profileId >= 0 }
+        return LiveCategoryMemory.guideOpening(true, rememberedCategory(), completeRail(c))
+    }
 
     init {
-        // Persist the selected category (debounced — the rail fires select() on focus as you scroll).
+        // Bring the remembered category back at startup and after each profile or playlist switch, as this
+        // view model outlives them: each profile has its own. Gated by "Remember last category — Live TV"
+        // (Settings → Browsing & lists), on by default.
         viewModelScope.launch {
-            _selected.drop(1).debounce(800).distinctUntilChanged().collect {
-                if (lockedKey == null) settings.setLastLiveCategory(it.serialize())
-            }
-        }
-        // Restore it once at startup — but only while still on the default (don't yank a user who already
-        // navigated). A saved folder is honoured only once it actually exists in this profile's rail.
-        // Gated by "Remember last category — Live TV" (Settings → Browsing & lists), on by default.
-        viewModelScope.launch {
-            if (!settings.rememberCategoryLive.first()) return@launch
-            val saved = parseLiveKey(settings.lastLiveCategory.first()) ?: return@launch
-            // A saved Folder/Custom is honoured only while it still exists in this profile's rail —
-            // a deleted custom category or a re-synced-away folder must not resurrect on restart.
-            if (saved is LiveKey.Folder || saved is LiveKey.Custom) {
-                val ok = kotlinx.coroutines.withTimeoutOrNull(5_000) {
-                    railItems.first { list -> list.any { it.key == saved } }
-                } != null
-                if (ok && onDefault()) _selected.value = saved
-            } else if (onDefault()) {
-                _selected.value = saved
-            }
+            ctx.filter { it.profileId >= 0 }
+                .distinctUntilChanged { a, b -> a.profileId == b.profileId && a.sourceIds == b.sourceIds }
+                .collect { c -> categoryMemory.restore({ rememberedCategory() }, { completeRail(c) }, ::place) }
         }
         // A hidden All / Catch-up — at a cold start, from a remembered key, after a playlist switch or
         // when switched off in Settings — is never left selected: it moves to fallbackKey.
@@ -996,7 +1026,8 @@ class LiveViewModel(
     /** Open [channel] where it lives: its own category, or the landing list (All channels while it is
      *  shown) when that category is not in the rail or the channel is not in it. It becomes the
      *  preview, as if the user had walked there. With All hidden and the channel's own category hidden
-     *  too, no list holds it: the list stays where it is and only the preview changes. */
+     *  too, no list holds it: the list stays where it is and only the preview changes. The category is
+     *  shown, not remembered: it was the channel that was chosen ([show]). */
     fun revealChannel(channel: ChannelEntity) {
         _search.value = ""
         _previewArmed.value = true
@@ -1009,7 +1040,7 @@ class LiveViewModel(
                 kotlinx.coroutines.withTimeoutOrNull(2_000) { railItems.first { list -> list.any { it.key == folder } } } != null
             for (key in listOfNotNull(folder.takeIf { inRail }, fallbackKey(railItems.value)).distinct()) {
                 val position = pagingSource(key, c, "", sort).positionOf(channel.id, { it.id }) ?: continue
-                if (lockedKey == null) _selected.value = key
+                show(key)
                 _reveal.value = tv.own.owntv.features.search.Reveal(key, channel.id, position)
                 return@launch
             }
