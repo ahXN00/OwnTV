@@ -90,6 +90,8 @@
 - **Films tagged " - CAM" find their poster**
 - **Stalker series filed under films get their episodes**
 - **📺 Live TV comes back on the category you chose, even on a large playlist; a startup or a jump to a channel no longer replaces it** (community PR #325 by @Zangetsu-Sama)
+- **📚 Series whose episodes carry two dates load their episodes again (#342)**
+- **📡 A guide download cut off midway no longer deletes the rest of the guide**
 
 ## v5.2.1 — 2026-10-21
 
