@@ -933,7 +933,11 @@ Some actions only appear where they apply — Catch-up on catch-up channels, Rem
 
 ### 📋 Browsing & lists
 **Where:** Settings → Layout → **Browsing & lists**
-Whether each section remembers the last category and item. **Live TV categories:** switch off
+Whether each section remembers the last category and item — each profile its own, so switching
+profile lands everyone where they left off, no restart. Only a category you pick is remembered; a
+startup choice or jumping to a channel from Search does not replace it. **TV Guide follows Live TV**
+(off by default): the TV Guide opens on Live TV's remembered category, and a category picked in the
+Guide becomes Live TV's too. **Live TV categories:** switch off
 **Catch-up** or **All channels** to drop them from Live TV, the guide, the player and Multiview; without All
 channels, Live TV opens on your first category (or Favorites).
 

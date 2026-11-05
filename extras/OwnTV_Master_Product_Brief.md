@@ -202,7 +202,9 @@ steps into that schedule, where OK offers Remind me / Record / Watch channel. **
 categories in as a glass sheet (**Stage** layout) or keeps them as a column (**Separate**). The
 channel menu is a grouped Stage menu (Watch / Channel / Guide data / Organise), opened by holding OK
 or the Menu key. **Guide view** shows the guide grid inside Live TV, and *Live TV opens in* remembers
-List or Guide.
+List or Guide. The last category of Live TV, Movies and Series and the last channel are remembered per
+profile and follow a profile switch at once; only a category the user picks is saved. *TV Guide follows
+Live TV* (Browsing & lists, off by default) gives the TV Guide Live TV's remembered category.
 
 **Movies and Series** — Cinematic or Separate panels (3.5), a sort tool, a title menu (Watch /
 Library / Organise / Details). A **series page** carries the backdrop, Resume/Play, Favourite,
