@@ -513,8 +513,8 @@ internal const val VodGroupDetails = 3
 
 /**
  * ☰ Title options, 540 wide at the right: the poster 52×78, the title and "2026 ·
- * Disney+ Kids Movies", then the actions under their group labels, in the order the user set in
- * Settings › Long-press menus. Keys in [disabled] are drawn at 45% and do nothing ("Remove from history"
+ * Disney+ Kids Movies", then the actions in the order the user set in Settings › Long-press menus —
+ * under their group labels while that is the shipped order. Keys in [disabled] are drawn at 45% and do nothing ("Remove from history"
  * for a title never watched); [values] are the dim right-hand values. Focus starts on the favourite.
  */
 @Composable
@@ -541,7 +541,8 @@ internal fun VodOptionsMenu(
         R.string.content_menu_group_watch, R.string.content_menu_group_library,
         R.string.content_menu_group_organise, R.string.content_menu_group_details,
     ).map { stringResource(it).uppercase(locale) }
-    val ordered = arranged(menu, actions)
+    val arrangedMenu = arranged(menu, actions)
+    val ordered = arrangedMenu.actions
     val focusKey = ordered.firstOrNull { it.key == firstFocusKey && it.key !in disabled }?.key ?: ordered.firstOrNull { it.key !in disabled }?.key
     GuideMenuHost(x = x, top = top, width = 540.mpx, onDismiss = onDismiss) {
         StageMenuHeader(
@@ -554,7 +555,7 @@ internal fun VodOptionsMenu(
         )
         var previousGroup: Int? = null
         ordered.forEach { action ->
-            if (action.group != previousGroup) StageGroupLabel(labels[action.group])
+            if (arrangedMenu.headings && action.group != previousGroup) StageGroupLabel(labels[action.group])
             previousGroup = action.group
             StageMenuItem(
                 text = action.label, icon = action.icon, value = values[action.key],

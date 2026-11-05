@@ -83,6 +83,8 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     // Within "Add source": null = the Remote|Manual chooser, else the chosen path.
     var addMode by remember { mutableStateOf<AddMode?>(null) }
     var editingSource by remember { mutableStateOf<SourceEntity?>(null) }
+    // Within "Edit source": the Remote page that edits it from a browser on another device.
+    var editRemote by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<SourceEntity?>(null) }
     var resyncChoice by remember { mutableStateOf<SourceEntity?>(null) }
     var nameCleanup by remember { mutableStateOf<SourceEntity?>(null) }
@@ -146,13 +148,28 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
     BackHandler {
         when {
             showAdd -> { showAdd = false; addMode = null; vm.stopRemoteListener(); vm.cancelImport() }
-            editingSource != null -> editingSource = null
+            editingSource != null && editRemote -> { vm.stopRemoteListener(); editRemote = false }
+            editingSource != null -> { editingSource = null; vm.consumeRemotePayload() }
             else -> onBack()
         }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        if (editingSource != null) {
+        if (editingSource != null && editRemote) {
+            val src = editingSource!!
+            RemoteSetupScreen(
+                state = vm.remoteState.collectAsStateWithLifecycle().value,
+                payloads = vm.remotePayloads,
+                onStartListener = { port -> vm.startRemoteEditListener(port, src) },
+                onStopListener = { vm.stopRemoteListener() },
+                // The submission pre-fills the edit form; Save there applies it.
+                onPayloadReceived = { editRemote = false },
+                onBack = { vm.stopRemoteListener(); editRemote = false },
+                modifier = Modifier,
+                parents = listOf(stringResource(R.string.settings_playlists), stringResource(R.string.setup_edit_source)),
+                note = stringResource(R.string.settings_remote_edit_note),
+            )
+        } else if (editingSource != null) {
             val src = editingSource!!
             AddSourceScreen(
                 initial = src,
@@ -169,9 +186,9 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     editingSource = null
                 },
                 onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.updateSource(src.id, n, url, "", "", ua, epg, autoRefresh, isDefault, httpReferer = ref); editingSource = null },
-                onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series ->
+                onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series, login, password ->
                     vm.updateSource(
-                        src.id, n, url, "", "", ua, "", autoRefresh, isDefault, mac = mac, httpReferer = ref,
+                        src.id, n, url, login, password, ua, "", autoRefresh, isDefault, mac = mac, httpReferer = ref,
                         stalkerSerialNumber = serialNumber, stalkerDeviceId = deviceId,
                         stalkerDeviceId2 = deviceId2, stalkerSignature = signature,
                         syncLive = live != tv.own.owntv.core.sync.SyncScopeChoice.Off,
@@ -180,7 +197,10 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     editingSource = null
                 },
-                onBack = { editingSource = null },
+                remotePayload = vm.remotePayload,
+                onRemotePayloadConsumed = { vm.consumeRemotePayload() },
+                onEditFromPhone = { editRemote = true },
+                onBack = { editingSource = null; vm.consumeRemotePayload() },
                 modifier = Modifier,
             )
         } else if (showAdd) {
@@ -207,10 +227,11 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                             vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, httpReferer = ref)
                         },
                         onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault, httpReferer = ref) },
-                        onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series ->
+                        onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series, login, password ->
                             vm.addStalker(
                                 n.ifBlank { defaultPortalName }, url, mac, serialNumber, deviceId,
                                 deviceId2, signature, ua, autoRefresh, isDefault, live, movies, series, httpReferer = ref,
+                                login = login, password = password,
                             )
                         },
                         // Submissions from the Remote screen land here pre-filled (type + fields).
@@ -336,14 +357,15 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         }
 
         sourceTest?.let { state ->
+            // Only for a playlist that exists; the measurement and the switch are stored against its row.
+            val src = sources.firstOrNull { it.name == state.sourceName }
             SourceTestDialog(
                 state = state,
                 onDismiss = { vm.dismissSourceTest() },
-                // Only for a playlist that exists; the measurement is stored against its row.
-                onRetest = sources.firstOrNull { it.name == state.sourceName }?.let { src ->
-                    { confirmRetest = src }
-                },
+                onRetest = src?.let { { confirmRetest = it } },
                 onSkip = { vm.skipConnectionMeasurement() },
+                ignoreLimit = src?.ignoreConnectionLimit,
+                onToggleIgnoreLimit = { src?.let { vm.setIgnoreConnectionLimit(it, !it.ignoreConnectionLimit) } },
             )
         }
 
@@ -532,11 +554,12 @@ internal fun ConfirmDialog(
      * offering "Delete", a word with nothing to do with what it would have done.
      */
     @StringRes confirmLabel: Int = R.string.common_delete,
+    modifier: Modifier = Modifier,
 ) {
     // Focus starts on Cancel: a mis-press must not delete anything.
     tv.own.owntv.ui.stage.StageConfirm(
         title = title, body = message, confirm = stringResource(confirmLabel),
-        onConfirm = onConfirm, onCancel = onDismiss, focusCancel = true,
+        onConfirm = onConfirm, onCancel = onDismiss, focusCancel = true, modifier = modifier,
     )
 }
 
@@ -558,6 +581,9 @@ internal fun SourceTestDialog(
     onRetest: (() -> Unit)? = null,
     /** Abandon a measurement in progress. Falls back to simply closing when not supplied. */
     onSkip: (() -> Unit)? = null,
+    /** The playlist's "Ignore connection limit"; null hides the button (no saved playlist). */
+    ignoreLimit: Boolean? = null,
+    onToggleIgnoreLimit: () -> Unit = {},
 ) {
     val focus = remember { FocusRequester() }
     // Keyed on *which* button carries the requester, not on first composition: while measuring it is
@@ -578,6 +604,15 @@ internal fun SourceTestDialog(
             // race it for the same connection.
             if (onRetest != null && state is SourceTestUi.Done) {
                 tv.own.owntv.ui.stage.StageButton(stringResource(R.string.settings_sources_retest), onClick = onRetest, height = 56.mpx, textSize = 19)
+            }
+            // Beside Re-test: for a provider that allows more than it says, when measuring cannot show it.
+            if (ignoreLimit != null && state is SourceTestUi.Done) {
+                tv.own.owntv.ui.stage.StageButton(
+                    stringResource(R.string.settings_sources_ignore_limit),
+                    onClick = onToggleIgnoreLimit,
+                    trailing = stringResource(if (ignoreLimit) R.string.common_on else R.string.common_off),
+                    height = 56.mpx, textSize = 19,
+                )
             }
             // While measuring, the only honest button abandons it: OK would suggest the answer is in.
             if (state is SourceTestUi.Measuring) {
@@ -600,7 +635,12 @@ internal fun SourceTestDialog(
                 Spacer(Modifier.width(16.mpx))
                 Text(stringResource(R.string.settings_sources_probe_running, state.progress.stream, state.progress.maxStreams), style = line, color = tv.own.owntv.ui.theme.StageColors.Muted)
             }
-            is SourceTestUi.Done -> SourceTestReport(state.result, state.limit)
+            is SourceTestUi.Done -> Column(verticalArrangement = Arrangement.spacedBy(8.mpx)) {
+                SourceTestReport(state.result, state.limit)
+                if (ignoreLimit == true) {
+                    Text(stringResource(R.string.settings_sources_ignore_limit_on), style = tv.own.owntv.ui.theme.stageText(17, 500), color = tv.own.owntv.ui.theme.StageColors.Muted)
+                }
+            }
         }
     }
 }

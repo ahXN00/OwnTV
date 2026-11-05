@@ -21,7 +21,7 @@ OwnTV is a native **Android TV** IPTV player written in Kotlin with Jetpack Comp
 **ExoPlayer (Media3)** for near-instant Live TV.
 
 It is a **player only**. You supply an Xtream login, an M3U playlist (URL or a local file) or a
-Stalker/Ministra portal (Portal URL + MAC, with optional Serial Number, Device ID, Device ID2 and
+Stalker/Ministra portal (Portal URL + MAC, with an optional username and password, and optional Serial Number, Device ID, Device ID2 and
 Signature for stricter portals).
 
 **Key principles**
@@ -74,7 +74,9 @@ Each engine is chosen automatically by content type, with fallback between them.
   decides whether HD is served. Such an item is pinned to ExoPlayer, outranks every other preference,
   and never leaves for an external player. It also **cannot be recorded** — the CDM decrypts only
   into a secure decoder for immediate display, so a recording is refused before it starts rather than
-  left as a file that will not play.
+  left as a file that will not play. Apple FairPlay has no Android CDM: such an item shows its own
+  message at once instead of failing like a broken stream, and ClearKey keys filed under a FairPlay
+  label play as ClearKey.
 - **Container is decided from evidence, not from the file extension** — the declared
   `manifest_type`, then what the response actually turns out to be, then what the same provider has
   already been caught serving. This is what lets a DASH channel published at an extensionless address
@@ -134,7 +136,7 @@ External subtitles come from **OpenSubtitles** (own account, remote sign-in by Q
 ### 2.5 Player HUD
 
 Scrubbable seek bar · previous/next through the episode queue · play/pause · audio, subtitle and
-speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3) · volume
+speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3 — a press steps to the next, hold OK for the list) · **Sources** (the same channel in another quality, category or playlist, from core) · volume
 with mute · favourite the current item · **stream info overlay** (codec, resolution, fps, bit depth,
 HDR type, interlacing on mpv, bitrate, decoder, audio, buffer, dropped frames, masked source URL) · a **clock** in every
 mode, becoming *Programme time* + *Current time* during a replay · auto-hiding controls, with **Back**
@@ -204,7 +206,7 @@ List or Guide.
 
 **Movies and Series** — Cinematic or Separate panels (3.5), a sort tool, a title menu (Watch /
 Library / Organise / Details). A **series page** carries the backdrop, Resume/Play, Favourite,
-**Download season** and series options, season tabs with counts (Specials last and uncounted; an
+**Download season** (it asks first with the episode count; gone for a profile with downloads off) and series options, season tabs with counts (Specials last and uncounted; an
 unstarted show plays from Season 1 Episode 1 and auto-play reaches the Specials after the finale),
 Grid | List and an Episode order menu (oldest/newest, hide watched); episode titles are cleaned of
 "Show – S01E03 –" prefixes, with TMDB's title filling a gap. Page and hero headlines drop a leading
@@ -233,6 +235,11 @@ sports and leagues the profile follows (none at first; Settings → App → Spor
 score, venue, timeline, stats, line-ups, table, form and Broadcasts, and **Find channels** ranks the
 channels in the user's own guide that show it (from 30 minutes before kick-off), with a filter by
 language, country, picture and playlist. Matching runs on the device; no playlist data leaves it.
+The page has three tabs sharing one set of sport and league buttons: **Scores** (the above),
+**Calendar** (a month grid of the followed leagues with the chosen day's matches; months saved on the
+device and fetched again per the Calendar refresh setting) and **Leagues** (league cards, then one
+league's table, fixtures and results; Formula 1 drivers, constructors and races; tennis rankings).
+Teams have their own pages: the season's fixtures and results, next match, last five and table place.
 A Home **Sports** row shows followed matches that are live or about to start.
 
 **More** — a glass section list with the profile row: Settings, Favourites, History, Backup &
@@ -249,11 +256,14 @@ status, expiry, trial and connections in use, and writes nothing.
 
 ### 3.4 Stalker / Ministra portals
 
-A third source type alongside M3U and Xtream: Portal URL + MAC, with optional Serial Number, Device
+A third source type alongside M3U and Xtream: Portal URL + MAC, with an optional login (username +
+password, for portals that ask for one) and optional Serial Number, Device
 ID, Device ID2 and Signature. MAG handshake auth with in-memory tokens and User-Agent presets. Play
 links are minted per play and silently re-resolved on expiry, so long sessions, downloads with range
 resume, and cross-engine fallback all survive token resets. Full feature parity: downloads, external
-player, TMDB, backup, auto refresh and the playlist switcher.
+player, TMDB, backup, auto refresh and the playlist switcher. The catalogue crawl backs off when a
+portal refuses parallel requests and remembers that limit per playlist; a portal with no series
+section gets the series it files among its films.
 
 ### 3.5 Layout
 
@@ -305,7 +315,9 @@ Back in the list clears it.
 Search covers Live, Movies and Series together (3.2), with voice search where the device has a speech
 recogniser. Live TV reopens on the category you last used, with focus on the last channel. **App
 startup** is per profile: Home, last channel, the last channel in the TV Guide or Live TV, Live
-Favorites, or one chosen channel.
+Favorites, or one chosen channel. **Auto start** (device-wide, off by default) opens OwnTV when the TV
+boots or wakes from sleep; it needs "Display over other apps", and a profile with a PIN is locked
+again on every wake.
 
 ---
 
@@ -321,8 +333,10 @@ Favorites, or one chosen channel.
   another; an empty stretch is a focusable "No program at this time" cell that Left/Right cross in
   30-minute steps. Every programme action (Remind me / Watch from start, Record, Watch channel…) is in
   the Hold-OK menu.
+- Catch-up rows on screen ask core for their **past days from the provider's archive** (one request at a
+  time, a week back at most), so the guide reaches as far back as the recordings.
 - Order by Provider, A–Z, Catch-up first or Favourites first; the category filter is Live TV's own
-  list; *Show → Channels without guide* and *Show → Video preview* (off shows the channel's logo
+  list, and Provider/A–Z follow Live TV's order with moved channels in their place; *Show → Channels without guide* and *Show → Video preview* (off shows the channel's logo
   instead of playing it; kept in backups).
 - **Programme reminders** — at the chosen lead time (5 min by default) OwnTV asks to switch, over any
   screen including the player, or switches, or only notifies.
@@ -431,7 +445,7 @@ their group.
 | **Sound & subtitles** | Default volume, Surround, Dolby/DTS passthrough, Night mode, Volume leveling, Audio sync (+ saved) · Preferred audio / subtitle language, Subtitle appearance |
 | **Live TV** | Channel numbers, Live preview, Preview audio, Pause and rewind live TV, Rewind length, Resume a saved channel, Left and right rewind · Live latency, Pre-buffer, Give up after (each + per playlist) |
 | **Watching & recording** | Seek step, Live rewind step, Resume playback, Auto-play next episode · Multiview, Max tiles, Mini-player, Picture-in-picture when leaving the app · Recording: keep one stream free, record what I'm watching, start early, keep going after the end |
-| **App** | Language, App icon, Accent-colored logo, App startup, Check for updates (+ on startup) · Proxy, DNS · Measured stream stats, Detailed playback logging |
+| **App** | Language, App icon, Accent-colored logo, App startup, Auto start on boot / on wake-up, Check for updates (+ on startup) · Proxy, DNS · Measured stream stats, Detailed playback logging |
 
 - **Appearance** — any accent colour (presets, hex, a saturation square and hue bar as separate focus
   stops, live re-tint, Cancel restores), a separate **focus highlight**, one font family for the app and
@@ -493,7 +507,7 @@ downloaded subtitle files. An optional **backup password** encrypts the whole co
 proxy passwords, Stalker identity, TMDB and OpenSubtitles credentials, PIN hashes. Restore accepts
 `.own` and legacy `.json` — from a file on this TV or sent from a phone (**Remote**) — detected by
 content rather than extension, and **merge-restore remaps
-every id** the file carries. Sources are matched on type + URL + username, plus the MAC for Stalker.
+every id** the file carries. Sources are matched on type + URL + username; a Stalker portal on type + URL + MAC.
 
 > Android's automatic backup is deliberately **disabled**: the raw stores hold plaintext credentials,
 > so this screen is the single explicit, encryptable path off the device.
@@ -514,7 +528,7 @@ manual check, and installation on the TV itself.
 | Area | Choice |
 |---|---|
 | Language | Kotlin 2.4.20 (no `kotlin-android` plugin; the Compose compiler plugin pulls the Kotlin Gradle plugin to this version) |
-| Build | AGP 9.4.0 / Gradle 9.7.1, KSP2 2.3.11 |
+| Build | AGP 9.4.0 / Gradle 9.8.2, KSP2 2.3.11, JDK 25 |
 | UI | Jetpack Compose for TV (`androidx.tv:tv-material` 1.1.0), Compose BOM 2026.08.00 |
 | Media | libmpv (FFmpeg) — `tv.own.owntv:libmpv`, OwnTV's own build (newest mpv + FFmpeg 9, monthly) · ExoPlayer/Media3 1.11.1 |
 | Database | Room 2.8.5 + Paging 3.5.1 + FTS4 (WAL) |
@@ -527,6 +541,9 @@ manual check, and installation on the TV itself.
 ---
 
 ## 12. Architecture
+**Re-test** measures for real, and a measured limit outranks the Xtream panel's own number at the next
+sync. **Ignore connection limit** (per playlist) lets Multiview and recordings try more streams than
+the playlist reports; the provider's refusal still stops a stream with its sentence.
 
 ### 12.1 Three repositories
 
@@ -565,7 +582,9 @@ metered at a single choke point so no endpoint can bypass it. Detail cache keys 
 language, so switching language does not wipe the cache.
 
 A personal TMDB key, and OpenSubtitles credentials, can be handed over from another device by QR +
-PIN rather than typed with a remote. The same companion server can receive an uploaded `.m3u` file.
+PIN rather than typed with a remote. The same companion server can receive an uploaded `.m3u` file,
+and can edit one saved playlist from a browser — secrets are never sent to that page, an empty field
+keeps the stored value, and the TV's own Save applies it.
 
 ### 12.4 Storage
 

@@ -44,7 +44,6 @@ import tv.own.owntv.core.model.SourceType
 import tv.own.owntv.core.parser.XtreamClient
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.CustomizeKeys
-import tv.own.owntv.core.customize.applyCustomizations
 import tv.own.owntv.core.customize.railCategories
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.EpgProgrammeEntity
@@ -118,6 +117,7 @@ class EpgViewModel(
     /** "Recently watched" in the category list reads the same history Live TV does. */
     private val historyDao: tv.own.owntv.core.database.dao.HistoryDao,
     private val reminderManager: tv.own.owntv.core.reminder.ReminderManager,
+    private val archiveGuide: tv.own.owntv.core.epg.ArchiveGuideFiller,
 ) : ViewModel() {
 
     /** The categories' search text, held here so it survives the player (see LiveViewModel). */
@@ -300,6 +300,25 @@ class EpgViewModel(
 
     private fun cachedRowCount(): Int = synchronized(rowCache) { rowCache.size }
 
+    /**
+     * Ask for the past days a catch-up [channel]'s guide feed lacks, from its provider's archive. Called
+     * for a row that stays on screen, so the past is there by the time the user scrolls back to it; the
+     * queue, its pacing and the "once every few hours per channel" rule are core's
+     * ([tv.own.owntv.core.epg.ArchiveGuideFiller]).
+     */
+    fun requestArchiveGuide(channel: ChannelEntity) = archiveGuide.request(channel, custom.value)
+
+    /** Drop the cached rows of one channel (every shift), so the next read of that row goes to the DB. */
+    private fun dropRows(channelId: Long) {
+        val prefix = "$channelId|"
+        synchronized(rowCache) { rowCache.keys.removeAll { it.startsWith(prefix) } }
+    }
+
+    override fun onCleared() {
+        // Rows of a guide nobody is looking at any more are not asked for.
+        archiveGuide.forgetPending()
+    }
+
     /** The row prefetch in flight. One at a time — see [prefetchAfter]. */
     private var prefetchJob: kotlinx.coroutines.Job? = null
 
@@ -436,6 +455,16 @@ class EpgViewModel(
             .drop(if (epgActivity.active.value.isEmpty()) 1 else 0)
             .onEach { load() }
             .launchIn(viewModelScope)
+        // Re-read a row when its channel's past days arrive from the provider's archive (asked for by the
+        // rows on screen, see requestArchiveGuide). They are stored apart from every feed, so the stored
+        // count load() compares does not move: that channel's cached rows are dropped instead, and the
+        // other visible rows answer from the cache.
+        archiveGuide.added
+            .onEach {
+                dropRows(it)
+                _cacheRevision.value++
+            }
+            .launchIn(viewModelScope)
         // Reload when a category lock closes or opens (the relock on leaving the app, a PIN entry), so
         // the grid and the zap list armed from it follow. drop(1): the screen triggers the initial load.
         settings.activeProfileId
@@ -480,6 +509,10 @@ class EpgViewModel(
     /** The channel last tuned from the guide — the screen refocuses its row after fullscreen exits. */
     var lastTunedChannelId: Long? = null
         private set
+
+    /** Set when the player closes. The guide is not on screen while the player is, so the mark is kept here:
+     *  the next focus restore goes to the channel that was playing and arms its preview. */
+    var playerClosed: Boolean = false
 
     /** Record that this channel was tuned from the guide, so focus returns to its row on Back.
      *  Call this before delegating playback to liveVm, so lastTunedChannelId is set correctly. */
@@ -939,6 +972,18 @@ class EpgViewModel(
                 historyDao.getForProfileType(pid, MediaType.LIVE).mapTo(HashSet()) { it.itemId }
             else -> null
         }
+        // Provider and A–Z are Live TV's own lists: in a folder, a custom category or Favourites the guide
+        // takes the order the Live TV queries give, moved channels in their place; elsewhere, All included,
+        // the playlist's order or plain A–Z.
+        val alphaSort = sortGuideMode == SettingsRepository.GuideSort.ALPHA
+        val liveTvSort = alphaSort || sortGuideMode == SettingsRepository.GuideSort.PROVIDER || sortGuideMode == SettingsRepository.GuideSort.LIVE_TV
+        val liveOrder: Map<Long, Int>? = if (!liveTvSort) null else when (filter) {
+            is tv.own.owntv.core.live.LiveKey.Folder -> folderKey?.let { channelDao.snapshotByCategoryManual(filter.id, pid, it, alphaSort, MAX_CHANNELS) }
+            is tv.own.owntv.core.live.LiveKey.Custom -> customCategoryDao.snapshotChannels(pid, filter.id, playlistIds, alphaSort, MAX_CHANNELS)
+            tv.own.owntv.core.live.LiveKey.Favorites ->
+                channelDao.snapshotFavoritesManual(pid, tv.own.owntv.core.database.entity.ContentOrderEntity.FAV_CONTEXT, playlistIds, MAX_CHANNELS)
+            else -> null
+        }?.withIndex()?.associate { (i, ch) -> ch.id to i }
         // Heavy work — filter hidden, apply renames + manual EPG matches, sort, category-filter — runs off
         // the main thread (#3/#5) so a 50k-channel playlist never freezes the UI building the guide list.
         val channels = withContext(Dispatchers.Default) {
@@ -953,13 +998,14 @@ class EpgViewModel(
             // Catch-up first, Favourites first. The last two only float those channels to the top.
             val byAlpha = compareBy<ChannelEntity> { it.name.lowercase() }
             val byProvider = compareBy<ChannelEntity>({ it.sourceId }, { it.sortOrder }, { it.name.lowercase() })
+            val byLiveTv = liveOrder?.let { order -> compareBy<ChannelEntity> { order[it.id] ?: Int.MAX_VALUE }.then(if (alphaSort) byAlpha else byProvider) }
             when (sortGuideMode) {
-                SettingsRepository.GuideSort.ALPHA -> matched.sortedWith(byAlpha)
-                SettingsRepository.GuideSort.PROVIDER -> matched.sortedWith(byProvider)
+                SettingsRepository.GuideSort.ALPHA -> matched.sortedWith(byLiveTv ?: byAlpha)
+                SettingsRepository.GuideSort.PROVIDER -> matched.sortedWith(byLiveTv ?: byProvider)
                 SettingsRepository.GuideSort.CATCHUP -> matched.sortedWith(compareByDescending<ChannelEntity> { it.catchup }.then(byProvider))
                 SettingsRepository.GuideSort.FAVORITES -> matched.sortedWith(compareByDescending<ChannelEntity> { it.id in favoriteIds }.then(byProvider))
                 // LIVE_TV, the old default, is the provider's order too (Channel number was the same thing).
-                SettingsRepository.GuideSort.LIVE_TV -> matched.sortedWith(byProvider)
+                SettingsRepository.GuideSort.LIVE_TV -> matched.sortedWith(byLiveTv ?: byProvider)
             }.let { sorted ->
                 when (filter) {
                     null, tv.own.owntv.core.live.LiveKey.All -> sorted

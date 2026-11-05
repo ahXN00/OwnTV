@@ -100,6 +100,9 @@ fun AddSourceScreen(
     initialAutoRefresh: PlaylistRefresh = PlaylistRefresh.OFF,
     initialIsDefault: Boolean = false,
     showDefaultToggle: Boolean = true,
+    // Editing only: opens the same playlist's page in a browser on another device. Its submission comes
+    // back on [remotePayload], already merged with what is stored, and fills this form.
+    onEditFromPhone: (() -> Unit)? = null,
     // Stalker portal. Null = the Stalker option is hidden (e.g. the setup wizard).
     onStartStalker: ((
         name: String,
@@ -116,6 +119,8 @@ fun AddSourceScreen(
         live: SyncScopeChoice,
         movies: SyncScopeChoice,
         series: SyncScopeChoice,
+        login: String,
+        password: String,
     ) -> Unit)? = null,
 ) {
     val editing = initial != null
@@ -234,6 +239,8 @@ fun AddSourceScreen(
                 stalkerDeviceId = opt(stalkerDeviceId),
                 stalkerDeviceId2 = opt(stalkerDeviceId2),
                 stalkerSignature = opt(stalkerSignature),
+                username = opt(username),
+                password = password.takeIf { opt(username) != null && it.isNotEmpty() },
                 userAgent = ua,
                 httpReferer = ref,
             )
@@ -327,7 +334,38 @@ fun AddSourceScreen(
     // current value to this new collector, so the payload posted before this screen mounted still lands.
     LaunchedEffect(remotePayload) {
         remotePayload?.collect { payload ->
-            if (payload == null || editing) return@collect
+            if (payload == null) return@collect
+            if (editing) {
+                // Only a browser edit of this playlist; a playlist cannot change its type.
+                if (onEditFromPhone == null || payload.type != initial.type) return@collect
+                name = payload.name
+                userAgent = payload.userAgent
+                when (payload.type) {
+                    SourceType.M3U -> {
+                        m3uUrl = payload.server
+                        epgUrl = payload.epgUrl
+                    }
+                    SourceType.STALKER -> {
+                        portalUrl = payload.portalUrl
+                        mac = payload.mac
+                        stalkerSerialNumber = payload.serialNumber
+                        stalkerDeviceId = payload.deviceId
+                        stalkerDeviceId2 = payload.deviceId2
+                        stalkerSignature = payload.signature
+                        username = payload.user
+                        password = payload.pass
+                    }
+                    else -> {
+                        server = payload.server
+                        username = payload.user
+                        password = payload.pass
+                        epgUrl = payload.epgUrl
+                    }
+                }
+                onRemotePayloadConsumed()
+                runCatching { kotlinx.coroutines.delay(150); startImportFocus.requestFocus() }
+                return@collect
+            }
             name = payload.name
             userAgent = payload.userAgent
             epgUrl = payload.epgUrl
@@ -346,6 +384,8 @@ fun AddSourceScreen(
                     stalkerDeviceId = payload.deviceId
                     stalkerDeviceId2 = payload.deviceId2
                     stalkerSignature = payload.signature
+                    username = payload.user
+                    password = payload.pass
                     syncLive = payload.syncLive
                     syncMovies = payload.syncMovies
                     syncSeries = payload.syncSeries
@@ -402,6 +442,7 @@ fun AddSourceScreen(
             SourceKind.STALKER -> onStartStalker?.invoke(
                 name, portalUrl, mac, stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2,
                 stalkerSignature, userAgent, referer, autoRefresh, isDefault, syncLive, syncMovies, syncSeries,
+                username, password,
             )
         }
     }
@@ -482,6 +523,18 @@ fun AddSourceScreen(
                 if (editing) listOf(back to parent) else listOf("◀ ▶" to stringResource(R.string.settings_key_change), back to parent),
             ),
         )
+        if (editing && onEditFromPhone != null) {
+            val remoteTitle = stringResource(R.string.setup_edit_from_phone)
+            StageSettingRow(
+                icon = OwnTVIcon.PHONE,
+                title = remoteTitle,
+                desc = stringResource(R.string.settings_line_add_from_phone),
+                value = SettingValue.Opens(null),
+                onClick = onEditFromPhone,
+                modifier = toSubmit,
+                help = help(remoteTitle, stringResource(R.string.settings_help_edit_from_phone), openKeys),
+            )
+        }
         field(stringResource(R.string.setup_source_name_optional), name, { name = it }, placeholder = stringResource(R.string.setup_default_iptv))
 
         when (kind) {
@@ -515,6 +568,9 @@ fun AddSourceScreen(
                     placeholder = stringResource(R.string.setup_mac_example),
                     about = if (mac.isNotBlank() && !macValid) stringResource(R.string.setup_mac_invalid) else null,
                 )
+                // Only for portals that ask for a login on top of the MAC; most do not.
+                field(stringResource(R.string.settings_username_optional), username, { username = it })
+                field(stringResource(R.string.settings_password_optional), password, { password = it }, password = true)
                 StageSettingsHeading(stringResource(R.string.setup_stalker_advanced_identity), 5)
                 field(stringResource(R.string.setup_stalker_serial_number_optional), stalkerSerialNumber, { stalkerSerialNumber = it })
                 field(stringResource(R.string.setup_stalker_device_id_optional), stalkerDeviceId, { stalkerDeviceId = it })
