@@ -958,7 +958,8 @@ class LiveViewModel(
     /** The category the TV Guide opens on, or null to keep its own (see [LiveCategoryMemory.guideOpening]). */
     suspend fun guideOpeningKey(): LiveKey? {
         if (!settings.guideFollowsLiveCategory.first()) return null
-        val c = ctx.first { it.profileId >= 0 }
+        // No profile yet: the guide shows its own message, and must not wait here for one.
+        val c = ctx.value.takeIf { it.profileId >= 0 } ?: return null
         return LiveCategoryMemory.guideOpening(true, rememberedCategory(), completeRail(c))
     }
 
