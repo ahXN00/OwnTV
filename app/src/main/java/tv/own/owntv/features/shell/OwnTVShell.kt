@@ -486,6 +486,7 @@ fun OwnTVShell(
             }
             // The TV Guide or Live TV on the last channel's category, the channel focused and in the preview,
             // as TiviMate opens. Live TV's list scrolls to it (revealChannel); a guide focuses its row on load.
+            // The category is shown for this run, not remembered as the user's pick.
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_GUIDE,
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_LIVE -> {
                 val ch = liveVm.lastWatchedLiveChannel()?.takeIf { liveVm.isVisibleToActiveProfile(it) }
@@ -495,7 +496,7 @@ fun OwnTVShell(
                         liveVm.revealChannel(ch)
                     } else {
                         val key = liveVm.railKeyOf(ch)
-                        if (toGuide) epgVm.setCategoryFilter(key) else liveVm.select(key)
+                        if (toGuide) epgVm.setCategoryFilter(key) else liveVm.show(key)
                         epgVm.noteChannelTuned(ch)
                         liveVm.onChannelFocused(ch)
                         restoreFocus = true
@@ -504,10 +505,11 @@ fun OwnTVShell(
                 }
             }
             // Open straight to Live TV on the Favorites folder, with focus landing inside the channel list
-            // (restoreFocus drives LiveScreen to focus the first/last channel, not the nav panel).
+            // (restoreFocus drives LiveScreen to focus the first/last channel, not the nav panel). Favorites
+            // is this startup's choice, not the user's pick: the remembered category stays as it was.
             tv.own.owntv.core.settings.StartupMode.FAVORITES -> {
                 onSelectSection(MainSection.LIVE_TV)
-                liveVm.select(tv.own.owntv.core.live.LiveKey.Favorites)
+                liveVm.show(tv.own.owntv.core.live.LiveKey.Favorites)
                 restoreFocus = true
             }
             tv.own.owntv.core.settings.StartupMode.SPECIFIC_CHANNEL -> {

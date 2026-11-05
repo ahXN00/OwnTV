@@ -720,6 +720,7 @@ class SeriesViewModel(
 
     fun select(key: LiveKey) {
         if (lockedKey != null) return
+        categoryMemory.picked(key)
         _selected.value = key
         // Core's lazy-catalogue drain fills categories in the provider's order; tell it the user is
         // here so this one is served next. A no-op for every playlist that was not
@@ -1393,34 +1394,36 @@ class SeriesViewModel(
     private fun countFlow(key: LiveKey, c: Ctx, hiddenCats: Set<Long>, sealedCats: Set<Long>): Flow<Int> =
         seriesCountFlow(key, c.profileId, c.sourceIds, hiddenCats, seriesDao, customCategoryDao, sealedCats)
 
-    // Remember the last selected category (Settings → Browsing & lists → "Remember last category —
-    // Series", on by default). Declared LAST in the class so railItems is already assigned when this
-    // init runs. Mirrors LiveViewModel's identical block.
+    // "Remember last category — Series" (Settings → Browsing & lists, on by default), each profile its own.
+    // Only a category the user picks is saved; the restore runs at start and again after each profile or
+    // playlist switch, as this view model outlives both. Declared LAST so railItems is already assigned.
+    private val categoryMemory = tv.own.owntv.features.live.LiveCategoryMemory(viewModelScope) {
+        settings.setLastSeriesCategory(it.serialize())
+    }
+
     init {
-        // Persist on change, debounced — the rail fires select() on focus as you scroll it.
         viewModelScope.launch {
-            _selected.drop(1).debounce(800).distinctUntilChanged()
-                .collect { if (lockedKey == null) settings.setLastSeriesCategory(it.serialize()) }
-        }
-        // Restore once at startup, and only while still on the default (never yank a user who already
-        // navigated). A saved folder is honoured only once it exists in this profile's rail.
-        viewModelScope.launch {
-            if (!settings.rememberCategorySeries.first()) return@launch
-            val saved = parseLiveKey(settings.lastSeriesCategory.first()) ?: return@launch
-            // A saved Folder/Custom is honoured only while it still exists in this profile's rail —
-            // a deleted custom category or a re-synced-away folder must not resurrect on restart.
-            if (saved is LiveKey.Folder || saved is LiveKey.Custom) {
-                val ok = kotlinx.coroutines.withTimeoutOrNull(5_000) {
-                    railItems.first { list -> list.any { it.key == saved } }
-                } != null
-                if (ok && _selected.value == LiveKey.All) _selected.value = saved
-            } else if (_selected.value == LiveKey.All) {
-                _selected.value = saved
-            }
+            ctx.filter { it.profileId >= 0 }
+                .distinctUntilChanged { a, b -> a.profileId == b.profileId && a.sourceIds == b.sourceIds }
+                .collect {
+                    categoryMemory.restore(
+                        stored = { if (settings.rememberCategorySeries.first()) settings.lastSeriesCategory.first() else null },
+                        // A folder of the new profile's playlists may take a moment to reach the rail.
+                        rail = {
+                            val wanted = parseLiveKey(settings.lastSeriesCategory.first())
+                            kotlinx.coroutines.withTimeoutOrNull(RESTORE_WAIT_MS) {
+                                railItems.first { list -> wanted == null || list.any { it.key == wanted } }
+                            } ?: railItems.value
+                        },
+                        show = { key -> if (lockedKey != null) previousKey = key else _selected.value = key },
+                    )
+                }
         }
     }
 
     private companion object {
+        /** How long the restore waits for the remembered folder to reach a new rail. */
+        const val RESTORE_WAIT_MS = 5_000L
         const val TAG = "OwnTVHome"
 
         /**
