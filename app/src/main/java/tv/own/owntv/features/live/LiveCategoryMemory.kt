@@ -1,43 +1,70 @@
 package tv.own.owntv.features.live
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import tv.own.owntv.core.live.LiveKey
-import tv.own.owntv.core.live.parseLiveKey
+import tv.own.owntv.core.live.liveRestoreKey
 
 /**
- * "Remember last category — Live TV".
+ * "Remember last category — Live TV", both ways: which changes of the category are saved, and bringing
+ * the saved one back. Kept apart from [LiveViewModel] so it can be tested without Android.
  *
- * Live TV, its Guide view and the TV Guide share one selection, held by [LiveViewModel] and stored in
- * the `last_live_category` setting. These are the decisions behind restoring it, kept pure for the tests.
+ * Only a category the user picks is saved. A startup default, a fallback, a restore or the jump to a
+ * channel's own category is not, or it would replace the category the user actually chose.
  */
-object LiveCategoryMemory {
+@OptIn(FlowPreview::class)
+internal class LiveCategoryMemory(private val scope: CoroutineScope, private val save: suspend (LiveKey) -> Unit) {
 
-    /** What the restore does with one rail built for the current profile and playlists. */
-    enum class Step {
-        /** The wanted category is in the rail: show it, and stop. */
-        APPLY,
+    // A channel, not a shared flow: a pick made before the saver has started is kept, not dropped.
+    private val picks = Channel<LiveKey>(Channel.CONFLATED)
+    private var restoreJob: Job? = null
 
-        /** The category on screen is not in this rail (another profile's or playlist's folder): show
-         *  All channels for now, without saving it, and keep waiting for the wanted one. */
-        FALLBACK,
+    init {
+        // Debounced: the category list selects on focus, so walking down it picks every row on the way.
+        scope.launch { picks.receiveAsFlow().debounce(SAVE_DEBOUNCE_MS).collect { save(it) } }
+    }
 
-        /** Nothing to change yet: keep waiting (the rail may still be loading). */
-        WAIT,
+    /** The user picked [key]: saved once the focus settles, and it ends a restore still waiting. */
+    fun picked(key: LiveKey) {
+        restoreJob?.cancel()
+        picks.trySend(key)
+    }
+
+    /** The app put a category on screen (a startup choice): it wins over a restore still waiting, unsaved. */
+    fun placed() {
+        restoreJob?.cancel()
     }
 
     /**
-     * The category to bring back: the user's last explicit pick in this run when there is one (it may
-     * not be saved yet, the save is debounced), else the stored value. Null when the setting is off or
-     * the stored value is empty or unreadable.
+     * Brings the saved category back: [stored] (null with the setting off) checked against [rail], the
+     * first category list complete for this profile and these playlists. The wait ends with that list,
+     * whether or not the category is in it, so a large provider's slow list cannot leave it waiting for
+     * ever; a pick or a startup choice ends it sooner. Not saved, and the stored value is left alone.
      */
-    fun target(remember: Boolean, lastPicked: LiveKey?, stored: String): LiveKey? =
-        if (!remember) null else lastPicked ?: parseLiveKey(stored)
+    fun restore(stored: suspend () -> String?, rail: suspend () -> List<LiveRailItem>, show: (LiveKey) -> Unit) {
+        restoreJob?.cancel()
+        restoreJob = scope.launch {
+            val saved = stored() ?: return@launch
+            restoreKey(saved, rail())?.let(show)
+        }
+    }
 
-    /** [shown] is what the screen shows now, [rail] the keys of a rail built for the current profile. */
-    fun step(target: LiveKey, shown: LiveKey, rail: List<LiveKey>): Step = when {
-        target in rail -> Step.APPLY
-        // Only folders and custom categories depend on the profile and playlists; the fixed entries
-        // (All, Favourites, History) are always there, Catch-up only while the provider has an archive.
-        shown !in rail && shown != LiveKey.All -> Step.FALLBACK
-        else -> Step.WAIT
+    companion object {
+        const val SAVE_DEBOUNCE_MS = 800L
+
+        fun restoreKey(stored: String, rail: List<LiveRailItem>): LiveKey? =
+            liveRestoreKey(stored, rail, { it.key }, { it.sealed })
+
+        /**
+         * Where the TV Guide opens: with "TV Guide follows Live TV" on, Live TV's remembered category
+         * ([stored]), or All channels when there is none it can show; off (null), the Guide keeps its own.
+         */
+        fun guideOpening(follows: Boolean, stored: String?, rail: List<LiveRailItem>): LiveKey? =
+            if (!follows) null else stored?.let { restoreKey(it, rail) } ?: LiveKey.All
     }
 }

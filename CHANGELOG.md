@@ -46,6 +46,8 @@
 - **🔀 Sources: switch to another version of the channel playing** (community PR #317 by @Aaronnn17)
 - **⏻ Auto start on boot and on wake-up** (community PR #279 by @Kevsosmooth)
 - **📱 Edit a playlist from another device (#250)**
+- **🧭 TV Guide follows Live TV's category, as a switch in Browsing & lists** (community PR #325 by @Zangetsu-Sama)
+- **👤 Each profile remembers its own last category and channel**
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**
@@ -87,6 +89,7 @@
 - **Large playlists keep loading in the background after a pause, and a minute after playback stops**
 - **Films tagged " - CAM" find their poster**
 - **Stalker series filed under films get their episodes**
+- **📺 Live TV comes back on the category you chose, even on a large playlist; a startup or a jump to a channel no longer replaces it** (community PR #325 by @Zangetsu-Sama)
 
 ## v5.2.1 — 2026-10-21
 
