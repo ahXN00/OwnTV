@@ -1001,12 +1001,24 @@ class LiveViewModel(
             _previewChannel.drop(1).filterNotNull().map { it.id }.debounce(800).filter { miniPlaying == null }.distinctUntilChanged()
                 .collect { settings.setLastLiveChannelId(it) }
         }
+        // Again after a profile switch, each profile has its own: the previous profile's channel is
+        // replaced (or cleared when this one has none), the preview disarmed as at launch. Left alone
+        // while the mini player plays.
         viewModelScope.launch {
-            if (!settings.rememberLastLive.first()) return@launch
-            val savedId = settings.lastLiveChannelId.first()
-            if (savedId > 0 && _previewChannel.value == null) {
-                val pid = ctx.first { it.profileId >= 0 }.profileId
-                channelDao.getById(savedId)?.takeIf { !customize.sealsCategory(pid, it.categoryId) }?.let { if (_previewChannel.value == null) _previewChannel.value = it }
+            var atLaunch = true
+            ctx.filter { it.profileId >= 0 }.map { it.profileId }.distinctUntilChanged().collect { pid ->
+                val first = atLaunch.also { atLaunch = false }
+                if (!settings.rememberLastLive.first() || miniPlaying != null) return@collect
+                if (first && _previewChannel.value != null) return@collect
+                val saved = settings.lastLiveChannelId.first().takeIf { it > 0 }
+                    ?.let { channelDao.getById(it) }
+                    ?.takeIf { !customize.sealsCategory(pid, it.categoryId) }
+                if (first) {
+                    if (saved != null && _previewChannel.value == null) _previewChannel.value = saved
+                } else {
+                    _previewArmed.value = false
+                    _previewChannel.value = saved
+                }
             }
         }
     }
