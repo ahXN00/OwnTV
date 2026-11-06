@@ -269,6 +269,19 @@ class SettingsViewModel(
         viewModelScope.launch { settings.setLivePreviewAudio(enabled) }
     }
 
+    val guidePreviewOnOk: StateFlow<Boolean> = settings.guidePreviewOnOk
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val livePreviewOnOk: StateFlow<Boolean> = settings.livePreviewOnOk
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun setGuidePreviewOnOk(enabled: Boolean) {
+        viewModelScope.launch { settings.setGuidePreviewOnOk(enabled) }
+    }
+
+    fun setLivePreviewOnOk(enabled: Boolean) {
+        viewModelScope.launch { settings.setLivePreviewOnOk(enabled) }
+    }
+
     val preferSdr: StateFlow<Boolean> = settings.preferSdr
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 

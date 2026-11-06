@@ -399,12 +399,12 @@ internal fun guideProgrammeActions(
 
 /**
  * ☰ Programme options, 560 wide at the right: "Wish" + "20:05 – 21:40 · 259 Sky Cinema Family";
- * NEW Remind me (5 min before) · WATCH Watch channel, Watch from start ("after 20:05" until it starts),
+ * DETAILS Program details (focused first) · NEW Remind me (5 min before) · WATCH Watch channel, Watch from start ("after 20:05" until it starts),
  * Play catch-up in… (Ask) · RECORD Record, Record every showing, Record from catch-up · CHANNEL
  * favourite, Pick EPG manually, EPG time offset (Global). Also Live TV's ▶ Schedule → OK menu.
  */
 @Composable
-internal fun GuideProgrammeMenu(title: String, subtitle: String, actions: GuideProgrammeActions, leadMinutes: Int, onDismiss: () -> Unit) {
+internal fun GuideProgrammeMenu(title: String, subtitle: String, actions: GuideProgrammeActions, leadMinutes: Int, onDetails: () -> Unit, onDismiss: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     val formatTime = rememberSystemTimeFormatter()
@@ -419,6 +419,12 @@ internal fun GuideProgrammeMenu(title: String, subtitle: String, actions: GuideP
     )
     GuideMenuHost(x = 1150f, top = 64.mpx, width = 560.mpx, onDismiss = onDismiss) {
         StageMenuHeader(title = title, subtitle = subtitle)
+        StageGroupLabel(stringResource(R.string.content_menu_group_details).uppercase(locale))
+        StageMenuItem(
+            text = stringResource(R.string.content_programme_details), icon = OwnTVIcon.INFO,
+            onClick = { onDismiss(); onDetails() },
+            modifier = Modifier.focusRequester(focus),
+        )
         StageGroupLabel(stringResource(R.string.content_menu_group_new).uppercase(locale))
         StageMenuItem(
             text = stringResource(if (actions.reminderSet) R.string.content_reminder_set else R.string.content_remind_me),
@@ -427,13 +433,11 @@ internal fun GuideProgrammeMenu(title: String, subtitle: String, actions: GuideP
             checked = actions.reminderSet,
             enabled = actions.onReminder != null,
             onClick = { actions.onReminder?.invoke(); onDismiss() },
-            modifier = if (actions.onReminder != null) Modifier.focusRequester(focus) else Modifier,
         )
         StageGroupLabel(stringResource(R.string.content_menu_group_watch).uppercase(locale))
         StageMenuItem(
             text = stringResource(R.string.content_epg_watch_channel), icon = OwnTVIcon.LIVE_TV,
             onClick = { onDismiss(); actions.onWatchChannel() },
-            modifier = if (actions.onReminder == null) Modifier.focusRequester(focus) else Modifier,
         )
         StageMenuItem(
             text = stringResource(R.string.content_epg_watch_start), icon = OwnTVIcon.REWIND,

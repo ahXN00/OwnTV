@@ -267,6 +267,10 @@ class LiveViewModel(
     val livePreviewEnabled: StateFlow<Boolean> = settings.livePreviewEnabled
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    /** "OK previews first" for Live TV: focus no longer plays the preview, OK does. */
+    val livePreviewOnOk: StateFlow<Boolean> = settings.livePreviewOnOk
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     /** List ordering for this section (Playlist order vs A–Z), persisted in DataStore. */
     val sortMode: StateFlow<SettingsRepository.SortMode> = settings.sortLive
         .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsRepository.SortMode.PLAYLIST)
@@ -377,6 +381,14 @@ class LiveViewModel(
     val previewChannel: StateFlow<ChannelEntity?> = _previewChannel.asStateFlow()
 
     /**
+     * The channel the preview pane was last asked to play — by a preview or a full-screen tune, whose
+     * stream the pane takes back on return. Usually [previewChannel]; with "OK previews first" on in
+     * Live TV the highlight moves on while this stays, so the pane keeps playing what OK chose.
+     */
+    private val _paneChannel = MutableStateFlow<ChannelEntity?>(null)
+    val paneChannel: StateFlow<ChannelEntity?> = _paneChannel.asStateFlow()
+
+    /**
      * The channel the mini player is playing while the user browses Live TV or the Guide behind it.
      * Focus still moves [_previewChannel] (the info pane follows the highlighted row), so the playing
      * channel is kept here and put back when the player is expanded: the HUD's guide card, Record,
@@ -408,6 +420,7 @@ class LiveViewModel(
     private fun tuned(channel: ChannelEntity) {
         miniPlaying = null
         _previewChannel.value = channel
+        _paneChannel.value = channel
     }
 
     /** Every guide read this screen makes, and the now/next cache that used to live here — see
@@ -1018,6 +1031,7 @@ class LiveViewModel(
                 } else {
                     _previewArmed.value = false
                     _previewChannel.value = saved
+                    _paneChannel.value = null // the previous profile's pick; its folder may be locked here
                 }
             }
         }
@@ -1106,6 +1120,9 @@ class LiveViewModel(
 
     /** In-pane preview playback (no history) — triggered by the UI after the focus settles. */
     fun playPreview(channel: ChannelEntity) {
+        // Recorded even when it cannot play (a hidden folder, a one-stream panel): a second OK on it
+        // must still open full screen.
+        _paneChannel.value = channel
         if (channel.categoryId != null && channel.categoryId in hiddenCategoryIds.value) return
         // Core keeps the preview off a promoted full-screen stream, re-mutes on a re-focus instead of
         // reloading, mints a Stalker link, and holds back on a one-session panel while mpv plays.
@@ -1191,6 +1208,51 @@ class LiveViewModel(
 
     fun showCategories() { _showCategoryBrowser.value = true }
     fun hideCategoryBrowser() { _showCategoryBrowser.value = false }
+
+    // --- Full-screen channel browser (◀◀: categories beside a category's channels) ---
+    private val peek = LiveCategoryPeek(viewModelScope)
+    val peekChannels: StateFlow<List<ChannelEntity>> = peek.channels
+    val peekKey: StateFlow<LiveKey?> = peek.key
+
+    init {
+        viewModelScope.launch { sealedCategoryIds.collect { peek.dropCategories(it) } }
+    }
+
+    /** ◀ from the in-player channel list: categories beside the list CH± zaps in, on its category. */
+    fun openChannelBrowser() {
+        peek.start(zapList.channels.value, zapList.key.value ?: playingChannel?.categoryId?.let { LiveKey.Folder(it) })
+        _showCategoryBrowser.value = true
+    }
+
+    /** OK on a category in the channel browser: its channels on the right. Nothing tunes, CH± is untouched. */
+    fun peekCategory(key: LiveKey) {
+        peek.load(key) {
+            when (key) {
+                is LiveKey.Folder -> channelsInCategory(key.id)
+                is LiveKey.Custom -> channelsInCustom(key)
+                LiveKey.Favorites, LiveKey.History, LiveKey.Catchup, LiveKey.All -> channelsInRail(key)
+            }
+        }
+    }
+
+    fun rememberPeekFocus(channelId: Long) = peek.rememberFocus(channelId)
+    fun peekEntryChannel(): Long? = peek.entryChannel(playingChannel?.id)
+
+    /** OK on a channel in the channel browser: CH± now steps through the list it was picked from, then it tunes. */
+    fun watchFromPeek(channel: ChannelEntity) {
+        val list = peek.channels.value
+        if (list != zapList.channels.value) {
+            val key = peek.key.value
+            zapList.armFromBrowse(
+                channels = list,
+                title = railItems.value.firstOrNull { it.key == key }?.title,
+                key = key,
+                categoryId = (key as? LiveKey.Folder)?.id,
+            )
+        }
+        _showCategoryBrowser.value = false
+        ensurePlaying(channel)
+    }
 
     /** Load channels for a category picked in the browser into the zap list. */
     fun loadChannelsForCategory(key: LiveKey) {
@@ -2057,6 +2119,7 @@ class LiveViewModel(
     fun stopPreview() {
         live.stop() // both engines, every watcher and the give-up alarm, and the reconnect link
         _previewChannel.value = null
+        _paneChannel.value = null
     }
 
     /**

@@ -147,8 +147,11 @@ hiding them first and then exiting.
 **CH+/CH−** always switch channels for the whole Live TV or catch-up session, including while the
 controls are up or playback is starting, wrapping at both ends. **Up/Down** (controls hidden) and the
 media ⏮/⏭ keys do the same. **Left** opens the channel list for the context the channel was opened
-from; **Left again** opens Live TV's own category sheet (Favorites, Recently watched, Catch-up, All
-channels and every group) without leaving full screen. **Right** shows the last 30 channels with when
+from; **Left again** opens a two-pane browser without leaving full screen — Live TV's own category
+sheet (Favorites, Recently watched, Catch-up, All channels and every group) beside the chosen
+category's channels. OK on a category changes the right-hand list; Right / Left move between the
+panes; OK on a channel plays it; Back closes both. Browsing never tunes or changes the CH± list —
+only the channel picked arms it from its list. **Right** shows the last 30 channels with when
 each was watched. All three are Stage glass sheets at the screen edge, and CH+/CH− page through them. Typing a **channel number** tunes it directly.
 
 ### 2.7 Resume, auto-play and the mini-player
@@ -198,7 +201,10 @@ Home feeds the system **Watch Next** row on stock Android TV launchers.
 84-high channel rows (number, logo plate, name, programme and time left, progress, provider tags,
 catch-up, favourite, playlist mark). Beside them the preview pane plays the channel with a LIVE badge,
 the real quality / fps / sound, the programme with progress and synopsis, and next / later — **▶**
-steps into that schedule, where OK offers Remind me / Record / Watch channel. **◀** brings the
+steps into that schedule, where OK offers Program details / Remind me / Record / Watch channel.
+**OK previews first** (one switch for Live TV, off by default; one for the TV Guide, on): with it on,
+focus no longer plays the preview — the first OK does, OK again goes full screen, and the video stays
+on that channel while the info pane follows the highlight. **◀** brings the
 categories in as a glass sheet (**Stage** layout) or keeps them as a column (**Separate**). The
 channel menu is a grouped Stage menu (Watch / Channel / Guide data / Organise), opened by holding OK
 or the Menu key. **Guide view** shows the guide grid inside Live TV, and *Live TV opens in* remembers
@@ -333,8 +339,9 @@ again on every wake.
 - Two-stage rows: focus selects the row, **OK** or **Right** steps into its programmes, **Back** steps
   out. Cells show recording / reminder / catch-up icons; overlapping programmes are drawn one after
   another; an empty stretch is a focusable "No program at this time" cell that Left/Right cross in
-  30-minute steps. Every programme action (Remind me / Watch from start, Record, Watch channel…) is in
-  the Hold-OK menu.
+  30-minute steps. Every programme action (Program details, Remind me / Watch from start, Record,
+  Watch channel…) is in the Hold-OK menu; the Info key opens Program details directly — the full
+  title, facts, categories and the whole description in a scrolling popup.
 - Catch-up rows on screen ask core for their **past days from the provider's archive** (one request at a
   time, a week back at most), so the guide reaches as far back as the recordings.
 - Order by Provider, A–Z, Catch-up first or Favourites first; the category filter is Live TV's own
@@ -445,7 +452,7 @@ their group.
 | **Player** | Live TV / Movies & Series player (+ per playlist), saved choices, External player · Film buffer, Network timeout, Reconnect attempts |
 | **Picture** | Hardware decoding, Prefer SDR, Maximum video quality, Tunneled playback, Default zoom, saved zoom · Auto frame rate, Pause during the switch, Match resolution |
 | **Sound & subtitles** | Default volume, Surround, Dolby/DTS passthrough, Night mode, Volume leveling, Audio sync (+ saved) · Preferred audio / subtitle language, Subtitle appearance |
-| **Live TV** | Channel numbers, Live preview, Preview audio, Pause and rewind live TV, Rewind length, Resume a saved channel, Left and right rewind · Live latency, Pre-buffer, Give up after (each + per playlist) |
+| **Live TV** | Channel numbers, Live preview, Preview audio, OK previews first, Pause and rewind live TV, Rewind length, Resume a saved channel, Left and right rewind · Live latency, Pre-buffer, Give up after (each + per playlist) |
 | **Watching & recording** | Seek step, Live rewind step, Resume playback, Auto-play next episode · Multiview, Max tiles, Mini-player, Picture-in-picture when leaving the app · Recording: keep one stream free, record what I'm watching, start early, keep going after the end |
 | **App** | Language, App icon, Accent-colored logo, App startup, Auto start on boot / on wake-up, Check for updates (+ on startup) · Proxy, DNS · Measured stream stats, Detailed playback logging |
 

@@ -48,10 +48,14 @@
 - **📱 Edit a playlist from another device (#250)**
 - **🧭 TV Guide follows Live TV's category, as a switch in Browsing & lists** (community PR #325 by @Zangetsu-Sama)
 - **👤 Each profile remembers its own last category and channel**
+- **👆 OK previews first, then full screen: a switch for Live TV and one for the TV Guide (#344)**
+- **📄 Program details from the programme menu or the Info key (#345)**
+- **📺 Full-screen channel browser: ◀◀ shows the categories beside their channels (#323)**
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**
 - **📺 Expanding the mini player returns to the channel playing, not the one browsed (#307)**
+- **🔢 Browsing categories in the player no longer changes what CH+/CH− step through; the channel you pick does**
 - **🔁 Re-test measures the connection limit on Xtream, and the next sync keeps it (#244)**
 - **🕘 "Live now" shows the programme's start and end**
 - **↕️ Moved categories, channels, films and series keep their place in A–Z and Provider; the rest follow the sort**

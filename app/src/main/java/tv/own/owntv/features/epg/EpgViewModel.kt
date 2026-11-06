@@ -497,6 +497,10 @@ class EpgViewModel(
         viewModelScope.launch { settings.setGuidePreview(show) }
     }
 
+    /** "OK previews first" for the Guide: on, OK brings a channel into the preview; off, OK watches it. */
+    val guidePreviewOnOk: StateFlow<Boolean> = settings.guidePreviewOnOk
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     /** The Order menu's choice; remembered, so the guide opens this way next time. */
     fun setGuideSort(sort: SettingsRepository.GuideSort) {
         viewModelScope.launch { settings.setSortGuide(sort) }
