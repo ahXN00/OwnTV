@@ -117,7 +117,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 |---|---|---|
 | **Long-press OK** / **Menu** key | any channel, film or show (not on Home) | The options menu — favourite, rename, hide, record, catch-up, move, download |
 | **Left** | Live TV, Movies, Series lists | Opens the categories (a sheet, or the column in **Separate** layouts) |
-| **Right** | Live TV channel list | Steps into the schedule beside the preview — what's next and later; OK = Remind me / Record / Watch |
+| **Right** / **Info** | Live TV channel list | That channel's Program details page |
 | **Hold Up / Down** | Live TV, Movies, Series lists | Runs through the list to its ends |
 | **Left** | full-screen live | Channel list for the folder you came from |
 | **Left ×2** | full-screen live | The categories (the same sheet as Live TV's) beside the channels of the one you are in. **OK** on a category shows its channels; **Right** goes into them, **Left** back; **OK** on a channel plays it. **Back** closes both. Looking around never changes what CH+/CH− step through — the channel you pick does |
@@ -242,10 +242,15 @@ The categories slide in as a sheet over the list — Favorites, History, Catch-u
 categories, then the provider's groups, each with its channel count. **Back** closes it.
 **Settings → Layout → Live TV layout** → **Separate** keeps them on screen as a column instead.
 
-### 📅 What's on next
-**Where:** Live TV → a channel → **Right**
-Steps into the schedule under the preview. **OK** on a later programme offers **Program details**,
-**Remind me**, **Record** or **Watch channel**; **Left** returns to the same channel.
+### 📅 Program details
+**Where:** Live TV → a channel → **Right**, the remote's **Info** key, or hold OK → **Program details**
+A full page with the channel's day: every programme on one line, grouped **Earlier · On now ·
+Later**, the one under the cursor opened with its times, facts, categories and whole description.
+**▲▼** move through the programmes; **Right** or **OK** goes to the opened programme's buttons —
+**Watch channel**, **Watch from start**, **Record**, **Record every showing**, **Remind me**,
+**Record from catch-up**, whichever fit it — **Left/Right** between them, **OK** runs one. **Up**
+from the first programme reaches **Yesterday · Today · Tomorrow**. **Back** closes. The next and
+later lines under the preview are for reading only.
 
 ### 🗓️ List or guide
 **Where:** the **Guide view** button in the Live TV tool row
@@ -311,8 +316,8 @@ Below, one control line — **Today**, **Now**, **Category**, **Order**, **Searc
 then the grid, opened at now with the now-line about a third of the way across.
 - **Two steps:** focus picks a channel row; **OK** or **Right** steps into its programmes; **Back**
   steps out. Across an empty stretch, Left/Right move 30 minutes at a time.
-- **Hold OK** on a programme: **Program details** (the whole title, its categories and the full
-  description; ▲▼ scroll, OK or Back closes), **Remind me** (upcoming) or **Watch from start**
+- **Hold OK** on a programme: **Program details** (the channel's day as a page, opened on this
+  programme — see Live TV › Program details), **Remind me** (upcoming) or **Watch from start**
   (past), **Record**, **Watch channel** and more. The remote's **Info** key opens Program details
   straight away.
 - **OK on a programme** plays its channel in the video at the top; **OK** again watches it full

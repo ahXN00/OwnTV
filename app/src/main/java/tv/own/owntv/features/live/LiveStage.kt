@@ -233,8 +233,8 @@ private fun detailsLine(now: XtEpgEntry, details: EpgDetails?): String {
 /**
  * The stage (`cLiveStage`): the preview video (16:9, radius 28) with the LIVE badge, the stream facts
  * and the channel in the lower corner; below it the programme title 42/800, the details line, the
- * progress and time left, the synopsis, and what is on next (accent time) and later. ▶ from the list
- * enters next / later ([scheduleFocus]); OK on one opens it through [onOpenProgramme].
+ * progress and time left, the synopsis, and what is on next (accent time) and later. It is for reading
+ * only: the whole schedule, with what each programme can do, is the Program details page.
  */
 @Composable
 internal fun LiveStagePane(
@@ -244,9 +244,6 @@ internal fun LiveStagePane(
     previewEngine: tv.own.owntv.player.LivePreviewEngine,
     showVideo: Boolean,
     singleSessionBlocked: Boolean,
-    scheduleFocus: FocusRequester,
-    onOpenProgramme: (XtEpgEntry) -> Unit,
-    onBackToList: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val previewState by previewEngine.state.collectAsStateWithLifecycle()
@@ -334,21 +331,11 @@ internal fun LiveStagePane(
             val later = nowNext?.upcoming?.firstOrNull()
             if (next != null) {
                 Row(
-                    Modifier
-                        .padding(top = 22.mpx)
-                        .offset(x = (-12).mpx)
-                        .focusGroup(),
-                    // 30 between the two, less the 12 + 12 each entry pads itself with for its focus fill.
+                    Modifier.padding(top = 22.mpx).offset(x = (-12).mpx),
                     horizontalArrangement = Arrangement.spacedBy(6.mpx),
                 ) {
-                    // ◀ from next goes back to the channel it belongs to, not to whatever lies to the left.
-                    LiveScheduleItem(
-                        next, accentTime = true, onClick = { onOpenProgramme(next) },
-                        modifier = Modifier.focusRequester(scheduleFocus).onPreviewKeyEvent { e ->
-                            if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionLeft) { onBackToList(); true } else false
-                        },
-                    )
-                    if (later != null) LiveScheduleItem(later, accentTime = false, onClick = { onOpenProgramme(later) })
+                    LiveScheduleItem(next, accentTime = true)
+                    if (later != null) LiveScheduleItem(later, accentTime = false)
                 }
             }
         }
@@ -357,26 +344,24 @@ internal fun LiveStagePane(
 
 /**
  * One "20:30  Kingdom of the Planet of the Apes" entry under the stage, 18 px. Next has the accent
- * time and full-colour title, later is muted. Focused = FILLED.
+ * time and full-colour title, later is muted. Display only.
  */
 @Composable
-private fun LiveScheduleItem(p: XtEpgEntry, accentTime: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun LiveScheduleItem(p: XtEpgEntry, accentTime: Boolean) {
     val formatTime = rememberSystemTimeFormatter()
     val a = stageAccent
-    StageSurface(onClick = onClick, radius = 12.mpx, modifier = modifier) { focused ->
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontFeatureSettings = Tabular, color = if (focused) a.onAccent else if (accentTime) a.accent else StageColors.Muted)) {
-                    append(formatTime(p.startMs))
-                }
-                append("  ")
-                append(p.title)
-            },
-            style = stageText(18, 400), color = if (focused) a.onAccent else if (accentTime) StageColors.Text else StageColors.Muted,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 12.mpx, vertical = 6.mpx),
-        )
-    }
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontFeatureSettings = Tabular, color = if (accentTime) a.accent else StageColors.Muted)) {
+                append(formatTime(p.startMs))
+            }
+            append("  ")
+            append(p.title)
+        },
+        style = stageText(18, 400), color = if (accentTime) StageColors.Text else StageColors.Muted,
+        maxLines = 1, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(horizontal = 12.mpx, vertical = 6.mpx),
+    )
 }
 
 /** Scroll only as far as the focused item, plus one row of room, needs (the TV default pins it a third down). */

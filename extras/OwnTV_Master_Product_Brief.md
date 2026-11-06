@@ -200,8 +200,9 @@ Home feeds the system **Watch Next** row on stock Android TV launchers.
 **Live TV** — a header with the category and channel count, a tool row (search, sort, Guide view) and
 84-high channel rows (number, logo plate, name, programme and time left, progress, provider tags,
 catch-up, favourite, playlist mark). Beside them the preview pane plays the channel with a LIVE badge,
-the real quality / fps / sound, the programme with progress and synopsis, and next / later — **▶**
-steps into that schedule, where OK offers Program details / Remind me / Record / Watch channel.
+the real quality / fps / sound, the programme with progress and synopsis, and next / later (for reading). **▶**, the Info key or the channel menu's first item opens **Program
+details**: the channel's day as one-line rows grouped Earlier · On now · Later, the focused one opened
+in place with facts, tags, the whole description and its actions; Yesterday / Today / Tomorrow on top.
 **OK previews first** (one switch for Live TV, off by default; one for the TV Guide, on): with it on,
 focus no longer plays the preview — the first OK does, OK again goes full screen, and the video stays
 on that channel while the info pane follows the highlight. **◀** brings the
@@ -340,8 +341,8 @@ again on every wake.
   out. Cells show recording / reminder / catch-up icons; overlapping programmes are drawn one after
   another; an empty stretch is a focusable "No program at this time" cell that Left/Right cross in
   30-minute steps. Every programme action (Program details, Remind me / Watch from start, Record,
-  Watch channel…) is in the Hold-OK menu; the Info key opens Program details directly — the full
-  title, facts, categories and the whole description in a scrolling popup.
+  Watch channel…) is in the Hold-OK menu; the Info key opens Program details directly — the channel's day as a page, opened on that
+  programme.
 - Catch-up rows on screen ask core for their **past days from the provider's archive** (one request at a
   time, a week back at most), so the guide reaches as far back as the recordings.
 - Order by Provider, A–Z, Catch-up first or Favourites first; the category filter is Live TV's own

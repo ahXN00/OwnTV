@@ -391,6 +391,11 @@ class EpgViewModel(
         }
     }
 
+    /** One channel's programmes from [dayStart] for a day, whole — synopsis and details — for the
+     *  Program details page. Not cached: the page reads one day at a time, on demand. */
+    suspend fun dayProgrammes(channel: ChannelEntity, dayStart: Long): List<EpgProgrammeEntity> =
+        guideReader.row(channel, custom.value, epgOffset.value, dayStart, dayStart + DAY_MS, withText = true)
+
     /** The whole programme — synopsis and details — for the programme block (the grid load drops both). */
     suspend fun programmeFull(programmeId: Long): EpgProgrammeEntity? =
         runCatching { epgDao.programmeById(programmeId) }.getOrNull()
