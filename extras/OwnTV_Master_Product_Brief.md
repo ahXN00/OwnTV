@@ -171,7 +171,9 @@ Memory budget scales to the device · a decode watchdog blocks 4K/8K software-de
 with a clear error · backgrounding releases the stream immediately · every player command runs off
 the UI thread · auto-reconnect with backoff on dropped live streams · corrupted-file recovery
 destroys and recreates the mpv instance so one bad file cannot poison the session · screensaver
-restore brings a paused film back at the exact spot and re-tunes a live channel to the edge.
+restore brings a paused film back at the exact spot and re-tunes a live channel to the edge · the same
+happens when the TV is switched off and on while the box keeps running (its last sound output gone
+for 6 s) · Play after a pause of over a minute on live goes back to the live edge.
 
 ---
 
