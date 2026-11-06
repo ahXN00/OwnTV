@@ -96,6 +96,9 @@
 - **📺 Live TV comes back on the category you chose, even on a large playlist; a startup or a jump to a channel no longer replaces it** (community PR #325 by @Zangetsu-Sama)
 - **📚 Series whose episodes carry two dates load their episodes again (#342)**
 - **📡 A guide download cut off midway no longer deletes the rest of the guide**
+- **📺 Live comes back by itself at the live edge when the TV is switched off and on (#343)**
+- **⏯️ Play after a pause of over a minute on a live channel goes to the live edge**
+- **🔗 Panels that serve some channels as HLS behind a .ts address open faster and no longer fail after an offline channel** (community PRs ahXN00/OwnTV_Core#76 and #77 by @SirKitboard)
 
 ## v5.2.1 — 2026-10-21
 
