@@ -360,14 +360,27 @@ fun OwnTVShell(
     val zapListKey by liveVm.zapListKey.collectAsStateWithLifecycle()
     // Favorites and History have no provider name to show — their labels are UI strings, so the overlay
     // used to head both of them "All channels".
-    val zapOverlayTitle = zapListTitle ?: when (zapListKey) {
-        LiveKey.Favorites -> stringResource(R.string.content_category_favorites)
-        LiveKey.History -> stringResource(R.string.content_category_history)
-        LiveKey.Catchup -> stringResource(R.string.content_catchup)
-        else -> stringResource(R.string.content_category_all_channels)
+    // Read unconditionally and chosen by a plain function: a composable call skipped on one side of `?:`
+    // changed this screen's group structure, and the player below — video surface and HUD — was rebuilt
+    // whenever the channel browser's heading switched between a built-in rail and a named category.
+    val favoritesTitle = stringResource(R.string.content_category_favorites)
+    val historyTitle = stringResource(R.string.content_category_history)
+    val catchupTitle = stringResource(R.string.content_catchup)
+    val allChannelsTitle = stringResource(R.string.content_category_all_channels)
+    fun builtInListTitle(key: LiveKey?): String = when (key) {
+        LiveKey.Favorites -> favoritesTitle
+        LiveKey.History -> historyTitle
+        LiveKey.Catchup -> catchupTitle
+        else -> allChannelsTitle
     }
+    val zapOverlayTitle = zapListTitle ?: builtInListTitle(zapListKey)
     val showCategoryBrowser by liveVm.showCategoryBrowser.collectAsStateWithLifecycle()
     val browserRailItems = liveVm.railItems.collectAsStateWithLifecycle().value.let { all -> remember(all) { all.filterNot { it.sealed } } }
+    // The channel browser's right-hand list (◀◀ in the player) and its heading.
+    val peekChannels by liveVm.peekChannels.collectAsStateWithLifecycle()
+    val peekKey by liveVm.peekKey.collectAsStateWithLifecycle()
+    val peekTitle = browserRailItems.firstOrNull { it.key == peekKey }?.title?.takeIf { it.isNotBlank() }
+        ?: if (peekChannels == zapChannels) zapOverlayTitle else builtInListTitle(peekKey)
     val browserRailCounts by liveVm.railCounts.collectAsStateWithLifecycle()
     val previewChannel by liveVm.previewChannel.collectAsStateWithLifecycle()
     // Home / screensaver with a live channel on mpv: mpv frees the stream and keeps no restore for live
@@ -452,6 +465,9 @@ fun OwnTVShell(
     val overlayNowPlaying by liveVm.nowPlaying.collectAsStateWithLifecycle()
     LaunchedEffect(showChannelList, zapChannels) {
         if (showChannelList && zapChannels.size > 1) liveVm.ensureNowPlaying(zapChannels)
+    }
+    LaunchedEffect(showChannelList, showCategoryBrowser, peekChannels) {
+        if (showChannelList && showCategoryBrowser && peekChannels.isNotEmpty()) liveVm.ensureNowPlaying(peekChannels)
     }
     // Recently-watched channels for the right-hand history overlay — re-read each time it opens (and
     // after a zap, since tuning writes a new history row) so the newest channel is always on top.
@@ -1918,14 +1934,25 @@ fun OwnTVShell(
                 // Left — the playing channel's own provider category.
                 if (showChannelList && isLiveChannel) {
                     if (showCategoryBrowser) {
-                        // Second Left — every Live TV category.
-                        tv.own.owntv.features.shell.components.CategoryBrowserOverlay(
+                        // Second Left — every Live TV category beside the chosen one's channels. Back
+                        // closes both panes and the list with them.
+                        tv.own.owntv.features.shell.components.ChannelBrowserOverlay(
                             railItems = browserRailItems,
                             railCounts = browserRailCounts,
-                            // The list the player zaps in: a built-in rail or custom category when it came from one.
-                            currentKey = zapListKey ?: previewChannel?.categoryId?.let { tv.own.owntv.core.live.LiveKey.Folder(it) },
-                            onSelect = { key -> liveVm.loadChannelsForCategory(key) },
-                            onDismiss = { liveVm.hideCategoryBrowser() },
+                            shownKey = peekKey,
+                            channels = peekChannels,
+                            channelsTitle = peekTitle,
+                            playingId = previewChannel?.id,
+                            entryChannelId = liveVm::peekEntryChannel,
+                            onPickCategory = liveVm::peekCategory,
+                            onFocusChannel = { liveVm.rememberPeekFocus(it.id) },
+                            onWatch = { liveVm.watchFromPeek(it); showChannelList = false },
+                            onDismiss = { liveVm.hideCategoryBrowser(); showChannelList = false },
+                            nowPlaying = overlayNowPlaying,
+                            nowProgrammes = overlayProgrammes,
+                            favoriteIds = overlayFavoriteIds,
+                            playlistMarks = overlayPlaylistMarks,
+                            showNumbers = directTuneEnabled,
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else if (zapChannels.isNotEmpty()) {
@@ -1942,7 +1969,7 @@ fun OwnTVShell(
                             showNumbers = directTuneEnabled,
                             onSelect = { liveVm.ensurePlaying(it); showChannelList = false },
                             onDismiss = { showChannelList = false },
-                            onOpenCategories = { liveVm.showCategories() },
+                            onOpenCategories = { liveVm.openChannelBrowser() },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }

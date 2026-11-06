@@ -120,7 +120,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 | **Right** | Live TV channel list | Steps into the schedule beside the preview — what's next and later; OK = Remind me / Record / Watch |
 | **Hold Up / Down** | Live TV, Movies, Series lists | Runs through the list to its ends |
 | **Left** | full-screen live | Channel list for the folder you came from |
-| **Left ×2** | full-screen live | All Live TV categories, the same sheet as Live TV's (search, Favorites, Recently watched, Catch-up, All channels, groups) — switch list without stopping the stream |
+| **Left ×2** | full-screen live | The categories (the same sheet as Live TV's) beside the channels of the one you are in. **OK** on a category shows its channels; **Right** goes into them, **Left** back; **OK** on a channel plays it. **Back** closes both. Looking around never changes what CH+/CH− step through — the channel you pick does |
 | **Right** | full-screen live | The last 30 channels you watched, each with when you watched it |
 | **Left / Right** | full-screen live, a channel you can rewind (catch-up, or saved by **Pause and rewind live TV**), **Left and right rewind live TV** on | Rewind / go forward instead of the lists (the timeline comes up; hold to scrub) |
 | **Left / Right** | film or episode, controls hidden | Skip back / forward by your seek step; the seek bar comes up, hold to keep scrubbing |
@@ -229,6 +229,10 @@ Device ID2 and Signature under **Advanced device identification**.
 **Where:** Live TV → focus a channel → **OK**
 The preview pane plays it first; OK goes full screen with no reload. Beside the video: the programme,
 its progress and time left, the synopsis, and what's on next and later.
+**OK previews first** (Settings → Video player → Live TV, shown while Live preview is on) has a
+switch for Live TV and one for the TV Guide. With Live TV's on, moving through the list no longer
+plays anything: the first **OK** plays the channel in the preview, **OK** on that channel again goes
+full screen, and the video stays on it (its name on the picture) while you look around the list.
 If the stream stalls, the last picture stays on screen; after about 10 seconds the player says
 **Stream interrupted. Reconnecting…** and the picture comes back by itself when the network does.
 
@@ -240,8 +244,8 @@ categories, then the provider's groups, each with its channel count. **Back** cl
 
 ### 📅 What's on next
 **Where:** Live TV → a channel → **Right**
-Steps into the schedule under the preview. **OK** on a later programme offers **Remind me**,
-**Record** or **Watch channel**; **Left** returns to the same channel.
+Steps into the schedule under the preview. **OK** on a later programme offers **Program details**,
+**Remind me**, **Record** or **Watch channel**; **Left** returns to the same channel.
 
 ### 🗓️ List or guide
 **Where:** the **Guide view** button in the Live TV tool row
@@ -307,8 +311,13 @@ Below, one control line — **Today**, **Now**, **Category**, **Order**, **Searc
 then the grid, opened at now with the now-line about a third of the way across.
 - **Two steps:** focus picks a channel row; **OK** or **Right** steps into its programmes; **Back**
   steps out. Across an empty stretch, Left/Right move 30 minutes at a time.
-- **Hold OK** on a programme: **Remind me** (upcoming) or **Watch from start** (past), **Record**,
-  **Watch channel** and more.
+- **Hold OK** on a programme: **Program details** (the whole title, its categories and the full
+  description; ▲▼ scroll, OK or Back closes), **Remind me** (upcoming) or **Watch from start**
+  (past), **Record**, **Watch channel** and more. The remote's **Info** key opens Program details
+  straight away.
+- **OK on a programme** plays its channel in the video at the top; **OK** again watches it full
+  screen. With the TV Guide's switch in **OK previews first** off, OK watches at once and the video
+  follows the highlighted row.
 - **Order:** Provider, A–Z, Catch-up first or Favourites first. **Category** uses Live TV's own list,
   and in Provider or A–Z the channels come in Live TV's order, moved ones in their place.
   Its **Show** group: **Channels without guide**, and **Video preview** — off, the top shows the

@@ -140,6 +140,8 @@ fun LiveScreen(
     var searchEditing by remember { mutableStateOf(false) }
     val sortMode by vm.sortMode.collectAsStateWithLifecycle()
     val livePreviewSetting by vm.livePreviewEnabled.collectAsStateWithLifecycle()
+    val previewOnOk by vm.livePreviewOnOk.collectAsStateWithLifecycle()
+    val paneChannel by vm.paneChannel.collectAsStateWithLifecycle()
     val channels = vm.channels.collectAsLazyPagingItems()
     val moveState by vm.moveState.collectAsStateWithLifecycle()
     val categoryMoveState by vm.categoryMoveState.collectAsStateWithLifecycle()
@@ -174,13 +176,19 @@ fun LiveScreen(
 
     // In-pane preview: play the focused channel after the focus settles (700ms). Disabled while the
     // fullscreen/mini player owns the surface (previewEnabled=false) to avoid two surfaces fighting.
-    LaunchedEffect(previewChannel?.id, effectivePreview, previewArmed) {
+    LaunchedEffect(previewChannel?.id, effectivePreview, previewArmed, previewOnOk) {
         // previewArmed gates the case where the last channel was restored on startup — we don't auto-preview
         // it until the user actually focuses a channel (then it plays normally).
-        if (!effectivePreview || !previewArmed) return@LaunchedEffect
+        if (previewOnOk || !effectivePreview || !previewArmed) return@LaunchedEffect
         val ch = previewChannel ?: return@LaunchedEffect
         delay(700)
         vm.playPreview(ch)
+    }
+    // With "OK previews first" the pane plays only what OK chose (or the channel just watched full
+    // screen); this takes it back whenever the pane can play again — back from the player or another tab.
+    LaunchedEffect(effectivePreview, previewArmed, previewOnOk) {
+        if (!previewOnOk || !effectivePreview || !previewArmed) return@LaunchedEffect
+        vm.paneChannel.value?.let(vm::playPreview)
     }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -492,6 +500,7 @@ fun LiveScreen(
         .collectAsStateWithLifecycle()
     val scheduleFocus = remember { FocusRequester() }
     var openProgramme by remember { mutableStateOf<Pair<ChannelEntity, tv.own.owntv.core.parser.XtEpgEntry>?>(null) }
+    var programmeDetails by remember { mutableStateOf<Pair<ChannelEntity, tv.own.owntv.core.database.entity.EpgProgrammeEntity>?>(null) }
     LaunchedEffect(categoriesOpen) {
         if (categoriesOpen) { withFrameNanos { }; runCatching { railFocus.requestFocus() } }
         // However the sheet closed (Back, a pick, ◀ to the rail), the next one starts fresh.
@@ -838,8 +847,13 @@ fun LiveScreen(
                                         if (rememberLive) perCategoryChannelIds[selectedKey] = channel.id
                                     },
                                     onClick = {
-                                        vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
-                                        if (!externalPlayerOn) onFullscreen()
+                                        when (okAction(previewOnOk, effectivePreview && previewShown, paneChannel?.id, channel.id)) {
+                                            OkAction.PREVIEW -> vm.playPreview(channel)
+                                            OkAction.WATCH -> {
+                                                vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
+                                                if (!externalPlayerOn) onFullscreen()
+                                            }
+                                        }
                                     },
                                     onLongClick = { contextChannel = channel; contextChannelId = channel.id },
                                 )
@@ -871,12 +885,15 @@ fun LiveScreen(
         // The preview sits outside the dimmed list side: a video surface under a translucent layer goes
         // black, and the show keeps playing while the categories are open.
         if (previewShown) {
+            // With "OK previews first" the video and its name plate stay on the channel OK chose while
+            // the programme below follows the highlight; before any OK, the highlight as before.
+            val videoChannel = if (previewOnOk) paneChannel ?: previewChannel else previewChannel
             LiveStagePane(
-                channel = previewChannel,
-                channelName = previewChannel?.let { ProviderTags.parse(it.name).name },
+                channel = videoChannel,
+                channelName = videoChannel?.let { ProviderTags.parse(it.name).name },
                 nowNext = nowNext,
                 previewEngine = vm.previewEngine,
-                showVideo = effectivePreview,
+                showVideo = effectivePreview && (!previewOnOk || paneChannel != null),
                 singleSessionBlocked = previewBlockedSingleSession,
                 scheduleFocus = scheduleFocus,
                 onOpenProgramme = { p -> previewChannel?.let { openProgramme = it to p } },
@@ -918,6 +935,7 @@ fun LiveScreen(
         val leadMinutes by epgVm.reminderLeadMinutes.collectAsStateWithLifecycle()
         val p = remember(ch.id, xt.startMs) {
             tv.own.owntv.core.database.entity.EpgProgrammeEntity(
+                id = xt.programmeId,
                 sourceId = ch.sourceId, epgChannelId = ch.epgChannelId.orEmpty(),
                 startMs = xt.startMs, stopMs = xt.stopMs, title = xt.title, description = xt.description,
             )
@@ -938,7 +956,18 @@ fun LiveScreen(
                 autoMatch = false,
             ),
             leadMinutes = leadMinutes,
+            onDetails = { programmeDetails = ch to p },
             onDismiss = { openProgramme = null; runCatching { scheduleFocus.requestFocus() } },
+        )
+    }
+    programmeDetails?.let { (ch, p) ->
+        val epgVm: tv.own.owntv.features.epg.EpgViewModel = koinViewModel()
+        tv.own.owntv.features.epg.ProgrammeDetailsPopup(
+            programme = p,
+            channelName = ProviderTags.parse(ch.name).name,
+            // A row only the provider gave has no stored programme: its title, time and text are all there is.
+            load = p.id.takeIf { it > 0 }?.let { id -> { epgVm.programmeFull(id) } },
+            onDismiss = { programmeDetails = null; runCatching { scheduleFocus.requestFocus() } },
         )
     }
     catchupChannel?.let { ch ->

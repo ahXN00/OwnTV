@@ -68,6 +68,8 @@ import tv.own.owntv.core.model.RecordingStatus
 import tv.own.owntv.core.settings.SettingsRepository
 import tv.own.owntv.features.live.LiveCategories
 import tv.own.owntv.features.live.LiveViewModel
+import tv.own.owntv.features.live.OkAction
+import tv.own.owntv.features.live.okAction
 import tv.own.owntv.core.live.ProviderTags
 import tv.own.owntv.features.live.edgeScrollSpec
 import tv.own.owntv.features.live.liveCategoryEntries
@@ -243,17 +245,22 @@ fun EpgScreen(
         vm.load() // reload from DB each time the guide is opened
     }
 
-    // The preview stays on its channel while the guide is browsed; OK on a row brings that row's channel
-    // into it, and OK again on the channel already there watches it full screen. Following the focus made
-    // every row passed on the way to another one play for a moment.
+    // "OK previews first" on (the default): the preview stays on its channel while the guide is browsed;
+    // OK on a row brings that row's channel into it at once, and OK again on the channel already there
+    // watches it full screen. Off: OK watches straight away and the preview follows the highlight once
+    // it settles.
+    val previewOnOk by vm.guidePreviewOnOk.collectAsStateWithLifecycle()
+    val paneChannel by liveVm.paneChannel.collectAsStateWithLifecycle()
     val effectivePreview = previewEnabled && livePreviewSetting && guidePreview
-    val previewNeeds: (ChannelEntity) -> Boolean = { ch -> effectivePreview && (!previewArmed || previewChannel?.id != ch.id) }
+    val okPreviews: (ChannelEntity) -> Boolean = { ch ->
+        okAction(previewOnOk, effectivePreview, paneChannel?.id?.takeIf { previewArmed }, ch.id) == OkAction.PREVIEW
+    }
     // Switching the Guide's own preview off stops what is already playing, not only the next channel.
     LaunchedEffect(guidePreview) { if (!guidePreview && previewEnabled) liveVm.stopPreview() }
     LaunchedEffect(previewChannel?.id, effectivePreview, previewArmed) {
         if (!effectivePreview || !previewArmed) return@LaunchedEffect
         val ch = previewChannel ?: return@LaunchedEffect
-        delay(700)
+        if (!previewOnOk) delay(700) // following the highlight: only once it settles
         liveVm.playPreview(ch)
     }
 
@@ -373,6 +380,7 @@ fun EpgScreen(
 
     // --- Overlays --------------------------------------------------------------------------------------
     var menuFor by remember { mutableStateOf<Pair<ChannelEntity, EpgProgrammeEntity>?>(null) }
+    var detailsFor by remember { mutableStateOf<Pair<ChannelEntity, EpgProgrammeEntity>?>(null) }
     var channelMenuFor by remember { mutableStateOf<ChannelEntity?>(null) }
     var recordMenuFor by remember { mutableStateOf<Pair<ChannelEntity, EpgProgrammeEntity>?>(null) }
     var askPlayerFor by remember { mutableStateOf<Pair<ChannelEntity, EpgProgrammeEntity>?>(null) }
@@ -387,7 +395,7 @@ fun EpgScreen(
     var searchHadFocus by remember { mutableStateOf(false) }
     // Where focus goes back to when an overlay closes: the control or button that opened it.
     var returnTo by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val anyOverlay = menuFor != null || channelMenuFor != null || recordMenuFor != null || askPlayerFor != null || matchingChannel != null ||
+    val anyOverlay = menuFor != null || detailsFor != null || channelMenuFor != null || recordMenuFor != null || askPlayerFor != null || matchingChannel != null ||
         offsetChannel != null || orderOpen || dayOpen || review.isNotEmpty()
     var hadOverlay by remember { mutableStateOf(false) }
     LaunchedEffect(anyOverlay) {
@@ -650,14 +658,14 @@ fun EpgScreen(
                                     onEnterCell = {
                                         cursorTime = System.currentTimeMillis()
                                         inCellMode = true
-                                        if (previewNeeds(channel)) liveVm.onChannelFocused(channel)
+                                        if (okPreviews(channel)) liveVm.onChannelFocused(channel)
                                     },
                                     recordingStarts = recordingsByChannel[channel.id].orEmpty(),
                                     reminderStarts = remindersByChannel[channel.id].orEmpty(),
                                     onFocused = {
                                         focusedRow = index
                                         if (cursorTime !in state.windowStart until state.windowEnd) cursorTime = System.currentTimeMillis()
-                                        if (!effectivePreview) liveVm.onChannelFocused(channel)
+                                        if (!effectivePreview || !previewOnOk) liveVm.onChannelFocused(channel)
                                     },
                                     onCursor = { cursorTime = it },
                                     onShow = { p -> selected = channel to p },
@@ -670,8 +678,9 @@ fun EpgScreen(
                                             else -> { stepTo(to); true }
                                         }
                                     },
-                                    onOk = { p -> if (previewNeeds(channel)) liveVm.onChannelFocused(channel) else onOk(channel, p) },
+                                    onOk = { p -> if (okPreviews(channel)) liveVm.onChannelFocused(channel) else onOk(channel, p) },
                                     onMenu = { p -> returnTo = null; if (p != null) menuFor = channel to p else channelMenuFor = channel },
+                                    onDetails = { p -> if (p != null) { returnTo = null; detailsFor = channel to p } },
                                 )
                             }
                         }
@@ -751,7 +760,16 @@ fun EpgScreen(
             ).joinToString(" · "),
             actions = actionsFor(ch, p),
             leadMinutes = leadMinutes,
+            onDetails = { detailsFor = ch to p },
             onDismiss = { menuFor = null },
+        )
+    }
+    detailsFor?.let { (ch, p) ->
+        ProgrammeDetailsPopup(
+            programme = p,
+            channelName = ProviderTags.parse(ch.name).name,
+            load = p.id.takeIf { it > 0 }?.let { id -> { vm.programmeFull(id) } },
+            onDismiss = { detailsFor = null },
         )
     }
     recordMenuFor?.let { (ch, p) -> GuideRecordMenu(title = p.title, actions = actionsFor(ch, p), onDismiss = { recordMenuFor = null }) }
@@ -871,6 +889,7 @@ private fun GuideRow(
     onStep: (Int) -> Boolean,
     onOk: (EpgProgrammeEntity?) -> Unit,
     onMenu: (EpgProgrammeEntity?) -> Unit,
+    onDetails: (EpgProgrammeEntity?) -> Unit,
 ) {
     // Cache peek first, so a row scrolled back into view draws at once; a miss reads this one channel.
     val cacheRevision by vm.cacheRevision.collectAsStateWithLifecycle()
@@ -907,6 +926,8 @@ private fun GuideRow(
                             true
                         }
                         Key.Menu -> { if (down) onMenu(programmeAt(progs, cursorTime)); true }
+                        // The remote's Info key: Program details of the programme under the cursor.
+                        Key.Info -> { if (down) onDetails(programmeAt(progs, cursorTime)); true }
                         // Physical by design: the timeline runs left to right in every language.
                         // Row stage: ◀ leaves for the menu, ▶ steps into the programmes.
                         Key.DirectionLeft -> if (!cellMode) false else {
