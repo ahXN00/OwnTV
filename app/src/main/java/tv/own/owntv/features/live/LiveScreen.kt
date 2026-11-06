@@ -1190,8 +1190,7 @@ private fun ChannelContextMenu(
     onRemoveFromHistory: () -> Unit,
     // Only inside a custom category: take the channel out of that category alone.
     onRemoveFromCategory: (() -> Unit)?,
-    // This channel's Program details page. Always first and not part of the arrangeable list: it is
-    // the television's own way into the schedule, and the phone shares that list.
+    // This channel's Program details page (a TV-only action in core's catalogue).
     onDetails: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -1202,8 +1201,9 @@ private fun ChannelContextMenu(
     val matchValue = if (epgMatchManual) stringResource(R.string.settings_manual) else stringResource(R.string.settings_auto)
     val offsetValue = epgShiftMinutes?.let { liveEpgShiftLabel(it) } ?: stringResource(R.string.content_epg_offset_global_short)
     // Group ids = the four groups, in their order.
-    val watch = 0; val chan = 1; val guide = 2; val organise = 3
+    val watch = 0; val chan = 1; val guide = 2; val organise = 3; val details = 4
     val actions = buildList {
+        add(MenuAction("programme_details", stringResource(R.string.content_programme_details), OwnTVIcon.INFO, group = details, onClick = onDetails))
         if (channel.catchup) add(MenuAction("catchup", stringResource(R.string.content_catchup), OwnTVIcon.REWIND, group = watch, onClick = onCatchup))
         // Record this channel from now. The guide's Record needs a programme, so a channel
         // the provider publishes no guide for can only be recorded from here. While it records, the
@@ -1236,6 +1236,7 @@ private fun ChannelContextMenu(
         stringResource(R.string.content_menu_group_channel),
         stringResource(R.string.content_menu_group_guide_data),
         stringResource(R.string.content_menu_group_organise),
+        stringResource(R.string.content_menu_group_details),
     ).map { it.uppercase(androidx.compose.ui.text.intl.Locale.current.platformLocale) }
     tv.own.owntv.ui.components.OwnTVPopup(onDismissRequest = onDismiss, stageLayout = true) {
         BoxWithConstraints(
@@ -1258,16 +1259,8 @@ private fun ChannelContextMenu(
                     },
                 )
                 val menu = arranged(ContentMenu.LIVE, actions)
-                if (menu.headings) {
-                    val locale = androidx.compose.ui.text.intl.Locale.current.platformLocale
-                    tv.own.owntv.ui.stage.StageGroupLabel(stringResource(R.string.content_menu_group_details).uppercase(locale))
-                }
-                tv.own.owntv.ui.stage.StageMenuItem(
-                    text = stringResource(R.string.content_programme_details), icon = OwnTVIcon.INFO,
-                    onClick = onDetails, modifier = Modifier.focusRequester(focus),
-                )
                 var previousGroup: Int? = null
-                menu.actions.forEach { action ->
+                menu.actions.forEachIndexed { index, action ->
                     if (menu.headings && action.group != previousGroup) tv.own.owntv.ui.stage.StageGroupLabel(groupLabels[action.group])
                     previousGroup = action.group
                     tv.own.owntv.ui.stage.StageMenuItem(
@@ -1276,6 +1269,7 @@ private fun ChannelContextMenu(
                         iconFilled = action.icon == OwnTVIcon.REC,
                         value = values[action.key],
                         onClick = action.onClick,
+                        modifier = if (index == 0) Modifier.focusRequester(focus) else Modifier,
                     )
                 }
             }
