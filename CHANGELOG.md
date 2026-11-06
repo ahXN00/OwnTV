@@ -49,7 +49,7 @@
 - **🧭 TV Guide follows Live TV's category, as a switch in Browsing & lists** (community PR #325 by @Zangetsu-Sama)
 - **👤 Each profile remembers its own last category and channel**
 - **👆 OK previews first, then full screen: a switch for Live TV and one for the TV Guide (#344)**
-- **📄 Program details from the programme menu or the Info key (#345)**
+- **📄 Program details: the channel's whole day as a page, with what each programme can do (#345)**
 - **📺 Full-screen channel browser: ◀◀ shows the categories beside their channels (#323)**
 
 ### 🐛 Fixes

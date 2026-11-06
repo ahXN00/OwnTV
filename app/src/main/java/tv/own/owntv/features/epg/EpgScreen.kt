@@ -765,10 +765,12 @@ fun EpgScreen(
         )
     }
     detailsFor?.let { (ch, p) ->
-        ProgrammeDetailsPopup(
-            programme = p,
-            channelName = ProviderTags.parse(ch.name).name,
-            load = p.id.takeIf { it > 0 }?.let { id -> { vm.programmeFull(id) } },
+        ProgrammeDayPage(
+            vm = vm,
+            channel = ch,
+            focusStartMs = p.startMs,
+            onWatch = { watch(ch) },
+            onPlayFromStart = { prog -> playFromStart(ch, prog) },
             onDismiss = { detailsFor = null },
         )
     }
