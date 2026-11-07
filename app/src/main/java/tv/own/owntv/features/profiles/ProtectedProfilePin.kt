@@ -76,7 +76,7 @@ internal fun ProtectedProfilePinDialog(
     ) {
         tv.own.owntv.features.settings.StageFieldRow(
             icon = tv.own.owntv.ui.components.OwnTVIcon.PENCIL,
-            label = stringResource(R.string.settings_backup_profile_pin),
+            label = stringResource(R.string.profiles_pin),
             value = pin,
             onValueChange = { pin = it; wrong = false },
             modifier = Modifier.focusRequester(fieldFocus),

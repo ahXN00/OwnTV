@@ -178,7 +178,6 @@ fun LocalSyncScreen(
                 stringResource(R.string.local_auto_sync_listen_description),
                 when {
                     autoListening -> stringResource(R.string.local_auto_sync_listening)
-                    !listenAlways -> stringResource(R.string.local_auto_sync_listen_sync_mode)
                     else -> null
                 },
             ).joinToString("\n"),
@@ -212,7 +211,7 @@ fun LocalSyncScreen(
                             // that it could not be reached, or that the other side turned it off.
                             line = listOfNotNull(
                                 device.address.takeIf { it.isNotBlank() },
-                                lastSyncedText(device.lastSyncAt),
+                                lastSyncedText(device.lastSyncAt).takeUnless { device.lastSyncAt <= 0 && (agreements[device.id]?.lastSuccessAt ?: 0) > 0 },
                                 autoSyncLine(device, agreements[device.id], turnedOff[device.id], autoEvents[device.id]),
                             ).joinToString(sep),
                             actions = listOf(
