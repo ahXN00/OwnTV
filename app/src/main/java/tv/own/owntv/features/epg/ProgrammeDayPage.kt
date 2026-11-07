@@ -268,7 +268,7 @@ private fun PageHeader(channel: ChannelEntity, day: Int, onDays: Boolean) {
                 listOfNotNull(channel.number?.toString(), ProviderTags.parse(channel.name).name).joinToString(" · "),
                 style = stageText(32, 800), color = StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            Text(stringResource(R.string.content_programme_details), style = stageText(17, 500), color = StageColors.Muted, maxLines = 1)
+            Text(stringResource(R.string.content_programme_details), style = stageText(17, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         listOf(-1 to R.string.content_epg_yesterday, 0 to R.string.content_epg_today, 1 to R.string.content_epg_tomorrow).forEach { (d, res) ->
             val chosen = d == day
@@ -283,7 +283,7 @@ private fun PageHeader(channel: ChannelEntity, day: Int, onDays: Boolean) {
                 else -> StageColors.Muted
             }
             Text(
-                stringResource(res), style = stageText(16, 700), color = fg, maxLines = 1,
+                stringResource(res), style = stageText(16, 700), color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 18.mpx, vertical = 9.mpx),
             )
         }
@@ -305,8 +305,8 @@ private fun ProgrammeLine(p: EpgProgrammeEntity, now: Long, highlighted: Boolean
         horizontalArrangement = Arrangement.spacedBy(20.mpx),
     ) {
         Column(Modifier.width(110.mpx)) {
-            Text(formatTime(p.startMs), style = stageText(18, 700), color = if (time == ProgrammeTime.PAST) StageColors.Dim else StageColors.Muted, maxLines = 1)
-            Text(formatTime(p.stopMs), style = stageText(13, 600), color = StageColors.Dim, maxLines = 1)
+            Text(formatTime(p.startMs), style = stageText(18, 700), color = if (time == ProgrammeTime.PAST) StageColors.Dim else StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(formatTime(p.stopMs), style = stageText(13, 600), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Column(Modifier.weight(1f)) {
             Text(p.title, style = stageText(20, 700).copy(textDirection = TextDirection.Content), color = titleColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -375,8 +375,8 @@ private fun OpenProgramme(
         horizontalArrangement = Arrangement.spacedBy(20.mpx),
     ) {
         Column(Modifier.width(110.mpx)) {
-            Text(formatTime(shown.startMs), style = stageText(18, 700), color = a.accent, maxLines = 1)
-            Text(formatTime(shown.stopMs), style = stageText(13, 600), color = StageColors.Dim, maxLines = 1)
+            Text(formatTime(shown.startMs), style = stageText(18, 700), color = a.accent, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(formatTime(shown.stopMs), style = stageText(13, 600), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Column(Modifier.weight(1f)) {
             Text(shown.title, style = stageText(30, 800, (-0.5).mpxSp).copy(textDirection = TextDirection.Content), color = StageColors.Text)
@@ -399,7 +399,7 @@ private fun OpenProgramme(
                     val on = inActions && i == action
                     Text(
                         (if (checked[i]) "✓ " else "") + label,
-                        style = stageText(16, 700), maxLines = 1,
+                        style = stageText(16, 700), maxLines = 1, overflow = TextOverflow.Ellipsis,
                         color = when { on -> a.onAccent; enabled -> StageColors.Text; else -> StageColors.Dim },
                         modifier = Modifier
                             .background(if (on) a.accent else Color(0xFF1A2427), RoundedCornerShape(12.mpx))
