@@ -132,10 +132,12 @@ class SetupViewModel(
         movies: SyncScopeChoice = SyncScopeChoice.Later,
         series: SyncScopeChoice = SyncScopeChoice.Later,
         httpReferer: String = "",
+        login: String = "",
+        password: String = "",
     ) = runImport {
         importer.stalker(
             name, portalUrl, mac, serialNumber, deviceId, deviceId2, signature, userAgent,
-            autoRefresh, live, movies, series, httpReferer = httpReferer,
+            autoRefresh, live, movies, series, httpReferer = httpReferer, login = login, password = password,
         )
     }
 
@@ -161,7 +163,7 @@ class SetupViewModel(
         job.invokeOnCompletion { if (importJob == job) importJob = null }
     }
 
-    /** Playlists belonging to unlocked (no-PIN) profiles that aren't already on the new profile. */
+    /** Other profiles' playlists not yet on the new profile, minus every one a protected profile uses. */
     suspend fun availableExistingSources(): List<SourceEntity> = importer.availableExistingSources()
 
     /** Link the chosen existing sources to the new profile, then re-sync each one. */

@@ -1,6 +1,8 @@
 package tv.own.owntv.features.live
 
+import tv.own.owntv.ui.components.onDpadLeft
 import tv.own.owntv.core.epg.displayLogoUrl
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
@@ -28,7 +30,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.delay
@@ -62,17 +63,17 @@ import androidx.tv.material3.Text
 import tv.own.owntv.R
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.Key
-import tv.own.owntv.core.customize.categoryRestoreSummary
-import tv.own.owntv.core.customize.CategoryRestorePlan
 import tv.own.owntv.core.customize.CustomizeKeys
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.ContentOrderEntity
+import tv.own.owntv.features.categorylock.focusListAfterSheet
+import tv.own.owntv.features.categorylock.rememberListPinFocus
 import tv.own.owntv.features.customize.MoveToCategoryDialog
 import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.core.settings.PanelSection
 import tv.own.owntv.features.settings.data.computePanelWidths
 import tv.own.owntv.features.settings.rememberPanelShares
-import tv.own.owntv.features.shell.components.CategoryContextMenu
+import tv.own.owntv.features.shell.components.RailCategoryMenu
 import tv.own.owntv.ui.components.MoveOrderOverlay
 import tv.own.owntv.ui.components.chNavPaging
 import tv.own.owntv.ui.components.longPressMenuGuard
@@ -108,6 +109,7 @@ fun LiveScreen(
     onOpenGuide: () -> Unit = {},
 ) {
     val vm: LiveViewModel = koinViewModel()
+    val lockVm: tv.own.owntv.features.categorylock.CategoryLockViewModel = koinViewModel()
     // Locking and unlocking are one pair: the pin belongs to this screen's lifetime, not to the view
     // model's. On the television that view model is a single instance shared with the browse section,
     // so a pin left behind froze its category rail. `DisposableEffect` (not `LaunchedEffect`) also
@@ -138,6 +140,8 @@ fun LiveScreen(
     var searchEditing by remember { mutableStateOf(false) }
     val sortMode by vm.sortMode.collectAsStateWithLifecycle()
     val livePreviewSetting by vm.livePreviewEnabled.collectAsStateWithLifecycle()
+    val previewOnOk by vm.livePreviewOnOk.collectAsStateWithLifecycle()
+    val paneChannel by vm.paneChannel.collectAsStateWithLifecycle()
     val channels = vm.channels.collectAsLazyPagingItems()
     val moveState by vm.moveState.collectAsStateWithLifecycle()
     val categoryMoveState by vm.categoryMoveState.collectAsStateWithLifecycle()
@@ -172,13 +176,19 @@ fun LiveScreen(
 
     // In-pane preview: play the focused channel after the focus settles (700ms). Disabled while the
     // fullscreen/mini player owns the surface (previewEnabled=false) to avoid two surfaces fighting.
-    LaunchedEffect(previewChannel?.id, effectivePreview, previewArmed) {
+    LaunchedEffect(previewChannel?.id, effectivePreview, previewArmed, previewOnOk) {
         // previewArmed gates the case where the last channel was restored on startup — we don't auto-preview
         // it until the user actually focuses a channel (then it plays normally).
-        if (!effectivePreview || !previewArmed) return@LaunchedEffect
+        if (previewOnOk || !effectivePreview || !previewArmed) return@LaunchedEffect
         val ch = previewChannel ?: return@LaunchedEffect
         delay(700)
         vm.playPreview(ch)
+    }
+    // With "OK previews first" the pane plays only what OK chose (or the channel just watched full
+    // screen); this takes it back whenever the pane can play again — back from the player or another tab.
+    LaunchedEffect(effectivePreview, previewArmed, previewOnOk) {
+        if (!previewOnOk || !effectivePreview || !previewArmed) return@LaunchedEffect
+        vm.paneChannel.value?.let(vm::playPreview)
     }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -488,17 +498,16 @@ fun LiveScreen(
     val categoriesVisible = lockedKey == null && (separate || categoriesOpen)
     val railCounts by (if (categoriesVisible) vm.railCounts else remember { kotlinx.coroutines.flow.MutableStateFlow(emptyMap<LiveKey, Int>()) })
         .collectAsStateWithLifecycle()
-    val scheduleFocus = remember { FocusRequester() }
-    var openProgramme by remember { mutableStateOf<Pair<ChannelEntity, tv.own.owntv.core.parser.XtEpgEntry>?>(null) }
-    // Back closes the sheet: one level out.
-    androidx.activity.compose.BackHandler(enabled = categoriesOpen) { categoriesOpen = false; focusCurrentRow() }
+    // The channel whose Program details page is open; focus returns to its row when it closes.
+    var programmeDetails by remember { mutableStateOf<ChannelEntity?>(null) }
     LaunchedEffect(categoriesOpen) {
         if (categoriesOpen) { withFrameNanos { }; runCatching { railFocus.requestFocus() } }
         // However the sheet closed (Back, a pick, ◀ to the rail), the next one starts fresh.
         else sheetHadFocus = false
     }
 
-    // Focus from the categories to the channel list: the remembered channel, else the first row.
+    // Focus from the categories to the channel list: the remembered channel, else the first row (a
+    // locked category's Enter PIN button holds its requester), else the search field.
     fun focusChannelList() {
         val targetId = if (rememberLive) perCategoryChannelIds[selectedKey] ?: previewChannel?.id else previewChannel?.id
         scope.launch {
@@ -513,25 +522,31 @@ fun LiveScreen(
                     if (runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) return@launch
                     withFrameNanos { }
                 }
-            } else {
+            } else if (!runCatching { firstItemFocus.requestFocus() }.getOrDefault(false)) {
                 runCatching { listSearchFocus.requestFocus() }
             }
         }
     }
+    val listPin = rememberListPinFocus(channels.itemCount, firstItemFocus, { revealRow(0) }) { focusChannelList() }
+    // Back closes the sheet: one level out, to the current row (or the list's way in when a lock emptied it).
+    BackHandler(enabled = categoriesOpen) { categoriesOpen = false; focusListAfterSheet(scope, ::focusCurrentRow, { channelPaneFocused }, ::focusChannelList) }
+    // ◀ Categories, from a row, the search field or a locked category's Enter PIN: the sheet (Stage) or the column (Separate).
+    fun openCategories() { if (separate) runCatching { railFocus.requestFocus() } else categoriesOpen = true }
 
     val (categoryEntries, groupsHeading) = liveCategoryEntries(railItems, railCounts)
     val headerLabel = if (selectedItem?.key is LiveKey.Folder || selectedItem?.key is LiveKey.Custom) ProviderTags.parse(selectedLabel).name else selectedLabel
 
     // CH± in the categories moves the highlight only; OK picks.
     var catFocusIndex by remember { mutableStateOf<Int?>(null) }
+    // Browsing the categories (or the search field) keeps the preview playing, like a TV: only picking
+    // another channel or leaving Live TV changes it.
     val categoriesModifier = Modifier
         .onFocusChanged {
             railPaneFocused = it.hasFocus
-            if (it.hasFocus && previewEnabled) vm.stopPreview()
             // The sheet closes when focus leaves it (◀ to the rail) — not while its own menus are open,
             // and not on the "unfocused" report every node gets when it first attaches.
             if (it.hasFocus) sheetHadFocus = true
-            else if (sheetHadFocus && categoriesOpen && contextCategory == null && categoryMoveState == null) {
+            else if (sheetHadFocus && categoriesOpen && contextCategory == null && categoryMoveState == null && !lockVm.prompting) {
                 sheetHadFocus = false
                 categoriesOpen = false
             }
@@ -546,8 +561,10 @@ fun LiveScreen(
             onJumpToIndex = { idx -> catFocusIndex = idx; railFocusRow = idx },
         )
     val onCategorySelect: (Int) -> Unit = { idx ->
-        railItems.getOrNull(idx)?.let { vm.select(it.key) }
-        if (categoriesOpen) { categoriesOpen = false; focusChannelList() }
+        val item = railItems.getOrNull(idx)
+        item?.let { vm.select(it.key) }
+        if (item?.sealed == true) lockVm.open(tv.own.owntv.core.model.MediaType.LIVE, item.key)
+        else if (categoriesOpen) { categoriesOpen = false; focusChannelList() }
     }
     val onCategoryLongSelect: (Int) -> Unit = { idx ->
         railItems.getOrNull(idx)?.let { item ->
@@ -579,7 +596,7 @@ fun LiveScreen(
         val liveHints = listOf(
             stringResource(R.string.common_ok) to stringResource(R.string.content_key_watch),
             "◀" to stringResource(R.string.content_category_browser_title),
-            "▶" to stringResource(R.string.content_key_schedule),
+            "▶" to stringResource(R.string.content_programme_details),
             stringResource(R.string.content_key_hold_ok) to stringResource(R.string.content_key_options),
         )
         val gapCat = fx(26)
@@ -645,7 +662,7 @@ fun LiveScreen(
         ) {
             LiveHeader(
                 category = headerLabel,
-                count = count,
+                count = count.takeUnless { selectedItem?.sealed == true },
                 showChevron = !separate && lockedKey == null,
                 modifier = Modifier.padding(start = fx(84), top = 52.mpx).width(listX - fx(84) + listWidth),
             )
@@ -728,17 +745,8 @@ fun LiveScreen(
                             .weight(1f, fill = false)
                             .width(if (separate) listWidth * (230f / 620f) else listWidth * (456f / 846f))
                             .focusRequester(listSearchFocus)
-                            .onFocusChanged { if (it.hasFocus && previewEnabled) vm.stopPreview() }
                             // ◀ Categories from the search field too, as from the rows (not while typing — a search that found nothing here may be in another category).
-                            .onPreviewKeyEvent { e ->
-                                if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown &&
-                                    e.key == androidx.compose.ui.input.key.Key.DirectionLeft &&
-                                    !searchEditing && lockedKey == null
-                                ) {
-                                    if (separate) runCatching { railFocus.requestFocus() } else categoriesOpen = true
-                                    true
-                                } else false
-                            },
+                            .onDpadLeft({ !searchEditing && lockedKey == null }) { openCategories() },
                     )
                     tv.own.owntv.ui.stage.StageTool(
                         text = null,
@@ -755,10 +763,11 @@ fun LiveScreen(
                 Spacer(Modifier.height(20.mpx))
                 if (channels.itemCount == 0) {
                     Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                        Text(
-                            if (searchQuery.isNotBlank()) stringResource(R.string.content_no_channels_found, searchQuery.trim()) else stringResource(R.string.content_no_channels_here),
-                            style = tv.own.owntv.ui.theme.stageText(20, 500),
-                            color = tv.own.owntv.ui.theme.StageColors.Muted,
+                        tv.own.owntv.features.categorylock.CategoryEmptyState(
+                            if (selectedItem?.sealed == true) stringResource(R.string.content_category_locked_placeholder) else if (searchQuery.isNotBlank()) stringResource(R.string.content_no_channels_found, searchQuery.trim()) else stringResource(R.string.content_no_channels_here),
+                            sealed = selectedItem?.sealed == true, pinFocus = firstItemFocus, horizontalAlignment = Alignment.CenterHorizontally,
+                            onEnterPin = { selectedItem?.let { listPin.askedFromList(); lockVm.open(tv.own.owntv.core.model.MediaType.LIVE, it.key) } },
+                            onNavigateLeft = { openCategories() }.takeIf { lockedKey == null },
                         )
                     }
                 } else {
@@ -821,11 +830,12 @@ fun LiveScreen(
                                             // ◀ Categories: the sheet (Stage) or the column (Separate); pinned lists have none.
                                             androidx.compose.ui.input.key.Key.DirectionLeft -> when {
                                                 lockedKey != null -> false
-                                                separate -> { runCatching { railFocus.requestFocus() }; true }
-                                                else -> { categoriesOpen = true; true }
+                                                else -> { openCategories(); true }
                                             }
-                                            // ▶ Schedule: next / later under the stage; nothing else to the right.
-                                            androidx.compose.ui.input.key.Key.DirectionRight -> { runCatching { scheduleFocus.requestFocus() }; true }
+                                            // ▶ or the remote's Info key: this channel's Program details page.
+                                            androidx.compose.ui.input.key.Key.DirectionRight, androidx.compose.ui.input.key.Key.Info -> {
+                                                contextChannelId = channel.id; programmeDetails = channel; true
+                                            }
                                             // ▲/▼ step by row number, not by focus search: a held key outran the
                                             // lazy list at the edge or a page boundary and stopped.
                                             androidx.compose.ui.input.key.Key.DirectionDown -> (stepTarget ?: index).let { from -> from + 1 < channels.itemCount && run { stepTo(from + 1); true } }
@@ -838,8 +848,13 @@ fun LiveScreen(
                                         if (rememberLive) perCategoryChannelIds[selectedKey] = channel.id
                                     },
                                     onClick = {
-                                        vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
-                                        if (!externalPlayerOn) onFullscreen()
+                                        when (okAction(previewOnOk, effectivePreview && previewShown, paneChannel?.id, channel.id)) {
+                                            OkAction.PREVIEW -> vm.playPreview(channel)
+                                            OkAction.WATCH -> {
+                                                vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
+                                                if (!externalPlayerOn) onFullscreen()
+                                            }
+                                        }
                                     },
                                     onLongClick = { contextChannel = channel; contextChannelId = channel.id },
                                 )
@@ -866,23 +881,25 @@ fun LiveScreen(
                     modifier = Modifier.align(Alignment.BottomEnd).padding(end = margin, bottom = 40.mpx),
                 )
             }
+        }
 
-            if (previewShown) {
-                LiveStagePane(
-                    channel = previewChannel,
-                    channelName = previewChannel?.let { ProviderTags.parse(it.name).name },
-                    nowNext = nowNext,
-                    previewEngine = vm.previewEngine,
-                    showVideo = effectivePreview,
-                    singleSessionBlocked = previewBlockedSingleSession,
-                    scheduleFocus = scheduleFocus,
-                    onOpenProgramme = { p -> previewChannel?.let { openProgramme = it to p } },
-                    onBackToList = { focusCurrentRow() },
-                    modifier = Modifier
-                        .padding(start = screenW - margin - stageW, top = 120.mpx)
-                        .width(stageW),
-                )
-            }
+        // The preview sits outside the dimmed list side: a video surface under a translucent layer goes
+        // black, and the show keeps playing while the categories are open.
+        if (previewShown) {
+            // With "OK previews first" the video and its name plate stay on the channel OK chose while
+            // the programme below follows the highlight; before any OK, the highlight as before.
+            val videoChannel = if (previewOnOk) paneChannel ?: previewChannel else previewChannel
+            LiveStagePane(
+                channel = videoChannel,
+                channelName = videoChannel?.let { ProviderTags.parse(it.name).name },
+                nowNext = nowNext,
+                previewEngine = vm.previewEngine,
+                showVideo = effectivePreview && (!previewOnOk || paneChannel != null),
+                singleSessionBlocked = previewBlockedSingleSession,
+                modifier = Modifier
+                    .padding(start = screenW - margin - stageW, top = 120.mpx)
+                    .width(stageW),
+            )
         }
 
         if (categoriesOpen) {
@@ -909,34 +926,15 @@ fun LiveScreen(
         }
     }
 
-    // A next / later programme opened from the schedule under the stage (▶ Schedule): the TV Guide's
-    // programme menu, acting through the guide's view model so both screens do the same thing.
-    openProgramme?.let { (ch, xt) ->
+    programmeDetails?.let { ch ->
         val epgVm: tv.own.owntv.features.epg.EpgViewModel = koinViewModel()
-        val leadMinutes by epgVm.reminderLeadMinutes.collectAsStateWithLifecycle()
-        val p = remember(ch.id, xt.startMs) {
-            tv.own.owntv.core.database.entity.EpgProgrammeEntity(
-                sourceId = ch.sourceId, epgChannelId = ch.epgChannelId.orEmpty(),
-                startMs = xt.startMs, stopMs = xt.stopMs, title = xt.title, description = xt.description,
-            )
-        }
-        val formatTime = rememberSystemTimeFormatter()
-        tv.own.owntv.features.epg.GuideProgrammeMenu(
-            title = p.title,
-            subtitle = listOf(
-                stringResource(R.string.content_live_time_range_plain, formatTime(p.startMs), formatTime(p.stopMs)),
-                listOfNotNull(ch.number?.toString(), ProviderTags.parse(ch.name).name).joinToString(" "),
-            ).joinToString(" · "),
-            actions = tv.own.owntv.features.epg.guideProgrammeActions(
-                epgVm, ch, p, System.currentTimeMillis(),
-                onWatch = { vm.watchFullscreen(ch, emptyList()); if (!externalPlayerOn) onFullscreen() },
-                onPlayFromStart = { vm.playCatchupProgramme(ch, p); if (!externalPlayerOn) onFullscreen() },
-                onPickEpg = { contextChannelId = ch.id; matchingEpg = ch },
-                onEpgOffset = { contextChannelId = ch.id; offsettingEpg = ch },
-                autoMatch = false,
-            ),
-            leadMinutes = leadMinutes,
-            onDismiss = { openProgramme = null; runCatching { scheduleFocus.requestFocus() } },
+        tv.own.owntv.features.epg.ProgrammeDayPage(
+            vm = epgVm,
+            channel = ch,
+            focusStartMs = null,
+            onWatch = { vm.watchFullscreen(ch, emptyList()); if (!externalPlayerOn) onFullscreen() },
+            onPlayFromStart = { p -> vm.playCatchupProgramme(ch, p); if (!externalPlayerOn) onFullscreen() },
+            onDismiss = { programmeDetails = null; scope.launch { restoreToContextRow() } },
         )
     }
     catchupChannel?.let { ch ->
@@ -1026,6 +1024,7 @@ fun LiveScreen(
             isRecording = ch.id in recordingChannelIds,
             onRecord = { if (ch.id in recordingChannelIds) vm.stopRecordingOn(ch) else vm.recordNow(ch); contextChannel = null },
             onScheduleRecord = { schedulingChannel = ch; contextChannel = null },
+            onDetails = { programmeDetails = ch; contextChannel = null },
             onPlayExternal = { vm.playExternal(ch); contextChannel = null },
             // Only offered once Multiview is switched on. Adding is silent apart from the toast: the
             // grid opens when the user plays a channel, which is the gesture that says "now".
@@ -1136,20 +1135,21 @@ fun LiveScreen(
     // Gone in the same frame the move list opens, so two popups never hold focus at once.
     LaunchedEffect(categoryMoveState != null) { if (categoryMoveState != null) contextCategory = null }
     contextCategory?.takeIf { categoryMoveState == null }?.let { item ->
-        val restorePlan by produceState<CategoryRestorePlan?>(null, item.key) { value = vm.categoryRestorePlan(item.key) }
-        CategoryContextMenu(
-            categoryName = item.displayLabel(),
-            canHide = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
-            canMove = item.key is LiveKey.Folder || item.key is LiveKey.Custom,
-            onHide = { vm.hideCategory(item.key); contextCategory = null },
-            // The menu stays up until the move list is loaded, then hands over to it.
-            onMove = { vm.enterCategoryMoveMode(item.key) },
-            // Always offered: the plan is read in the background and only fills in the confirmation.
-            resetLabel = stringResource(if (item.key is LiveKey.Custom) R.string.content_category_restore_custom else R.string.content_category_restore_playlist),
-            resetLines = restorePlan?.let { categoryRestoreSummary(it, androidx.compose.ui.platform.LocalContext.current.resources) },
-            onReset = { vm.restoreCategory(item.key); contextCategory = null },
-            onDismiss = { contextCategory = null }
+        RailCategoryMenu(
+            item, item.displayLabel(), vm::categoryRestorePlan,
+            onHide = vm::hideCategory, onMove = vm::enterCategoryMoveMode, onRestore = vm::restoreCategory,
+            onToggleLock = { lockVm.toggleLock(tv.own.owntv.core.model.MediaType.LIVE, it) },
+            onSealedAction = { key, action -> lockVm.open(tv.own.owntv.core.model.MediaType.LIVE, key, action) },
+            onClose = { contextCategory = null },
         )
+    }
+    tv.own.owntv.features.categorylock.CategoryLockPrompts(
+        tv.own.owntv.core.model.MediaType.LIVE,
+        onAction = { key, action -> action.run(key, vm::hideCategory, vm::enterCategoryMoveMode, vm::restoreCategory) },
+    ) { key, opened ->
+        if (listPin.takeClose(opened)) Unit
+        else if (opened && categoriesOpen) { categoriesOpen = false; focusChannelList(); listPin.openedFromCategories() }
+        else railFocusRow = railItems.indexOfFirst { it.key == key }.takeIf { it >= 0 }
     }
 }
 
@@ -1158,7 +1158,8 @@ fun LiveScreen(
  * = the logo plate, "256 · Sky Cinema Premieren" and "category · playlist"; the actions in the groups
  * WATCH · CHANNEL · GUIDE DATA · ORGANISE with their values (Catch-up "7 days", Match EPG "Auto",
  * EPG time offset "Global"). The order and visibility are the user's (Settings › Long-press menus ›
- * Live TV); a group label is drawn wherever the group changes.
+ * Live TV); in the shipped order a group label is drawn wherever the group changes, in the user's own
+ * order there are none.
  */
 @Composable
 private fun ChannelContextMenu(
@@ -1189,6 +1190,8 @@ private fun ChannelContextMenu(
     onRemoveFromHistory: () -> Unit,
     // Only inside a custom category: take the channel out of that category alone.
     onRemoveFromCategory: (() -> Unit)?,
+    // This channel's Program details page (a TV-only action in core's catalogue).
+    onDetails: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val focus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -1198,8 +1201,9 @@ private fun ChannelContextMenu(
     val matchValue = if (epgMatchManual) stringResource(R.string.settings_manual) else stringResource(R.string.settings_auto)
     val offsetValue = epgShiftMinutes?.let { liveEpgShiftLabel(it) } ?: stringResource(R.string.content_epg_offset_global_short)
     // Group ids = the four groups, in their order.
-    val watch = 0; val chan = 1; val guide = 2; val organise = 3
+    val watch = 0; val chan = 1; val guide = 2; val organise = 3; val details = 4
     val actions = buildList {
+        add(MenuAction("programme_details", stringResource(R.string.content_programme_details), OwnTVIcon.INFO, group = details, onClick = onDetails))
         if (channel.catchup) add(MenuAction("catchup", stringResource(R.string.content_catchup), OwnTVIcon.REWIND, group = watch, onClick = onCatchup))
         // Record this channel from now. The guide's Record needs a programme, so a channel
         // the provider publishes no guide for can only be recorded from here. While it records, the
@@ -1232,6 +1236,7 @@ private fun ChannelContextMenu(
         stringResource(R.string.content_menu_group_channel),
         stringResource(R.string.content_menu_group_guide_data),
         stringResource(R.string.content_menu_group_organise),
+        stringResource(R.string.content_menu_group_details),
     ).map { it.uppercase(androidx.compose.ui.text.intl.Locale.current.platformLocale) }
     tv.own.owntv.ui.components.OwnTVPopup(onDismissRequest = onDismiss, stageLayout = true) {
         BoxWithConstraints(
@@ -1253,9 +1258,10 @@ private fun ChannelContextMenu(
                         LivePlate(channel.displayLogoUrl, 70.mpx, 50.mpx)
                     },
                 )
+                val menu = arranged(ContentMenu.LIVE, actions)
                 var previousGroup: Int? = null
-                arranged(ContentMenu.LIVE, actions).forEachIndexed { index, action ->
-                    if (action.group != previousGroup) tv.own.owntv.ui.stage.StageGroupLabel(groupLabels[action.group])
+                menu.actions.forEachIndexed { index, action ->
+                    if (menu.headings && action.group != previousGroup) tv.own.owntv.ui.stage.StageGroupLabel(groupLabels[action.group])
                     previousGroup = action.group
                     tv.own.owntv.ui.stage.StageMenuItem(
                         text = action.label,

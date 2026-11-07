@@ -5,7 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
-import tv.own.owntv.core.menu.applyMenuOrder
+import tv.own.owntv.core.menu.MenuLayout
+import tv.own.owntv.core.menu.arrange
 import tv.own.owntv.core.model.ContentMenu
 import tv.own.owntv.core.settings.SettingsRepository
 
@@ -31,16 +32,25 @@ data class MenuAction(
     val onClick: () -> Unit,
 )
 
+/** A menu's actions as the popup draws them, and whether to draw its group headings. */
+data class ArrangedMenu(val actions: List<MenuAction>, val headings: Boolean)
+
 /**
- * [actions] in the order the user arranged [menu] into. The menus read the setting themselves rather
- * than have it threaded down through four screens and their view models.
+ * [actions] in the order the user arranged [menu] into, without the ones they hid. The menus read the
+ * setting themselves rather than have it threaded down through four screens and their view models.
  *
- * The ordering rule itself is core's, so both apps arrange the same saved keys the same way.
+ * The rule itself is core's, so both apps arrange the same saved keys the same way. Group headings
+ * are drawn only in the shipped order: a heading names a run of related actions, and a rearranged
+ * menu has none.
  */
 @Composable
-fun arranged(menu: ContentMenu, actions: List<MenuAction>): List<MenuAction> {
+fun arranged(menu: ContentMenu, actions: List<MenuAction>): ArrangedMenu {
     val settings: SettingsRepository = koinInject()
-    val order by remember(menu) { settings.menuOrder(menu.name.lowercase()) }
-        .collectAsStateWithLifecycle(emptyList())
-    return applyMenuOrder(actions, order) { it.key }
+    val layout by remember(menu) { settings.menuLayout(menu) }.collectAsStateWithLifecycle(MenuLayout())
+    val gate: tv.own.owntv.features.settings.lock.MenuChangeGate = koinInject()
+    // The organising actions ask for the Settings PIN first when its long-press switch is on.
+    val guarded = actions.map { action ->
+        if (action.key in tv.own.owntv.core.categorylock.GUARDED_MENU_ACTIONS) action.copy(onClick = { gate.run(action.onClick) }) else action
+    }
+    return ArrangedMenu(arrange(menu, guarded, layout) { it.key }, layout.isShippedOrder(menu))
 }

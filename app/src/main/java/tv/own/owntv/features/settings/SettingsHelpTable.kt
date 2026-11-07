@@ -4,7 +4,7 @@ import tv.own.owntv.R
 
 /*
  * The words of each Settings row on a Stage page, by row key: root rows by their own key
- * ("theme", "tab_SOURCES"), Video player rows by their Quick key ("vp_hw"), Recording rows by "rec_*".
+ * ("theme", "tab_SOURCES"), Video player rows by their Quick key ("vp_hw"), Recording rows by "rec_*", Player buttons rows by "pb_*".
  * A row's own title and description are used wherever a key is missing here; a long description
  * the row used to carry becomes its panel text when [SETTING_HELP] has nothing better.
  */
@@ -42,6 +42,8 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "tab_OPEN_SUBTITLES" to R.string.settings_line_open_subtitles,
     "app_icon" to R.string.settings_line_app_icon,
     "brand_accent" to R.string.settings_line_brand_accent,
+    "settings_lock" to R.string.settings_line_settings_lock,
+    "settings_lock_menus" to R.string.settings_line_settings_lock_menus,
     "check_updates" to R.string.settings_line_check_updates,
     "update_startup" to R.string.settings_line_when_app_opens,
     "tab_NETWORK" to R.string.settings_line_proxy,
@@ -63,6 +65,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_zoom" to R.string.settings_line_zoom,
     "vp_reset_zoom" to R.string.settings_line_saved_zoom,
     "vp_afr" to R.string.settings_vp_cat_frame_rate_summary,
+    "vp_afr_live" to R.string.settings_vp_cat_frame_rate_summary,
     "vp_afr_pause" to R.string.settings_line_films_only,
     "vp_afr_resolution" to R.string.settings_line_films_only,
     "vp_volume" to R.string.settings_line_volume,
@@ -81,6 +84,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_channel_numbers" to R.string.settings_line_channel_numbers,
     "vp_live_preview" to R.string.settings_line_live_preview,
     "vp_preview_audio" to R.string.settings_line_preview_sound,
+    "vp_preview_on_ok" to R.string.settings_line_preview_on_ok,
     "vp_timeshift" to R.string.settings_line_timeshift,
     "vp_timeshift_window" to R.string.settings_line_timeshift_window,
     "vp_live_left_right" to R.string.settings_line_left_right,
@@ -97,6 +101,7 @@ internal val SETTING_LINE: Map<String, Int> = mapOf(
     "vp_multiview" to R.string.settings_vp_cat_multiview_summary_mobile,
     "vp_multiview_tiles" to R.string.settings_line_tiles,
     "vp_mini" to R.string.settings_line_mini,
+    "vp_pip" to R.string.settings_line_pip,
     "vp_measured_stats" to R.string.settings_line_measured_stats,
     "vp_logging" to R.string.settings_line_logging,
     "rec_reserve" to R.string.settings_line_rec_reserve,
@@ -156,8 +161,12 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "app_icon" to R.string.settings_help_app_icon,
     "brand_accent" to R.string.settings_help_brand_accent,
     "app_startup" to R.string.settings_help_startup,
+    "settings_lock" to R.string.settings_help_settings_lock,
+    "settings_lock_menus" to R.string.settings_help_settings_lock_menus,
     "check_updates" to R.string.settings_help_check_updates,
     "update_startup" to R.string.settings_help_update_startup,
+    "auto_start_boot" to R.string.settings_help_auto_start_boot,
+    "auto_start_wake" to R.string.settings_help_auto_start_wake,
     "tab_NETWORK" to R.string.settings_proxy_description,
     "tab_DNS" to R.string.settings_help_dns,
     "vp_live_engine" to R.string.settings_help_live_engine,
@@ -168,10 +177,16 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "vp_channel_numbers" to R.string.settings_help_channel_numbers,
     "vp_live_preview" to R.string.settings_help_live_preview,
     "vp_preview_audio" to R.string.settings_help_preview_audio,
+    "vp_preview_on_ok" to R.string.settings_help_preview_on_ok,
     "vp_timeshift_window" to R.string.settings_help_timeshift_window,
     "vp_seek_step" to R.string.settings_help_seek_step,
     "vp_resume" to R.string.settings_help_resume,
     "vp_mini" to R.string.settings_help_mini,
+    "pb_hold_ok" to R.string.settings_help_player_hold_ok,
+    "pb_short_ok" to R.string.settings_help_player_short_ok,
+    "pb_swap_ch" to R.string.settings_help_player_swap_channel_keys,
+    "pb_number_keys" to R.string.settings_help_player_number_keys_tune,
+    "vp_pip" to R.string.settings_help_pip,
 )
 
 /** For a switch row, whether On is the recommended value (the panel tags it). Absent = no tag. */

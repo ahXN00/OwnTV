@@ -2,7 +2,8 @@ package tv.own.owntv.features.shell.components
 
 import tv.own.owntv.ui.theme.StageColors
 import tv.own.owntv.features.settings.SettingValue
-import tv.own.owntv.features.settings.labelRes
+import tv.own.owntv.features.settings.menuLabelsSummary
+import tv.own.owntv.features.settings.NavigationPopupHost
 import tv.own.owntv.features.settings.AccentSwatches
 import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.features.settings.StageSettingRow
@@ -28,8 +29,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -110,15 +109,6 @@ internal enum class TileTone { PRIMARY, SECONDARY, TERTIARY }
 private enum class SettingsTab { ROOT, LANGUAGE, SOURCES, EPG, BACKUP, LOCAL_SYNC, CUSTOMIZE, HOME, NETWORK, DNS, METADATA, OPEN_SUBTITLES, WEATHER, CH_NAV, PANEL_WIDTH, GUIDE_WIDTH, GLASS_EFFECT, CONTENT_MENUS, FONTS, BROWSING, SUBTITLE_STYLE, SPORTS }
 
 @Composable
-internal fun surroundModeLabel(mode: SurroundMode): String = stringResource(
-    when (mode) {
-        SurroundMode.AUTO -> R.string.settings_auto
-        SurroundMode.STEREO -> R.string.settings_surround_stereo
-        SurroundMode.SURROUND -> R.string.settings_surround_sound
-    },
-)
-
-@Composable
 private fun epgShiftLabel(minutes: Int): String {
     if (minutes == 0) return stringResource(R.string.common_off)
     val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0] ?: java.util.Locale.US
@@ -164,6 +154,8 @@ fun SettingsScreen(
     /** More › Settings: open at a root group, or with search open. */
     start: SettingsStart? = null,
     onStartConsumed: () -> Unit = {},
+    /** Settings → Sports → My teams: OK on a followed team opens its page in the Sports section. */
+    onOpenSportsTeam: (tv.own.owntv.core.sports.FollowedTeam) -> Unit = {},
 ) {
     // A cross-script language change recreates the Activity so Android can apply the new script's
     // shaping and font fallback. Keep the open settings sub-screen across that configuration change
@@ -192,9 +184,12 @@ fun SettingsScreen(
     // The three Stage pickers (Live TV opens in, Programme reminders, Reminder time): their state, rows,
     // search entries and dialogs live outside this function, which sits at the JVM's 64 KB method limit.
     val stageSettings = remember { StageSettingsState() }
+    val settingsLock = tv.own.owntv.features.settings.lock.rememberSettingsLockState()
     var showStartup by remember { mutableStateOf(false) }
     var showStartupChannelPicker by remember { mutableStateOf(false) }
     var showAfrWarning by remember { mutableStateOf(false) }
+    // Which switch the warning turns on: Live TV's, or films and series'.
+    var afrWarningLive by remember { mutableStateOf(false) }
     var showLivePreviewPanelWarning by remember { mutableStateOf(false) }
     var showBgImageChooser by remember { mutableStateOf(false) }
     var showBgPicker by remember { mutableStateOf(false) }
@@ -266,13 +261,13 @@ fun SettingsScreen(
         }
         onStartConsumed()
     }
-    val anyDialogOpen = showZoom || showPopupSize || showTheme || showAccent || showUpdate || showCatchupTime || showCatchupSources || showCatchupSourceValue || showEpgOffset || showGuideDays || showAnimations || showStartup || showStartupChannelPicker || showAfrWarning || showLivePreviewPanelWarning || showBgImageChooser || showBgPicker || showAmbientGlow || showFocusHighlight || showBgRemote || showVodLayout || showNavigation || showLiveLayout || stageSettings.open != null
+    val anyDialogOpen = showZoom || showPopupSize || showTheme || showAccent || showUpdate || showCatchupTime || showCatchupSources || showCatchupSourceValue || showEpgOffset || showGuideDays || showAnimations || showStartup || showStartupChannelPicker || showAfrWarning || showLivePreviewPanelWarning || showBgImageChooser || showBgPicker || showAmbientGlow || showFocusHighlight || showBgRemote || showVodLayout || showNavigation || showLiveLayout || stageSettings.open != null || settingsLock.open
     // When a dialog closes, restore focus to the row that opened it. NOTE: this restore crosses
     // INTO the root focus group from outside (the dialog), but onEnter does NOT fire for programmatic
     // requestsFocus (only for directional entry) — so dialogReturn must be cleared HERE, not in onEnter.
     // If it's left set, the next directional entry (e.g. sidebar→here) would re-route to a stale row.
     var dialogReturn by remember { mutableStateOf<FocusRequester?>(null) }
-    LaunchedEffect(showZoom, showPopupSize, showTheme, showAccent, showUpdate, showCatchupTime, showCatchupSources, showCatchupSourceValue, showEpgOffset, showGuideDays, showAnimations, showStartup, showStartupChannelPicker, showAfrWarning, showLivePreviewPanelWarning, showBgImageChooser, showBgPicker, showAmbientGlow, showFocusHighlight, showBgRemote, showVodLayout, showNavigation, showLiveLayout, stageSettings.open) {
+    LaunchedEffect(showZoom, showPopupSize, showTheme, showAccent, showUpdate, showCatchupTime, showCatchupSources, showCatchupSourceValue, showEpgOffset, showGuideDays, showAnimations, showStartup, showStartupChannelPicker, showAfrWarning, showLivePreviewPanelWarning, showBgImageChooser, showBgPicker, showAmbientGlow, showFocusHighlight, showBgRemote, showVodLayout, showNavigation, showLiveLayout, stageSettings.open, settingsLock.open) {
         // Only after a popup really closed: on first composition there is no opener, and holding a stale
         // offset for the settle frames bounced the page.
         if (!anyDialogOpen && dialogReturn != null) {
@@ -292,7 +287,8 @@ fun SettingsScreen(
     val livePreviewPanelActive by settingsVm.livePreviewPanelActive.collectAsStateWithLifecycle()
     val previewAudio by settingsVm.livePreviewAudio.collectAsStateWithLifecycle()
     val hdr by settingsVm.preferSdr.collectAsStateWithLifecycle()
-    val autoFrameRate by settingsVm.autoFrameRate.collectAsStateWithLifecycle()
+    val autoFrameRateFilms by settingsVm.autoFrameRateFilms.collectAsStateWithLifecycle()
+    val autoFrameRateLive by settingsVm.autoFrameRateLive.collectAsStateWithLifecycle()
     val surroundMode by settingsVm.surroundMode.collectAsStateWithLifecycle()
     val autoPlayNext by settingsVm.autoPlayNext.collectAsStateWithLifecycle()
     val updateCheckOnStart by settingsVm.updateCheckOnStart.collectAsStateWithLifecycle()
@@ -322,6 +318,8 @@ fun SettingsScreen(
     }
     val weatherEnabled by settingsVm.weatherEnabled.collectAsStateWithLifecycle()
     val startupMode by settingsVm.startupMode.collectAsStateWithLifecycle()
+    val autoStart = rememberAutoStartSettingsState()
+    val settingsLockVm: tv.own.owntv.features.settings.lock.SettingsPinViewModel = koinViewModel()
     val startupChannel by settingsVm.startupChannel.collectAsStateWithLifecycle()
     val chNavEnabled by settingsVm.chNavEnabled.collectAsStateWithLifecycle()
     val rememberLastLive by settingsVm.rememberLastLive.collectAsStateWithLifecycle()
@@ -338,13 +336,15 @@ fun SettingsScreen(
     // below Android 12 there is no way to ask the display which refresh rates it can reach without
     // blanking. Turning it on there therefore asks first; turning it off remains immediate.
     val afrNeedsWarning = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S
-    val toggleAutoFrameRate: (FocusRequester) -> Unit = { returnFocus ->
-        if (!autoFrameRate && afrNeedsWarning) {
+    val toggleAutoFrameRate: (FocusRequester, Boolean) -> Unit = { returnFocus, live ->
+        val on = if (live) autoFrameRateLive else autoFrameRateFilms
+        if (!on && afrNeedsWarning) {
             saveScroll()
             dialogReturn = returnFocus
+            afrWarningLive = live
             showAfrWarning = true
         } else {
-            settingsVm.setAutoFrameRate(!autoFrameRate)
+            settingsVm.setAutoFrameRate(live, !on)
         }
     }
     val toggleLivePreview: (FocusRequester) -> Unit = { returnFocus ->
@@ -424,7 +424,7 @@ fun SettingsScreen(
             SettingsTab.GLASS_EFFECT -> { GlassEffectSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
             SettingsTab.SUBTITLE_STYLE -> tv.own.owntv.features.settings.SubtitleStylePage(onBack = { tab = SettingsTab.ROOT }, modifier = modifier)
             SettingsTab.BROWSING -> tv.own.owntv.features.settings.BrowsingListsSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier)
-            SettingsTab.SPORTS -> tv.own.owntv.features.sports.SportsSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier)
+            SettingsTab.SPORTS -> tv.own.owntv.features.sports.SportsSettingsScreen(onBack = { tab = SettingsTab.ROOT }, onOpenTeam = onOpenSportsTeam, modifier = modifier)
             SettingsTab.FONTS -> tv.own.owntv.features.settings.FontSettingsScreen(
                 current = fontCustomization, onSet = onSetFontCustomization, familyLabel = { fontFamilyLabel(it) },
                 onBack = { tab = SettingsTab.ROOT }, modifier = modifier,
@@ -767,6 +767,8 @@ fun SettingsScreen(
             focus = startupRowFocus,
             onClick = { saveScroll(); dialogReturn = startupRowFocus; showStartup = true },
         ),
+        *autoStartRootRows(autoStart).toTypedArray(),
+        *tv.own.owntv.features.settings.lock.settingsLockRootRows(settingsLock, settingsLockVm) { saveScroll(); dialogReturn = settingsLock.rowFocus }.toTypedArray(),
         RootRow(
             "check_updates", TileTone.PRIMARY, OwnTVIcon.REFRESH,
             title = stringResource(R.string.settings_check_updates), desc = stringResource(R.string.settings_check_updates_description),
@@ -960,6 +962,7 @@ fun SettingsScreen(
             SettingsSearchEntry(stringResource(R.string.settings_group_sources), stringResource(R.string.settings_search_guide_logos), stringResource(R.string.settings_search_keywords_logos), OwnTVIcon.EPG, TileTone.SECONDARY) { open(SettingsTab.EPG) },
             SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_customize), stringResource(R.string.settings_search_keywords_customize), OwnTVIcon.SORT, TileTone.PRIMARY) { open(SettingsTab.CUSTOMIZE) },
             navigationSearchEntry(settingsVm) { saveScroll(); dialogReturn = searchFieldFocus; showNavigation = true },
+            menuLabelsSearchEntry(settingsVm) { saveScroll(); dialogReturn = searchFieldFocus; showNavigation = true },
             liveLayoutSearchEntry(settingsVm) { saveScroll(); dialogReturn = searchFieldFocus; showLiveLayout = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_layout), stringResource(R.string.settings_live_opens_in), stringResource(R.string.settings_search_keywords_live_opens_in), OwnTVIcon.LIVE_TV, TileTone.PRIMARY) { saveScroll(); dialogReturn = searchFieldFocus; stageSettings.open = StageSettingsDialog.LIVE_OPENS_IN },
             SettingsSearchEntry(stringResource(R.string.settings_group_sources), stringResource(R.string.settings_reminders), stringResource(R.string.settings_search_keywords_reminders), OwnTVIcon.BELL, TileTone.SECONDARY) { saveScroll(); dialogReturn = searchFieldFocus; stageSettings.open = StageSettingsDialog.REMINDERS },
@@ -1022,8 +1025,10 @@ fun SettingsScreen(
             SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_mini"), stringResource(R.string.settings_mini_player_root), stringResource(R.string.settings_search_keywords_mini), OwnTVIcon.PIP, TileTone.TERTIARY) { openMiniPlayer = true; jumpVideo("vp_mini", false) },
             SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_hdr"), stringResource(R.string.settings_quick_prefer_sdr), stringResource(R.string.settings_search_keywords_prefer_sdr), OwnTVIcon.VIDEO, TileTone.PRIMARY,
                 chip = if (hdr) stringResource(R.string.common_on) else stringResource(R.string.common_off), chipTone = if (hdr) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { settingsVm.setPreferSdr(!hdr) },
-            SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_afr"), stringResource(R.string.settings_auto_frame_rate), stringResource(R.string.settings_search_keywords_afr), OwnTVIcon.VIDEO, TileTone.PRIMARY,
-                chip = if (autoFrameRate) stringResource(R.string.common_on) else stringResource(R.string.common_off), chipTone = if (autoFrameRate) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { toggleAutoFrameRate(searchFieldFocus) },
+            SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_afr"), stringResource(R.string.settings_auto_frame_rate_films), stringResource(R.string.settings_search_keywords_afr), OwnTVIcon.VIDEO, TileTone.PRIMARY,
+                chip = if (autoFrameRateFilms) stringResource(R.string.common_on) else stringResource(R.string.common_off), chipTone = if (autoFrameRateFilms) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { toggleAutoFrameRate(searchFieldFocus, false) },
+            SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_afr_live"), stringResource(R.string.settings_auto_frame_rate_live), stringResource(R.string.settings_search_keywords_afr), OwnTVIcon.LIVE_TV, TileTone.PRIMARY,
+                chip = if (autoFrameRateLive) stringResource(R.string.common_on) else stringResource(R.string.common_off), chipTone = if (autoFrameRateLive) TileTone.PRIMARY else TileTone.SECONDARY, showChevron = false) { toggleAutoFrameRate(searchFieldFocus, true) },
             SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_surround"), stringResource(R.string.settings_surround_sound), stringResource(R.string.settings_search_keywords_surround), OwnTVIcon.AUDIO, TileTone.SECONDARY,
                 chip = surroundModeLabel(surroundMode), chipTone = if (surroundMode == SurroundMode.STEREO) TileTone.SECONDARY else TileTone.PRIMARY, showChevron = false) { settingsVm.cycleSurroundMode() },
             SettingsSearchEntry(tv.own.owntv.features.settings.videoRowPath("vp_autoplay"), stringResource(R.string.settings_autoplay_next), stringResource(R.string.settings_search_keywords_autoplay), OwnTVIcon.AUTOPLAY_NEXT, TileTone.SECONDARY,
@@ -1055,6 +1060,8 @@ fun SettingsScreen(
             *subScreenSearchEntries { t -> open(t) }.toTypedArray(),
             SettingsSearchEntry(stringResource(R.string.settings_group_app), stringResource(R.string.settings_app_startup), stringResource(R.string.settings_search_keywords_startup), OwnTVIcon.POWER, TileTone.SECONDARY,
                 chip = startupLabel(startupMode)) { saveScroll(); dialogReturn = searchFieldFocus; showStartup = true },
+            *autoStartSearchEntries(autoStart).toTypedArray(),
+            *tv.own.owntv.features.settings.lock.settingsLockSearchEntries(settingsLock, settingsLockVm) { saveScroll(); dialogReturn = searchFieldFocus }.toTypedArray(),
             SettingsSearchEntry(stringResource(R.string.settings_group_app), stringResource(R.string.settings_check_updates), stringResource(R.string.settings_search_keywords_updates), OwnTVIcon.REFRESH, TileTone.PRIMARY,
                 chip = "v${tv.own.owntv.BuildConfig.VERSION_NAME}") { saveScroll(); dialogReturn = searchFieldFocus; showUpdate = true },
             SettingsSearchEntry(stringResource(R.string.settings_group_app), stringResource(R.string.settings_update_startup), stringResource(R.string.settings_search_keywords_update_auto), OwnTVIcon.REFRESH, TileTone.SECONDARY,
@@ -1064,7 +1071,7 @@ fun SettingsScreen(
         // in place, or carry a confirmation the search field has to own — so the catalogue skips them
         // rather than listing them a second time.
         val bespokeVideoKeys = setOf(
-            "vp_live_preview", "vp_preview_audio", "vp_channel_numbers", "vp_mini", "vp_hdr", "vp_afr",
+            "vp_live_preview", "vp_preview_audio", "vp_channel_numbers", "vp_mini", "vp_hdr", "vp_afr", "vp_afr_live",
             "vp_surround", "vp_autoplay", "vp_sub_style", "vp_live_latency", "vp_preroll", "vp_logging",
         )
         // …and every OTHER player-group row, taken straight from the catalogue those groups already draw
@@ -1113,6 +1120,8 @@ fun SettingsScreen(
                 tv.own.owntv.features.settings.PROXY_SEARCH_ROWS, R.string.settings_search_keywords_proxy, OwnTVIcon.NETWORK) { open(SettingsTab.NETWORK) } +
             rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_app), stringResource(R.string.settings_group_network)), stringResource(R.string.settings_dns)),
                 tv.own.owntv.features.settings.DNS_SEARCH_ROWS, R.string.settings_search_keywords_dns, OwnTVIcon.DNS) { open(SettingsTab.DNS) } +
+            rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_layout), stringResource(R.string.settings_remote_shortcuts)),
+                tv.own.owntv.features.settings.PLAYER_BUTTONS_SEARCH_ROWS, R.string.settings_search_keywords_ch, OwnTVIcon.CH_NAV) { open(SettingsTab.CH_NAV) } +
             // The Catch-up popup's second row; its first (the time zone) is the Catch-up entry above.
             rowsOf(stringResource(R.string.settings_breadcrumb, stringResource(R.string.settings_group_sources), stringResource(R.string.settings_catchup)),
                 listOf(R.string.settings_catchup_player), R.string.settings_search_keywords_catchup, OwnTVIcon.CATCHUP) { saveScroll(); dialogReturn = searchFieldFocus; showCatchupTime = true }
@@ -1171,7 +1180,8 @@ fun SettingsScreen(
             panelTop = if (group == SettingsGroup.APPEARANCE && !searching) ({ tv.own.owntv.features.settings.SettingsLivePreview() }) else null,
         ) {
             when {
-                searching && searchQuery.isBlank() -> Unit
+                // A search page with nothing typed yet (or the text cleared) says what to do, not a blank page.
+                searching && searchQuery.isBlank() -> StageSettingsNote(stringResource(R.string.settings_search_empty_hint), null)
                 searching && searchResults.isEmpty() -> StageSettingsNote(stringResource(R.string.settings_no_settings_match, searchQuery.trim()), null)
                 searching -> searchResults.forEach { e ->
                     StageSearchResultRow(e.icon, e.group, e.title, e.chip, onClick = e.onClick)
@@ -1278,6 +1288,7 @@ fun SettingsScreen(
     if (showVodLayout) VodLayoutDialog(settingsVm, vodLayout, onClose = { showVodLayout = false })
     if (showLiveLayout) LiveLayoutDialog(settingsVm, onClose = { showLiveLayout = false })
     StageSettingsDialogHost(settingsVm, stageSettings)
+    tv.own.owntv.features.settings.lock.SettingsLockDialogHost(settingsLock, settingsLockVm)
     if (showFocusHighlight) {
         FocusHighlightDialog(
             highlight = focusHighlight,
@@ -1316,7 +1327,7 @@ fun SettingsScreen(
     if (showAmbientGlow) AmbientGlowHost(settingsVm, ambientGlowEnabled, ambientGlowPulse, onClose = { showAmbientGlow = false })
     if (showAfrWarning) {
         AutoFrameRateWarningDialog(
-            onEnable = { settingsVm.setAutoFrameRate(true); showAfrWarning = false },
+            onEnable = { settingsVm.setAutoFrameRate(afrWarningLive, true); showAfrWarning = false },
             onDismiss = { showAfrWarning = false },
         )
     }
@@ -1381,77 +1392,6 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun StartupChannelPickerDialog(
-    query: String,
-    channels: List<tv.own.owntv.core.database.entity.ChannelEntity>,
-    selected: tv.own.owntv.core.settings.StartupChannelRef?,
-    onQueryChange: (String) -> Unit,
-    onSelect: (tv.own.owntv.core.database.entity.ChannelEntity) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    // A long list picked from: in the page's panel on a settings page, a Stage popup elsewhere.
-    val list: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = {
-        StartupChannelList(query, channels, selected, onQueryChange, onSelect)
-    }
-    if (tv.own.owntv.features.settings.panelEditor(onDismiss) { list() }) return
-    tv.own.owntv.ui.stage.StagePopup(onDismiss = onDismiss, title = stringResource(R.string.settings_startup_specific_channel), scroll = false, content = list)
-}
-
-/** The search field, then the channels as radio rows (number, name); focus starts in the search. */
-@Composable
-private fun androidx.compose.foundation.layout.ColumnScope.StartupChannelList(
-    query: String,
-    channels: List<tv.own.owntv.core.database.entity.ChannelEntity>,
-    selected: tv.own.owntv.core.settings.StartupChannelRef?,
-    onQueryChange: (String) -> Unit,
-    onSelect: (tv.own.owntv.core.database.entity.ChannelEntity) -> Unit,
-) {
-    val searchFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(80); runCatching { searchFocus.requestFocus() } }
-    tv.own.owntv.ui.stage.StageSearchField(
-        query = query,
-        onQueryChange = onQueryChange,
-        placeholder = stringResource(R.string.common_search_hint),
-        modifier = Modifier.fillMaxWidth().padding(bottom = 12.mpx).focusRequester(searchFocus),
-    )
-    if (channels.isEmpty()) {
-        Text(
-            if (query.isBlank()) stringResource(R.string.content_no_channels_here) else stringResource(R.string.content_no_channels_found, query),
-            style = tv.own.owntv.ui.theme.stageText(17, 500), color = tv.own.owntv.ui.theme.StageColors.Muted,
-            modifier = Modifier.padding(vertical = 20.mpx),
-        )
-        return
-    }
-    LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(2.mpx)) {
-        items(channels, key = { it.id }) { channel ->
-            val isSelected = selected?.let { ref ->
-                ref.sourceId == channel.sourceId &&
-                    if (!ref.remoteId.isNullOrBlank() && !channel.remoteId.isNullOrBlank()) ref.remoteId == channel.remoteId else ref.name == channel.name
-            } == true
-            tv.own.owntv.ui.stage.StageSurface(
-                onClick = { onSelect(channel) },
-                radius = 14.mpx,
-                focusStyle = tv.own.owntv.ui.stage.StageFocus.FX,
-                modifier = Modifier.fillMaxWidth().height(52.mpx),
-            ) { focused ->
-                Row(Modifier.padding(horizontal = 14.mpx), horizontalArrangement = Arrangement.spacedBy(12.mpx), verticalAlignment = Alignment.CenterVertically) {
-                    tv.own.owntv.features.settings.StageRadio(isSelected)
-                    Text(
-                        channel.number?.toString().orEmpty(), style = tv.own.owntv.ui.theme.stageText(16, 700),
-                        color = tv.own.owntv.ui.theme.StageColors.Dim, modifier = Modifier.width(54.mpx), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        channel.name, style = tv.own.owntv.ui.theme.stageText(18, 600),
-                        color = if (isSelected || focused) tv.own.owntv.ui.theme.StageColors.Text else tv.own.owntv.ui.theme.StageColors.Muted,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun themeLabel(mode: ThemeMode): String = stringResource(
     when (mode) {
         ThemeMode.DARK -> R.string.settings_theme_dark
@@ -1460,44 +1400,6 @@ private fun themeLabel(mode: ThemeMode): String = stringResource(
     },
 )
 
-@Composable
-private fun startupLabel(mode: tv.own.owntv.core.settings.StartupMode): String = stringResource(
-    when (mode) {
-        tv.own.owntv.core.settings.StartupMode.HOME -> R.string.settings_startup_home
-        tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL -> R.string.settings_startup_last_channel
-        tv.own.owntv.core.settings.StartupMode.FAVORITES -> R.string.settings_startup_favorites
-        tv.own.owntv.core.settings.StartupMode.SPECIFIC_CHANNEL -> R.string.settings_startup_specific_channel
-    },
-)
-
-/** Settings › Layout › Navigation, hosted outside [SettingsScreen] (whose body is at the JVM method-size limit). */
-@Composable
-private fun NavigationPopupHost(settingsVm: SettingsViewModel, onDismiss: () -> Unit) {
-    val navStyle by settingsVm.navStyle.collectAsStateWithLifecycle()
-    val navSize by settingsVm.navSize.collectAsStateWithLifecycle()
-    val navLength by settingsVm.navLength.collectAsStateWithLifecycle()
-    val navWiden by settingsVm.navWiden.collectAsStateWithLifecycle()
-    val navHideAfterMs by settingsVm.navHideAfterMs.collectAsStateWithLifecycle()
-    val navMenuMode by settingsVm.navMenuMode.collectAsStateWithLifecycle()
-    val navMenuHidden by settingsVm.navMenuHidden.collectAsStateWithLifecycle()
-    tv.own.owntv.features.settings.NavigationSettingsPopup(
-        style = navStyle,
-        onStyle = settingsVm::setNavStyle,
-        size = navSize,
-        onSize = settingsVm::setNavSize,
-        length = navLength,
-        onLength = settingsVm::setNavLength,
-        widen = navWiden,
-        onWiden = settingsVm::setNavWiden,
-        hideAfterMs = navHideAfterMs,
-        onHideAfterMs = settingsVm::setNavHideAfterMs,
-        menuMode = navMenuMode,
-        onMenuMode = settingsVm::setNavMenuMode,
-        hiddenSections = navMenuHidden,
-        onSectionHidden = settingsVm::setNavSectionHidden,
-        onDismiss = onDismiss,
-    )
-}
 
 /**
  * The Movies & Series layout picker. Moved out of [SettingsScreen] unchanged, because that function's
@@ -1561,6 +1463,22 @@ private fun navigationSearchEntry(settingsVm: SettingsViewModel, onClick: () -> 
     )
 }
 
+/** Menu labels lives in the Navigation popup; its own entry, so "labels" or "names" finds it by name. */
+@Composable
+private fun menuLabelsSearchEntry(settingsVm: SettingsViewModel, onClick: () -> Unit): SettingsSearchEntry {
+    val style by settingsVm.navStyle.collectAsStateWithLifecycle()
+    val size by settingsVm.navSize.collectAsStateWithLifecycle()
+    val widen by settingsVm.navWiden.collectAsStateWithLifecycle()
+    val labels = tv.own.owntv.features.settings.MenuLabels.of(style, size, widen)
+    return SettingsSearchEntry(
+        stringResource(R.string.settings_group_layout), stringResource(R.string.settings_nav_menu_labels),
+        stringResource(R.string.settings_search_keywords_menu_labels), OwnTVIcon.TEXT_SIZE, TileTone.PRIMARY,
+        chip = stringResource(labels.labelRes),
+        chipTone = if (labels == tv.own.owntv.features.settings.MenuLabels.OFF) TileTone.SECONDARY else TileTone.PRIMARY,
+        onClick = onClick,
+    )
+}
+
 /** The Layout group's Live TV layout row: Stage, or Separate panels. */
 @Composable
 private fun liveLayoutRootRow(settingsVm: SettingsViewModel, focus: FocusRequester, onClick: () -> Unit): RootRow {
@@ -1621,44 +1539,6 @@ private fun ThemeDialogHost(settingsVm: SettingsViewModel, themeMode: ThemeMode,
         options = ThemeMode.entries.map { it.name to themeLabel(it) },
         selected = themeMode.name,
         onSelect = { settingsVm.setThemeMode(ThemeMode.valueOf(it)); onClose() },
-        onDismiss = { onClose() },
-    )
-}
-
-@Composable
-private fun StartupDialogHost(settingsVm: SettingsViewModel, startupMode: tv.own.owntv.core.settings.StartupMode, onClose: () -> Unit, onPickChannel: () -> Unit) {
-    tv.own.owntv.features.settings.PickerDialog(
-        title = stringResource(R.string.settings_app_startup_dialog),
-        options = tv.own.owntv.core.settings.StartupMode.entries.map { it.name to startupLabel(it) },
-        selected = startupMode.name,
-        onSelect = {
-            val mode = tv.own.owntv.core.settings.StartupMode.valueOf(it)
-            onClose()
-            if (mode == tv.own.owntv.core.settings.StartupMode.SPECIFIC_CHANNEL) {
-                settingsVm.setStartupChannelQuery("")
-                settingsVm.refreshStartupChannelPicker()
-                onPickChannel()
-            } else {
-                settingsVm.setStartupMode(mode)
-            }
-        },
-        onDismiss = { onClose() },
-    )
-}
-
-@Composable
-private fun StartupChannelPickerHost(settingsVm: SettingsViewModel, startupChannel: tv.own.owntv.core.settings.StartupChannelRef?, onClose: () -> Unit) {
-    val startupChannelQuery by settingsVm.startupChannelQuery.collectAsStateWithLifecycle()
-    val startupChannelResults by settingsVm.startupChannelResults.collectAsStateWithLifecycle()
-    StartupChannelPickerDialog(
-        query = startupChannelQuery,
-        channels = startupChannelResults,
-        selected = startupChannel,
-        onQueryChange = settingsVm::setStartupChannelQuery,
-        onSelect = {
-            settingsVm.setStartupChannel(it)
-            onClose()
-        },
         onDismiss = { onClose() },
     )
 }
@@ -2493,7 +2373,7 @@ private fun EpgOffsetSettingDialog(
  * dialog, and Back from a sub-screen) need the *index* of a row that may be scrolled off-screen and
  * therefore not composed at all. Neither is knowable from a plain Column of 36 inline rows.
  */
-private sealed interface RootItem {
+internal sealed interface RootItem {
     val key: String
 }
 
@@ -2505,7 +2385,7 @@ private data class RootGroup(
     val summary: String,
 ) : RootItem
 
-private data class RootRow(
+internal data class RootRow(
     override val key: String,
     val tone: TileTone,
     val icon: OwnTVIcon,
@@ -2662,19 +2542,6 @@ internal fun SettingsRowMenu(
     }
 }
 
-/** One searchable settings row: its group breadcrumb, title, extra keywords, and action. */
-private class SettingsSearchEntry(
-    val group: String,
-    val title: String,
-    keywords: String,
-    val icon: OwnTVIcon,
-    val tone: TileTone,
-    val chip: String? = null,
-    val chipTone: TileTone = TileTone.PRIMARY,
-    val showChevron: Boolean = true,
-    val onClick: () -> Unit,
-)
-
 /** What a root row shows and does on its Stage page beyond its chip. */
 private class RowExtra(
     val value: SettingValue? = null,
@@ -2706,6 +2573,7 @@ private fun stageRowExtras(
     onSetFont: (FontCustomization) -> Unit,
     playlists: List<tv.own.owntv.core.database.entity.SourceEntity>,
 ): Map<String, RowExtra> {
+    val playlistsKnown by vm.loadedSources.collectAsStateWithLifecycle()
     val accent by vm.accent.collectAsStateWithLifecycle()
     val customAccent by vm.customAccent.collectAsStateWithLifecycle()
     val glass by vm.glassConfig.collectAsStateWithLifecycle()
@@ -2715,6 +2583,7 @@ private fun stageRowExtras(
     val fahrenheit by vm.weatherFahrenheit.collectAsStateWithLifecycle()
     val navStyle by vm.navStyle.collectAsStateWithLifecycle()
     val navSize by vm.navSize.collectAsStateWithLifecycle()
+    val navWiden by vm.navWiden.collectAsStateWithLifecycle()
     val liveLayout by vm.liveLayout.collectAsStateWithLifecycle()
     val liveView by vm.liveView.collectAsStateWithLifecycle()
     val vodLayout by vm.vodLayout.collectAsStateWithLifecycle()
@@ -2752,7 +2621,7 @@ private fun stageRowExtras(
     val valueStyle = tv.own.owntv.ui.theme.stageText(18, 700)
     return mapOf(
         "tab_SOURCES" to RowExtra(
-            SettingValue.Opens(pluralStringResource(R.plurals.more_playlist_count, playlists.size, playlists.size)),
+            SettingValue.Opens(playlistsKnown?.let { pluralStringResource(R.plurals.more_playlist_count, it.size, it.size) }),
             extra = { tv.own.owntv.features.settings.PlaylistSyncList(playlists) },
         ),
         "theme" to RowExtra(
@@ -2800,7 +2669,7 @@ private fun stageRowExtras(
             else listOfNotNull(weatherPlace.ifBlank { null }, stringResource(if (fahrenheit) R.string.settings_degree_fahrenheit else R.string.settings_degree_celsius)).joinToString(sep),
         )),
         "navigation" to RowExtra(
-            SettingValue.Opens(navStyleLabel(navStyle) + sep + stringResource(navSize.labelRes)),
+            SettingValue.Opens(navStyleLabel(navStyle) + sep + menuLabelsSummary(navStyle, navSize, navWiden)),
             choices = listOf(stringResource(R.string.settings_nav_floating), stringResource(R.string.settings_nav_docked)),
             chosen = navStyle.ordinal,
             recommended = 1,

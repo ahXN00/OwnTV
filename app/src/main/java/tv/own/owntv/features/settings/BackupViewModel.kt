@@ -19,6 +19,7 @@ class BackupViewModel(
     private val profileDao: tv.own.owntv.core.database.dao.ProfileDao,
     private val settings: tv.own.owntv.core.settings.SettingsRepository,
     private val companion: tv.own.owntv.core.companion.CompanionController,
+    private val protection: tv.own.owntv.core.profile.ProfileProtection,
 ) : ViewModel() {
 
     // ---- Remote restore: another device uploads a backup JSON to the TV over the LAN companion server. ----
@@ -51,7 +52,12 @@ class BackupViewModel(
     fun stopRemoteExport() = companion.stop()
 
     /** All profiles + the active one, for the export flow's profile-picker step. */
-    data class ProfileChoices(val profiles: List<tv.own.owntv.core.database.entity.ProfileEntity>, val activeId: Long)
+    /** [protectedIds]: profiles with a profile lock or a Settings lock — another profile needs one of their PINs. */
+    data class ProfileChoices(
+        val profiles: List<tv.own.owntv.core.database.entity.ProfileEntity>,
+        val activeId: Long,
+        val protectedIds: Set<Long> = emptySet(),
+    )
 
     private val _profileChoices = MutableStateFlow<ProfileChoices?>(null)
     val profileChoices: StateFlow<ProfileChoices?> = _profileChoices.asStateFlow()
@@ -61,13 +67,14 @@ class BackupViewModel(
             _profileChoices.value = ProfileChoices(
                 profiles = profileDao.getAllOnce(),
                 activeId = settings.activeProfileId.first(),
+                protectedIds = protection.protectedIds(),
             )
         }
     }
 
-    /** PIN check for ticking a locked, non-active profile in the export picker. */
-    fun verifyPin(profile: tv.own.owntv.core.database.entity.ProfileEntity, pin: String): Boolean =
-        tv.own.owntv.core.util.Pin.verify(pin, profile.pinHash)
+    /** A protected profile's profile PIN or Settings PIN, for including or changing it. */
+    suspend fun verifyPin(profile: tv.own.owntv.core.database.entity.ProfileEntity, pin: String): tv.own.owntv.core.categorylock.PinAttempt =
+        protection.verify(profile, pin)
 
     sealed interface State {
         data object Idle : State
@@ -93,6 +100,15 @@ class BackupViewModel(
             val invalidLocale: Boolean = false,
         ) : State
         data class Error(val kind: BackupError) : State
+
+        /** The restore would change protected profiles other than this one: ask their PINs first. */
+        data class ProtectedProfiles(
+            val file: File,
+            val sections: Set<BackupManager.Section>,
+            val password: String?,
+            val deviceSettings: Boolean,
+            val profiles: List<tv.own.owntv.core.database.entity.ProfileEntity>,
+        ) : State
 
         /**
          * Encrypted restore needs the backup password — [retry] is true after a wrong attempt.
@@ -174,11 +190,30 @@ class BackupViewModel(
         }
     }
 
-    /** Step 2 of restore: apply the chosen sections. */
-    fun import(file: File, sections: Set<BackupManager.Section>, backupPassword: String?, deviceSettings: Boolean = false) {
+    /**
+     * Step 2 of restore: apply the chosen sections. A protected profile the file would change is asked
+     * for first ([State.ProtectedProfiles]); [unlocked] is the answer, and every protected profile not in
+     * it is left exactly as it is.
+     */
+    fun import(
+        file: File,
+        sections: Set<BackupManager.Section>,
+        backupPassword: String?,
+        deviceSettings: Boolean = false,
+        unlocked: Set<Long>? = null,
+    ) {
         viewModelScope.launch {
             _state.value = State.Working
-            backup.import(file, sections, backupPassword, deviceSettings = deviceSettings).fold(
+            if (unlocked == null) {
+                val touched = backup.sectionsIn(file, backupPassword).getOrNull()?.touchedProfileIds.orEmpty()
+                val asking = protection.needingPin(touched)
+                if (asking.isNotEmpty()) {
+                    _state.value = State.ProtectedProfiles(file, sections, backupPassword, deviceSettings, asking)
+                    return@launch
+                }
+            }
+            val holdBack = protection.heldBack(unlocked.orEmpty())
+            backup.import(file, sections, backupPassword, deviceSettings = deviceSettings, holdBack = holdBack).fold(
                 onSuccess = { summary ->
                     _restoredIcon.value = settings.appIcon.first()
                     _state.value = State.Done(

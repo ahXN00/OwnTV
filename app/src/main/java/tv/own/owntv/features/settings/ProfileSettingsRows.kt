@@ -1,5 +1,6 @@
 package tv.own.owntv.features.settings
 
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,7 @@ import tv.own.owntv.features.profiles.ProfileEditorDialog
 import tv.own.owntv.features.profiles.ProfileGateSessionViewModel
 import tv.own.owntv.features.profiles.ProfilesViewModel
 import tv.own.owntv.ui.components.OwnTVIcon
+import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.stage.StageTag
 import tv.own.owntv.ui.theme.StageColors
 import tv.own.owntv.ui.theme.mpx
@@ -53,13 +55,20 @@ internal fun ProfileSettingsRows() {
     var editing by remember { mutableStateOf<ProfileEntity?>(null) }
     var creating by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<ProfileEntity?>(null) }
+    // Editing or deleting a protected profile from another one asks one of its PINs first:
+    // the profile and what opens once it is right.
+    var pinFirst by remember { mutableStateOf<Pair<ProfileEntity, () -> Unit>?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val guarded: (ProfileEntity, () -> Unit) -> Unit = { p, open ->
+        scope.launch { if (vm.changeNeedsPin(p, activeProfileId)) pinFirst = p to open else open() }
+    }
     // A closing editor or confirmation hands focus back to the row it came from (Add a profile, or the
     // profile — its neighbour when it was deleted).
     val rowFocus = remember { HashMap<Long, FocusRequester>() }
     val addFocus = remember { FocusRequester() }
     var returnTo by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(editing, creating, confirmDelete, profiles) {
-        if (editing != null || creating || confirmDelete != null) return@LaunchedEffect
+    LaunchedEffect(editing, creating, confirmDelete, pinFirst, profiles) {
+        if (editing != null || creating || confirmDelete != null || pinFirst != null) return@LaunchedEffect
         val id = returnTo ?: return@LaunchedEffect
         withFrameNanos { }
         val target = rowFocus[id].takeIf { profiles.any { it.id == id } } ?: profiles.lastOrNull()?.let { rowFocus[it.id] } ?: addFocus
@@ -70,8 +79,10 @@ internal fun ProfileSettingsRows() {
     val help = SettingHelp(
         title = stringResource(R.string.profiles_title),
         text = stringResource(R.string.settings_help_profiles),
-        hints = listOf(
+        hints = listOfNotNull(
             stringResource(R.string.common_ok) to stringResource(R.string.common_edit),
+            // The only way to delete a profile, so it has to be shown; never for the last one.
+            if (profiles.size > 1) stringResource(R.string.content_key_hold_ok) to stringResource(R.string.common_delete) else null,
             stringResource(R.string.common_back) to stringResource(R.string.common_nav_settings),
         ),
     )
@@ -99,8 +110,8 @@ internal fun ProfileSettingsRows() {
                     if (!inUse) OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx))
                 }
             },
-            onClick = { returnTo = p.id; editing = p },
-            onLongClick = if (profiles.size > 1) ({ returnTo = p.id; confirmDelete = p }) else null,
+            onClick = { returnTo = p.id; guarded(p) { editing = p } },
+            onLongClick = if (profiles.size > 1) ({ returnTo = p.id; guarded(p) { confirmDelete = p } }) else null,
             help = help,
             modifier = Modifier.focusRequester(remember(p.id) { rowFocus.getOrPut(p.id) { FocusRequester() } }),
         )
@@ -125,6 +136,7 @@ internal fun ProfileSettingsRows() {
         )
     }
     editing?.let { p ->
+        val allowDownloads by remember(p.id) { vm.downloadsAllowed(p.id) }.collectAsStateWithLifecycle(null)
         ProfileEditorDialog(
             initial = p,
             onConfirm = { name, avatarId, isKids, pin, _ -> vm.edit(p, name, avatarId, isKids, pin); editing = null },
@@ -135,6 +147,17 @@ internal fun ProfileSettingsRows() {
             customPath = profiles.firstOrNull { it.id == p.id }?.avatarPath.orEmpty(),
             onPickPicture = { file -> vm.setPicture(p.id, file) },
             onClearPicture = { vm.clearPicture(p.id) },
+            allowDownloads = allowDownloads,
+            onAllowDownloads = { vm.setDownloadsAllowed(p.id, it) },
+        )
+    }
+    pinFirst?.let { (p, open) ->
+        tv.own.owntv.features.profiles.ProtectedProfilePinDialog(
+            profileName = p.name,
+            body = stringResource(R.string.profiles_protected_edit),
+            verify = { pin -> vm.verifyProtected(p, pin) },
+            onUnlocked = { pinFirst = null; open() },
+            onDismiss = { pinFirst = null },
         )
     }
     confirmDelete?.let { p ->
@@ -148,6 +171,9 @@ internal fun ProfileSettingsRows() {
                 confirmDelete = null
             },
             onDismiss = { confirmDelete = null },
+            // Opened by a held OK: without the guard its repeats press Cancel, so the confirmation
+            // closed the moment it appeared and a profile could never be deleted.
+            modifier = Modifier.longPressMenuGuard(),
         )
     }
 }

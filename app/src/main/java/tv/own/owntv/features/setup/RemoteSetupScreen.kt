@@ -47,6 +47,9 @@ import tv.own.owntv.ui.theme.stageText
  * the panel shows the QR, the address and the PIN. A submission hands off to the Type it here
  * form, pre-filled, where the user presses Start import ([onPayloadReceived]). New PIN restarts the server
  * with a fresh PIN. The listener stops when this page leaves composition.
+ *
+ * Editing a playlist uses the same page with its own [parents] and [note]; the submission then
+ * pre-fills the edit form, where the user presses Save.
  */
 @Composable
 fun RemoteSetupScreen(
@@ -57,6 +60,8 @@ fun RemoteSetupScreen(
     onPayloadReceived: (CompanionPayload) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    parents: List<String> = listOf(stringResource(R.string.setup_add_source)),
+    note: String = stringResource(R.string.settings_remote_details_note),
 ) {
     val rowsFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -70,12 +75,12 @@ fun RemoteSetupScreen(
     // The heading is drawn above the QR by [RemotePanel], so the help itself carries none.
     val help = SettingHelp(
         title = "",
-        text = stringResource(R.string.settings_remote_details_note),
+        text = note,
         hints = listOf(stringResource(R.string.common_back) to stringResource(R.string.settings_key_stop_back)),
     )
     val panel: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit = { RemotePanel(state) }
     StageFullPage(
-        parents = listOf(stringResource(R.string.setup_add_source)),
+        parents = parents,
         title = stringResource(R.string.setup_from_phone),
         count = "",
         onBack = onBack,

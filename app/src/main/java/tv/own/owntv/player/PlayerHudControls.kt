@@ -345,10 +345,15 @@ internal fun CtrlButton(
     // "favourite" everywhere in the app — browse rows, posters and the player alike.
     activeTint: Color = hudAccent,
     label: String,
+    // Shown after the label while focused, in place of the count: the current setting a press changes.
+    value: String? = null,
+    // OK held. Null = a hold is a press.
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     StageSurface(
         onClick = onClick,
+        onLongClick = onLongClick,
         radius = 12.dp,
         // A square 44 dp while collapsed; focus lets it grow sideways to fit its label.
         modifier = Modifier.height(44.dp).widthIn(min = 44.dp),
@@ -373,7 +378,7 @@ internal fun CtrlButton(
                     }
                 }
             }
-            ExpandingLabel(focused, label, badge?.let { stringResource(R.string.common_number_grouped, it) }, tint)
+            ExpandingLabel(focused, label, value ?: badge?.let { stringResource(R.string.common_number_grouped, it) }, tint)
         }
     }
 }

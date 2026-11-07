@@ -1,15 +1,11 @@
 package tv.own.owntv
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import androidx.room.useWriterConnection
 import android.view.WindowManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -27,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -52,12 +47,6 @@ import tv.own.owntv.ui.theme.LocalUiFontScaleFactor
 import tv.own.owntv.ui.theme.OwnTVTheme
 import tv.own.owntv.core.theme.UiFontScale
 import tv.own.owntv.core.theme.UiZoom
-import tv.own.owntv.ui.theme.stackBlur
-import kotlin.math.abs
-import kotlin.math.max
-
-/** Logcat tag for the background-image loader (top-level helper outside MainActivity). */
-private const val BG_TAG = "BgImage"
 
 open class MainActivity : ComponentActivity() {
     companion object {
@@ -75,6 +64,13 @@ open class MainActivity : ComponentActivity() {
          * strictly less work than before.
          */
         private const val SPLASH_TIMEOUT_MS = 2_000L
+
+        /**
+         * How much longer, once the profile is known, the splash waits for the start-up screen. Home settles
+         * at once, so only a start on the last channel ever waits; on a 55k-channel playlist on the TCL that
+         * took 2.2–3.3 s from launch, and a shorter wait showed Home for a moment before Live TV or the Guide.
+         */
+        private const val STARTUP_SETTLE_TIMEOUT_MS = 3_000L
     }
 
     /**
@@ -87,10 +83,19 @@ open class MainActivity : ComponentActivity() {
     @Volatile
     private var contentReady = false
 
+    /**
+     * Whether the shell has opened where the profile's start-up choice says (the TV Guide, Live TV, the
+     * player...). The shell first composes on Home and applies that choice a moment later, so the splash
+     * stays up until then and Home never flashes on the way. Owned by this activity, so a relaunch in a
+     * process that is still alive waits again.
+     */
+    @Volatile
+    private var startupSettled = false
+
     private val player: tv.own.owntv.player.OwnTVPlayer by inject()
-    private val previewEngine: tv.own.owntv.player.LivePreviewEngine by inject()
-    private val heroPreviewEngine: tv.own.owntv.player.HeroPreviewEngine by inject()
     private val engines: tv.own.owntv.player.PlaybackEngines by inject()
+    private val visibility: tv.own.owntv.core.player.PlaybackVisibilityWatch by inject()
+    private val handOff: tv.own.owntv.features.pip.AppHandOff by inject()
     // Activity-scoped: the same instance Compose retrieves via koinViewModel() inside setContent.
     private val shellViewModel: ShellViewModel by viewModel()
     // The sole locale authority (SharedPreferences-backed; see docs/internationalization.md 0b).
@@ -115,21 +120,49 @@ open class MainActivity : ComponentActivity() {
         Log.d(TAG, "onNewIntent deepLinkHost=${intent.data?.host} deepLinkType=${pendingDeepLink?.javaClass?.simpleName ?: "none"}")
     }
 
+    /**
+     * Left the app — Home, another app, exited, logged out, the picture-in-picture window closed, or the
+     * television switched off while this activity kept running: stop playback and free the demuxer cache +
+     * decoder buffers — holding them while invisible got the process LMK-killed on real TVs. Every engine:
+     * mpv, the Live engine (its audio must stop too), each Multiview tile and the hero. The relock first: it
+     * reads what is playing before the engines free it.
+     *
+     * Back: bring back what was freed — a VOD restored paused at its position, a live channel re-tuned to
+     * the live edge — so Play resumes instead of sitting on a dead stream. No-op on a fresh launch. Not
+     * before the relock check is done: what it found sealed must not come back first.
+     */
+    private val onVisibility: (Boolean) -> Unit = { visible ->
+        if (visible) shellViewModel.afterSealCheck { engines.onAppForegrounded() }
+        else { shellViewModel.relockCategories(); engines.onAppBackgrounded() }
+    }
+
     override fun onStop() {
         super.onStop()
-        // Backgrounded (Home / another app), exited, or logged out: stop playback and free the demuxer
-        // cache + decoder buffers — holding them while invisible got the process LMK-killed on real TVs.
-        // Every engine: mpv, the Live engine (its audio must stop too), each Multiview tile and the hero.
-        if (!isChangingConfigurations) engines.onAppBackgrounded()
+        // A picture-in-picture window only pauses the activity, so playback there never reaches this.
+        if (!isChangingConfigurations) visibility.activityStopped()
+        handOff.onActivityStopped()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
+    override fun onDestroy() {
+        visibility.removeListener(onVisibility)
+        super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        handOff.onActivityResumed()
+    }
+
+    /** Every screen this activity opens (a trailer in YouTube, a system settings page) is a hand-off. */
+    override fun startActivity(intent: Intent, options: Bundle?) {
+        tv.own.owntv.features.pip.startAsHandOff(intent) { super.startActivity(it, options) }
     }
 
     override fun onStart() {
         super.onStart()
-        // Paired with onStop: bring back what was freed while backgrounded (notably the TV screensaver, which
-        // kicks in during a long pause) — a VOD restored paused at its position, and a live channel re-tuned
-        // to the live edge — so Play resumes instead of sitting on a dead/empty stream. No-op on fresh launch.
-        engines.onAppForegrounded()
+        // Paired with onStop (see [onVisibility]); notably the TV screensaver, which kicks in during a long pause.
+        visibility.activityStarted()
         // Staleness-based auto refresh on resume (interval modes only — STARTUP is cold-start only). The
         // ViewModel throttles this internally so a quick toggle doesn't re-run the check.
         shellViewModel.checkAutoRefresh(includeStartup = false)
@@ -168,13 +201,26 @@ open class MainActivity : ComponentActivity() {
         // postSplashScreenTheme (Theme.OwnTV), so the activity ends up in the same theme as before.
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+        tv.own.owntv.features.pip.PictureInPictureWindow.attach(this, get())
+        // The window only pauses the activity, so onStop's relock never runs while it is open: going into
+        // it is leaving the app, and a channel from a category the PIN opened stops there too.
+        addOnPictureInPictureModeChangedListener { if (it.isInPictureInPictureMode) shellViewModel.relockCategories() }
+        visibility.addListener(onVisibility)
         val splashDeadline = SystemClock.uptimeMillis() + SPLASH_TIMEOUT_MS
-        splash.setKeepOnScreenCondition { !contentReady && SystemClock.uptimeMillis() < splashDeadline }
+        var readyAt = 0L
+        splash.setKeepOnScreenCondition {
+            val now = SystemClock.uptimeMillis()
+            if (!contentReady) return@setKeepOnScreenCondition now < splashDeadline
+            if (readyAt == 0L) readyAt = now
+            // Then until the shell is on the start-up screen, so Home does not flash first.
+            !startupSettled && now < readyAt + STARTUP_SETTLE_TIMEOUT_MS
+        }
         pendingDeepLink = LauncherDeepLink.parse(intent.data)
         Log.d(TAG, "onCreate deepLinkHost=${intent.data?.host} deepLinkType=${pendingDeepLink?.javaClass?.simpleName ?: "none"}")
         val dbError = probeDatabase()
         if (dbError != null) {
             contentReady = true // the recovery screen IS the destination — don't hold the splash over it
+            startupSettled = true
             setContent {
                 tv.own.owntv.features.recovery.DatabaseRecoveryScreen(
                     message = dbError,
@@ -297,6 +343,10 @@ open class MainActivity : ComponentActivity() {
                 if (profilesLoaded) Perf.stamp("profiles-loaded")
             }
             val destinationReady = loadedProfileId != null && profilesLoaded
+            // A profile or PIN gate is the destination itself; the shell's start-up choice comes after it.
+            LaunchedEffect(destinationReady, shellReady) {
+                if (destinationReady && !shellReady) startupSettled = true
+            }
             LaunchedEffect(destinationReady) {
                 if (destinationReady && !contentReady) {
                     contentReady = true
@@ -435,9 +485,10 @@ open class MainActivity : ComponentActivity() {
                                 onDeepLinkConsumed = { pendingDeepLink = null },
                                 isOffline = !isOnline,
                                 onExitApp = { finish() },
+                                onStartupSettled = { startupSettled = true },
                                 onSwitchProfile = {
                                     // Stop playback and return to the "Who's watching?" gate — no app restart.
-                                    player.onAppBackgrounded(); player.discardBackgroundRestore(); previewEngine.stop(); previewEngine.discardBackgroundRestore(); heroPreviewEngine.stop()
+                                    tv.own.owntv.features.profiles.stopPlaybackForProfileGate(shellViewModel, engines)
                                     // Force the gate open even with a single unpinned profile (cold-start gate would
                                     // skip it). requestSwitchProfile() clears the active profile
                                     // authentication and raises the request.
@@ -463,124 +514,4 @@ open class MainActivity : ComponentActivity() {
 @androidx.compose.runtime.Composable
 private fun BackgroundLayer(background: tv.own.owntv.core.theme.BackgroundConfig, blurred: BlurredBackdrop?) {
     tv.own.owntv.ui.components.BackgroundPicture(background, blurred, Modifier.fillMaxSize())
-}
-
-/**
- * Builds the single shared blurred backdrop that glass frosts. Decodes the
- * background file into a downscaled [Bitmap] (≈480px wide — enough detail to frost, tiny in memory),
- * blurs it with [stackBlur], and wraps it in a [BlurredBackdrop] that also carries the root viewport
- * size in px so glass panels can map their on-screen rect into the bitmap's coordinate space.
- *
- * Runs on a background dispatcher (called from `produceState`); returns null on any decode failure so
- * glass then draws its tint alone. The aspect ratio is locked to the screen's so the slice
- * drawn under each panel lines up with the sharp photo behind it (Coil renders that with Crop/Center).
- */
-private suspend fun produceBlurredBackdrop(
-    path: String,
-    rootSizePx: Size,
-    buildFrostPyramid: Boolean,
-): BlurredBackdrop? =
-    withContext(Dispatchers.Default) {
-        runCatching {
-            val rootW = rootSizePx.width.takeIf { it > 0f } ?: return@runCatching null
-            val rootH = rootSizePx.height.takeIf { it > 0f } ?: return@runCatching null
-            val aspect = rootW / rootH
-            // Blur at a DOWNSCALED size, not full root res. A blurred image upscaled bilinearly is
-            // visually identical to a full-res blur, so the small bitmap is strictly better: ~0.7MB vs
-            // ~8MB ARGB, ~9× fewer pixels through the CPU blur, and the same radius yields a much
-            // deeper frost. (Full-res was a workaround for RGB blocks later proven to be a StackBlur
-            // sign-wrap bug, since fixed — the upscale was never the culprit.)
-            // Frost is intentionally low-frequency. A 384–448 px base plus geometric smaller mips is
-            // visually equivalent once upscaled while staying below the former 512–768 px allocation.
-            val memoryCap = if (Runtime.getRuntime().maxMemory() >= 256L * 1024L * 1024L) 448 else 384
-            val targetW = (rootW / 4f).toInt().coerceIn(384, memoryCap)
-            val targetH = (targetW / aspect).toInt().coerceAtLeast(2)
-
-            // Decode bounds first, then sample down to roughly the target width.
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(path, bounds)
-            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-                Log.w(BG_TAG, "blur: bounds decode failed for $path")
-                return@runCatching null
-            }
-            val sample = max(1, bounds.outWidth / targetW)
-            val opts = BitmapFactory.Options().apply {
-                inSampleSize = sample
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-            val decoded = BitmapFactory.decodeFile(path, opts) ?: run {
-                Log.w(BG_TAG, "blur: decodeFile returned null for $path")
-                return@runCatching null
-            }
-
-            try {
-                // Center-crop to the screen aspect ratio so the bitmap maps 1:1 to the root viewport.
-                val curAspect = decoded.width.toFloat() / decoded.height.toFloat()
-                var src = decoded
-                if (abs(curAspect - aspect) > 0.02f) {
-                    val cw: Int; val ch: Int
-                    if (curAspect > aspect) { ch = decoded.height; cw = (ch * aspect).toInt() }
-                    else { cw = decoded.width; ch = (cw / aspect).toInt() }
-                    val cx = ((decoded.width - cw) / 2).coerceAtLeast(0)
-                    val cy = ((decoded.height - ch) / 2).coerceAtLeast(0)
-                    val cropped = Bitmap.createBitmap(decoded, cx, cy, cw.coerceAtLeast(2), ch.coerceAtLeast(2))
-                    if (cropped !== decoded) { decoded.recycle(); src = cropped }
-                }
-                // Downscale + diffuse in one canvas pass. Compressing contrast 18% toward mid-grey
-                // prevents bright wallpaper patches punching through frost; the restrained saturation
-                // keeps colour identity without restoring the glare. This replaces the previous 1.18
-                // saturation-only filter at exactly the same one-off wallpaper-load cost.
-                val contrast = 0.82f
-                val translation = 255f * (1f - contrast) * 0.5f
-                val diffuse = android.graphics.ColorMatrix(
-                    floatArrayOf(
-                        contrast, 0f, 0f, 0f, translation,
-                        0f, contrast, 0f, 0f, translation,
-                        0f, 0f, contrast, 0f, translation,
-                        0f, 0f, 0f, 1f, 0f,
-                    ),
-                ).apply {
-                    postConcat(android.graphics.ColorMatrix().apply { setSaturation(1.06f) })
-                }
-                val scaled = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
-                android.graphics.Canvas(scaled).apply {
-                    val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG).apply {
-                        colorFilter = android.graphics.ColorMatrixColorFilter(diffuse)
-                    }
-                    drawBitmap(src, null, android.graphics.Rect(0, 0, targetW, targetH), paint)
-                }
-                src.recycle()
-                val levels = if (buildFrostPyramid) {
-                    buildFrostMipPyramid(scaled)
-                } else {
-                    scaled.recycle()
-                    emptyList()
-                }
-                BlurredBackdrop(
-                    frostLevels = levels,
-                    rootSizePx = rootSizePx,
-                )
-            } catch (t: Throwable) {
-                Log.w(BG_TAG, "blur: crop/scale/blur threw ${t.javaClass.simpleName}: ${t.message}")
-                decoded.recycle()
-                null
-            }
-        }.onFailure { Log.w(BG_TAG, "blur: produceState failed: ${it.javaClass.simpleName}: ${it.message}") }
-            .getOrNull()
-    }
-
-/** Ten real blur levels at geometrically shrinking resolutions within one small memory budget. */
-private fun buildFrostMipPyramid(base: Bitmap): List<androidx.compose.ui.graphics.ImageBitmap> {
-    val result = ArrayList<androidx.compose.ui.graphics.ImageBitmap>(10)
-    val dimensions = tv.own.owntv.ui.theme.frostMipDimensions(base.width, base.height)
-    var current = stackBlur(base, radius = 4)
-    dimensions.forEachIndexed { level, _ ->
-        result += current.asImageBitmap()
-        if (level < dimensions.lastIndex) {
-            val (nextW, nextH) = dimensions[level + 1]
-            val next = Bitmap.createScaledBitmap(current, nextW, nextH, true)
-            current = stackBlur(next, radius = 2)
-        }
-    }
-    return result
 }

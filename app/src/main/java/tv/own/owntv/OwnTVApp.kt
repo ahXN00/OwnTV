@@ -2,7 +2,9 @@ package tv.own.owntv
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.os.Bundle
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -72,6 +74,15 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
      * resolves the *new* device locale list, so a device-locale change while following system applies on
      * the next callback rather than freezing the startup locale.
      */
+    /** Core opens external players and system screens from this context: each one is a hand-off. */
+    override fun startActivity(intent: Intent) {
+        tv.own.owntv.features.pip.startAsHandOff(intent) { super.startActivity(it) }
+    }
+
+    override fun startActivity(intent: Intent, options: Bundle?) {
+        tv.own.owntv.features.pip.startAsHandOff(intent) { super.startActivity(it, options) }
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         val tag = tv.own.owntv.core.i18n.LocaleStore.from(this).readBlocking()
@@ -81,9 +92,14 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
     override fun onCreate() {
         Perf.begin() // zero-point for the OwnTVPerf startup timeline (adb logcat -s OwnTVPerf)
         super.onCreate()
+        // The six icon colours are MainActivity + a suffix (see MainActivityColours.kt); core switches them.
+        // Before the early returns: auto start opens the app from its bare process through this name.
+        tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         // "Restart now" after an icon change runs a few milliseconds in a process of its own; nothing
         // below may start there (core's AppRestartActivity).
         if (tv.own.owntv.core.brand.AppIconSwitcher.isRestartProcess(this)) return
+        // The auto-start wake listener's process stays this bare (see AutoStart.isAutoStartProcess).
+        if (tv.own.owntv.features.autostart.AutoStart.isAutoStartProcess(this)) return
         // Core has its own BuildConfig, which carries none of this: a library gets no version at all,
         // and the edge key and the maintainer switch are the app's build inputs. Hand them over before
         // the first reader — CrashRecorder, two lines down (see CoreBuildInfo).
@@ -110,8 +126,6 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // Four of the five subtitle faces are this app's own res/font files, so the engine asks us for
         // the id rather than owning the assets (see SubtitleFontAssets).
         tv.own.owntv.player.SubtitleFontAssets.resourceOf = { it.subtitleFontResource }
-        // The six icon colours are MainActivity + a suffix (see MainActivityColours.kt); core switches them.
-        tv.own.owntv.core.brand.AppIconSwitcher.mainActivityClass = MainActivity::class.java.name
         startKoin {
             androidLogger(if (BuildConfig.DEBUG) Level.ERROR else Level.NONE)
             androidContext(this@OwnTVApp)
@@ -121,6 +135,9 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // A chosen icon colour ("Later", the first-run pick, a restore) reaches the launcher when the app
         // is next in the background, never while it is on screen.
         tv.own.owntv.core.brand.AppIconSwitcher.start(this, GlobalContext.get().get())
+        // Auto start on wake-up: a force stop ends the wake listener, so the next app start brings it back.
+        tv.own.owntv.features.autostart.AutoStart.onAppStarted(this)
+        tv.own.owntv.features.autostart.AutoStartProfileGate(this).register()
         // Diagnostics switch and the one-shot settings migrations — core's, shared with the phone, which
         // used to run none of them.
         tv.own.owntv.player.PlaybackStartup.start(
@@ -161,11 +178,12 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
     /**
      * App-wide Coil loader that fetches images through the app's OkHttpClient — so posters/logos get
      * the same player-style User-Agent and connection pooling our IPTV requests use (some panels reject
-     * default UAs). Crossfade smooths the grid as images stream in. The memory cache is capped well
-     * below Coil's default ~25% — on a 4K TV every megabyte belongs to the video pipeline, not to
-     * channel-logo bitmaps.
+     * default UAs). Crossfade (120 ms, off on low-RAM) smooths the grid as images stream in. The memory
+     * cache stays well below Coil's default ~25% — on a 4K TV every megabyte belongs to the video
+     * pipeline, not to channel-logo bitmaps: 15% of the heap up to 64 MB, and 10% on low-RAM devices.
      */
     override fun newImageLoader(context: PlatformContext): ImageLoader {
+        val lowRam = context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true
         // The shared client deliberately disables connection retries so catalog/EPG sync owns its retry
         // policy. That setting is harmful for CDN images, though: hosts such as image.tmdb.org publish
         // both IPv6 and IPv4, and some Android TV boxes resolve IPv6 first even when their IPv6 route is
@@ -184,7 +202,11 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             .build()
         return ImageLoader.Builder(context)
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { imageHttpClient })) }
-            .memoryCache { MemoryCache.Builder().maxSizePercent(context, 0.10).build() }
+            .memoryCache {
+                MemoryCache.Builder()
+                    .maxSizeBytes(imageMemoryCacheBytes(Runtime.getRuntime().maxMemory(), lowRam))
+                    .build()
+            }
             // Explicit bounded disk cache: posters/logos survive across sessions instead of
             // re-downloading, capped so a 220k-item catalog can't eat the box's storage.
             .diskCache {
@@ -196,7 +218,7 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
             // Opaque poster art doesn't need an alpha channel; RGB_565 halves bitmap memory
             // under the deliberately small memory cap.
             .allowRgb565(true)
-            .crossfade(true)
+            .crossfade(if (lowRam) 0 else 120)
             .build()
     }
 
@@ -229,4 +251,10 @@ class OwnTVApp : Application(), SingletonImageLoader.Factory, androidx.work.Conf
         // and used to leave mpv on a trimmed cache for the rest of the session.
         runCatching { GlobalContext.getOrNull()?.getOrNull<tv.own.owntv.player.PlaybackEngines>()?.onTrimMemory(level) }
     }
+}
+
+/** 15% of the heap, capped at 64 MB; low-RAM devices keep 10%. */
+internal fun imageMemoryCacheBytes(heapBytes: Long, lowRam: Boolean): Long {
+    if (lowRam) return (heapBytes * 0.10).toLong()
+    return minOf((heapBytes * 0.15).toLong(), 64L * 1024 * 1024)
 }

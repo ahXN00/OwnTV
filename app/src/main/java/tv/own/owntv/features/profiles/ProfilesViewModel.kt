@@ -21,7 +21,25 @@ class ProfilesViewModel(
     private val profileDao: ProfileDao,
     private val settings: SettingsRepository,
     private val manager: ProfileManager,
+    private val protection: tv.own.owntv.core.profile.ProfileProtection,
 ) : ViewModel() {
+
+    /**
+     * Whether changing [profile] from the profile in use ([activeId]) needs one of its PINs first: it
+     * has a profile lock or a Settings lock, and it is not the one in use.
+     */
+    suspend fun changeNeedsPin(profile: ProfileEntity, activeId: Long): Boolean =
+        profile.id != activeId && protection.isProtected(profile)
+
+    /** A protected profile's profile PIN or Settings PIN. */
+    suspend fun verifyProtected(profile: ProfileEntity, pin: String) = protection.verify(profile, pin)
+
+    /** Whether [profileId] may download (Settings › Profile › the profile › Allow downloads). */
+    fun downloadsAllowed(profileId: Long): kotlinx.coroutines.flow.Flow<Boolean> = settings.downloadsAllowed(profileId)
+
+    fun setDownloadsAllowed(profileId: Long, allowed: Boolean) {
+        viewModelScope.launch { settings.setDownloadsAllowed(profileId, allowed) }
+    }
 
     // Eagerly on purpose: MainActivity's splash gate blocks the first frame on this list, so the
     // query has to start when the ViewModel is built, not on first collection inside composition.
