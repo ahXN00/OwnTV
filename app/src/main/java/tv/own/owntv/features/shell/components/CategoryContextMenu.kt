@@ -55,6 +55,9 @@ fun CategoryContextMenu(
 ) {
     val focus = remember { FocusRequester() }
     var confirmingReset by remember { mutableStateOf(false) }
+    // Every entry here organises the list, so each asks for the Settings PIN first when its
+    // long-press switch is on.
+    val gate: tv.own.owntv.features.settings.lock.MenuChangeGate = org.koin.compose.koinInject()
     // The menu steps aside while the confirmation is up, and takes focus back when it returns.
     if (!confirmingReset) {
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -69,26 +72,26 @@ fun CategoryContextMenu(
                 tv.own.owntv.ui.stage.StageMenuHeader(title = categoryName, subtitle = null)
                 if (canMove) {
                     tv.own.owntv.ui.stage.StageMenuItem(
-                        stringResource(tv.own.owntv.R.string.content_move), onClick = onMove,
+                        stringResource(tv.own.owntv.R.string.content_move), onClick = { gate.run(onMove) },
                         icon = OwnTVIcon.MOVE, modifier = Modifier.focusRequester(focus),
                     )
                 }
                 if (canHide) {
                     tv.own.owntv.ui.stage.StageMenuItem(
-                        stringResource(tv.own.owntv.R.string.common_hide), onClick = onHide,
+                        stringResource(tv.own.owntv.R.string.common_hide), onClick = { gate.run(onHide) },
                         icon = OwnTVIcon.EYE_OFF, modifier = if (!canMove) Modifier.focusRequester(focus) else Modifier,
                     )
                 }
                 if (locked != null) {
                     tv.own.owntv.ui.stage.StageMenuItem(
                         stringResource(if (locked) tv.own.owntv.R.string.settings_customize_remove_lock else tv.own.owntv.R.string.content_category_lock),
-                        onClick = onToggleLock, icon = OwnTVIcon.LOCK,
+                        onClick = { gate.run(onToggleLock) }, icon = OwnTVIcon.LOCK,
                         modifier = if (!canMove && !canHide) Modifier.focusRequester(focus) else Modifier,
                     )
                 }
                 if (resetLabel != null) {
                     tv.own.owntv.ui.stage.StageMenuItem(
-                        resetLabel, onClick = { confirmingReset = true },
+                        resetLabel, onClick = { gate.run { confirmingReset = true } },
                         icon = OwnTVIcon.REFRESH,
                         modifier = if (!canMove && !canHide && locked == null) Modifier.focusRequester(focus) else Modifier,
                     )

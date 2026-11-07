@@ -163,7 +163,7 @@ class SetupViewModel(
         job.invokeOnCompletion { if (importJob == job) importJob = null }
     }
 
-    /** Playlists belonging to unlocked (no-PIN) profiles that aren't already on the new profile. */
+    /** Other profiles' playlists not yet on the new profile, minus every one a protected profile uses. */
     suspend fun availableExistingSources(): List<SourceEntity> = importer.availableExistingSources()
 
     /** Link the chosen existing sources to the new profile, then re-sync each one. */

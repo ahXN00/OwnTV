@@ -2014,6 +2014,8 @@ fun OwnTVShell(
         }
       }
 
+    // The Settings PIN before a long-press change, when the Settings lock asks for it.
+    tv.own.owntv.features.settings.lock.MenuChangeGateHost()
     if (showExit) {
         ExitDialog(onConfirm = onExitApp, onDismiss = { showExit = false })
     }

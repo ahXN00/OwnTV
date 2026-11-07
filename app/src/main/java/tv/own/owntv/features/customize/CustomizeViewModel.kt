@@ -93,8 +93,7 @@ class CustomizeViewModel(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, Ctx(-1L, emptyList()))
 
-    /** Optional PIN lock on this screen (per profile). [loaded]=false while DataStore is still read,
-     *  so the screen never flashes unlocked content before the lock state is known. */
+    /** This profile's category lock PIN ([pin] null when none is set); [loaded]=false while DataStore is still read. */
     data class PinLock(val loaded: Boolean = false, val pin: String? = null)
 
     val pinLock: StateFlow<PinLock> = ctx
@@ -104,7 +103,7 @@ class CustomizeViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PinLock())
 
-    /** Set (or with null: remove) the PIN lock for this profile. Removing it also drops every
+    /** Set (or with null: remove) this profile's category lock PIN. Removing it also drops every
      *  category lock: without the PIN nothing could open them again. */
     fun setPin(pin: String?) {
         val pid = ctx.value.profileId

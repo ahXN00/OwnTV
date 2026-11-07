@@ -20,19 +20,21 @@ import org.koin.compose.koinInject
 import tv.own.owntv.R
 import tv.own.owntv.core.util.Pin
 import tv.own.owntv.core.categorylock.PinAttempt
-import tv.own.owntv.core.categorylock.PinAttemptLimiter
+import tv.own.owntv.core.categorylock.PinAttemptLimiters
+import tv.own.owntv.core.categorylock.PinDoor
 import tv.own.owntv.features.categorylock.pinEntryTitle
 import tv.own.owntv.ui.theme.mpx
 
 /**
  * Stands in for a PIN-locked screen until the PIN is entered: the screen's [title], a "PIN-locked"
  * note, and the PIN prompt over them (see [PinPrompt]); Back or Cancel calls [onDismiss]. [pin] is the
- * stored value — a salted hash, or a PIN saved before hashing.
+ * stored value — a salted hash, or a PIN saved before hashing — of the lock on [door].
  */
 @Composable
 internal fun PinLockedScreen(
     title: String,
     pin: String,
+    door: PinDoor,
     onUnlock: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -51,18 +53,17 @@ internal fun PinLockedScreen(
             modifier = Modifier.padding(top = 10.mpx),
         )
     }
-    PinPrompt(pin = pin, onUnlock = onUnlock, onDismiss = onDismiss)
+    PinPrompt(pin = pin, door = door, onUnlock = onUnlock, onDismiss = onDismiss)
 }
 
 /**
  * The PIN prompt on its own, for a door that stays on screen behind it. A wrong PIN keeps the prompt
- * up and says so; Back or Cancel calls [onDismiss]. Every door asks the Customize PIN, which also takes
- * the category locks off, so wrong entries count against the same [PinAttemptLimiter] as those locks:
- * guessing at any of them earns the same wait.
+ * up and says so; Back or Cancel calls [onDismiss]. Wrong entries count only against [door]'s own
+ * limit, so guessing at one lock never makes another wait.
  */
 @Composable
-internal fun PinPrompt(pin: String, onUnlock: () -> Unit, onDismiss: () -> Unit) {
-    val limiter: PinAttemptLimiter = koinInject()
+internal fun PinPrompt(pin: String, door: PinDoor, onUnlock: () -> Unit, onDismiss: () -> Unit) {
+    val limiter = koinInject<PinAttemptLimiters>().of(door)
     var wrong by remember { mutableStateOf(false) }
     var waitSeconds by remember { mutableIntStateOf(limiter.waitSeconds()) }
     var attempt by remember { mutableIntStateOf(0) }

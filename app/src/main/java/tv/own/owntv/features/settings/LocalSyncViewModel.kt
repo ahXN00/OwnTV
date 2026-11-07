@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import tv.own.owntv.core.backup.BackupManager
+import tv.own.owntv.core.companion.CompanionController
 import tv.own.owntv.core.companion.CompanionServerState
 import tv.own.owntv.core.sync.local.DiscoveredDevice
 import tv.own.owntv.core.sync.local.LocalSyncManager
@@ -31,7 +32,15 @@ import tv.own.owntv.core.sync.local.SyncFailure
  */
 class LocalSyncViewModel(
     private val sync: LocalSyncManager,
+    profileDao: tv.own.owntv.core.database.dao.ProfileDao,
+    settings: tv.own.owntv.core.settings.SettingsRepository,
 ) : ViewModel() {
+
+    /** The profile in use: the only one a sync carries, merged with the one in use on the other device. */
+    val activeProfileName: StateFlow<String> = kotlinx.coroutines.flow.combine(profileDao.observeAll(), settings.activeProfileId) { profiles, id ->
+        profiles.firstOrNull { it.id == id }?.name.orEmpty()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), "")
+
 
     val paired: StateFlow<List<PairedDevice>> = sync.pairedDevices
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
@@ -40,6 +49,18 @@ class LocalSyncViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), CompanionServerState.Idle)
 
     val deviceName: String get() = sync.deviceName
+
+    /**
+     * Devices asking, while this one is hosting, to sync with it automatically.
+     *
+     * The far side is suspended on the HTTP request until this is answered, so the question is not
+     * something to come back to later: it is answered now or it times out as a no.
+     */
+    val autoSyncRequests: StateFlow<List<CompanionController.AutoSyncRequest>> = sync.autoSyncRequests
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+    /** The answer for a request on the screen. Unknown ids — already timed out — are ignored. */
+    fun answerAutoSync(requestId: String, accepted: Boolean) = sync.answerAutoSync(requestId, accepted)
 
     var found by mutableStateOf<List<DiscoveredDevice>>(emptyList())
         private set
@@ -52,6 +73,7 @@ class LocalSyncViewModel(
 
     var error by mutableStateOf<SyncFailure?>(null)
         private set
+
 
     sealed interface Step {
         data object FindDevice : Step
@@ -201,6 +223,7 @@ class LocalSyncViewModel(
             busy = false
         }
     }
+
 
     fun cancel() {
         (step as? Step.Confirm)?.file?.delete()

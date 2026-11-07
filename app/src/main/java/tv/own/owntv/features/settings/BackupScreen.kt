@@ -133,7 +133,8 @@ fun BackupScreen(
     var dialogReturn by remember { mutableStateOf<FocusRequester?>(null) }
     val anyDialogOpen = showBrowser || showExportPicker || showProfilePicker || pendingFolderBrowser || exportFolder != null ||
         showRemoteRestore || showRemoteExportPassword || showRemoteExport ||
-        state is BackupViewModel.State.ChooseRestore || state is BackupViewModel.State.NeedPassword
+        state is BackupViewModel.State.ChooseRestore || state is BackupViewModel.State.NeedPassword ||
+        state is BackupViewModel.State.ProfileClashes
     LaunchedEffect(anyDialogOpen) {
         if (!anyDialogOpen) {
             dialogReturn?.let { btn ->
@@ -327,6 +328,7 @@ fun BackupScreen(
             ProfilePickerDialog(
                 profiles = choices.profiles,
                 activeId = choices.activeId,
+                protectedIds = choices.protectedIds,
                 verifyPin = vm::verifyPin,
                 onConfirm = { picked ->
                     exportProfiles = picked
@@ -389,6 +391,16 @@ fun BackupScreen(
             onConfirm = { pass -> exportFolder = null; vm.export(folder, exportSections, pass, exportProfiles) },
             onSkip = { exportFolder = null; vm.export(folder, exportSections, null, exportProfiles) },
             onDismiss = { exportFolder = null },
+        )
+    }
+
+    // Profiles in the file named like ones here: Merge, Replace or Keep both, one at a time.
+    (state as? BackupViewModel.State.ProfileClashes)?.let { ask ->
+        RestoreClashStep(
+            ask = ask,
+            verify = vm::verifyPin,
+            onDone = { choices -> vm.import(ask.file, ask.sections, ask.password, ask.deviceSettings, choices) },
+            onCancel = vm::reset,
         )
     }
 
@@ -509,7 +521,8 @@ private fun BackupPasswordDialog(
 private fun ProfilePickerDialog(
     profiles: List<tv.own.owntv.core.database.entity.ProfileEntity>,
     activeId: Long,
-    verifyPin: (tv.own.owntv.core.database.entity.ProfileEntity, String) -> Boolean,
+    protectedIds: Set<Long>,
+    verifyPin: suspend (tv.own.owntv.core.database.entity.ProfileEntity, String) -> tv.own.owntv.core.categorylock.PinAttempt,
     onConfirm: (Set<Long>) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -529,7 +542,7 @@ private fun ProfilePickerDialog(
         },
     ) {
         profiles.forEachIndexed { i, p ->
-            val locked = p.pinHash != null && p.id != activeId
+            val locked = p.id in protectedIds && p.id != activeId
             CheckRow(
                 label = if (p.id == activeId) stringResource(R.string.settings_backup_profile_current, p.name) else p.name,
                 desc = when {
@@ -550,50 +563,13 @@ private fun ProfilePickerDialog(
         }
     }
     pinFor?.let { profile ->
-        ProfilePinDialog(
+        tv.own.owntv.features.profiles.ProtectedProfilePinDialog(
             profileName = profile.name,
+            body = stringResource(R.string.settings_backup_profile_pin_description),
             verify = { pin -> verifyPin(profile, pin) },
             onUnlocked = { ticked = ticked + profile.id; pinFor = null },
             onDismiss = { pinFor = null },
         )
-    }
-}
-
-/** PIN prompt for including a locked, non-active profile in the backup. */
-@Composable
-private fun ProfilePinDialog(
-    profileName: String,
-    verify: (String) -> Boolean,
-    onUnlocked: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var pin by remember { mutableStateOf("") }
-    var wrong by remember { mutableStateOf(false) }
-    val fieldFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { fieldFocus.requestFocus() } }
-    tv.own.owntv.ui.stage.StagePopup(
-        onDismiss = onDismiss,
-        title = stringResource(R.string.settings_backup_profile_locked, profileName),
-        body = stringResource(R.string.settings_backup_profile_pin_description),
-        width = 760.mpx,
-        buttons = {
-            tv.own.owntv.ui.stage.StageButton(stringResource(R.string.common_cancel), onClick = onDismiss, height = 56.mpx, textSize = 19)
-            tv.own.owntv.ui.stage.StageButton(
-                stringResource(R.string.settings_backup_unlock),
-                onClick = { if (pin.isNotBlank()) { if (verify(pin)) onUnlocked() else { wrong = true; pin = "" } } },
-                height = 56.mpx, textSize = 19, tinted = true,
-            )
-        },
-    ) {
-        tv.own.owntv.features.settings.StageFieldRow(
-            icon = tv.own.owntv.ui.components.OwnTVIcon.PENCIL,
-            label = stringResource(R.string.settings_backup_profile_pin),
-            value = pin,
-            onValueChange = { pin = it; wrong = false },
-            modifier = Modifier.focusRequester(fieldFocus),
-            password = true,
-        )
-        if (wrong) Text(stringResource(R.string.settings_backup_pin_incorrect), style = stageText(17, 600), color = StageColors.Danger, modifier = Modifier.padding(top = 10.mpx))
     }
 }
 

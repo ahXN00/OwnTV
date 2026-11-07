@@ -737,6 +737,25 @@ creates a profile, and in Settings → **Profile** when you edit one.
 Off takes every Download button and menu item away from that profile. With it on, **Download season**
 and **Download all episodes** first ask "Download N episodes?".
 
+### 🔐 Settings lock
+**Where:** Settings → App → **Settings lock**
+A PIN of its own, per profile, that **Settings**, **Backup & Restore** and **Local sync** ask for
+before they open. It is neither the profile PIN nor the category lock PIN — three locks, three PINs,
+and none of them opens another; 5 wrong tries on one make only that one wait 30 s. **Change PIN** and
+**Turn off** ask for the current Settings PIN.
+- **Also lock long-press menu changes** (shown while the lock is on, off by default): **Hide**,
+  **Move**, **Rename**, locking a category and **Remove from History** ask for the Settings PIN too.
+  One right PIN opens them until OwnTV goes to the background or you switch profile. Favourites and
+  playing never ask.
+
+### 🛡️ Protected profiles
+A profile with a profile PIN or a Settings lock is **protected**, and so are its playlists:
+- A **new profile** gets only the playlists no protected profile uses — none at all if every playlist
+  belongs to one; then it adds its own.
+- From another profile, ticking it for a **backup**, merging into or replacing it in a **restore**,
+  and **editing or deleting** it in Settings → Profile ask one of its PINs (profile PIN or Settings PIN).
+  Local sync never touches it unless it is the profile in use.
+
 ### 🚀 Where a profile opens
 **Where:** Settings → App → **App startup**
 **Home**, **Last channel** (full screen), **Last channel · TV Guide** or **Last channel · Live TV**
@@ -933,14 +952,15 @@ Hide, rename, reorder, and **unhide**. Highlights:
   are on (Live TV, Movies or Series): hidden categories and items, renames, category order and custom
   order. Other playlists, combined categories, favorites and guide matches are kept.
 - **Span select** — long-press a **Hide** or **move** button to act on a whole block at once.
-- **PIN lock** this screen with **Set PIN**. With a PIN set, **⋯ More → Ask for PIN to open Settings**
-  makes Settings ask for the same PIN each time it opens, on this profile. Removing the PIN turns it off.
+- **Category lock PIN** — **⋯ More → Set category lock PIN** (then **Change** / **Remove category lock
+  PIN**, which ask for the current one first). It is the PIN locked categories ask for, and nothing
+  else: it does not open Settings.
 - **Lock a category with a PIN** — long-press a playlist category in Live TV, Movies or Series →
-  **Lock with PIN**. It uses this screen's PIN (the first lock asks you to set one). The category stays
+  **Lock with PIN**. It uses the category lock PIN (the first lock asks you to set one). The category stays
   in the list with a lock; its channels, films and shows stay out of everything else (search, Guide,
   Home rows, CH+/−, counts, history, Downloads) until you open it with **Enter PIN**. It stays open
   until OwnTV goes to the background or you switch profile. **Remove lock** in the same menu asks the
-  PIN, and removing this screen's PIN unlocks every category. 5 wrong PINs → a 30 s wait.
+  PIN, and removing the category lock PIN unlocks every category. 5 wrong PINs → a 30 s wait.
 
 ### 🔀 Reorder or hide the long-press menus
 **Where:** Settings → Layout → **Long-press menus**
@@ -1014,12 +1034,33 @@ subtitles — **optionally encrypted with your own password**. Restore locally o
 > Android's own automatic backup is deliberately disabled, so app data only ever leaves the device
 > through this screen. Passwords ride along **only** if you set a backup password.
 
+**Same name on both sides:** restoring a profile whose name is already here asks, per profile:
+**Merge into it** (keep what it has, add the backup's), **Replace it** (clear its data here for the
+parts being restored, then restore) or **Keep both** (the backup's comes in as "<name> (restored)").
+Merging into or replacing a locked profile other than the one in use asks its PIN; everything else
+needs only the backup password. A locked profile stays locked after a restore.
+
 ### 🔄 Local sync with your phone
 **Where:** ⋯ More → **Local sync**
 Swap favourites, history and resume points with the OwnTV mobile app over your own Wi-Fi — no
-account, no cloud. **Both devices must open the Local sync screen**; you see exactly what will change
+account, no cloud. **Only the profile in use syncs**, into the profile in use on the other device,
+whatever their names — like one viewer on two screens. **Both devices must open the Local sync screen**; you see exactly what will change
 before it changes. On a brand-new television this is offered during setup instead — see
 **From another device** under *Start here*.
+
+**Auto-sync** — on a paired device's row, **Auto-sync** keeps the two in step by themselves. Turn it
+on with Local sync open on both: the other device asks "Allow auto-sync?" (**Don't allow** is focused).
+- It pairs the profile in use here with the one in use on the other device when it is turned on
+  (the row shows "Profiles: B ↔ X"); switching profile later does not change the pair.
+- Each device ticks what it lets through — Favorites, Watch history, Resume positions, Customizations
+  and Manual reorder by default; **Sources** (the playlists, with their logins) and **App settings** only
+  where they are ticked. A merge both ways, and deletions stay deleted.
+- **How often** is the least time between two syncs: each time either app opens or closes, 6 hours,
+  daily or weekly. A sync is tried when OwnTV opens or closes and when the Wi-Fi comes back.
+- **Keep auto-sync listening** (on this page, off by default): on, the phone can sync with the TV
+  whenever OwnTV is open on the TV; off, only while Sync mode is on.
+- The row says the last auto-sync, "Couldn't reach …, will try again" (it backs off), or "Auto-sync
+  turned off on …" when the other device turned it off. Turning it off here tells the other device too.
 
 ---
 
