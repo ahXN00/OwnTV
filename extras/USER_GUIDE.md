@@ -1041,6 +1041,18 @@ account, no cloud. **Both devices must open the Local sync screen**; you see exa
 before it changes. On a brand-new television this is offered during setup instead — see
 **From another device** under *Start here*.
 
+**Auto-sync** — on a paired device's row, **Auto-sync** keeps the two in step by themselves. Turn it
+on with Local sync open on both: the other device asks "Allow auto-sync?" (**Don't allow** is focused).
+- Each device ticks what it lets through — Favorites, Watch history, Resume positions, Customizations
+  and Manual reorder by default; **Sources** (the playlists, with their logins) and **App settings** only
+  where they are ticked — and which profiles. A merge both ways, and deletions stay deleted.
+- **How often** is the least time between two syncs: each time either app opens or closes, 6 hours,
+  daily or weekly. A sync is tried when OwnTV opens or closes and when the Wi-Fi comes back.
+- **Keep auto-sync listening** (on this page, off by default): on, the phone can sync with the TV
+  whenever OwnTV is open on the TV; off, only while Sync mode is on.
+- The row says the last auto-sync, "Couldn't reach …, will try again" (it backs off), or "Auto-sync
+  turned off on …" when the other device turned it off. Turning it off here tells the other device too.
+
 ---
 
 ## 🛠️ Build your own M3U playlist
