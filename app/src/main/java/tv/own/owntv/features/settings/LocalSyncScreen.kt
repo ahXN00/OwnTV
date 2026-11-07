@@ -200,6 +200,14 @@ fun LocalSyncScreen(
             is LocalSyncViewModel.Step.Confirm -> StepPopup(vm::cancel) { ConfirmBlock(vm, step) }
             is LocalSyncViewModel.Step.Result -> StepPopup(vm::cancel) { ResultBlock(vm, step) }
         }
+        vm.protectedAsk?.let { profiles ->
+            tv.own.owntv.features.profiles.ProtectedProfilesStep(
+                profiles = profiles,
+                body = stringResource(R.string.profiles_protected_include),
+                verify = vm::verifyPin,
+                onDone = vm::protectedAnswered,
+            )
+        }
         Spacer(Modifier.height(40.mpx))
     }
 }
@@ -344,6 +352,14 @@ fun SetupLocalSyncScreen(onRestored: () -> Unit, onBack: () -> Unit, modifier: M
         if (vm.busy) {
             Text(stringResource(R.string.local_sync_working), style = tv.own.owntv.ui.theme.stageText(25, 400), color = tv.own.owntv.ui.theme.StageColors.Muted, modifier = Modifier.padding(top = 12.dp))
         }
+    }
+    vm.protectedAsk?.let { profiles ->
+        tv.own.owntv.features.profiles.ProtectedProfilesStep(
+            profiles = profiles,
+            body = stringResource(R.string.profiles_protected_include),
+            verify = vm::verifyPin,
+            onDone = vm::protectedAnswered,
+        )
     }
 }
 

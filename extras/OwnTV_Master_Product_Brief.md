@@ -312,7 +312,7 @@ session appear at once.
 
 Folder rails with Favorites and History per section; full category names, never abbreviated; a
 category search box. **Customize** (per profile) hides, renames and reorders categories and
-individual items, recovers hidden ones, filters to All/Visible/Hidden, and can be **PIN-locked**.
+individual items, recovers hidden ones, and filters to All/Visible/Hidden; it holds the **category lock PIN**.
 **Bulk rename** applies ordered prefix/suffix rules with automatic cleanup, a review step and a
 restore-original undo — over a category's items, or over the category names themselves (⋯ menu). **Custom combined categories** gather items from anywhere. A category can also
 be hidden, moved or restored to the playlist's default (hidden items, items moved out and custom
@@ -412,7 +412,11 @@ wrong number. **Settings → Playlists → Info** shows it; **Re-test** re-measu
 ## 6. Profiles
 
 Multiple profiles, each with its own favourites, history, resume positions and layout. Optional
-**PIN locks** (salted hash) and a **"Who's watching?"** launch gate. **Kids mode** hides adult
+**PIN locks** (salted hash) and a **"Who's watching?"** launch gate. Three separate locks, each with its
+own PIN and wrong-entry limit — profile, category and a per-profile **Settings lock** (Settings, Backup &
+Restore, Local sync, and optionally long-press changes). A profile with a profile or Settings lock is
+**protected**: a new profile does not inherit its playlists, and another profile backs it up, restores
+or syncs over it, edits or deletes it only after one of its PINs. **Kids mode** hides adult
 provider categories and items across every surface — Live, Movies, Series, Home, Search, Guide,
 catch-up, downloads, launcher recommendations and direct playback — and excludes adult TMDB results;
 the Guide itself is hidden. Detection uses multilingual category markers with an *Adult Swim*

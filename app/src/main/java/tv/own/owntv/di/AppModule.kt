@@ -206,4 +206,5 @@ val appModule = module {
     // The counts beside the sections in the open Stage rail.
     viewModelOf(::RailCountsViewModel)
     viewModelOf(::CategoryLockViewModel)
+    single { tv.own.owntv.features.settings.lock.MenuChangeGate(get()) }
 }

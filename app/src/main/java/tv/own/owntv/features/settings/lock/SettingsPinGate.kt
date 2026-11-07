@@ -13,8 +13,8 @@ import tv.own.owntv.core.settings.requiresPin
 import tv.own.owntv.features.profiles.PinLockedScreen
 
 /**
- * Shows [content] (Settings) only once the profile's Customize PIN has been entered, when the
- * profile asks for it. Back from the PIN prompt calls [onDismiss] without opening Settings.
+ * Shows [content] (Settings) only once the profile's Settings PIN has been entered, when its
+ * Settings lock is on. Back from the PIN prompt calls [onDismiss] without opening Settings.
  */
 @Composable
 fun SettingsPinGate(onDismiss: () -> Unit, content: @Composable () -> Unit) {
@@ -29,6 +29,7 @@ fun SettingsPinGate(onDismiss: () -> Unit, content: @Composable () -> Unit) {
         PinLockedScreen(
             title = stringResource(MainSection.SETTINGS.labelRes),
             pin = pin,
+            door = tv.own.owntv.core.categorylock.PinDoor.SETTINGS,
             onUnlock = { unlocked = true },
             onDismiss = onDismiss,
         )

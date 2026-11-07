@@ -21,8 +21,9 @@
 - **🚀 Start on the last channel in the TV Guide or Live TV** (community PR #294 by @Kevsosmooth)
 - **🏷️ Menu labels: off, when focused or always** (community PR #280 by @Kevsosmooth)
 - **🎤 Voice search on the Search screen** (community PR #281 by @Kevsosmooth)
-- **🔒 Lock a category with the Customize PIN** (community PR #273 by @Kevsosmooth)
-- **🔐 Ask for the PIN to open Settings** (community PR #286 by @Kevsosmooth)
+- **🔒 Lock a category with its own category lock PIN** (community PR #273 by @Kevsosmooth)
+- **🔐 Settings › App › Settings lock: a PIN of its own per profile, optionally for long-press changes too** (community PR #286 by @Kevsosmooth)
+- **🛡️ Protected profiles: new profiles, backups, restores, Local sync and profile edits respect profile and Settings locks**
 - **🪟 Picture-in-picture when leaving the app** (community PR #278 by @Kevsosmooth)
 - **📺 Live TV: the preview keeps playing while you browse the categories** (community PR #270 by @Kevsosmooth)
 - **🔑 Stalker portals: an optional username and password**

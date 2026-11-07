@@ -9,7 +9,6 @@ import tv.own.owntv.R
 internal fun customizeMoreOptions(
     hideNewCategories: Boolean,
     hasPin: Boolean,
-    askForSettingsPin: Boolean,
 ): List<Pair<String, String>> = listOfNotNull(
     // Bulk rename over every listed category, as the items page has it (the long-press span
     // stays). In ⋯ rather than the tool row: two more pills pushed ⋯ itself off the screen.
@@ -21,16 +20,7 @@ internal fun customizeMoreOptions(
     ),
     if (!hasPin) "PIN_SET" to stringResource(R.string.settings_customize_set_pin)
     else "PIN_CHANGE" to stringResource(R.string.settings_customize_change_pin),
-    if (hasPin) "PIN_REMOVE" to stringResource(R.string.settings_customize_remove_lock) else null,
-    // Settings can ask for this same PIN; with no PIN there is nothing to ask for, so it is hidden.
-    if (hasPin) {
-        "SETTINGS_PIN" to stringResource(
-            R.string.settings_customize_settings_pin_button,
-            stringResource(if (askForSettingsPin) R.string.common_on else R.string.common_off),
-        )
-    } else {
-        null
-    },
+    if (hasPin) "PIN_REMOVE" to stringResource(R.string.settings_customize_remove_pin) else null,
     // Undo for hide / rename / move / reorder, for the playlist(s) this screen shows.
     CustomizeOption.RESTORE.name to stringResource(R.string.settings_customize_restore_defaults),
 )
