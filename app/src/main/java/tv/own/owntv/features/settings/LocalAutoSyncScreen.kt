@@ -21,6 +21,7 @@ import androidx.tv.material3.Text
 import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
 import tv.own.owntv.core.backup.BackupManager
+import tv.own.owntv.core.sync.local.AutoSyncAgreement
 import tv.own.owntv.core.sync.local.LocalAutoSyncTiming
 import tv.own.owntv.core.sync.local.PairedDevice
 import tv.own.owntv.ui.components.restoreAfterDialogClose
@@ -36,67 +37,40 @@ import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.ui.theme.stageText
 
 /**
- * One paired device's auto-sync settings: what travels to it, and when it travels by itself.
+ * One paired device's auto-sync: the switch, what this device lets travel, whose profiles, how often.
  *
- * The first row is the switch, and it is different from every row under it. Turning it on does not
- * write a setting: it asks the other device, whose screen shows the question, and only its yes
- * starts the schedule. That is why the rest of the sheet is inert until the switch is on — there is
- * no schedule to scope yet, and a row that looked editable would be a promise the sheet cannot keep
- * until the other device agrees. Turning it off is local and immediate.
- *
- * The shape of the rest is the one the phone app uses — a list of questions, and a Save button that
- * is the only thing that makes anything real. Nothing there changes the saved settings as it is
- * touched: the screen edits a draft, and only Save writes it down. A television that saved as it
- * ticked would leave a half-finished schedule behind every time the user pressed Back.
- *
- * The questions are the ones a backup asks — which parts of the data, whose profiles, and (a thing
- * a backup does not have) how often — so the words on the rows are the ones the rest of the app
- * already uses for them. The device is not one of the questions: [device] is the answer to it, and
- * the row that opened this sheet already named it.
- *
- * The profile list is only drawn when there is a choice to make: a household with one viewer has
- * already answered that question, and a row that can only be ticked again is noise.
+ * Turning the switch on asks the other device (its Local sync page open), whose screen shows the
+ * question; this side's terms are written only on its yes, with the choices below as they are then —
+ * so they can be set first. Turning it off is local and immediate, and the other device is told.
+ * Once on, the choices are a draft until Save.
  */
 @Composable
 fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
     val vm: LocalAutoSyncViewModel = koinViewModel()
-    val settings by vm.settings.collectAsStateWithLifecycle()
+    val agreements by vm.agreements.collectAsStateWithLifecycle()
     val profiles by vm.profiles.collectAsStateWithLifecycle()
-    val consents by vm.consents.collectAsStateWithLifecycle()
     val enableState by vm.enableState.collectAsStateWithLifecycle()
-    // The draft. Null means "not touched yet", so the sheet shows what is saved until the user
-    // changes something — the settings arrive from disk a moment after the sheet opens.
+    val agreement = agreements[device.id]
+    val enabled = agreement != null
     var timing by remember(device.id) { mutableStateOf<LocalAutoSyncTiming?>(null) }
     var sections by remember(device.id) { mutableStateOf<Set<BackupManager.Section>?>(null) }
     var profileDraft by remember(device.id) { mutableStateOf<Set<Long>?>(null) }
-    val config = settings[device.id]
-
     val asking = enableState is LocalAutoSyncViewModel.EnableState.Asking
 
-    // An empty set in the config means "everything", so a device that was never asked shows every
-    // row ticked. Ids that no longer exist cannot be shown, and drop out of the intersection.
     val allProfiles = profiles.map { it.id }.toSet()
-    val chosenTiming = timing ?: config.timing
-    val chosenSections = sections ?: config.sections
-    // With one profile there is no row to tick, so the hidden list means "everything" — including
-    // when the saved answer names a profile that has since been deleted, which would otherwise
-    // leave Save disabled with no row to press.
+    val chosenTiming = timing ?: agreement?.timing ?: LocalAutoSyncTiming.DEFAULT
+    val chosenSections = sections ?: agreement?.sections ?: AutoSyncAgreement.DEFAULT_SECTIONS
+    // Empty saved = every profile; ids that no longer exist drop out.
     val chosenProfiles = profileDraft
-        ?: if (profiles.size <= 1) {
-            allProfiles
-        } else {
-            config.profileIds.takeIf { it.isNotEmpty() }?.intersect(allProfiles) ?: allProfiles
-        }
+        ?: if (profiles.size <= 1) allProfiles
+        else agreement?.profileIds?.takeIf { it.isNotEmpty() }?.intersect(allProfiles) ?: allProfiles
+    // Everything ticked is saved as "every profile", so a viewer added later is included too.
+    val profilesToSave = if (chosenProfiles.size == allProfiles.size) emptySet() else chosenProfiles
+    val choicesValid = chosenSections.isNotEmpty() && (allProfiles.isEmpty() || chosenProfiles.isNotEmpty())
 
     val panel = remember { FocusRequester() }
-    // The popup's window does not own focus for the first frame or two, so the request is retried
-    // per frame until it lands.
     LaunchedEffect(Unit) { restoreAfterDialogClose(panel) }
     val locale = LocalConfiguration.current.locales[0]
-
-    // Closing the sheet closes the question too: an answer that arrives after the user is gone
-    // would turn something on they never got to see the result of. The far side's prompt simply
-    // times out.
     val dismiss = {
         vm.cancelEnable()
         onDismiss()
@@ -104,83 +78,47 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
 
     StagePopup(
         onDismiss = dismiss,
-        title = stringResource(R.string.local_auto_sync_settings_title),
+        title = device.name,
         eyebrow = stringResource(R.string.local_auto_sync_title).uppercase(locale),
         body = stringResource(R.string.local_auto_sync_for_device, device.name),
         buttons = {
             StagePopupButton(
-                stringResource(R.string.local_auto_sync_save),
+                stringResource(R.string.common_save),
                 onClick = {
-                    vm.save(
-                        deviceId = device.id,
-                        timing = chosenTiming,
-                        sections = chosenSections,
-                        // Everything ticked is saved as "all", not as a list of today's ids: a
-                        // viewer added next week belongs in a schedule that says "all of them".
-                        profileIds = if (chosenProfiles.size == allProfiles.size) emptySet() else chosenProfiles,
-                    )
+                    vm.save(device.id, chosenSections, profilesToSave, chosenTiming)
                     onDismiss()
                 },
-                // Nothing can be saved until there is a schedule to save into — the switch is the
-                // only thing that creates one. After that, nothing ticked means nothing to sync:
-                // the button says so rather than saving a schedule that would fetch a whole backup
-                // to do nothing with it.
-                enabled = config.enabled && !asking && chosenSections.isNotEmpty() &&
-                    (allProfiles.isEmpty() || chosenProfiles.isNotEmpty()),
+                enabled = enabled && !asking && choicesValid,
             )
         },
     ) {
-        Column(
-            Modifier.focusGroup().focusRequester(panel),
-            verticalArrangement = Arrangement.spacedBy(2.mpx),
-        ) {
+        Column(Modifier.focusGroup().focusRequester(panel), verticalArrangement = Arrangement.spacedBy(2.mpx)) {
             StagePopupOption(
                 title = stringResource(R.string.local_auto_sync_enable),
                 subtitle = when {
-                    enableState is LocalAutoSyncViewModel.EnableState.Asking ->
-                        stringResource(R.string.local_auto_sync_waiting, device.name)
-                    config.enabled -> null
+                    asking -> stringResource(R.string.local_auto_sync_waiting, device.name)
+                    enabled -> null
                     else -> stringResource(R.string.local_auto_sync_enable_hint)
                 },
                 onClick = {
-                    if (config.enabled) {
-                        vm.disable(device.id)
-                    } else {
-                        vm.enable(device, chosenTiming)
-                    }
+                    if (enabled) vm.disable(device.id) else vm.enable(device, chosenSections, profilesToSave, chosenTiming)
                 },
-                enabled = !asking,
-                leading = { focused -> StagePopupCheck(config.enabled, focused) },
+                enabled = !asking && (enabled || choicesValid),
+                leading = { focused -> StagePopupCheck(enabled, focused) },
             )
             when (val state = enableState) {
-                is LocalAutoSyncViewModel.EnableState.Declined -> Text(
-                    stringResource(R.string.local_auto_sync_declined, state.deviceName),
-                    style = stageText(18, 500),
-                    color = StageColors.Danger,
-                    modifier = Modifier.padding(top = 4.mpx, start = 22.mpx),
-                )
-                is LocalAutoSyncViewModel.EnableState.Failed -> Text(
-                    stringResource(state.reason.messageRes()),
-                    style = stageText(18, 500),
-                    color = StageColors.Danger,
-                    modifier = Modifier.padding(top = 4.mpx, start = 22.mpx),
-                )
+                is LocalAutoSyncViewModel.EnableState.Declined -> StatusText(stringResource(R.string.local_auto_sync_declined, state.deviceName), danger = true)
+                is LocalAutoSyncViewModel.EnableState.Failed -> StatusText(stringResource(state.reason.messageRes()), danger = true)
                 else -> Unit
             }
-            // The other side of the same agreement: this device accepted that one. Shown where the
-            // schedules are, because it is the only place the user can take it back.
-            if (device.id in consents) {
-                Text(
-                    stringResource(R.string.local_auto_sync_allowed_by, device.name),
-                    style = stageText(18, 500),
-                    color = StageColors.Muted,
-                    modifier = Modifier.padding(top = 8.mpx, start = 22.mpx),
-                )
-                StagePopupOption(
-                    title = stringResource(R.string.local_auto_sync_revoke),
-                    onClick = { vm.revokeConsent(device.id) },
-                    enabled = !asking,
-                    danger = true,
+            agreement?.theirSections?.takeIf { it.isNotEmpty() }?.let { theirs ->
+                StatusText(
+                    stringResource(
+                        R.string.local_auto_sync_their_sections,
+                        device.name,
+                        BackupManager.Section.entries.filter { it in theirs }.map { stringResource(it.labelRes()) }
+                            .joinToString(stringResource(R.string.content_epg_bits_separator)),
+                    ),
                 )
             }
             StagePopupDivider()
@@ -188,11 +126,8 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
             BackupManager.Section.entries.forEach { section ->
                 StagePopupOption(
                     title = stringResource(section.labelRes()),
-                    onClick = {
-                        val current = chosenSections
-                        sections = if (section in current) current - section else current + section
-                    },
-                    enabled = config.enabled && !asking,
+                    onClick = { sections = if (section in chosenSections) chosenSections - section else chosenSections + section },
+                    enabled = !asking,
                     leading = { focused -> StagePopupCheck(section in chosenSections, focused) },
                 )
             }
@@ -202,65 +137,48 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
                 profiles.forEach { profile ->
                     StagePopupOption(
                         title = profile.name,
-                        onClick = {
-                            profileDraft = if (profile.id in chosenProfiles) {
-                                chosenProfiles - profile.id
-                            } else {
-                                chosenProfiles + profile.id
-                            }
-                        },
-                        enabled = config.enabled && !asking,
+                        onClick = { profileDraft = if (profile.id in chosenProfiles) chosenProfiles - profile.id else chosenProfiles + profile.id },
+                        enabled = !asking,
                         leading = { focused -> StagePopupCheck(profile.id in chosenProfiles, focused) },
                     )
                 }
             }
             StagePopupDivider()
             StagePopupLabel(stringResource(R.string.local_auto_sync_when).uppercase(locale))
-            // No "Never" row: the switch above is the off, and two places to turn the same thing
-            // off would let them disagree.
-            LocalAutoSyncTiming.entries.filter { it != LocalAutoSyncTiming.OFF }.forEach { option ->
+            LocalAutoSyncTiming.entries.forEach { option ->
                 StagePopupOption(
                     title = stringResource(option.labelRes()),
                     onClick = { timing = option },
-                    enabled = config.enabled && !asking,
+                    enabled = !asking,
                     leading = { focused -> StagePopupRadio(option == chosenTiming, focused) },
-                )
-            }
-            // What the last run with this device did, when there was one. A setting that says
-            // "daily" and a device that has not run in a week are both true at once, and only one
-            // of them is on screen here — so the other one has to be.
-            if (config.lastRunAt > 0L) {
-                Text(
-                    stringResource(
-                        R.string.local_auto_sync_last_run,
-                        android.text.format.DateUtils.getRelativeTimeSpanString(
-                            config.lastRunAt,
-                            System.currentTimeMillis(),
-                            android.text.format.DateUtils.MINUTE_IN_MILLIS,
-                        ).toString(),
-                    ),
-                    style = stageText(18, 500),
-                    color = StageColors.Muted,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 16.mpx),
                 )
             }
             Text(
                 stringResource(R.string.local_auto_sync_note),
                 style = stageText(18, 400),
                 color = StageColors.Muted,
-                modifier = Modifier.padding(top = 6.mpx),
+                modifier = Modifier.padding(top = 10.mpx),
             )
         }
     }
 }
 
-/** The word on the "When" rows, and on the paired device's row when it has a schedule. */
+@Composable
+private fun StatusText(text: String, danger: Boolean = false) {
+    Text(
+        text,
+        style = stageText(18, 500),
+        color = if (danger) StageColors.Danger else StageColors.Muted,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(top = 4.mpx, start = 22.mpx),
+    )
+}
+
+/** The words on the "How often" rows and on the paired device's row. */
 internal fun LocalAutoSyncTiming.labelRes(): Int = when (this) {
-    LocalAutoSyncTiming.OFF -> R.string.local_auto_sync_timing_off
-    LocalAutoSyncTiming.STARTUP -> R.string.local_auto_sync_timing_immediately
-    LocalAutoSyncTiming.HOURS_6 -> R.string.local_auto_sync_timing_6h
+    LocalAutoSyncTiming.IMMEDIATELY -> R.string.local_auto_sync_timing_immediately
+    LocalAutoSyncTiming.HOURS_6 -> R.string.settings_epg_refresh_6h
     LocalAutoSyncTiming.HOURS_24 -> R.string.local_auto_sync_timing_daily
     LocalAutoSyncTiming.DAYS_7 -> R.string.local_auto_sync_timing_weekly
 }

@@ -173,8 +173,9 @@ class SettingsSearchCoverageTest {
         val index = searchBlock + source.substring(helperFrom, helperTo) + screenRows
         fun normalize(res: String) = res.removePrefix("settings_").removePrefix("quick_")
         val present = Regex("""R\.string\.([a-z_0-9]+)""").findAll(index).map { normalize(it.groupValues[1]) }.toSet()
-        // Backup and Local sync are More pages, not Settings (see notSearchable).
-        val skipped = setOf("BackupScreen.kt", "LocalSyncScreen.kt", "RemoteBackupRestoreScreen.kt", "VideoPlayerSettingsScreen.kt")
+        // Backup and Local sync are More pages, not Settings (see notSearchable); Local sync's
+        // Auto-sync popup belongs to its page.
+        val skipped = setOf("BackupScreen.kt", "LocalSyncScreen.kt", "LocalAutoSyncScreen.kt", "RemoteBackupRestoreScreen.kt", "VideoPlayerSettingsScreen.kt")
         val screens = File("src/main/java/tv/own/owntv/features/settings").listFiles { f ->
             f.name.endsWith("Screen.kt") && f.name !in skipped
         }.orEmpty()

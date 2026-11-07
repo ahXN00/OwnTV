@@ -107,7 +107,11 @@ fun LocalSyncScreen(
     // Every device's schedule, for the line under its row and for the sheet that edits one of
     // them. The sheet uses the same view model — one screen, one set of settings.
     val autoSyncVm: LocalAutoSyncViewModel = koinViewModel()
-    val autoSync by autoSyncVm.settings.collectAsStateWithLifecycle()
+    val agreements by autoSyncVm.agreements.collectAsStateWithLifecycle()
+    val turnedOff by autoSyncVm.turnedOff.collectAsStateWithLifecycle()
+    val autoEvents by autoSyncVm.events.collectAsStateWithLifecycle()
+    val listenAlways by autoSyncVm.listenAlways.collectAsStateWithLifecycle()
+    val autoListening by autoSyncVm.listening.collectAsStateWithLifecycle()
     // A request from a paired device to sync here automatically. It arrives only while this
     // device is hosting, and it is answered right here — the far side is waiting on it.
     val autoSyncRequests by vm.autoSyncRequests.collectAsStateWithLifecycle()
@@ -165,6 +169,22 @@ fun LocalSyncScreen(
                 modifier = Modifier.weight(1f).fillMaxHeight().focusRequester(connectFocus),
             ) { OwnTVIcon(OwnTVIcon.CHEVRON, StageColors.Muted, Modifier.size(20.mpx)) }
         }
+        // Whether a paired device can auto-sync with this one while OwnTV is open here, or only while
+        // Sync mode is on. Device-local, never backed up: it is about this device's network exposure.
+        SyncTile(
+            icon = OwnTVIcon.CLOCK,
+            title = stringResource(R.string.local_auto_sync_listen),
+            body = listOfNotNull(
+                stringResource(R.string.local_auto_sync_listen_description),
+                when {
+                    autoListening -> stringResource(R.string.local_auto_sync_listening)
+                    !listenAlways -> stringResource(R.string.local_auto_sync_listen_sync_mode)
+                    else -> null
+                },
+            ).joinToString("\n"),
+            onClick = { autoSyncVm.setListenAlways(!listenAlways) },
+            modifier = Modifier.padding(top = 20.mpx).fillMaxWidth(),
+        ) { StageSwitch(on = listenAlways) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
             Column(Modifier.weight(1f)) {
                 if (paired.isNotEmpty()) {
@@ -188,13 +208,12 @@ fun LocalSyncScreen(
                                 }
                             },
                             title = codes[device.id]?.let { stringResource(R.string.local_sync_device_with_code, device.name, it) } ?: device.name,
-                            // The schedule is part of what the row says about the device: "last
-                            // synced an hour ago" and "daily by itself" are both true, and the
-                            // user should not have to open the sheet to find the second one.
+                            // Auto-sync is part of what the row says about the device: its last pass,
+                            // that it could not be reached, or that the other side turned it off.
                             line = listOfNotNull(
                                 device.address.takeIf { it.isNotBlank() },
                                 lastSyncedText(device.lastSyncAt),
-                                autoSync[device.id].takeIf { it.enabled }?.let { stringResource(it.timing.labelRes()) },
+                                autoSyncLine(device, agreements[device.id], turnedOff[device.id], autoEvents[device.id]),
                             ).joinToString(sep),
                             actions = listOf(
                                 tv.own.owntv.features.more.RowAction(stringResource(R.string.settings_sync_now), OwnTVIcon.REFRESH) { stepFocus.value = rowFocus; vm.chooseDevice(device) },
@@ -489,6 +508,24 @@ private fun BusySpinner(modifier: Modifier, color: Color) {
             style = Stroke(stroke, cap = StrokeCap.Round),
         )
     }
+}
+
+/** The auto-sync part of a paired device's line, or null when it has none. */
+@Composable
+private fun autoSyncLine(
+    device: PairedDevice,
+    agreement: tv.own.owntv.core.sync.local.AutoSyncAgreement?,
+    turnedOffAt: Long?,
+    event: tv.own.owntv.core.sync.local.AutoSyncEvent?,
+): String? = when {
+    agreement == null -> turnedOffAt?.let { stringResource(R.string.local_auto_sync_turned_off, device.name) }
+    agreement.failures > 0 || event?.outcome == tv.own.owntv.core.sync.local.AutoSyncOutcome.UNREACHABLE ->
+        stringResource(R.string.local_auto_sync_unreachable, device.name)
+    agreement.lastSuccessAt > 0 -> stringResource(
+        R.string.local_auto_sync_last_run,
+        android.text.format.DateUtils.getRelativeTimeSpanString(agreement.lastSuccessAt, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString(),
+    )
+    else -> stringResource(R.string.local_auto_sync_title) + stringResource(R.string.content_epg_bits_separator) + stringResource(agreement.timing.labelRes())
 }
 
 /** "Last synced: 2 hours ago", or the plain "Not synced yet" the EPG rows already use. */
