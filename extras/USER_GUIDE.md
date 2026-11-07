@@ -752,9 +752,9 @@ and none of them opens another; 5 wrong tries on one make only that one wait 30 
 A profile with a profile PIN or a Settings lock is **protected**, and so are its playlists:
 - A **new profile** gets only the playlists no protected profile uses — none at all if every playlist
   belongs to one; then it adds its own.
-- From another profile, a **backup** includes it, a **restore** or **Local sync** changes it, and
-  **editing or deleting** it in Settings → Profile happen only after one of its PINs (profile PIN or
-  Settings PIN). Without the PIN a backup or sync leaves it out, and a restore leaves it as it is.
+- From another profile, ticking it for a **backup**, merging into or replacing it in a **restore**,
+  and **editing or deleting** it in Settings → Profile ask one of its PINs (profile PIN or Settings PIN).
+  Local sync never touches it unless it is the profile in use.
 
 ### 🚀 Where a profile opens
 **Where:** Settings → App → **App startup**
@@ -1034,18 +1034,27 @@ subtitles — **optionally encrypted with your own password**. Restore locally o
 > Android's own automatic backup is deliberately disabled, so app data only ever leaves the device
 > through this screen. Passwords ride along **only** if you set a backup password.
 
+**Same name on both sides:** restoring a profile whose name is already here asks, per profile:
+**Merge into it** (keep what it has, add the backup's), **Replace it** (clear its data here for the
+parts being restored, then restore) or **Keep both** (the backup's comes in as "<name> (restored)").
+Merging into or replacing a locked profile other than the one in use asks its PIN; everything else
+needs only the backup password. A locked profile stays locked after a restore.
+
 ### 🔄 Local sync with your phone
 **Where:** ⋯ More → **Local sync**
 Swap favourites, history and resume points with the OwnTV mobile app over your own Wi-Fi — no
-account, no cloud. **Both devices must open the Local sync screen**; you see exactly what will change
+account, no cloud. **Only the profile in use syncs**, into the profile in use on the other device,
+whatever their names — like one viewer on two screens. **Both devices must open the Local sync screen**; you see exactly what will change
 before it changes. On a brand-new television this is offered during setup instead — see
 **From another device** under *Start here*.
 
 **Auto-sync** — on a paired device's row, **Auto-sync** keeps the two in step by themselves. Turn it
 on with Local sync open on both: the other device asks "Allow auto-sync?" (**Don't allow** is focused).
+- It pairs the profile in use here with the one in use on the other device when it is turned on
+  (the row shows "Profiles: B ↔ X"); switching profile later does not change the pair.
 - Each device ticks what it lets through — Favorites, Watch history, Resume positions, Customizations
   and Manual reorder by default; **Sources** (the playlists, with their logins) and **App settings** only
-  where they are ticked — and which profiles. A merge both ways, and deletions stay deleted.
+  where they are ticked. A merge both ways, and deletions stay deleted.
 - **How often** is the least time between two syncs: each time either app opens or closes, 6 hours,
   daily or weekly. A sync is tried when OwnTV opens or closes and when the Wi-Fi comes back.
 - **Keep auto-sync listening** (on this page, off by default): on, the phone can sync with the TV

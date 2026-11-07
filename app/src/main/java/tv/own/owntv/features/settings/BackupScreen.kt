@@ -134,7 +134,7 @@ fun BackupScreen(
     val anyDialogOpen = showBrowser || showExportPicker || showProfilePicker || pendingFolderBrowser || exportFolder != null ||
         showRemoteRestore || showRemoteExportPassword || showRemoteExport ||
         state is BackupViewModel.State.ChooseRestore || state is BackupViewModel.State.NeedPassword ||
-        state is BackupViewModel.State.ProtectedProfiles
+        state is BackupViewModel.State.ProfileClashes
     LaunchedEffect(anyDialogOpen) {
         if (!anyDialogOpen) {
             dialogReturn?.let { btn ->
@@ -394,13 +394,13 @@ fun BackupScreen(
         )
     }
 
-    // A restore that would change protected profiles: each one's PIN, or it is left as it is.
-    (state as? BackupViewModel.State.ProtectedProfiles)?.let { ask ->
-        tv.own.owntv.features.profiles.ProtectedProfilesStep(
-            profiles = ask.profiles,
-            body = stringResource(R.string.profiles_protected_include),
+    // Profiles in the file named like ones here: Merge, Replace or Keep both, one at a time.
+    (state as? BackupViewModel.State.ProfileClashes)?.let { ask ->
+        RestoreClashStep(
+            ask = ask,
             verify = vm::verifyPin,
-            onDone = { unlocked -> vm.import(ask.file, ask.sections, ask.password, ask.deviceSettings, unlocked) },
+            onDone = { choices -> vm.import(ask.file, ask.sections, ask.password, ask.deviceSettings, choices) },
+            onCancel = vm::reset,
         )
     }
 

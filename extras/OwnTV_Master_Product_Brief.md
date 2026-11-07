@@ -415,8 +415,9 @@ Multiple profiles, each with its own favourites, history, resume positions and l
 **PIN locks** (salted hash) and a **"Who's watching?"** launch gate. Three separate locks, each with its
 own PIN and wrong-entry limit — profile, category and a per-profile **Settings lock** (Settings, Backup &
 Restore, Local sync, and optionally long-press changes). A profile with a profile or Settings lock is
-**protected**: a new profile does not inherit its playlists, and another profile backs it up, restores
-or syncs over it, edits or deletes it only after one of its PINs. **Kids mode** hides adult
+**protected**: a new profile does not inherit its playlists, and another profile backs it up, merges or
+replaces it in a restore, edits or deletes it only after one of its PINs. Local sync is profile-based:
+the profile in use merges with the one in use on the other device. **Kids mode** hides adult
 provider categories and items across every surface — Live, Movies, Series, Home, Search, Guide,
 catch-up, downloads, launcher recommendations and direct playback — and excludes adult TMDB results;
 the Guide itself is hidden. Detection uses multilingual category markers with an *Adult Swim*

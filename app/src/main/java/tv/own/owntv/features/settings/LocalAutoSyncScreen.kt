@@ -54,19 +54,11 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
     val enabled = agreement != null
     var timing by remember(device.id) { mutableStateOf<LocalAutoSyncTiming?>(null) }
     var sections by remember(device.id) { mutableStateOf<Set<BackupManager.Section>?>(null) }
-    var profileDraft by remember(device.id) { mutableStateOf<Set<Long>?>(null) }
     val asking = enableState is LocalAutoSyncViewModel.EnableState.Asking
 
-    val allProfiles = profiles.map { it.id }.toSet()
     val chosenTiming = timing ?: agreement?.timing ?: LocalAutoSyncTiming.DEFAULT
     val chosenSections = sections ?: agreement?.sections ?: AutoSyncAgreement.DEFAULT_SECTIONS
-    // Empty saved = every profile; ids that no longer exist drop out.
-    val chosenProfiles = profileDraft
-        ?: if (profiles.size <= 1) allProfiles
-        else agreement?.profileIds?.takeIf { it.isNotEmpty() }?.intersect(allProfiles) ?: allProfiles
-    // Everything ticked is saved as "every profile", so a viewer added later is included too.
-    val profilesToSave = if (chosenProfiles.size == allProfiles.size) emptySet() else chosenProfiles
-    val choicesValid = chosenSections.isNotEmpty() && (allProfiles.isEmpty() || chosenProfiles.isNotEmpty())
+    val choicesValid = chosenSections.isNotEmpty()
 
     val panel = remember { FocusRequester() }
     LaunchedEffect(Unit) { restoreAfterDialogClose(panel) }
@@ -85,7 +77,7 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
             StagePopupButton(
                 stringResource(R.string.common_save),
                 onClick = {
-                    vm.save(device.id, chosenSections, profilesToSave, chosenTiming)
+                    vm.save(device.id, chosenSections, chosenTiming)
                     onDismiss()
                 },
                 enabled = enabled && !asking && choicesValid,
@@ -101,7 +93,7 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
                     else -> stringResource(R.string.local_auto_sync_enable_hint)
                 },
                 onClick = {
-                    if (enabled) vm.disable(device.id) else vm.enable(device, chosenSections, profilesToSave, chosenTiming)
+                    if (enabled) vm.disable(device.id) else vm.enable(device, chosenSections, chosenTiming)
                 },
                 enabled = !asking && (enabled || choicesValid),
                 leading = { focused -> StagePopupCheck(enabled, focused) },
@@ -111,6 +103,13 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
                 is LocalAutoSyncViewModel.EnableState.Failed -> StatusText(stringResource(state.reason.messageRes()), danger = true)
                 else -> Unit
             }
+            // Which profiles this is between: fixed when it was set up, whatever is on screen later.
+            val activeId by vm.activeProfileId.collectAsStateWithLifecycle()
+            val hereName = profiles.firstOrNull { it.id == (agreement?.localProfileId ?: activeId) }?.name.orEmpty()
+            StatusText(
+                if (agreement != null) stringResource(R.string.local_auto_sync_profiles, hereName, agreement.theirProfileName)
+                else stringResource(R.string.local_auto_sync_profile_hint, hereName, device.name),
+            )
             agreement?.theirSections?.takeIf { it.isNotEmpty() }?.let { theirs ->
                 StatusText(
                     stringResource(
@@ -130,18 +129,6 @@ fun LocalAutoSyncSheet(device: PairedDevice, onDismiss: () -> Unit) {
                     enabled = !asking,
                     leading = { focused -> StagePopupCheck(section in chosenSections, focused) },
                 )
-            }
-            if (profiles.size > 1) {
-                StagePopupDivider()
-                StagePopupLabel(stringResource(R.string.local_auto_sync_what_profiles).uppercase(locale))
-                profiles.forEach { profile ->
-                    StagePopupOption(
-                        title = profile.name,
-                        onClick = { profileDraft = if (profile.id in chosenProfiles) chosenProfiles - profile.id else chosenProfiles + profile.id },
-                        enabled = !asking,
-                        leading = { focused -> StagePopupCheck(profile.id in chosenProfiles, focused) },
-                    )
-                }
             }
             StagePopupDivider()
             StagePopupLabel(stringResource(R.string.local_auto_sync_when).uppercase(locale))

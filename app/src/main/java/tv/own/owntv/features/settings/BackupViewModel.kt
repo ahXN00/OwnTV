@@ -101,12 +101,19 @@ class BackupViewModel(
         ) : State
         data class Error(val kind: BackupError) : State
 
-        /** The restore would change protected profiles other than this one: ask their PINs first. */
-        data class ProtectedProfiles(
+        /**
+         * The file has profiles named like ones here: ask what to do with each ([clashes]). Merging or
+         * replacing a protected one other than the profile in use ([protectedIds], [activeId]) asks one
+         * of its PINs.
+         */
+        data class ProfileClashes(
             val file: File,
             val sections: Set<BackupManager.Section>,
             val password: String?,
             val deviceSettings: Boolean,
+            val clashes: List<BackupManager.ProfileClash>,
+            val protectedIds: Set<Long>,
+            val activeId: Long,
             val profiles: List<tv.own.owntv.core.database.entity.ProfileEntity>,
         ) : State
 
@@ -191,29 +198,29 @@ class BackupViewModel(
     }
 
     /**
-     * Step 2 of restore: apply the chosen sections. A protected profile the file would change is asked
-     * for first ([State.ProtectedProfiles]); [unlocked] is the answer, and every protected profile not in
-     * it is left exactly as it is.
+     * Step 2 of restore: apply the chosen sections. Profiles named like ones here are asked about first
+     * ([State.ProfileClashes]); [choices] is the answer, by the profile's id in the file.
      */
     fun import(
         file: File,
         sections: Set<BackupManager.Section>,
         backupPassword: String?,
         deviceSettings: Boolean = false,
-        unlocked: Set<Long>? = null,
+        choices: Map<Long, BackupManager.ProfileRestoreChoice>? = null,
     ) {
         viewModelScope.launch {
             _state.value = State.Working
-            if (unlocked == null) {
-                val touched = backup.sectionsIn(file, backupPassword).getOrNull()?.touchedProfileIds.orEmpty()
-                val asking = protection.needingPin(touched)
-                if (asking.isNotEmpty()) {
-                    _state.value = State.ProtectedProfiles(file, sections, backupPassword, deviceSettings, asking)
+            if (choices == null) {
+                val clashes = backup.sectionsIn(file, backupPassword).getOrNull()?.clashes.orEmpty()
+                if (clashes.isNotEmpty()) {
+                    _state.value = State.ProfileClashes(
+                        file, sections, backupPassword, deviceSettings, clashes,
+                        protection.protectedIds(), settings.activeProfileId.first(), profileDao.getAllOnce(),
+                    )
                     return@launch
                 }
             }
-            val holdBack = protection.heldBack(unlocked.orEmpty())
-            backup.import(file, sections, backupPassword, deviceSettings = deviceSettings, holdBack = holdBack).fold(
+            backup.import(file, sections, backupPassword, deviceSettings = deviceSettings, profileChoices = choices.orEmpty()).fold(
                 onSuccess = { summary ->
                     _restoredIcon.value = settings.appIcon.first()
                     _state.value = State.Done(

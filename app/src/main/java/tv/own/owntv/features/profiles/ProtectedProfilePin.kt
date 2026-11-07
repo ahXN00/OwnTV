@@ -90,32 +90,3 @@ internal fun ProtectedProfilePinDialog(
         if (note != null) Text(note, style = stageText(17, 600), color = StageColors.Danger, modifier = Modifier.padding(top = 10.mpx))
     }
 }
-
-/**
- * Asks, one after another, for each of [profiles]' PINs. Cancel on one leaves that profile out;
- * [onDone] gets the ones unlocked once every profile has been asked.
- */
-@Composable
-internal fun ProtectedProfilesStep(
-    profiles: List<ProfileEntity>,
-    body: String,
-    verify: suspend (ProfileEntity, String) -> PinAttempt,
-    onDone: (Set<Long>) -> Unit,
-) {
-    var index by remember(profiles) { mutableIntStateOf(0) }
-    var unlocked by remember(profiles) { mutableStateOf(emptySet<Long>()) }
-    val profile = profiles.getOrNull(index)
-    if (profile == null) {
-        LaunchedEffect(profiles) { onDone(unlocked) }
-        return
-    }
-    key(profile.id) {
-        ProtectedProfilePinDialog(
-            profileName = profile.name,
-            body = body,
-            verify = { pin -> verify(profile, pin) },
-            onUnlocked = { unlocked = unlocked + profile.id; index++ },
-            onDismiss = { index++ },
-        )
-    }
-}

@@ -30,7 +30,13 @@ class LocalAutoSyncViewModel(
     runner: LocalAutoSyncRunner,
     server: LocalAutoSyncServer,
     profileDao: ProfileDao,
+    settings: tv.own.owntv.core.settings.SettingsRepository,
 ) : ViewModel() {
+
+    /** The profile in use: the one an auto-sync set up now pairs with the other device's. */
+    val activeProfileId: StateFlow<Long> = settings.activeProfileId
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), -1L)
+
 
     val agreements: StateFlow<Map<String, AutoSyncAgreement>> = store.agreements
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyMap())
@@ -63,12 +69,12 @@ class LocalAutoSyncViewModel(
     private var enableJob: Job? = null
 
     /** Asks [device] (its Local sync page open) to agree; this side's terms are saved only on yes. */
-    fun enable(device: PairedDevice, sections: Set<BackupManager.Section>, profileIds: Set<Long>, timing: LocalAutoSyncTiming) {
+    fun enable(device: PairedDevice, sections: Set<BackupManager.Section>, timing: LocalAutoSyncTiming) {
         if (_enableState.value is EnableState.Asking) return
         enableJob?.cancel()
         enableJob = viewModelScope.launch {
             _enableState.value = EnableState.Asking(device.name)
-            _enableState.value = when (val result = sync.enableAutoSync(device, sections, profileIds, timing)) {
+            _enableState.value = when (val result = sync.enableAutoSync(device, sections, timing)) {
                 AutoSyncEnableResult.Enabled -> EnableState.Idle
                 AutoSyncEnableResult.Declined -> EnableState.Declined(device.name)
                 is AutoSyncEnableResult.Failed -> EnableState.Failed(result.reason)
@@ -82,8 +88,8 @@ class LocalAutoSyncViewModel(
         _enableState.value = EnableState.Idle
     }
 
-    fun save(deviceId: String, sections: Set<BackupManager.Section>, profileIds: Set<Long>, timing: LocalAutoSyncTiming) {
-        viewModelScope.launch { sync.updateAutoSync(deviceId, sections, profileIds, timing) }
+    fun save(deviceId: String, sections: Set<BackupManager.Section>, timing: LocalAutoSyncTiming) {
+        viewModelScope.launch { sync.updateAutoSync(deviceId, sections, timing) }
     }
 
     fun disable(deviceId: String) {

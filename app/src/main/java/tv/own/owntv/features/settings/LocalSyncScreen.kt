@@ -259,14 +259,6 @@ fun LocalSyncScreen(
                 focusCancel = true,
             )
         }
-        vm.protectedAsk?.let { profiles ->
-            tv.own.owntv.features.profiles.ProtectedProfilesStep(
-                profiles = profiles,
-                body = stringResource(R.string.profiles_protected_include),
-                verify = vm::verifyPin,
-                onDone = vm::protectedAnswered,
-            )
-        }
         Spacer(Modifier.height(40.mpx))
     }
 }
@@ -411,14 +403,6 @@ fun SetupLocalSyncScreen(onRestored: () -> Unit, onBack: () -> Unit, modifier: M
         if (vm.busy) {
             Text(stringResource(R.string.local_sync_working), style = tv.own.owntv.ui.theme.stageText(25, 400), color = tv.own.owntv.ui.theme.StageColors.Muted, modifier = Modifier.padding(top = 12.dp))
         }
-    }
-    vm.protectedAsk?.let { profiles ->
-        tv.own.owntv.features.profiles.ProtectedProfilesStep(
-            profiles = profiles,
-            body = stringResource(R.string.profiles_protected_include),
-            verify = vm::verifyPin,
-            onDone = vm::protectedAnswered,
-        )
     }
 }
 
@@ -723,6 +707,8 @@ private fun SectionsBlock(vm: LocalSyncViewModel, step: LocalSyncViewModel.Step.
             color = StageColors.Text,
         )
         Text(stringResource(R.string.local_sync_sections_hint), style = stageText(18, 400), color = StageColors.Muted)
+        val profile by vm.activeProfileName.collectAsStateWithLifecycle()
+        Text(stringResource(R.string.local_sync_profile_note, profile), style = stageText(18, 600), color = StageColors.Muted, modifier = Modifier.padding(top = 6.mpx))
         Spacer(Modifier.height(14.mpx))
         BackupManager.Section.entries.forEach { section ->
             OnOffOption(

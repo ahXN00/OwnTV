@@ -32,8 +32,15 @@ import tv.own.owntv.core.sync.local.SyncFailure
  */
 class LocalSyncViewModel(
     private val sync: LocalSyncManager,
-    private val protection: tv.own.owntv.core.profile.ProfileProtection,
+    profileDao: tv.own.owntv.core.database.dao.ProfileDao,
+    settings: tv.own.owntv.core.settings.SettingsRepository,
 ) : ViewModel() {
+
+    /** The profile in use: the only one a sync carries, merged with the one in use on the other device. */
+    val activeProfileName: StateFlow<String> = kotlinx.coroutines.flow.combine(profileDao.observeAll(), settings.activeProfileId) { profiles, id ->
+        profiles.firstOrNull { it.id == id }?.name.orEmpty()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), "")
+
 
     val paired: StateFlow<List<PairedDevice>> = sync.pairedDevices
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
@@ -67,14 +74,6 @@ class LocalSyncViewModel(
     var error by mutableStateOf<SyncFailure?>(null)
         private set
 
-    /**
-     * Protected profiles here (a profile lock or a Settings lock, not the one in use) this sync would
-     * send or change: each one's PIN is asked over the current step. One left without its PIN is not
-     * sent and not changed.
-     */
-    var protectedAsk by mutableStateOf<List<tv.own.owntv.core.database.entity.ProfileEntity>?>(null)
-        private set
-    private var afterProtectedAsk: (suspend (Set<Long>) -> Unit)? = null
 
     sealed interface Step {
         data object FindDevice : Step
@@ -194,11 +193,9 @@ class LocalSyncViewModel(
         busy = true
         viewModelScope.launch {
             when (current.direction) {
-                SyncDirection.SEND -> withProtected(protection.protectedIds()) { unlocked ->
-                    sync.send(current.device, sections, protection.includableProfileIds(unlocked))
-                        .onSuccess { step = Step.Result(received = null, sent = true) }
-                        .onFailure { error = reason() }
-                }
+                SyncDirection.SEND -> sync.send(current.device, sections)
+                    .onSuccess { step = Step.Result(received = null, sent = true) }
+                    .onFailure { error = reason() }
                 SyncDirection.RECEIVE, SyncDirection.MERGE -> sync.fetch(current.device, sections)
                     .onSuccess { payload ->
                         step = Step.Confirm(
@@ -216,47 +213,19 @@ class LocalSyncViewModel(
         val current = step as? Step.Confirm ?: return
         busy = true
         viewModelScope.launch {
-            // A merge also sends this device's profiles back, so it asks for every protected one.
-            val touched = if (current.direction == SyncDirection.MERGE) protection.protectedIds() else current.preview.touchedProfileIds
-            withProtected(touched) { unlocked ->
-                sync.apply(current.file, current.sections, current.password, deviceSettings, unlocked)
-                    .onSuccess { summary ->
-                        val sent = current.device != null && current.direction == SyncDirection.MERGE &&
-                            sync.send(current.device, current.sections, protection.includableProfileIds(unlocked)).isSuccess
-                        step = Step.Result(received = summary, sent = sent)
-                    }
-                    .onFailure { error = reason() }
-            }
+            sync.apply(current.file, current.sections, current.password, deviceSettings)
+                .onSuccess { summary ->
+                    val sent = current.device != null && current.direction == SyncDirection.MERGE &&
+                        sync.send(current.device, current.sections).isSuccess
+                    step = Step.Result(received = summary, sent = sent)
+                }
+                .onFailure { error = reason() }
             busy = false
         }
     }
 
-    /** A protected profile's profile PIN or Settings PIN. */
-    suspend fun verifyPin(profile: tv.own.owntv.core.database.entity.ProfileEntity, pin: String) = protection.verify(profile, pin)
-
-    /** Every protected profile has been asked; [unlocked] are the ones whose PIN was entered. */
-    fun protectedAnswered(unlocked: Set<Long>) {
-        val next = afterProtectedAsk
-        afterProtectedAsk = null
-        protectedAsk = null
-        if (next != null) viewModelScope.launch {
-            busy = true
-            next(unlocked)
-            busy = false
-        }
-    }
-
-    /** Runs [then] now, or — with protected profiles to ask for — once [protectedAnswered] has their answers. */
-    private suspend fun withProtected(touched: Collection<Long>, then: suspend (Set<Long>) -> Unit) {
-        val asking = protection.needingPin(touched)
-        if (asking.isEmpty()) return then(emptySet())
-        afterProtectedAsk = then
-        protectedAsk = asking
-    }
 
     fun cancel() {
-        protectedAsk = null
-        afterProtectedAsk = null
         (step as? Step.Confirm)?.file?.delete()
         discovery?.cancel()
         step = null
