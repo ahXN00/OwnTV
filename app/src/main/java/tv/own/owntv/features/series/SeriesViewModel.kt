@@ -1016,6 +1016,14 @@ class SeriesViewModel(
         playEpisodeQueue(show, seasonEpisodes, episode, startPositionMs)
     }
 
+    /** Shuffle: play a random episode from any season of the open series. */
+    fun playRandomEpisode() {
+        val show = _openedSeries.value ?: return
+        val all = episodes.value
+        val episode = pickRandomEpisode(all) ?: return
+        playEpisodeQueue(show, all, episode)
+    }
+
     fun playEpisodeQueue(show: SeriesEntity, queue: List<EpisodeEntity>, episode: EpisodeEntity, startPositionMs: Long = 0) {
         _openedSeries.value = show
         _playingSeries.value = show

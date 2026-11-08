@@ -1476,6 +1476,13 @@ private fun EpisodeView(
                         icon = OwnTVIcon.PLAY, iconFilled = true, tinted = true, height = 60.mpx, textSize = 20,
                     )
                 }
+                if (episodes.isNotEmpty()) {
+                    StageButton(
+                        text = null,
+                        onClick = { vm.playRandomEpisode(); goFullscreen() },
+                        icon = OwnTVIcon.SWAP, round = true, height = 60.mpx, textSize = 20,
+                    )
+                }
                 val favourite = favoriteIds.contains(series.id)
                 StageButton(
                     text = stringResource(if (favourite) R.string.content_favorited else R.string.content_favorite),
