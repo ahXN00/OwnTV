@@ -56,6 +56,8 @@
 - **👆 OK previews first, then full screen: a switch for Live TV and one for the TV Guide (#344)**
 - **📄 Program details: the channel's whole day as a page, with what each programme can do (#345)**
 - **📺 Full-screen channel browser: ◀◀ shows the categories beside their channels (#323)**
+- **🔎 Sports: Find channels knows every name a competition goes by — F1, EPL, La Liga, Formel 1 and more**
+- **🎚️ Sports: "Show likely channels" in Filter channels**
 
 ### 🐛 Fixes
 - **🗑️ Deleting a download or recording asks first**
@@ -104,6 +106,9 @@
 - **📺 Live comes back by itself at the live edge when the TV is switched off and on (#343)**
 - **⏯️ Play after a pause of over a minute on a live channel goes to the live edge**
 - **🔗 Panels that serve some channels as HLS behind a .ts address open faster and no longer fail after an offline channel** (community PRs ahXN00/OwnTV_Core#76 and #77 by @SirKitboard)
+- **🏁 Sports: Formula 1 no longer lists Formula E channels, nor the Premier League the Indian Premier League's**
+- **📺 Sports: a broadcaster's unrelated channels are no longer "likely"**
+- **📥 Adding an Xtream playlist no longer fails with "Expected a string but was BOOLEAN" (#349)**
 
 ## v5.2.1 — 2026-10-21
 

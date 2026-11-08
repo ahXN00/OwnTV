@@ -522,8 +522,12 @@ Tabs show the timeline, statistics, line-ups, the table, each side's form and **
 **Find channels** searches your guide for that match — from **30 minutes before kick-off until 30
 minutes after the end**; earlier, the page says when it opens. The found channels appear on the
 right, best first, with a preview. **OK** plays one full screen; **Back** returns to the match page.
-**Filter channels** narrows the list by language, country, picture and playlist. **Strict filtering**
-on hides the others; off lists them below. **Remember** keeps the filter for every match.
+Below the guide's own hits come the channels that **usually show** the competition: their name carries
+it by any name it goes by ("Sky Sport F1", "EPL 3", "DAZN LaLiga") — never a different competition
+with a similar name (Formula E, Indian Premier League).
+**Filter channels** narrows the list by language, country, picture and playlist; **Show "likely"
+channels** turns those usual channels on or off. **Strict filtering** on hides the others; off lists
+them below. **Remember** keeps the filter for every match.
 
 ### 📺 Broadcasts
 **In your guide** lists the channels Find channels found, one per row under their country, in order;

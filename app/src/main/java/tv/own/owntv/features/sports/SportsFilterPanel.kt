@@ -121,6 +121,9 @@ fun SportsFilterPanel(state: MatchPageState, onFilter: (WatchFilter) -> Unit, on
                 SwitchRow(stringResource(R.string.sports_only_confirmed), stringResource(R.string.sports_only_confirmed_description), f.onlyConfirmed) {
                     onFilter(f.copy(onlyConfirmed = !f.onlyConfirmed))
                 }
+                SwitchRow(stringResource(R.string.sports_show_likely), stringResource(R.string.sports_show_likely_description), f.showLikely) {
+                    onFilter(f.copy(showLikely = !f.showLikely))
+                }
                 SwitchRow(stringResource(R.string.sports_strict_filter), stringResource(R.string.sports_strict_filter_description), f.strict) {
                     onFilter(f.copy(strict = !f.strict))
                 }

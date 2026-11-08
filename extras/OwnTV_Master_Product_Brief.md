@@ -244,8 +244,9 @@ matches, on now or in the next 12 hours, and OK goes to the channel.
 **Sports** — live scores, today's and tomorrow's matches and match pages from ESPN, for the
 sports and leagues the profile follows (none at first; Settings → App → Sports). A match page has the
 score, venue, timeline, stats, line-ups, table, form and Broadcasts, and **Find channels** ranks the
-channels in the user's own guide that show it (from 30 minutes before kick-off), with a filter by
-language, country, picture and playlist. Matching runs on the device; no playlist data leaves it.
+channels in the user's own guide that show it (from 30 minutes before kick-off), then the channels
+named after the competition by any of its names, with a filter by language, country, picture and
+playlist and a switch for those usual channels. Matching runs on the device; no playlist data leaves it.
 The page has three tabs sharing one set of sport and league buttons: **Scores** (the above),
 **Calendar** (a month grid of the followed leagues with the chosen day's matches; months saved on the
 device and fetched again per the Calendar refresh setting) and **Leagues** (league cards, then one
