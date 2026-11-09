@@ -28,4 +28,21 @@ class RandomEpisodePickerTest {
         val items = listOf("a", "b")
         assertEquals("b", pickRandomEpisode(items) { 1.0 })
     }
+
+    @Test
+    fun shuffleLeavesOutSpecials() {
+        val episodes = listOf(0 to "special", 1 to "s1e1", 2 to "s2e1")
+        assertEquals(listOf(1 to "s1e1", 2 to "s2e1"), shuffleCandidates(episodes) { it.first })
+    }
+
+    @Test
+    fun shuffleKeepsSpecialsWhenThereIsNothingElse() {
+        val episodes = listOf(0 to "special a", 0 to "special b")
+        assertEquals(episodes, shuffleCandidates(episodes) { it.first })
+    }
+
+    @Test
+    fun shuffleOfNoEpisodesIsEmpty() {
+        assertEquals(emptyList<Pair<Int, String>>(), shuffleCandidates(emptyList<Pair<Int, String>>()) { it.first })
+    }
 }

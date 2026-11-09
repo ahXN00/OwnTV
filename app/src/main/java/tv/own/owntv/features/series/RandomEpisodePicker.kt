@@ -13,3 +13,10 @@ fun <T> pickRandomEpisode(episodes: List<T>, random: () -> Double = { Random.nex
     val index = (random() * episodes.size).toInt().coerceIn(0, episodes.size - 1)
     return episodes[index]
 }
+
+/**
+ * The episodes shuffle draws from. Specials (season 0) are left out, since most viewers expect
+ * shuffle to pick from the regular seasons; a series that only has specials keeps them.
+ */
+fun <T> shuffleCandidates(episodes: List<T>, seasonOf: (T) -> Int): List<T> =
+    episodes.filter { seasonOf(it) > 0 }.ifEmpty { episodes }
