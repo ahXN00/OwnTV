@@ -74,6 +74,7 @@ import tv.own.owntv.core.storage.StorageAccess
 import tv.own.owntv.features.epg.guideDayLabel
 import tv.own.owntv.features.epg.localMidnight
 import tv.own.owntv.features.live.edgeScrollSpec
+import tv.own.owntv.core.recording.SeriesRecording
 import tv.own.owntv.features.recordings.RecordingsViewModel
 import tv.own.owntv.features.recordings.recordingItems
 import tv.own.owntv.features.shell.components.vodRuntime
@@ -131,6 +132,7 @@ fun DownloadsScreen(
     val storage by vm.storage.collectAsStateWithLifecycle()
     val downloadRoot by vm.downloadRoot.collectAsStateWithLifecycle()
     val recordings by recVm.rows.collectAsStateWithLifecycle()
+    val seriesRules by recVm.seriesRules.collectAsStateWithLifecycle()
     val recExternal by recVm.externalPlayerOn.collectAsStateWithLifecycle()
     val recMissing by recVm.missingFiles.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -149,7 +151,7 @@ fun DownloadsScreen(
     }
     val onTv = remember(shown) { shown.filter { it.status == DownloadStatus.COMPLETED } }
     // The ids in the list, top to bottom, for focus: entry, restore after playing, the neighbour after a delete.
-    val listIds: List<Long> = if (tab == DownloadsTab.RECORDINGS) recordingIdsInOrder(recordings) else downloading.map { it.id } + onTv.map { it.id }
+    val listIds: List<Long> = if (tab == DownloadsTab.RECORDINGS) recordingIdsInOrder(recordings, seriesRules) else downloading.map { it.id } + onTv.map { it.id }
 
     val rowFocus = remember { HashMap<Long, FocusRequester>() }
     fun focusOf(id: Long) = rowFocus.getOrPut(id) { FocusRequester() }
@@ -348,6 +350,7 @@ fun DownloadsScreen(
                         if (tab == DownloadsTab.RECORDINGS) {
                             recordingItems(
                                 recordings = recordings,
+                                seriesRules = seriesRules,
                                 focusOf = ::focusOf,
                                 onFocused = rowFocused,
                                 onPlay = { r -> recVm.play(r); if (!recExternal) onFullscreen() else wentExternal() },
@@ -355,6 +358,7 @@ fun DownloadsScreen(
                                 onCancel = { r -> acted(r.id); recVm.cancel(r) },
                                 onRetry = { r -> recVm.retry(r) },
                                 onDelete = { r -> confirmDelete = PendingDelete(r.id, r.title, recording = true) { recVm.delete(r) } },
+                                onStopSeries = { rule -> acted(tv.own.owntv.features.recordings.seriesRowId(rule)); recVm.stopSeries(rule) },
                                 missing = recMissing,
                             )
                         } else {
@@ -680,8 +684,9 @@ internal fun recordingWhen(atMs: Long): String =
     guideDayLabel(localMidnight(atMs)) + " " + tv.own.owntv.ui.format.rememberBestDateFormatter("jm")(atMs)
 
 /** The recordings tab's rows, top to bottom, in the order [recordingItems] draws them. */
-private fun recordingIdsInOrder(recordings: List<RecordingEntity>): List<Long> =
-    tv.own.owntv.features.recordings.recordingGroups(recordings).flatMap { (_, list) -> list.map { it.id } }
+private fun recordingIdsInOrder(recordings: List<RecordingEntity>, seriesRules: List<SeriesRecording>): List<Long> =
+    seriesRules.map { tv.own.owntv.features.recordings.seriesRowId(it.rule) } +
+        tv.own.owntv.features.recordings.recordingGroups(recordings).flatMap { (_, list) -> list.map { it.id } }
 
 /** 3.1 GB from a gigabyte up, 840.2 MB below it. */
 @Composable

@@ -58,8 +58,12 @@
 - **📺 Full-screen channel browser: ◀◀ shows the categories beside their channels (#323)**
 - **🔎 Sports: Find channels knows every name a competition goes by — F1, EPL, La Liga, Formel 1 and more**
 - **🎚️ Sports: "Show likely channels" in Filter channels**
+- **🎬 Player: a film's or show's title art in place of its name, and a 4K badge**
+- **⏺️ Downloads › Recordings: every "Record every showing" listed, with Stop**
 
 ### 🐛 Fixes
+- **📐 Fit: wide films stored in a 16:9 frame are no longer stretched (#347)**
+- **🖼️ A series page shows the show's title art instead of its name**
 - **🗑️ Deleting a download or recording asks first**
 - **📺 Expanding the mini player returns to the channel playing, not the one browsed (#307)**
 - **🔢 Browsing categories in the player no longer changes what CH+/CH− step through; the channel you pick does**

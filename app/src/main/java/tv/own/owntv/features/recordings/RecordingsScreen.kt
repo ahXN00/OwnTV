@@ -16,8 +16,10 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.RecordingEntity
+import tv.own.owntv.core.database.entity.RecordingRuleEntity
 import tv.own.owntv.core.model.RecordingStatus
 import tv.own.owntv.core.recording.RecordingRules
+import tv.own.owntv.core.recording.SeriesRecording
 import tv.own.owntv.features.downloads.StageAction
 import tv.own.owntv.features.downloads.StageDownloadRow
 import tv.own.owntv.features.downloads.StageListLabel
@@ -49,9 +51,18 @@ internal fun recordingGroups(recordings: List<RecordingEntity>): List<Pair<Int, 
     R.string.recording_group_missed to recordings.filter { it.status == RecordingStatus.MISSED },
 ).filter { it.second.isNotEmpty() }
 
-/** The groups as `.dl` rows under their labels. One action per state, never more than the state can honestly offer. */
+/** A "record every showing" row's id in the list's focus map: negative, so it never meets a recording's. */
+internal fun seriesRowId(rule: RecordingRuleEntity): Long = -rule.id
+
+/**
+ * The groups as `.dl` rows under their labels. One action per state, never more than the state can honestly offer.
+ *
+ * First come the programmes set to record every showing: one that is on every day fills the drive with
+ * no end, and this is where it is stopped without first having to find a showing of it in the guide.
+ */
 internal fun LazyListScope.recordingItems(
     recordings: List<RecordingEntity>,
+    seriesRules: List<SeriesRecording>,
     focusOf: (Long) -> FocusRequester,
     onFocused: (Long) -> Unit,
     onPlay: (RecordingEntity) -> Unit,
@@ -59,11 +70,36 @@ internal fun LazyListScope.recordingItems(
     onCancel: (RecordingEntity) -> Unit,
     onRetry: (RecordingEntity) -> Unit,
     onDelete: (RecordingEntity) -> Unit,
+    onStopSeries: (RecordingRuleEntity) -> Unit,
     /** Paths of finished recordings whose file is gone: those offer only Delete. */
     missing: Set<String> = emptySet(),
 ) {
+    if (seriesRules.isNotEmpty()) {
+        item(key = "rhdr_series") { StageListLabel(stringResource(R.string.recording_group_series), first = true) }
+        items(seriesRules, key = { "rs_${it.rule.id}" }) { s ->
+            val id = seriesRowId(s.rule)
+            // Its next showing already scheduled, if the guide has one yet.
+            val next = recordings.filter { it.ruleId == s.rule.id && it.status == RecordingStatus.SCHEDULED }.minByOrNull { it.startMs }
+            StageDownloadRow(
+                title = s.rule.title,
+                line = s.rule.channelName,
+                path = null,
+                onFocused = { onFocused(id) },
+                focus = focusOf(id),
+                actions = listOf(StageAction(stringResource(R.string.recording_stop_series), OwnTVIcon.CLOSE) { onStopSeries(s.rule) }),
+                onClick = null,
+                art = {
+                    Box(Modifier.fillMaxSize().background(tv.own.owntv.ui.stage.stageStillBack).padding(14.mpx), contentAlignment = Alignment.Center) {
+                        tv.own.owntv.features.live.LivePlate(s.channelLogoUrl, 162.mpx, 79.mpx)
+                    }
+                },
+            ) {
+                next?.let { StatusLine(recordingWhen(it.programmeStartMs)) }
+            }
+        }
+    }
     recordingGroups(recordings).forEachIndexed { g, (labelRes, rows) ->
-        item(key = "rhdr_$labelRes") { StageListLabel(stringResource(labelRes), first = g == 0) }
+        item(key = "rhdr_$labelRes") { StageListLabel(stringResource(labelRes), first = g == 0 && seriesRules.isEmpty()) }
         items(rows, key = { "r_${it.id}" }) { r ->
             val delete = StageAction(stringResource(R.string.common_delete), OwnTVIcon.TRASH) { onDelete(r) }
             val gone = r.status == RecordingStatus.COMPLETED && r.filePath in missing

@@ -29,7 +29,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,11 +82,19 @@ internal fun TopBar(
         ?: meta.episodeNumber?.let { stringResource(R.string.player_episode_number, it) }
         ?: ""
     val localizedSubtitle = meta.localizedSubtitle()
+    // Films and series: the title art in place of the name, once it has arrived and loaded.
+    val titleArt = meta.titleLogoUrl.takeUnless { isLive }
+    var titleArtFailed by remember(titleArt) { mutableStateOf(false) }
+    val showTitleArt = titleArt != null && !titleArtFailed
+    // An episode carries its show's name as the subtitle; a film's name is the title.
+    val episode = meta.seasonNumber != null || meta.episodeNumber != null
+    val res by player.videoRes.collectAsStateWithLifecycle()
+    val ultraHdBadge = !isLive && isUltraHd(res)
     val vodSubtitle = if (isLive) {
         meta.subtitle
     } else {
         buildList {
-            localizedSubtitle?.takeIf { it.isNotBlank() }?.let(::add)
+            localizedSubtitle?.takeIf { it.isNotBlank() && !(showTitleArt && episode) }?.let(::add)
             meta.seasonNumber?.let { add(stringResource(R.string.player_season_number, it)) }
         }.joinToString(stringResource(R.string.content_metadata_separator)).ifBlank { null }
     }
@@ -103,11 +113,13 @@ internal fun TopBar(
         Column(Modifier.weight(1f)) {
             val chipRow: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (ultraHdBadge) res?.let { UltraHdBadge(it) }
                     val durMin = (duration / 60000)
                     val parts = buildList {
                         meta.year?.takeIf { it.isNotBlank() }?.let { add(it) }
                         if (!isLive && durMin > 0) add(stringResource(R.string.player_duration_minutes, durMin))
-                        addAll(chips) // aspect · resolution · fps · audio
+                        // aspect · resolution · fps · audio — 4K already stands in its badge
+                        addAll(if (ultraHdBadge) chips.filterNot { it == res } else chips)
                     }
                     parts.forEachIndexed { i, label ->
                         if (i > 0) Box(Modifier.size(3.dp).clip(CircleShape).background(hudInk.copy(alpha = 0.3f)))
@@ -140,10 +152,21 @@ internal fun TopBar(
                 }
                 below?.invoke()
             } else {
+                if (showTitleArt && titleArt != null) {
+                    tv.own.owntv.ui.stage.StageTitleArt(
+                        url = titleArt,
+                        contentDescription = if (episode) meta.subtitle else displayTitle,
+                        onFailed = { titleArtFailed = true },
+                        modifier = Modifier.padding(bottom = 4.dp).widthIn(max = 420.dp).fillMaxWidth().height(72.dp),
+                    )
+                }
                 vodSubtitle?.let {
                     Text(it, style = tv.own.owntv.ui.theme.stageText(22, 700), color = hudInk.copy(alpha = 0.45f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text(displayTitle, style = tv.own.owntv.ui.theme.stageText(32, 600), color = hudInk, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // A film's art is its name; an episode keeps its own name under the show's art.
+                if (!showTitleArt || episode) {
+                    Text(displayTitle, style = tv.own.owntv.ui.theme.stageText(32, 600), color = hudInk, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 Spacer(Modifier.height(2.dp))
                 chipRow()
             }
@@ -159,6 +182,17 @@ internal fun TopBar(
           if (trailing != null) trailing()
       }
     }
+}
+
+/** The 4K badge of a film or episode: the engine's own resolution label, on gold. */
+@Composable
+private fun UltraHdBadge(label: String) {
+    Text(
+        label,
+        style = tv.own.owntv.ui.theme.stageText(18, 800),
+        color = Color(0xFF1A1300),
+        modifier = Modifier.clip(RoundedCornerShape(5.dp)).background(Color(0xFFE2B23C)).padding(horizontal = 8.dp, vertical = 1.dp),
+    )
 }
 
 /** The channel logo tile, falling back to the first letters of the channel name. */

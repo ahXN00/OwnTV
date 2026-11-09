@@ -383,7 +383,8 @@ again on every wake.
 
 Record from the **Guide** (following the programme's times, with padding), from the **channel list**,
 or from the **player**, on live channels. **Record every showing** sets a standing rule for that
-programme on that channel. A catch-up programme can be saved from the provider's archive. Recordings
+programme on that channel; every rule is listed at the top of **Downloads → Recordings**, where it
+can be stopped. A catch-up programme can be saved from the provider's archive. Recordings
 appear in **Downloads → Recordings** with duration, size and full path. Padding (start early, keep
 going after the end) and keeping one stream free are set in Watching & recording → Recording.
 

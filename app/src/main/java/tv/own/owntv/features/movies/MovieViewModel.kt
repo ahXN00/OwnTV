@@ -754,11 +754,12 @@ class MovieViewModel(
             )
             _playingMovie.value = movie
             playingRef = pid?.let { PlayingRef(movie, it, pinKey) }
-            // Enable the player's OpenSubtitles search for this movie. tmdbId is
-            // resolved from the metadata cache when available for a stronger match.
+            // The film's TMDB details, looked up after playback has started: its title art for the
+            // player bar, and its tmdbId as a stronger match for the OpenSubtitles search.
+            val details = runCatching { metadata.resolveMovie(movie) }.getOrNull()
+            player.setTitleLogo(pinKey, tv.own.owntv.core.metadata.MetadataImages.logo(details?.logoPath))
             if (pid != null) {
-                val tmdbId = runCatching { metadata.resolveMovie(movie)?.tmdbId?.toLong() }.getOrNull()
-                subtitleController.setMovie(pid, movie, tmdbId)
+                subtitleController.setMovie(pid, movie, details?.tmdbId?.toLong())
             }
             if (pid != null) {
                 runCatching {

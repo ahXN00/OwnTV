@@ -432,7 +432,9 @@ time**, with a **Playing / Then** guide row.
 **Where:** long-press a programme in the **Guide**, or a channel in the **list**, or the **Record**
 button in the player
 A guide recording follows the programme's times; the others record from now. **Record every showing**
-sets a standing rule for that programme on that channel. Recordings appear in
+sets a standing rule for that programme on that channel; every rule is listed at the top of
+**Downloads → Recordings** under **Every showing**, with **Stop recording every showing** (it cancels
+the showings still to come and keeps what was recorded). Recordings appear in
 **Downloads → Recordings**. **Schedule recording…** in a channel's menu records it between a day and
 times you pick — guide or not; an end before the start means the next day, and an overlap with another
 recording on the same playlist is shown before you confirm. While a channel records, its menu offers
@@ -787,6 +789,7 @@ profile with a PIN asks for it again.
 
 | Control | Where |
 |---|---|
+| Title | top left — a film's or show's title art when TMDB has it, else its name; a gold **4K** badge on a 4K picture |
 | Clock (and programme time on a replay) | top centre, always |
 | Engine pill **⇄ MPV/EXO** | control bar |
 | **Go back to…** | control bar, catch-up channels |
