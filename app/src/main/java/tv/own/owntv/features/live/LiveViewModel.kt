@@ -1275,9 +1275,10 @@ class LiveViewModel(
         if (c.profileId < 0) return emptyList()
         if (key == LiveKey.History) return historyChannels(ZAP_LIST_LIMIT).map { it.channel }
         val sources = c.sourceIds.ifEmpty { listOf(-1L) }
+        val alpha = sortMode.value == SettingsRepository.SortMode.ALPHA
         val raw = withContext(Dispatchers.IO) {
             when (key) {
-                LiveKey.Favorites -> channelDao.snapshotFavoritesManual(c.profileId, ContentOrderEntity.FAV_CONTEXT, sources, ZAP_LIST_LIMIT)
+                LiveKey.Favorites -> channelDao.snapshotFavoritesManual(c.profileId, ContentOrderEntity.FAV_CONTEXT, sources, ZAP_LIST_LIMIT, alpha)
                 LiveKey.Catchup -> channelDao.snapshotCatchup(sources, ZAP_LIST_LIMIT)
                 else -> channelDao.snapshotAll(sources, ZAP_LIST_LIMIT)
             }
@@ -2248,7 +2249,7 @@ class LiveViewModel(
             val items = when (key) {
                 is LiveKey.Folder -> channelDao.snapshotByCategoryManual(key.id, pid, contextKey, alpha, 5000)
                 is LiveKey.Custom -> customCategoryDao.snapshotChannels(pid, key.id, ctx.value.sourceIds.ifEmpty { listOf(-1L) }, alpha, 5000)
-                LiveKey.Favorites -> channelDao.snapshotFavoritesManual(pid, contextKey, ctx.value.sourceIds.ifEmpty { listOf(-1L) }, 5000)
+                LiveKey.Favorites -> channelDao.snapshotFavoritesManual(pid, contextKey, ctx.value.sourceIds.ifEmpty { listOf(-1L) }, 5000, alpha)
                 // Catch-up joins History/All as a computed view: it has no stored order to move within.
                 LiveKey.History, LiveKey.All, LiveKey.Catchup -> return@launch
             }
