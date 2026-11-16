@@ -192,7 +192,7 @@ fun EpgScreen(
     /** Required: every live tune in the app goes through the one shared path in LiveViewModel, so a
      *  channel gets the same Prefer HLS handling, ExoPlayer→mpv ladder, per-channel engine pin and
      *  external-player routing however the user reached it. */
-    onPlayChannel: (channel: ChannelEntity, channels: List<ChannelEntity>) -> Unit,
+    onPlayChannel: (channel: ChannelEntity, channels: List<ChannelEntity>, key: LiveKey) -> Unit,
     /** "Watch from start" on a catch-up programme. Required for the same reason, and additionally so the
      *  archive is tracked as catch-up playback (which decides what engine toggle the player HUD offers). */
     onPlayCatchup: (channel: ChannelEntity, programme: EpgProgrammeEntity) -> Unit,
@@ -232,16 +232,20 @@ fun EpgScreen(
     val previewArmed by liveVm.previewArmed.collectAsStateWithLifecycle()
     val guidePreview by vm.guidePreview.collectAsStateWithLifecycle()
 
-    // Live TV's Guide view shows Live TV's own category; the TV Guide keeps its own choice. With "TV Guide
-    // follows Live TV" on, a fresh open starts on Live TV's remembered category, set before the first load
-    // so the guide does not load every channel's programmes first. A return (from the player, Settings,
-    // or a startup that already chose the category) keeps the one it has, and Live TV moving its focus
-    // never changes it.
+    // Live TV's Guide view shows Live TV's own category; the TV Guide keeps its own choice, remembered
+    // per profile. With "TV Guide follows Live TV" on, a fresh open starts on Live TV's remembered
+    // category instead, set before the first load so the guide does not load every channel's programmes
+    // first. A return (from the player, Settings, or a startup that already chose the category) keeps
+    // the one it has, and Live TV moving its focus never changes it.
     val categoryKey: LiveKey? = if (liveMode) liveSelected.takeUnless { it == LiveKey.All } else categoryFilter
     val followsLive by liveVm.guideFollowsLive.collectAsStateWithLifecycle()
-    LaunchedEffect(liveMode, liveSelected) { if (liveMode) vm.setCategoryFilter(liveSelected) }
+    LaunchedEffect(liveMode, liveSelected) { if (liveMode) vm.placeCategoryFilter(liveSelected) }
     LaunchedEffect(Unit) {
-        if (!liveMode && !restoreFocus) liveVm.guideOpeningKey()?.let(vm::setCategoryFilter)
+        // The opening category, before the first load: Live TV's when the Guide follows it, otherwise
+        // the Guide's own — restored against the complete rail so a deleted folder falls back to All.
+        if (!liveMode && !restoreFocus) {
+            vm.placeOpeningCategory({ liveVm.guideOpeningKey() }, { liveVm.completeRail() })
+        }
         vm.load() // reload from DB each time the guide is opened
     }
 
@@ -352,18 +356,24 @@ fun EpgScreen(
     // The playing channel's category is opened once; if the channel is still not listed, the old target is used.
     var categoryOpenedFor by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(restoreFocus, state.loading, state.channels) {
-        if (!restoreFocus || state.loading || state.channels.isEmpty()) return@LaunchedEffect
-        val playing = previewChannel.takeIf { vm.playerClosed && previewEnabled }
+        if (!restoreFocus || state.loading) return@LaunchedEffect
+        // Nothing to focus in an empty grid: drop the mark rather than carry it into the next mount,
+        // where it would open a category for a channel this screen never showed.
+        if (state.channels.isEmpty()) {
+            vm.focusPlayingOnLoad = false
+            return@LaunchedEffect
+        }
+        val playing = previewChannel.takeIf { vm.focusPlayingOnLoad && previewEnabled }
         val playingIdx = playing?.let { ch -> state.channels.indexOfFirst { it.id == ch.id } } ?: -1
         if (playing != null && playingIdx < 0 && categoryOpenedFor != playing.id) {
             categoryOpenedFor = playing.id
             val key = liveVm.railKeyOf(playing)
             if (key != (categoryKey ?: LiveKey.All)) {
-                if (liveMode) liveVm.show(key) else vm.setCategoryFilter(key) // the playing channel's, not a pick
+                if (liveMode) liveVm.show(key) else vm.placeCategoryFilter(key) // the playing channel's, not a pick
                 return@LaunchedEffect // runs again when that category has loaded
             }
         }
-        vm.playerClosed = false
+        vm.focusPlayingOnLoad = false
         categoryOpenedFor = null
         val idx = if (playing != null && playingIdx >= 0) {
             vm.noteChannelTuned(playing)
@@ -413,7 +423,12 @@ fun EpgScreen(
     }
 
     val channelsNow = state.channels
-    val watch: (ChannelEntity) -> Unit = { ch -> vm.noteChannelTuned(ch); onPlayChannel(ch, channelsNow) }
+    val watch: (ChannelEntity) -> Unit = { ch ->
+        vm.noteChannelTuned(ch)
+        // The Guide's visible list travels with the channel: it is the zap context, as it is for a row
+        // in Live TV (see LiveViewModel.watchFromGuide).
+        onPlayChannel(ch, channelsNow, categoryKey ?: LiveKey.All)
+    }
     val playFromStart: (ChannelEntity, EpgProgrammeEntity) -> Unit = { ch, p ->
         when (catchupPlayer) {
             SettingsRepository.CatchupPlayer.ASK -> askPlayerFor = ch to p
@@ -724,7 +739,7 @@ fun EpgScreen(
                         if (liveMode) {
                             liveVm.select(key)
                         } else {
-                            vm.setCategoryFilter(key)
+                            vm.selectCategoryFilter(key)
                             if (followsLive) liveVm.select(key) // one remembered category for both
                         }
                     }
