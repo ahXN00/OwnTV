@@ -91,6 +91,14 @@ import tv.own.owntv.core.model.HomeTrendingStyle
 import tv.own.owntv.core.trending.ProviderVariantParser
 import tv.own.owntv.features.shell.components.MediaDetailsScreen
 import tv.own.owntv.features.shell.components.MediaDetailsUi
+import tv.own.owntv.features.shell.components.VodOptionsMenu
+import tv.own.owntv.features.shell.components.VodGroupWatch
+import tv.own.owntv.features.shell.components.VodGroupLibrary
+import tv.own.owntv.features.shell.components.VodGroupDetails
+import tv.own.owntv.core.model.ContentMenu
+import tv.own.owntv.ui.components.MenuAction
+import tv.own.owntv.features.movies.MovieViewModel
+import tv.own.owntv.features.series.SeriesViewModel
 import tv.own.owntv.player.HeroPreviewEngine
 import tv.own.owntv.ui.components.BrandLockup
 import tv.own.owntv.ui.components.InAppToast
@@ -188,6 +196,9 @@ fun HomeScreen(
     var trailerVideoKey by remember { mutableStateOf<String?>(null) }
     var trailerTitle by remember { mutableStateOf<String?>(null) }
     var detailsItem by remember { mutableStateOf<TrendingHomeItem?>(null) }
+    var contextTrendingItem by remember { mutableStateOf<TrendingHomeItem?>(null) }
+    val movieVm = org.koin.androidx.compose.koinViewModel<MovieViewModel>()
+    val seriesVm = org.koin.androidx.compose.koinViewModel<SeriesViewModel>()
     var detailsMetadata by remember { mutableStateOf<MetadataCacheEntity?>(null) }
     var detailsTmdbWins by remember { mutableStateOf(false) }
     // Focus is on the hero (its buttons or pager): the list must not scroll, and the hero stays unfolded.
@@ -447,6 +458,8 @@ fun HomeScreen(
                                             vm.refresh()
                                         }
                                     },
+                                    onLongClick = { item -> contextTrendingItem = item },
+                                    onMenuKey = { item -> contextTrendingItem = item },
                                     onFocus = onNonHeroFocused,
                                     firstItemFocusRequester = firstItemFocusRequester ?: trendingPrimaryFocus,
                                     track = track,
@@ -702,59 +715,6 @@ fun HomeScreen(
                 runCatching { trendingDetailsFocus.requestFocus() }
             }
         })
-    }
-    contextTrendingItem?.let { ci ->
-        val isMovie = ci is TrendingHomeItem.Movie
-        val title = ci.snapshot.localizedTitle
-        val posterUrl = when (ci) {
-            is TrendingHomeItem.Movie -> ci.movie.posterUrl
-            is TrendingHomeItem.Series -> ci.series.posterUrl
-        }
-        val isFavorite = when (ci) {
-            is TrendingHomeItem.Movie -> ci.movie.id in favoriteMovies
-            is TrendingHomeItem.Series -> ci.series.id in favoriteSeries
-        }
-        val actions = buildList {
-            if (!ci.snapshot.trailerKey.isNullOrBlank()) {
-                add(MenuAction("play_trailer", stringResource(R.string.content_play_trailer), OwnTVIcon.PLAY_CIRCLE, group = VodGroupWatch) {
-                    trailerTitle = title
-                    trailerVideoKey = ci.snapshot.trailerKey
-                    contextTrendingItem = null
-                })
-            }
-            add(MenuAction("favourite", stringResource(if (isFavorite) R.string.content_remove_favourite else R.string.content_add_favourite), OwnTVIcon.FAVORITE, group = VodGroupLibrary) {
-                vm.toggleTrendingFavorite(ci)
-                contextTrendingItem = null
-            })
-            add(MenuAction("download", stringResource(R.string.content_download), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
-                when (ci) {
-                    is TrendingHomeItem.Movie -> movieVm.download(ci.movie)
-                    is TrendingHomeItem.Series -> seriesVm.askBulkDownload(ci.series, null)
-                }
-                contextTrendingItem = null
-            })
-            add(MenuAction("tmdb_details", stringResource(if (isMovie) R.string.content_movie_details else R.string.content_series_details), OwnTVIcon.INFO, group = VodGroupDetails) {
-                homeScope.launch {
-                    val current = vm.revalidateTrendingItem(ci)
-                    val resolved = current?.let { vm.resolveTrendingDetails(it) }
-                    if (resolved != null) detailsItem = current
-                }
-                contextTrendingItem = null
-            })
-        }
-        VodOptionsMenu(
-            title = title,
-            subtitle = null,
-            posterUrl = posterUrl,
-            x = 1300f,
-            menu = if (isMovie) ContentMenu.MOVIE else ContentMenu.SERIES,
-            actions = actions,
-            disabled = setOfNotNull(
-                "play_trailer".takeIf { ci.snapshot.trailerKey.isNullOrBlank() },
-            ),
-            onDismiss = { contextTrendingItem = null },
-            firstFocusKey = if (!ci.snapshot.trailerKey.isNullOrBlank()) "play_trailer" else "favourite",
-        )
     }
     InAppToast(trendingToast)
 }
@@ -1148,16 +1108,9 @@ private fun KeepWatchingRow(
 ) {
     val w = if (big) 384 else 336
     val h = if (big) 216 else 189
-    // A keyed row keeps its scroll on the first card it showed. When what was just watched moves to the
-    // front, that left the new first card off-screen to the left and focus on the second: the channel the
-    // user came back from looked gone from the row. A new first card brings the row back to its start.
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    val firstKey = items.firstOrNull()?.heroKey()
-    LaunchedEffect(firstKey) { if (listState.firstVisibleItemIndex != 0) listState.scrollToItem(0) }
     Column(modifier) {
         HomeRowHeader(title, small = if (big) null else items.size.toString(), start = start, big = big)
         LazyRow(
-            state = listState,
             horizontalArrangement = Arrangement.spacedBy((if (big) 24 else 20).mpx),
             contentPadding = PaddingValues(start = start, end = 64.mpx),
             modifier = Modifier.focusRestorer().focusGroup(),
@@ -1367,6 +1320,8 @@ private fun TrendingPosterRow(
     items: List<TrendingHomeItem>,
     start: Dp,
     onItemClick: (TrendingHomeItem) -> Unit,
+    onLongClick: (TrendingHomeItem) -> Unit,
+    onMenuKey: (TrendingHomeItem) -> Unit,
     onFocus: () -> Unit,
     firstItemFocusRequester: FocusRequester?,
     track: (FocusRequester) -> Unit,
@@ -1389,12 +1344,19 @@ private fun TrendingPosterRow(
                         is TrendingHomeItem.Series -> item.series.name
                     },
                     onClick = { onItemClick(item) },
+                    onLongClick = { onLongClick(item) },
                     width = 196.mpx,
                     height = 294.mpx,
                     rating = item.snapshot.rating?.let(::ratingText),
                     modifier = Modifier
                         .then(if (index == 0 && firstItemFocusRequester != null) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
                         .tracked(track = track)
+                        .onPreviewKeyEvent { e ->
+                            if (e.type == KeyEventType.KeyDown && e.key == Key.Menu) {
+                                onMenuKey(item)
+                                true
+                            } else false
+                        }
                         .onFocusChanged {
                             if (it.hasFocus) {
                                 onItemFocused(index)
