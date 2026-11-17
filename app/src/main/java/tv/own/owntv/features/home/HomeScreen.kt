@@ -703,6 +703,59 @@ fun HomeScreen(
             }
         })
     }
+    contextTrendingItem?.let { ci ->
+        val isMovie = ci is TrendingHomeItem.Movie
+        val title = ci.snapshot.localizedTitle
+        val posterUrl = when (ci) {
+            is TrendingHomeItem.Movie -> ci.movie.posterUrl
+            is TrendingHomeItem.Series -> ci.series.posterUrl
+        }
+        val isFavorite = when (ci) {
+            is TrendingHomeItem.Movie -> ci.movie.id in favoriteMovies
+            is TrendingHomeItem.Series -> ci.series.id in favoriteSeries
+        }
+        val actions = buildList {
+            if (!ci.snapshot.trailerKey.isNullOrBlank()) {
+                add(MenuAction("play_trailer", stringResource(R.string.content_play_trailer), OwnTVIcon.PLAY_CIRCLE, group = VodGroupWatch) {
+                    trailerTitle = title
+                    trailerVideoKey = ci.snapshot.trailerKey
+                    contextTrendingItem = null
+                })
+            }
+            add(MenuAction("favourite", stringResource(if (isFavorite) R.string.content_remove_favourite else R.string.content_add_favourite), OwnTVIcon.FAVORITE, group = VodGroupLibrary) {
+                vm.toggleTrendingFavorite(ci)
+                contextTrendingItem = null
+            })
+            add(MenuAction("download", stringResource(R.string.content_download), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
+                when (ci) {
+                    is TrendingHomeItem.Movie -> movieVm.download(ci.movie)
+                    is TrendingHomeItem.Series -> seriesVm.askBulkDownload(ci.series, null)
+                }
+                contextTrendingItem = null
+            })
+            add(MenuAction("tmdb_details", stringResource(if (isMovie) R.string.content_movie_details else R.string.content_series_details), OwnTVIcon.INFO, group = VodGroupDetails) {
+                homeScope.launch {
+                    val current = vm.revalidateTrendingItem(ci)
+                    val resolved = current?.let { vm.resolveTrendingDetails(it) }
+                    if (resolved != null) detailsItem = current
+                }
+                contextTrendingItem = null
+            })
+        }
+        VodOptionsMenu(
+            title = title,
+            subtitle = null,
+            posterUrl = posterUrl,
+            x = 1300f,
+            menu = if (isMovie) ContentMenu.MOVIE else ContentMenu.SERIES,
+            actions = actions,
+            disabled = setOfNotNull(
+                "play_trailer".takeIf { ci.snapshot.trailerKey.isNullOrBlank() },
+            ),
+            onDismiss = { contextTrendingItem = null },
+            firstFocusKey = if (!ci.snapshot.trailerKey.isNullOrBlank()) "play_trailer" else "favourite",
+        )
+    }
     InAppToast(trendingToast)
 }
 
