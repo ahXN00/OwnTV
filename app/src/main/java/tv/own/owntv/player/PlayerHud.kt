@@ -581,8 +581,26 @@ fun PlayerHud(
                 // intended: CH-/Down from the first channel lands on the last, and vice versa.
                 canZap && e.key == Key.MediaNext -> { zap(1); true }
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(zapDirection(up = true, remoteOptions)); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(zapDirection(up = false, remoteOptions)); true }
+                !controlsVisible && isLive && (e.key == Key.DirectionUp || e.key == Key.DirectionDown) -> {
+                    when (remoteOptions.dpadUpDown) {
+                        tv.own.owntv.core.settings.PlayerDpadUpDownAction.ZAP -> {
+                            if (canZap) {
+                                zap(zapDirection(up = e.key == Key.DirectionUp, remoteOptions))
+                                true
+                            } else false
+                        }
+                        tv.own.owntv.core.settings.PlayerDpadUpDownAction.CONTROLS_AND_HISTORY -> {
+                            if (e.key == Key.DirectionDown) {
+                                controlsVisible = true
+                                true
+                            } else {
+                                onOpenHistoryList?.invoke() ?: run { controlsVisible = true }
+                                true
+                            }
+                        }
+                        tv.own.owntv.core.settings.PlayerDpadUpDownAction.DISABLED -> true
+                    }
+                }
                 // Left/Right with the controls hidden: reveal them on the timeline and take the first
                 // step, so the jump is seen and holding the key goes on scrubbing the bar itself. Physical
                 // keys, like the bars: left is back in time in every locale. A film always does this; a

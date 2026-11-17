@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import tv.own.owntv.core.settings.PlayerDpadUpDownAction
 import tv.own.owntv.core.settings.PlayerHoldOkAction
 import tv.own.owntv.core.settings.PlayerRemoteOptions
 import tv.own.owntv.core.settings.PlayerShortOkAction
@@ -21,6 +22,7 @@ class PlayerButtonsSettingsViewModel(private val settings: SettingsRepository) :
     fun setShortOk(action: PlayerShortOkAction) = update { it.copy(shortOk = action) }
     fun setSwapChannelKeys(swap: Boolean) = update { it.copy(swapChannelKeys = swap) }
     fun setNumberKeysTune(tune: Boolean) = update { it.copy(numberKeysTune = tune) }
+    fun setDpadUpDown(action: PlayerDpadUpDownAction) = update { it.copy(dpadUpDown = action) }
 
     private fun update(change: (PlayerRemoteOptions) -> PlayerRemoteOptions) {
         viewModelScope.launch { settings.updatePlayerRemoteOptions(change) }
