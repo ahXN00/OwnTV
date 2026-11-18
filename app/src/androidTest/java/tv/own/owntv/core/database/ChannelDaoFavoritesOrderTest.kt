@@ -126,6 +126,36 @@ class ChannelDaoFavoritesOrderTest {
         )
     }
 
+    /**
+     * A–Z is case-insensitive: SQLite's default BINARY collation sorts every lowercase name after
+     * every uppercase one, so "arte" used to land at the bottom of the list, after "ZDFneo".
+     */
+    @Test
+    fun aToZ_isCaseInsensitive_acrossFavoritesAndOtherLists() = runBlocking {
+        dao.upsertAll(
+            listOf(
+                channel(id = 4L, sourceId = 10L, categoryId = 100L, name = "arte"),
+                channel(id = 5L, sourceId = 10L, categoryId = 100L, name = "ZDFneo"),
+            ),
+        )
+        favorite(itemId = 4L, addedAt = 400L)
+        favorite(itemId = 5L, addedAt = 500L)
+
+        // alpha, arte, mike, zdfneo, zebra
+        assertEquals(
+            listOf(2L, 4L, 3L, 5L, 1L),
+            dao.snapshotFavoritesManual(profileId, ContentOrderEntity.FAV_CONTEXT, playlistIds, 50, alpha = true).map { it.id },
+        )
+        assertEquals(
+            listOf(2L, 4L, 3L, 5L, 1L),
+            ids(dao.pagingFavoritesManual(profileId, ContentOrderEntity.FAV_CONTEXT, playlistIds, alpha = true)),
+        )
+        // All channels and a provider folder have their own A–Z queries; the same rule applies.
+        assertEquals(listOf(2L, 4L, 3L, 5L, 1L), ids(dao.pagingAll(playlistIds)))
+        // Folder 100 holds Zebra, Mike, arte and ZDFneo.
+        assertEquals(listOf(4L, 3L, 5L, 1L), ids(dao.pagingByCategoryAlpha(100L)))
+    }
+
     // --- helpers ---
 
     private fun channel(id: Long, sourceId: Long, categoryId: Long, name: String) = ChannelEntity(
