@@ -79,11 +79,12 @@ val appModule = module {
     // Takes a Context first; Koin resolves it from androidContext().
     //
     // Spelled out rather than `viewModelOf(::LiveViewModel)`: that reflective helper is generated for
-    // up to 22 constructor parameters and this class now has 24. The failure is a "none of the
+    // up to 22 constructor parameters and this class now has 25. The failure is a "none of the
     // following candidates is applicable" at the call above, which says nothing about arity — hence
     // this note. Every argument is resolved by type, so the order here does not matter.
     viewModel {
         LiveViewModel(
+            get(),
             get(),
             get(),
             get(),

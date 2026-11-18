@@ -130,6 +130,8 @@ class LiveViewModel(
     private val recordings: tv.own.owntv.core.recording.RecordingManager,
     /** Keeps the preview pane off a one-stream playlist while a download is using it. */
     private val downloadWatchGuard: tv.own.owntv.core.download.DownloadWatchGuard,
+    /** Home and the screensaver reach the tuner through these, in the same call that frees the engines. */
+    private val engines: tv.own.owntv.player.PlaybackEngines,
 ) : ViewModel() {
 
     // --- "Record what I'm watching" --------------------------------------------------------------
@@ -1112,6 +1114,15 @@ class LiveViewModel(
             downloadHolds = downloadWatchGuard::holdsOnlyStream,
         ),
     )
+
+    init {
+        engines.liveTuner = live
+    }
+
+    override fun onCleared() {
+        if (engines.liveTuner === live) engines.liveTuner = null
+        super.onCleared()
+    }
 
     // True while the in-pane preview is suppressed because the provider allows one stream at a time and
     // that stream is already in use (full-screen playback). The pane says so instead of sitting silently

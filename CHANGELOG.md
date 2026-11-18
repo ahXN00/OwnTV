@@ -7,6 +7,12 @@
 > Issue numbers that are part of a title are fine; explanatory parentheticals are not. The detail —
 > what, why, files and verification — belongs in the commit message, never here.
 
+## v5.2.3 — unreleased
+
+### 🐛 Fixes
+- **🏠 Live TV: Home or the screensaver while a channel opens no longer plays it behind the home screen; it comes back on return**
+- **🧭 Home: the channel or film you just watched is shown first in Keep watching, not hidden off-screen**
+
 ## v5.2.2 — 2026-11-09
 
 ### ✨ New features
