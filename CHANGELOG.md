@@ -9,7 +9,14 @@
 
 ## v5.2.3 — unreleased
 
+### ✨ New features
+- **📅 TV Guide keeps the category you left, and CH+/CH− step through its list after you pick a channel** (community PR #370 by @Quad-Plex)
+- **⏭️ CH+/CH− page the programme list and the catch-up list (#373)**
+
 ### 🐛 Fixes
+- **➖ Zoom and other steppers: tapping "−" lowers the value instead of raising it (#359)**
+- **🏆 Sports: the last-channel pill no longer covers the tabs, and is shorter everywhere**
+- **🗂️ Favorites and History show their sort as "Newest first", greyed out** (rebuilt from community PR #369 by @Quad-Plex)
 - **🏠 Live TV: Home or the screensaver while a channel opens no longer plays it behind the home screen; it comes back on return**
 - **🧭 Home: the channel or film you just watched is shown first in Keep watching, not hidden off-screen**
 

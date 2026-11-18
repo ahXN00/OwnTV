@@ -129,7 +129,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 | **Last channel** key | full-screen live | Back to the channel you watched before (press again to flip back). Also the clock button on the player bar |
 | **Up / Down** | full-screen live, controls hidden | Same as CH+/CH− |
 | **0–9** | full-screen live | Type a channel number to tune. OK submits, Back cancels. A playlist that carries no channel numbers (no `tvg-chno`) is numbered 1, 2, 3… in its file order |
-| **CH+ / CH−** | any browse list | Page by 10 items. **Long-press** jumps to first/last. In a category list it only moves the highlight — **OK** opens the category |
+| **CH+ / CH−** | any browse list, a channel's programme page, the catch-up list | Page by 10 items. **Long-press** jumps to first/last. In a category list it only moves the highlight — **OK** opens the category |
 | **Back** | category list with a search typed | Clears the search and jumps to the search box. The search stays while you watch a channel |
 | **Left** | anywhere in a screen, nothing further left | Back to the rail |
 | **Back** | full-screen player | Leaves full screen (there is no exit button) |
@@ -270,7 +270,9 @@ The Move window opens with that item picked up. **▲ ▼** carry it a row, **CH
 **long press** of them to the first or last place. **OK** puts it down or picks up another, so several
 can move in one go. **Save** keeps the new order; **Cancel** or **Back** leaves it as it was.
 What you moved keeps its place in **A–Z** and **Provider** alike; everything you never moved follows
-the sort around it. **Restore to playlist default** on a category clears its moved items.
+the sort around it. **Restore to playlist default** on a category clears its moved items. Favorites and
+History always keep their own order (moved items, then newest first): their sort button reads
+**Newest first** and is greyed out.
 
 ### 🏷️ What the row tells you
 Number, logo, name, the programme on now with its time left and a progress bar, the provider's tags
@@ -979,9 +981,10 @@ Some actions only appear where they apply — Catch-up on catch-up channels, Rem
 **Where:** Settings → Layout → **Browsing & lists**
 Whether each section remembers the last category and item — each profile its own, so switching
 profile lands everyone where they left off, no restart. Only a category you pick is remembered; a
-startup choice or jumping to a channel from Search does not replace it. **TV Guide follows Live TV**
-(off by default): the TV Guide opens on Live TV's remembered category, and a category picked in the
-Guide becomes Live TV's too. **Live TV categories:** switch off
+startup choice or jumping to a channel from Search does not replace it. The TV Guide remembers its own
+category the same way, and a channel watched from the Guide keeps the Guide's list for CH+/CH−.
+**TV Guide follows Live TV** (off by default): the TV Guide opens on Live TV's remembered category, and
+a category picked in the Guide becomes Live TV's too. **Live TV categories:** switch off
 **Catch-up** or **All channels** to drop them from Live TV, the guide, the player and Multiview; without All
 channels, Live TV opens on your first category (or Favorites).
 

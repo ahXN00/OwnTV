@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -91,7 +92,9 @@ fun StageStatusCluster(
                     icon = continuePill.icon,
                     iconFilled = continuePill.iconFilled,
                     onClick = continuePill.onClick,
-                    modifier = Modifier.focusProperties { canFocus = pillsFocusable },
+                    // Narrower than a pill's usual cap: "Last channel" and a long channel name, in a
+                    // long language, otherwise reach across the section's own header.
+                    modifier = Modifier.widthIn(max = 300.mpx).focusProperties { canFocus = pillsFocusable },
                 )
             }
             StagePill(

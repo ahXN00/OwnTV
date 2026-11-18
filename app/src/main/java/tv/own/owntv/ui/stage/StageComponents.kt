@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,6 +48,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.style.TextOverflow
@@ -352,6 +355,8 @@ fun StageTool(
     valueAccent: Boolean = false,
     /** `.danger`: a destructive action in red ("Clear watch history"). */
     danger: Boolean = false,
+    /** Off: drawn dim and skipped by the D-pad (a sort that does not apply to the open list). */
+    enabled: Boolean = true,
 ) {
     val a = stageAccent
     val r = StageRadii.Tool
@@ -360,16 +365,17 @@ fun StageTool(
         radius = r,
         modifier = modifier.height(48.mpx),
         idle = if (boxed) Modifier.background(StageColors.ControlFill, RoundedCornerShape(r)) else Modifier,
+        enabled = enabled,
     ) { focused ->
         Row(
             Modifier.padding(horizontal = 16.mpx),
             horizontalArrangement = Arrangement.spacedBy(9.mpx),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val color = if (focused) a.onAccent else if (danger) StageColors.Danger else StageColors.Muted
+            val color = if (focused) a.onAccent else if (!enabled) StageColors.Dim else if (danger) StageColors.Danger else StageColors.Muted
             if (icon != null) StageIcon(icon, color, 20.mpx)
             if (text != null) Text(text, style = stageText(18, 700), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (value != null) Text(value, style = stageText(18, 700), color = if (focused) a.onAccent else if (valueAccent) a.accent else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (value != null) Text(value, style = stageText(18, 700), color = if (focused) a.onAccent else if (!enabled) StageColors.Dim else if (valueAccent) a.accent else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (trailingIcon != null) StageIcon(trailingIcon, color, 20.mpx)
         }
     }
@@ -1078,11 +1084,17 @@ fun StageRatingChip(rating: String, modifier: Modifier = Modifier, small: Boolea
 }
 
 /**
- * `.stp`: "− 90% +" inside a settings row. Display only: the row owns focus and ◀ ▶ change the value
- * ("controls inside the rows").
+ * `.stp`: "− 90% +" inside a settings row. The row owns focus and ◀ ▶ change the value ("controls
+ * inside the rows"). With [onStep], a touch or air-mouse tap on "−" / "+" steps that way: the buttons
+ * take no focus, so the D-pad still treats the row as one control, and the tap is consumed here, so
+ * the row's own click (which steps up) does not fire as well.
  */
 @Composable
-fun StageStepper(value: String) {
+fun StageStepper(value: String, onStep: ((Int) -> Unit)? = null) {
+    val step by rememberUpdatedState(onStep)
+    fun tap(dir: Int) = if (onStep == null) Modifier else Modifier.pointerInput(dir) {
+        detectTapGestures { step?.invoke(dir) }
+    }
     Row(
         Modifier
             .background(StageColors.ControlFill, RoundedCornerShape(13.mpx))
@@ -1090,7 +1102,7 @@ fun StageStepper(value: String) {
         horizontalArrangement = Arrangement.spacedBy(4.mpx),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(34.mpx), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(34.mpx).then(tap(-1)), contentAlignment = Alignment.Center) {
             Text("−", style = stageText(20, 700), color = StageColors.Muted)
         }
         Text(
@@ -1101,7 +1113,7 @@ fun StageStepper(value: String) {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.widthIn(min = 64.mpx),
         )
-        Box(Modifier.size(34.mpx), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(34.mpx).then(tap(1)), contentAlignment = Alignment.Center) {
             Text("+", style = stageText(20, 700), color = StageColors.Muted)
         }
     }

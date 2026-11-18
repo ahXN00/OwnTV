@@ -211,7 +211,7 @@ on that channel while the info pane follows the highlight. **◀** brings the
 categories in as a glass sheet (**Stage** layout) or keeps them as a column (**Separate**). The
 channel menu is a grouped Stage menu (Watch / Channel / Guide data / Organise), opened by holding OK
 or the Menu key. **Guide view** shows the guide grid inside Live TV, and *Live TV opens in* remembers
-List or Guide. The last category of Live TV, Movies and Series and the last channel are remembered per
+List or Guide. The last category of Live TV, Movies, Series and the TV Guide and the last channel are remembered per
 profile and follow a profile switch at once; only a category the user picks is saved. *TV Guide follows
 Live TV* (Browsing & lists, off by default) gives the TV Guide Live TV's remembered category.
 

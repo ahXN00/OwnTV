@@ -1429,7 +1429,9 @@ fun OwnTVShell(
             }
           }
             tv.own.owntv.features.shell.components.StageStatusCluster(
-                continuePill = continueTarget?.let { target ->
+                // Not on Sports: its header runs to the top right, and in a long language the pill
+                // covered its tabs.
+                continuePill = continueTarget?.takeIf { selectedSection != MainSection.SPORTS }?.let { target ->
                     val live = target.kind == tv.own.owntv.features.home.ContinueKind.LIVE
                     tv.own.owntv.features.shell.components.ContinuePill(
                         icon = if (live) OwnTVIcon.LIVE_TV else OwnTVIcon.PLAY,

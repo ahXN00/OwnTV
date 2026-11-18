@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -75,7 +76,9 @@ import tv.own.owntv.features.settings.data.computePanelWidths
 import tv.own.owntv.features.settings.rememberPanelShares
 import tv.own.owntv.features.shell.components.RailCategoryMenu
 import tv.own.owntv.ui.components.MoveOrderOverlay
+import tv.own.owntv.core.live.hasFixedOrder
 import tv.own.owntv.ui.components.chNavPaging
+import tv.own.owntv.ui.components.jumpLazyListTo
 import tv.own.owntv.ui.components.longPressMenuGuard
 import tv.own.owntv.ui.components.trapAllFocusExit
 import tv.own.owntv.core.model.ContentMenu
@@ -748,11 +751,19 @@ fun LiveScreen(
                             // ◀ Categories from the search field too, as from the rows (not while typing — a search that found nothing here may be in another category).
                             .onDpadLeft({ !searchEditing && lockedKey == null }) { openCategories() },
                     )
+                    // Favorites and History keep their own order: the sort reads "Newest first" there and
+                    // cannot be changed; the stored choice still applies to every other list.
+                    val fixedOrder = selectedKey.hasFixedOrder
                     tv.own.owntv.ui.stage.StageTool(
                         text = null,
                         icon = OwnTVIcon.SORT,
-                        value = if (sortMode == tv.own.owntv.core.settings.SettingsRepository.SortMode.ALPHA) stringResource(R.string.settings_sort_alpha) else stringResource(R.string.content_epg_sort_provider),
+                        value = when {
+                            fixedOrder -> stringResource(R.string.content_newest_first)
+                            sortMode == tv.own.owntv.core.settings.SettingsRepository.SortMode.ALPHA -> stringResource(R.string.settings_sort_alpha)
+                            else -> stringResource(R.string.content_epg_sort_provider)
+                        },
                         onClick = vm::toggleSort,
+                        enabled = !fixedOrder,
                     )
                     tv.own.owntv.ui.stage.StageTool(
                         text = stringResource(R.string.content_live_guide_view),
@@ -1302,6 +1313,11 @@ private fun CatchupDialog(
     onDismiss: () -> Unit,
 ) {
     val formatTime = rememberSystemTimeFormatter()
+    val settingsVm: SettingsViewModel = koinViewModel()
+    val chNavEnabled by settingsVm.chNavEnabled.collectAsStateWithLifecycle()
+    val chNavUpSkip by settingsVm.chNavUpSkip.collectAsStateWithLifecycle()
+    val chNavDownSkip by settingsVm.chNavDownSkip.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     val list by androidx.compose.runtime.produceState<List<tv.own.owntv.core.database.entity.EpgProgrammeEntity>?>(initialValue = null) {
         value = runCatching { loadProgrammes() }.getOrDefault(emptyList())
     }
@@ -1347,11 +1363,36 @@ private fun CatchupDialog(
                     Text(stringResource(R.string.content_catchup_empty), style = tv.own.owntv.ui.theme.stageText(18, 500), color = tv.own.owntv.ui.theme.StageColors.Muted)
                 }
             } else {
-                LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(2.mpx)) {
-                    items(progs, key = { it.id }) { p ->
+                // CH+ / CH− page the list as they do every other list: the row jumped to takes over
+                // [firstFocus], so the focus request lands on it.
+                val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                var targetIndex by remember(progs) { androidx.compose.runtime.mutableIntStateOf(0) }
+                var focusedIndex by remember(progs) { androidx.compose.runtime.mutableIntStateOf(0) }
+                var listFocused by remember { mutableStateOf(false) }
+                LazyColumn(
+                    Modifier.fillMaxWidth().weight(1f, fill = false)
+                        .onFocusChanged { listFocused = it.hasFocus }
+                        .chNavPaging(
+                            enabled = chNavEnabled,
+                            upSkip = chNavUpSkip,
+                            downSkip = chNavDownSkip,
+                            isFocused = { listFocused },
+                            lastIndex = { progs.lastIndex },
+                            currentTargetIndex = { focusedIndex },
+                            onJumpToIndex = { idx ->
+                                targetIndex = idx
+                                scope.jumpLazyListTo(listState, idx) { firstFocus.requestFocus() }
+                            },
+                        ),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(2.mpx),
+                ) {
+                    itemsIndexed(progs, key = { _, p -> p.id }) { index, p ->
                         tv.own.owntv.ui.stage.StagePopupOption(
                             title = p.title, subtitle = formatCatchupTime(p.startMs, p.stopMs, formatTime), onClick = { onPick(p) },
-                            modifier = if (p == progs.first()) Modifier.focusRequester(firstFocus) else Modifier,
+                            modifier = Modifier
+                                .onFocusChanged { if (it.isFocused) focusedIndex = index }
+                                .then(if (index == targetIndex) Modifier.focusRequester(firstFocus) else Modifier),
                             leading = { tv.own.owntv.ui.stage.StagePopupIcon(tv.own.owntv.ui.components.OwnTVIcon.CATCHUP) },
                         )
                     }

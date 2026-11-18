@@ -17,6 +17,7 @@ import tv.own.owntv.ui.components.onDpadLeft
 import tv.own.owntv.features.categorylock.focusListAfterSheet
 import tv.own.owntv.features.live.LiveCategories
 import tv.own.owntv.core.live.ProviderTags
+import tv.own.owntv.core.live.hasFixedOrder
 import tv.own.owntv.features.live.edgeScrollSpec
 import tv.own.owntv.features.shell.components.VodCinematicBackdrop
 import tv.own.owntv.features.shell.components.VodDetailsCard
@@ -31,6 +32,7 @@ import tv.own.owntv.features.shell.components.VodOptionsMenu
 import tv.own.owntv.features.shell.components.VodPosterArt
 import tv.own.owntv.features.shell.components.VodSortMenu
 import tv.own.owntv.features.shell.components.VodSortTool
+import tv.own.owntv.features.shell.components.VodFixedSortTool
 import tv.own.owntv.features.shell.components.VodStepper
 import tv.own.owntv.features.shell.components.VodTitleInfo
 import tv.own.owntv.features.shell.components.cinematicQualityBadges
@@ -587,7 +589,7 @@ fun MoviesScreen(
                             modifier = Modifier.width(440.mpx).focusRequester(listSearchFocus).then(searchLeft),
                             onEditingChange = { searchEditing = it },
                         )
-                        VodSortTool(sortMode, Modifier.focusRequester(sortFocus)) { sortOpen = true }
+                        VodSortTool(sortMode, selectedKey.hasFixedOrder, Modifier.focusRequester(sortFocus)) { sortOpen = true }
                         StageTool(text = stringResource(R.string.content_category_browser_title), icon = OwnTVIcon.LIST, onClick = { categoriesOpen = true })
                         Spacer(Modifier.weight(1f))
                         StageKeyHints(listOf(playHint, optionsHint, "◀" to stringResource(R.string.content_category_browser_title)))
@@ -700,7 +702,11 @@ fun MoviesScreen(
                         modifier = Modifier.weight(1f).focusRequester(listSearchFocus).then(searchLeft),
                         onEditingChange = { searchEditing = it },
                     )
-                    StageTool(text = null, icon = OwnTVIcon.SORT, value = vodSortLabel(sortMode), trailingIcon = OwnTVIcon.CHEVRON_DOWN, onClick = { sortOpen = true }, modifier = Modifier.focusRequester(sortFocus))
+                    if (selectedKey.hasFixedOrder) {
+                        VodFixedSortTool(Modifier.focusRequester(sortFocus))
+                    } else {
+                        StageTool(text = null, icon = OwnTVIcon.SORT, value = vodSortLabel(sortMode), trailingIcon = OwnTVIcon.CHEVRON_DOWN, onClick = { sortOpen = true }, modifier = Modifier.focusRequester(sortFocus))
+                    }
                     StageSegmented(
                         options = listOf(stringResource(R.string.settings_view_grid), stringResource(R.string.settings_view_list)),
                         selected = if (viewMode == SettingsRepository.VodViewMode.LIST) 1 else 0,

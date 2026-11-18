@@ -470,9 +470,16 @@ private val VodSorts = listOf(
 @Composable
 internal fun vodSortLabel(mode: SortMode): String = stringResource(VodSorts.first { it.first == mode }.second)
 
-/** Cinematic's "Sort: **Date added** ▾" (the label from "Sort: %1$s", the order in full colour). */
+/**
+ * Cinematic's "Sort: **Date added** ▾" (the label from "Sort: %1$s", the order in full colour). With
+ * [fixedOrder] (Favorites, History) it reads "Newest first", dim and out of D-pad reach.
+ */
 @Composable
-internal fun VodSortTool(mode: SortMode, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun VodSortTool(mode: SortMode, fixedOrder: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    if (fixedOrder) {
+        VodFixedSortTool(modifier)
+        return
+    }
     val label = vodSortLabel(mode)
     val full = stringResource(R.string.content_epg_sort_button, label)
     // Bold only the order when the language puts it last ("Sort: A–Z"); otherwise the whole phrase.
@@ -480,6 +487,15 @@ internal fun VodSortTool(mode: SortMode, modifier: Modifier = Modifier, onClick:
     tv.own.owntv.ui.stage.StageTool(
         text = prefix, icon = OwnTVIcon.SORT, value = if (prefix != null) label else full,
         trailingIcon = OwnTVIcon.CHEVRON_DOWN, onClick = onClick, modifier = modifier,
+    )
+}
+
+/** The sort tool on Favorites and History, whose order is their own: "Newest first", dim, not focusable. */
+@Composable
+internal fun VodFixedSortTool(modifier: Modifier = Modifier) {
+    tv.own.owntv.ui.stage.StageTool(
+        text = null, icon = OwnTVIcon.SORT, value = stringResource(R.string.content_newest_first),
+        onClick = {}, modifier = modifier, enabled = false,
     )
 }
 
