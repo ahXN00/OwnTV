@@ -475,20 +475,32 @@ fun OwnTVShell(
             }
             // The TV Guide or Live TV on the last channel's category, the channel focused and in the preview,
             // as TiviMate opens. Live TV's list scrolls to it (revealChannel); a guide focuses its row on load.
-            // The category is shown for this run, not remembered as the user's pick.
+            // The category is shown for this run, not saved as the user's pick — but a list the user has
+            // already chosen is kept when it holds the channel, so a restart no longer replaces Favorites
+            // with the channel's provider folder.
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_GUIDE,
             tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_LIVE -> {
                 val ch = liveVm.lastWatchedLiveChannel()?.takeIf { liveVm.isVisibleToActiveProfile(it) }
                 val toGuide = startupMode == tv.own.owntv.core.settings.StartupMode.LAST_CHANNEL_GUIDE
                 if (ch != null && playerMode == PlayerMode.NONE) {
                     if (!toGuide && resumeSettings.liveView.first() == tv.own.owntv.core.settings.SettingsRepository.LiveView.LIST) {
-                        liveVm.revealChannel(ch)
+                        liveVm.revealChannel(ch, preferRemembered = true)
                     } else {
-                        val key = liveVm.railKeyOf(ch)
-                        if (toGuide) epgVm.setCategoryFilter(key) else liveVm.show(key)
+                        if (toGuide) {
+                            // The Guide's own remembered list — Live TV's when it follows it — and the
+                            // channel's folder only when there is nothing to restore.
+                            val placed = epgVm.placeOpeningCategory({ liveVm.guideOpeningKey() }, { liveVm.completeRail() })
+                            if (!placed) epgVm.placeCategoryFilter(liveVm.railKeyOf(ch))
+                        } else {
+                            liveVm.show(liveVm.startupKeyOf(ch))
+                        }
                         epgVm.noteChannelTuned(ch)
                         liveVm.onChannelFocused(ch)
                         restoreFocus = true
+                        // The list just placed may be a remembered one that does not hold this channel;
+                        // the Guide then opens its own category and focuses it, exactly as on a return
+                        // from the player.
+                        if (toGuide) epgVm.focusPlayingOnLoad = true
                     }
                     onSelectSection(if (toGuide) MainSection.EPG else MainSection.LIVE_TV)
                 }
@@ -602,7 +614,7 @@ fun OwnTVShell(
         subtitleController.clear() // leaving the player drops the OpenSubtitles item context
         if (selectedSection != MainSection.LIVE_TV) liveVm.clearLiveOnExo()
         // Closing back into a guide: it focuses the channel that was playing (zapped-to included).
-        epgVm.playerClosed = selectedSection == MainSection.EPG ||
+        epgVm.focusPlayingOnLoad = selectedSection == MainSection.EPG ||
             (selectedSection == MainSection.LIVE_TV && liveVm.liveView.value == tv.own.owntv.core.settings.SettingsRepository.LiveView.GUIDE)
         restoreFocus = true
         focusRail()
@@ -1140,9 +1152,9 @@ fun OwnTVShell(
                 // Live TV's view (List / Guide), and how a guide — the TV Guide or Live TV's Guide view —
                 // starts a channel or an archive programme: through LiveViewModel, the one live path.
                 val liveView by liveVm.liveView.collectAsStateWithLifecycle()
-                val guidePlayChannel: (ChannelEntity, List<ChannelEntity>) -> Unit = { ch, _ ->
+                val guidePlayChannel: (ChannelEntity, List<ChannelEntity>, tv.own.owntv.core.live.LiveKey) -> Unit = { ch, channels, key ->
                     restoreFocus = false
-                    liveVm.watchFromGuide(ch)
+                    liveVm.watchFromGuide(ch, channels, key)
                     zapSource = MainSection.LIVE_TV
                     homeVm.stopPreview()
                     // Live TV set to play externally → the channel went to another app;

@@ -30,6 +30,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.core.customize.SectionCustomizations
 import tv.own.owntv.core.database.dao.ChannelDao
 import tv.own.owntv.core.database.dao.EpgDao
@@ -41,6 +42,9 @@ import tv.own.owntv.core.epg.EpgAutoMatcher
 import tv.own.owntv.core.epg.GuideCandidate
 import tv.own.owntv.core.epg.GuideCandidates
 import tv.own.owntv.core.model.SourceType
+import tv.own.owntv.core.live.serialize
+import tv.own.owntv.features.live.LiveCategoryMemory
+import tv.own.owntv.features.live.LiveRailItem
 import tv.own.owntv.core.parser.XtreamClient
 import tv.own.owntv.core.customize.CustomizationStore
 import tv.own.owntv.core.customize.CustomizeKeys
@@ -252,15 +256,77 @@ class EpgViewModel(
     private val _categoryFilter = MutableStateFlow<tv.own.owntv.core.live.LiveKey?>(null)
     val categoryFilter: StateFlow<tv.own.owntv.core.live.LiveKey?> = _categoryFilter.asStateFlow()
 
+    /**
+     * The Guide's own remembered category, per profile — the same machinery Live TV uses, so the
+     * section reopens on the list the user left. Only a pick is saved: a startup choice or the jump to
+     * the playing channel's folder must not replace it. With "TV Guide follows Live TV" on, Live TV's
+     * memory is the one that opens the Guide, and the pick is still written here so turning the switch
+     * off lands where the Guide was left rather than on All.
+     */
+    private val categoryMemory = LiveCategoryMemory(viewModelScope) {
+        settings.setLastGuideCategory(it.serialize())
+    }
+
+    /** A category picked in the Guide: shown and remembered. */
+    fun selectCategoryFilter(key: tv.own.owntv.core.live.LiveKey?) {
+        categoryMemory.picked(key ?: tv.own.owntv.core.live.LiveKey.All)
+        placeCategoryFilter(key)
+    }
+
+    /** A category the app put on screen (a startup mode, the playing channel's folder): never saved. */
+    fun placeCategoryFilter(key: tv.own.owntv.core.live.LiveKey?) {
+        categoryMemory.placed()
+        _categoryFilter.value = key.takeUnless { it == tv.own.owntv.core.live.LiveKey.All }
+    }
+
+    /**
+     * Puts the Guide's remembered category back, checked against the rail [rail] builds — the complete
+     * list for this profile, not the placeholder one, or a folder that still exists would look gone.
+     * Returns the list it placed, or null when there was nothing to restore (or the rail did not
+     * arrive, in which case the Guide keeps All rather than wait on its first load for ever). Not a
+     * pick, so nothing is saved.
+     *
+     * A category already on screen is never replaced: this view model outlives the screen, so a value
+     * here is the user's own last choice on a later mount, and the read is repeated after the wait for
+     * the rail because a pick can land while that is still running.
+     */
+    suspend fun restoreOwnCategory(
+        rail: suspend () -> List<LiveRailItem>,
+    ): tv.own.owntv.core.live.LiveKey? {
+        if (_categoryFilter.value != null) return null
+        val stored = settings.lastGuideCategory.first().ifBlank { return null }
+        val list = withTimeoutOrNull(GUIDE_RAIL_WAIT_MS) { rail() } ?: return null
+        if (_categoryFilter.value != null) return null
+        val key = LiveCategoryMemory.restoreKey(stored, list) ?: return null
+        placeCategoryFilter(key)
+        return key
+    }
+
+    /**
+     * The category the Guide opens on, placed before its first load: Live TV's while "TV Guide follows
+     * Live TV" is on, otherwise the Guide's own remembered one. Decided here with a real read of the
+     * setting — the screen's `guideFollowsLive` state starts at `false` and has not had DataStore's
+     * answer yet on the first frame of a cold start, which would open the Guide on All exactly when the
+     * remembered category matters most.
+     *
+     * [liveOpening] and [rail] are LiveViewModel's, which this view model does not hold. Returns true
+     * when a category was placed, so a caller can fall back to the channel's own folder.
+     */
+    suspend fun placeOpeningCategory(
+        liveOpening: suspend () -> tv.own.owntv.core.live.LiveKey?,
+        rail: suspend () -> List<LiveRailItem>,
+    ): Boolean {
+        if (!settings.guideFollowsLiveCategory.first()) return restoreOwnCategory(rail) != null
+        val key = liveOpening() ?: return false
+        placeCategoryFilter(key)
+        return true
+    }
+
     val guideWidthShares: StateFlow<GuideWidthShares?> = combine(
         settings.guideWidthEnabled,
         settings.guideWidthShares,
     ) { enabled, shares -> shares.takeIf { enabled } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    fun setCategoryFilter(key: tv.own.owntv.core.live.LiveKey?) {
-        _categoryFilter.value = key.takeUnless { it == tv.own.owntv.core.live.LiveKey.All }
-    }
 
     private val _state = MutableStateFlow(EpgUiState())
     val state: StateFlow<EpgUiState> = _state.asStateFlow()
@@ -519,9 +585,11 @@ class EpgViewModel(
     var lastTunedChannelId: Long? = null
         private set
 
-    /** Set when the player closes. The guide is not on screen while the player is, so the mark is kept here:
-     *  the next focus restore goes to the channel that was playing and arms its preview. */
-    var playerClosed: Boolean = false
+    /** Set when the app itself put a channel on screen — the player closing, or a startup mode opening
+     *  the Guide on a channel. The guide is not on screen while the player is, so the mark is kept here:
+     *  the next focus restore goes to that channel, opens its own category if the list on screen does not
+     *  hold it, and arms its preview. */
+    var focusPlayingOnLoad: Boolean = false
 
     /** Record that this channel was tuned from the guide, so focus returns to its row on Back.
      *  Call this before delegating playback to liveVm, so lastTunedChannelId is set correctly. */
@@ -1167,6 +1235,10 @@ class EpgViewModel(
         private const val CATCHUP_LOOKBACK_CAP_MS = 7L * 24 * 60 * 60 * 1000
         // Generous safety bound only (rows load lazily, so this is about the channel list itself).
         private const val MAX_CHANNELS = 20_000
+        // How long the Guide may wait for the complete category rail when restoring its remembered
+        // list. Past it the Guide opens on All rather than hold its first load, which on a large
+        // playlist would look like a blank screen.
+        private const val GUIDE_RAIL_WAIT_MS = 2_000L
         // Cap the candidate set the bulk matcher scans against (keeps the O(channels×candidates) scan bounded).
         // Bound values sent to a single `IN (...)`. SQLite's parameter ceiling is 999 on older
         // Android; core chunks its own bulk lookups at the same size.
