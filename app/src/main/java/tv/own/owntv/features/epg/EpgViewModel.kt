@@ -375,6 +375,9 @@ class EpgViewModel(
      */
     fun requestArchiveGuide(channel: ChannelEntity) = archiveGuide.request(channel, custom.value)
 
+    /** The id of a channel whose past days just arrived from its provider's archive. */
+    val archiveGuideAdded: kotlinx.coroutines.flow.SharedFlow<Long> get() = archiveGuide.added
+
     /** Drop the cached rows of one channel (every shift), so the next read of that row goes to the DB. */
     private fun dropRows(channelId: Long) {
         val prefix = "$channelId|"
@@ -460,8 +463,8 @@ class EpgViewModel(
 
     /** One channel's programmes from [dayStart] for a day, whole — synopsis and details — for the
      *  Program details page. Not cached: the page reads one day at a time, on demand. */
-    suspend fun dayProgrammes(channel: ChannelEntity, dayStart: Long): List<EpgProgrammeEntity> =
-        guideReader.row(channel, custom.value, epgOffset.value, dayStart, dayStart + DAY_MS, withText = true)
+    suspend fun dayProgrammes(channel: ChannelEntity, dayStart: Long, dayEnd: Long = dayStart + DAY_MS): List<EpgProgrammeEntity> =
+        guideReader.row(channel, custom.value, epgOffset.value, dayStart, dayEnd, withText = true)
 
     /** The whole programme — synopsis and details — for the programme block (the grid load drops both). */
     suspend fun programmeFull(programmeId: Long): EpgProgrammeEntity? =

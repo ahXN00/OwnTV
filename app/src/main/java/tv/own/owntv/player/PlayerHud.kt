@@ -160,6 +160,14 @@ fun PlayerHud(
     // computed against the moment the user asked, not the moment the HUD was composed.
     jumpBackOptions: (() -> List<Int>)? = null,
     onJumpBack: ((Int) -> Unit)? = null,
+    // When set, the catch-up button tries the channel's archive page (days and programmes) first; it returns
+    // false when the channel has no guide, and the button then opens the "Go back to…" list.
+    onOpenArchive: (suspend () -> Boolean)? = null,
+    // Whether the catch-up button is labelled and acts as the Archive page.
+    catchupOpensArchive: Boolean = false,
+    // A programme replayed from the archive winds in whole minutes: the step Left/Right and the seek bar take instead of the
+    // Settings seek step. Null leaves every other film and episode on the user's step.
+    archiveSeekStepMs: Long? = null,
     // Back to the channel watched before this one. Null hides the button (no previous channel yet).
     onPreviousChannel: (() -> Unit)? = null,
     // Archive depth of the current channel, for the exact-time picker's day/HH:MM bounds.
@@ -598,7 +606,7 @@ fun PlayerHud(
                     if (onScrubLive != null) {
                         onScrubLive(if (back) LIVE_SCRUB_STEP_SEC else -LIVE_SCRUB_STEP_SEC)
                     } else {
-                        val step = player.seekStepMs.value
+                        val step = archiveSeekStepMs ?: player.seekStepMs.value
                         player.seekBy(if (back) -step else step)
                     }
                     focusSeekOnShow = true
@@ -707,7 +715,7 @@ fun PlayerHud(
             // Hide the transport (play/seek/prev/next) and bottom bar while an error is up — the error
             // overlay owns the screen with its own Retry, so the play/rewind/forward must not show behind it.
             if (error == null) {
-                CenterControls(player, nav, isPlaying, isLive, onRewindLive, onForwardLive, timeshiftOffset, playFocus, modifier = Modifier.align(Alignment.Center))
+                CenterControls(player, nav, isPlaying, isLive, onRewindLive, onForwardLive, timeshiftOffset, playFocus, modifier = Modifier.align(Alignment.Center), archiveSeekStepMs = archiveSeekStepMs)
 
                 val reportDuration = duration.takeIf { it > 0 }?.let { formatTime(it) }
                 val reportSavedMessage = stringResource(R.string.player_report_saved)
@@ -720,7 +728,9 @@ fun PlayerHud(
                     onScrubLive = onScrubLive, timeshiftOffset = timeshiftOffset, onGoToLive = onGoToLive,
                     liveProgrammes = liveProgrammes,
                     liveGaps = liveGaps,
-                    onOpenJumpBack = if (onJumpBack != null) { { dialog = HudDialog.JUMP_BACK } } else null,
+                    onOpenJumpBack = if (onJumpBack != null || onOpenArchive != null) { { hudScope.launch { if (onOpenArchive?.invoke() != true) dialog = HudDialog.JUMP_BACK } } } else null,
+                    jumpBackIsArchive = catchupOpensArchive,
+                    archiveSeekStepMs = archiveSeekStepMs,
                     onPreviousChannel = onPreviousChannel,
                     onOtherChannels = onOtherChannels, otherChannelsCount = otherChannelsCount,
                     hasSources = sources != null,
