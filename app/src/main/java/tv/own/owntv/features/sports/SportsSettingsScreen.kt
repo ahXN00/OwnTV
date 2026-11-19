@@ -436,7 +436,7 @@ private fun TeamRows(vm: SportsSettingsViewModel, c: SportsConfig, onOpenTeam: (
     val found by produceState(emptyList<FollowedTeam>(), query) { value = vm.searchTeams(query) }
     found.forEach { t ->
         val on = c.teams.any { it.key == t.key }
-        Row(OwnTVIcon.STAR, t.name, sportLabel(t.sport), SettingValue.Switch(on)) { vm.toggleTeam(t) }
+        Row(OwnTVIcon.STAR, t.name, (t.leagueName ?: sportLabel(t.sport)), SettingValue.Switch(on)) { vm.toggleTeam(t) }
     }
     if (c.teams.isNotEmpty()) {
         StageSettingsHeading(stringResource(R.string.sports_my_teams), c.teams.size)
@@ -448,13 +448,13 @@ private fun TeamRows(vm: SportsSettingsViewModel, c: SportsConfig, onOpenTeam: (
             if (hasTeamPages(t.sport)) {
                 val value = SettingValue.Opens(stringResource(R.string.sports_team_page))
                 StageSettingRow(
-                    icon = OwnTVIcon.STAR, title = t.name, desc = sportLabel(t.sport), value = value,
+                    icon = OwnTVIcon.STAR, title = t.name, desc = (t.leagueName ?: sportLabel(t.sport)), value = value,
                     onClick = { onOpenTeam(t) },
                     onLongClick = { vm.toggleTeam(t) },
-                    help = settingHelp(null, t.name, sportLabel(t.sport), value, pinnable = false).copy(hints = listOf(pageHint, holdOk to unfollow)),
+                    help = settingHelp(null, t.name, (t.leagueName ?: sportLabel(t.sport)), value, pinnable = false).copy(hints = listOf(pageHint, holdOk to unfollow)),
                 )
             } else {
-                Row(OwnTVIcon.STAR, t.name, sportLabel(t.sport), SettingValue.Switch(true)) { vm.toggleTeam(t) }
+                Row(OwnTVIcon.STAR, t.name, (t.leagueName ?: sportLabel(t.sport)), SettingValue.Switch(true)) { vm.toggleTeam(t) }
             }
         }
     }

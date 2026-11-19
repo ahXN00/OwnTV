@@ -464,14 +464,16 @@ class SportsViewModel(
     ) { b, s -> TeamPageState(s, b) }.flowOn(Dispatchers.Default)
 
     /**
-     * A followed team's page from Settings, which knows its sport but not its league: the followed league
-     * whose table on the board lists it, else the sport's first followed league, else its first league.
+     * A followed team's page from Settings: the league it was followed from; for a team saved without one,
+     * the followed league whose table on the board lists it, else the sport's first followed league, else
+     * its first league.
      */
     suspend fun teamRefFor(team: FollowedTeam): TeamRef? {
         val c = config.first()
         val board = repository.board.value
         val leagues = c.followedLeagues().mapNotNull(SportsCatalog::league).filter { it.sport == team.sport }
-        val league = leagues.firstOrNull { l -> board.standings[l.key]?.groups?.any { g -> g.rows.any { it.team.id == team.id } } == true }
+        val league = team.league?.let(SportsCatalog::league)
+            ?: leagues.firstOrNull { l -> board.standings[l.key]?.groups?.any { g -> g.rows.any { it.team.id == team.id } } == true }
             ?: leagues.firstOrNull() ?: SportsCatalog.leaguesOf(team.sport).firstOrNull() ?: return null
         return teamRefOf(league, Team(team.id, team.name, abbreviation = team.abbreviation))
     }

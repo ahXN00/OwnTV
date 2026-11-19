@@ -1124,6 +1124,7 @@ class SettingsViewModel(
         syncMovies: Boolean = true,
         syncSeries: Boolean = true,
         preferHls: Boolean = false,
+        catchupPreferHls: Boolean = false,
         httpReferer: String = "",
     ) {
         viewModelScope.launch {
@@ -1150,6 +1151,7 @@ class SettingsViewModel(
                 syncMovies = syncMovies,
                 syncSeries = syncSeries,
                 preferHls = preferHls,
+                catchupPreferHls = catchupPreferHls,
             )
             sourceEditor.save(existing, updated)
             settings.setPlaylistAutoRefresh(id, autoRefresh)
@@ -1223,13 +1225,14 @@ class SettingsViewModel(
         series: SyncScopeChoice = SyncScopeChoice.Now,
         isDefault: Boolean = false,
         preferHls: Boolean = false,
+        catchupPreferHls: Boolean = false,
         httpReferer: String = "",
     ) = runImport {
         importer.xtream(
             name = name, server = server, username = user, password = pass,
             userAgent = userAgent, epgUrl = epgUrl, autoRefresh = autoRefresh,
             live = live, movies = movies, series = series,
-            preferHls = preferHls, makeDefault = isDefault, httpReferer = httpReferer,
+            preferHls = preferHls, catchupPreferHls = catchupPreferHls, makeDefault = isDefault, httpReferer = httpReferer,
         )
     }
 

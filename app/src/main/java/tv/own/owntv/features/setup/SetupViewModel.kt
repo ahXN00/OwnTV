@@ -113,9 +113,10 @@ class SetupViewModel(
         movies: SyncScopeChoice = SyncScopeChoice.Now,
         series: SyncScopeChoice = SyncScopeChoice.Now,
         preferHls: Boolean = false,
+        catchupPreferHls: Boolean = false,
         httpReferer: String = "",
     ) = runImport {
-        importer.xtream(name, server, username, password, userAgent, epgUrl, autoRefresh, live, movies, series, preferHls, httpReferer = httpReferer)
+        importer.xtream(name, server, username, password, userAgent, epgUrl, autoRefresh, live, movies, series, preferHls, catchupPreferHls, httpReferer = httpReferer)
     }
 
     fun startStalker(

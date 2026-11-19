@@ -53,6 +53,7 @@ import tv.own.owntv.core.sports.WatchOption
 import tv.own.owntv.core.sports.model.League
 import tv.own.owntv.core.sports.model.Match
 import tv.own.owntv.core.sports.model.MatchState
+import tv.own.owntv.core.sports.model.Sport
 import tv.own.owntv.core.sports.model.StandingsRow
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.stage.StageKeyHints
@@ -105,7 +106,7 @@ internal fun SportsTeamScreen(
     val reminders by vm.reminderSet.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
     val team = ref.team
-    val followed = FollowedTeam(ref.league.sport, team.id, team.name, team.abbreviation)
+    val followed = FollowedTeam(ref.league.sport, team.id, team.name, team.abbreviation, ref.league.key)
     val inMyTeams = config.teams.any { it.key == followed.key }
     var resultsTab by remember(ref) { mutableStateOf(false) }
     val revealed = remember(ref) { mutableStateListOf<String>() }
@@ -146,7 +147,7 @@ internal fun SportsTeamScreen(
                 }
             }
             Row(Modifier.padding(top = 18.mpx).focusRestorer().focusGroup(), horizontalArrangement = Arrangement.spacedBy(10.mpx)) {
-                StageTab(stringResource(R.string.sports_tab_fixtures), "", selected = !resultsTab, onClick = { resultsTab = false }, modifier = if (!resultsTab) Modifier.focusRequester(tabFocus) else Modifier)
+                StageTab(stringResource(if (ref.league.sport == Sport.SOCCER) R.string.sports_tab_fixtures else R.string.sports_tab_games), "", selected = !resultsTab, onClick = { resultsTab = false }, modifier = if (!resultsTab) Modifier.focusRequester(tabFocus) else Modifier)
                 StageTab(stringResource(R.string.sports_tab_results), "", selected = resultsTab, onClick = { resultsTab = true }, modifier = if (resultsTab) Modifier.focusRequester(tabFocus) else Modifier)
             }
             Row(Modifier.weight(1f).fillMaxWidth().padding(top = 12.mpx, bottom = 78.mpx), horizontalArrangement = Arrangement.spacedBy(31.mpx)) {
@@ -199,8 +200,8 @@ internal fun SportsTeamScreen(
                     val at = rows?.indexOfFirst { it.team.id == team.id } ?: -1
                     if (rows != null && at >= 0) {
                         InfoBox(stringResource(R.string.sports_league_position)) {
-                            StandingsHeader()
-                            neighbours(rows, at).forEach { r -> StandingsLine(r, highlight = r.team.id == team.id) }
+                            StandingsHeader(ref.league.sport)
+                            neighbours(rows, at).forEach { r -> StandingsLine(r, ref.league.sport, highlight = r.team.id == team.id) }
                         }
                     }
                 }

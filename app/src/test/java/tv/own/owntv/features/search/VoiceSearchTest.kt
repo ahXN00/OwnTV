@@ -40,6 +40,15 @@ class VoiceSearchTest {
         assertNull(VoiceSearch.spokenQuery(RecognizerErrorCode, listOf("news")))
     }
 
+    @Test
+    fun `several recognisers go to the system default, one or an unknown default asks nobody`() {
+        val both = listOf("com.google.android.tts", "com.vendor.voice")
+        assertEquals("com.google.android.tts", VoiceSearch.pick(both, "com.google.android.tts"))
+        assertNull(VoiceSearch.pick(listOf("com.google.android.tts"), "com.google.android.tts"))
+        assertNull(VoiceSearch.pick(both, "com.other"))
+        assertNull(VoiceSearch.pick(both, null))
+    }
+
     private companion object {
         /** RecognizerIntent.RESULT_NO_MATCH: a recogniser's own "heard nothing" code. */
         const val RecognizerErrorCode = 4

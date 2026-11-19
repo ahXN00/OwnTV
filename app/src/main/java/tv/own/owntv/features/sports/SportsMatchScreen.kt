@@ -56,6 +56,7 @@ import tv.own.owntv.core.sports.model.Match
 import tv.own.owntv.core.sports.model.MatchEvent
 import tv.own.owntv.core.sports.model.MatchState
 import tv.own.owntv.core.sports.model.MatchSummary
+import tv.own.owntv.core.sports.model.Sport
 import tv.own.owntv.core.sports.model.StandingsTable
 import tv.own.owntv.features.epg.GuideVideo
 import tv.own.owntv.features.live.LiveViewModel
@@ -196,7 +197,7 @@ fun SportsMatchScreen(
                         }
                         tabs.forEach { t ->
                             StageTab(
-                                label = stringResource(t.label), count = "", selected = tab == t, onClick = { tab = t },
+                                label = stringResource(t.label(m.sport)), count = "", selected = tab == t, onClick = { tab = t },
                                 modifier = if (t == MatchTab.TIMELINE) Modifier.focusRequester(tabFocus) else Modifier,
                             )
                         }
@@ -304,11 +305,11 @@ fun SportsMatchScreen(
     }
 }
 
-private val MatchTab.label: Int get() = when (this) {
+private fun MatchTab.label(sport: Sport): Int = when (this) {
     MatchTab.TIMELINE -> R.string.sports_tab_timeline
     MatchTab.STATS -> R.string.sports_tab_stats
     MatchTab.LINEUPS -> R.string.sports_tab_lineups
-    MatchTab.TABLE -> R.string.sports_tab_table
+    MatchTab.TABLE -> if (sport == Sport.SOCCER) R.string.sports_tab_table else R.string.sports_tab_standings
     MatchTab.FORM -> R.string.sports_table_form
     MatchTab.BROADCASTS -> R.string.sports_tab_broadcasts
 }
@@ -577,8 +578,8 @@ private fun TablePreview(table: StandingsTable?, m: Match, onOpenLeague: (Match)
     val group = table?.groups?.firstOrNull { g -> g.rows.any { r -> m.competitors.any { it.team.id == r.team.id } } } ?: table?.groups?.firstOrNull() ?: return
     StageSurface(onClick = { onOpenLeague(m) }, radius = 20.mpx, focusStyle = StageFocus.FX, modifier = Modifier.fillMaxWidth().padding(top = 9.mpx)) { _ ->
         Column(Modifier.fillMaxWidth().padding(18.mpx)) {
-            StandingsHeader()
-            group.rows.forEach { row -> StandingsLine(row, highlight = m.competitors.any { it.team.id == row.team.id }) }
+            StandingsHeader(m.sport)
+            group.rows.forEach { row -> StandingsLine(row, m.sport, highlight = m.competitors.any { it.team.id == row.team.id }) }
         }
     }
 }

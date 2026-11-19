@@ -86,6 +86,7 @@ fun AddSourceScreen(
         series: SyncScopeChoice,
         isDefault: Boolean,
         preferHls: Boolean,
+        catchupPreferHls: Boolean,
     ) -> Unit,
     onStartM3u: (name: String, url: String, userAgent: String, referer: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean) -> Unit,
     // The last submission from the Remote companion screen, retained as a StateFlow so it survives the
@@ -151,6 +152,7 @@ fun AddSourceScreen(
     var autoRefresh by remember(initialAutoRefresh) { mutableStateOf(initialAutoRefresh) }
     var isDefault by remember(initialIsDefault) { mutableStateOf(initialIsDefault) }
     var preferHls by remember(initial) { mutableStateOf(initial?.preferHls == true) }
+    var catchupPreferHls by remember(initial) { mutableStateOf(initial?.catchupPreferHls == true) }
     // Edit: On(=Now)/Off from persisted flags. Add: default all Now for Xtream; Stalker defaults
     // Live Now + Movies/Series Later when the kind switches (see LaunchedEffect below).
     var syncLive by remember(initial) {
@@ -437,7 +439,7 @@ fun AddSourceScreen(
     // panel, reached with ▶ from any row.
     val submit = {
         when (kind) {
-            SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, referer, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls)
+            SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, referer, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls, catchupPreferHls)
             SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, referer, epgUrl, autoRefresh, isDefault)
             SourceKind.STALKER -> onStartStalker?.invoke(
                 name, portalUrl, mac, stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2,
@@ -660,6 +662,17 @@ fun AddSourceScreen(
                 onClick = { preferHls = !preferHls },
                 modifier = toSubmit,
                 help = help(preferTitle, preferDesc, switchKeys),
+            )
+            val catchupTitle = stringResource(R.string.setup_prefer_hls_catchup)
+            val catchupDesc = stringResource(R.string.setup_prefer_hls_catchup_description)
+            StageSettingRow(
+                icon = OwnTVIcon.LIVE_TV,
+                title = catchupTitle,
+                desc = catchupDesc,
+                value = SettingValue.Switch(catchupPreferHls),
+                onClick = { catchupPreferHls = !catchupPreferHls },
+                modifier = toSubmit,
+                help = help(catchupTitle, catchupDesc, switchKeys),
             )
         }
 

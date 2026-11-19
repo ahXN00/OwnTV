@@ -16,7 +16,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.tv.material3.Text
 import tv.own.owntv.R
+import tv.own.owntv.core.sports.StandingsColumn
 import tv.own.owntv.core.sports.model.RankingRow
+import tv.own.owntv.core.sports.model.Sport
 import tv.own.owntv.core.sports.model.StandingsRow
 import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.theme.StageColors
@@ -24,19 +26,29 @@ import tv.own.owntv.ui.theme.mpx
 import tv.own.owntv.ui.theme.stageAccent
 import tv.own.owntv.ui.theme.stageText
 
-/** The number columns of a league table: P W D L GD Pts, each 51 wide. */
+/** The number columns of a league table (football: P W D L GD Pts), each 51 wide. */
 private val NumberColumn = 51.mpx
 
-/** `# Team P W D L GD Pts`, 16.5 px dim. */
+private val StandingsColumn.label: Int get() = when (this) {
+    StandingsColumn.PLAYED -> R.string.sports_table_played
+    StandingsColumn.WON -> R.string.sports_table_won
+    StandingsColumn.DRAWN -> R.string.sports_table_drawn
+    StandingsColumn.TIED -> R.string.sports_table_tied
+    StandingsColumn.LOST -> R.string.sports_table_lost
+    StandingsColumn.OT_LOSSES -> R.string.sports_table_ot_losses
+    StandingsColumn.DIFFERENCE -> R.string.sports_table_difference
+    StandingsColumn.WIN_PERCENT -> R.string.sports_table_win_percent
+    StandingsColumn.GAMES_BEHIND -> R.string.sports_table_games_behind
+    StandingsColumn.POINTS -> R.string.sports_table_points
+}
+
+/** `# Team` and [sport]'s own columns (football: `P W D L GD Pts`), 16.5 px dim. */
 @Composable
-internal fun StandingsHeader() {
+internal fun StandingsHeader(sport: Sport?) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.mpx, vertical = 6.mpx), verticalAlignment = Alignment.CenterVertically) {
         Text("#", style = stageText(16.5f, 700), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(42.mpx))
         Text(stringResource(R.string.sports_table_team), style = stageText(16.5f, 700), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        listOf(
-            R.string.sports_table_played, R.string.sports_table_won, R.string.sports_table_drawn,
-            R.string.sports_table_lost, R.string.sports_table_difference, R.string.sports_table_points,
-        ).forEach { Text(stringResource(it), style = stageText(16.5f, 700), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.width(NumberColumn)) }
+        StandingsColumn.of(sport).forEach { Text(stringResource(it.label), style = stageText(16.5f, 700), color = StageColors.Dim, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.width(NumberColumn)) }
     }
 }
 
@@ -45,16 +57,16 @@ internal fun StandingsHeader() {
  * of My teams. With [onClick] the row takes focus and OK opens the team's page.
  */
 @Composable
-internal fun StandingsLine(row: StandingsRow, highlight: Boolean, star: Boolean = false, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+internal fun StandingsLine(row: StandingsRow, sport: Sport?, highlight: Boolean, star: Boolean = false, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     if (onClick == null) {
-        StandingsCells(row, highlight, star, focused = false)
+        StandingsCells(row, sport, highlight, star, focused = false)
         return
     }
-    StageSurface(onClick = onClick, radius = 10.mpx, modifier = modifier.fillMaxWidth()) { focused -> StandingsCells(row, highlight, star, focused) }
+    StageSurface(onClick = onClick, radius = 10.mpx, modifier = modifier.fillMaxWidth()) { focused -> StandingsCells(row, sport, highlight, star, focused) }
 }
 
 @Composable
-private fun StandingsCells(row: StandingsRow, highlight: Boolean, star: Boolean, focused: Boolean) {
+private fun StandingsCells(row: StandingsRow, sport: Sport?, highlight: Boolean, star: Boolean, focused: Boolean) {
     val on = if (focused) stageAccent.onAccent else null
     Row(
         Modifier.fillMaxWidth()
@@ -68,8 +80,10 @@ private fun StandingsCells(row: StandingsRow, highlight: Boolean, star: Boolean,
             Text(row.team.shortName, style = stageText(19, if (highlight) 800 else 600), color = on ?: StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (star) Text("★", style = stageText(17, 700), color = on ?: Color(0xFFFFD166), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        listOf(row.played.toString(), row.won.toString(), row.drawn.toString(), row.lost.toString(), row.difference, row.points.toString()).forEachIndexed { i, v ->
-            Text(v, style = stageText(19, if (i == 5) 800 else 500), color = on ?: if (i == 5) StageColors.Text else StageColors.Body, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.width(NumberColumn))
+        val main = StandingsColumn.main(sport)
+        StandingsColumn.of(sport).forEach { c ->
+            val bold = c == main
+            Text(c.valueOf(row), style = stageText(19, if (bold) 800 else 500), color = on ?: if (bold) StageColors.Text else StageColors.Body, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.width(NumberColumn))
         }
     }
 }

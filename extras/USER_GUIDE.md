@@ -26,7 +26,7 @@ Welcome  →  Display  →  Disclaimer  →  Set up OwnTV  →  Profile
 Every step has the same frame: step dots at the top, **Back** / **Next** at the bottom, and the keys
 for that step shown in the corner.
 
-1. **Welcome** — the language picker is on this screen: one of 26, or keep **System default**.
+1. **Welcome** — the language picker is on this screen: one of 28, or keep **System default**.
    Press **Get started**.
 2. **Display** — step UI Zoom and Font size while a sample row resizes, so you judge it from your
    sofa, and pick the **App icon**. Changeable later in Settings → Appearance and Settings → App.
@@ -212,6 +212,12 @@ for the playlist chosen (or all of them).
 **Where:** Add/Edit playlist
 Ask the panel for HLS instead of MPEG-TS. Try it if live channels are unstable. **Test HLS support**
 just above it checks whether your provider really serves it.
+
+### 📼 Prefer HLS for catch-up (Xtream only)
+**Where:** Add/Edit playlist, under Prefer HLS for Live TV
+Ask for catch-up programmes as HLS instead of MPEG-TS. Off by default: many providers only serve
+catch-up as MPEG-TS. A programme that will not open as HLS is asked for as MPEG-TS by itself, and a
+long programme can take a few seconds more to start, because the provider builds its HLS list first.
 
 ### 📡 Stalker portals
 **Where:** Add source → Stalker (MAC)
@@ -495,7 +501,10 @@ chosen shows everything. The choice stays across the tabs until you close the ap
 of the top row rebuilds the sports data now; the bottom status pill says **Rebuilding sports…** while
 it runs.
 **Scores** rows: **Live now** (red LIVE mark), **Sport on your channels now** (from your guide) and
-**Starting soon**. **OK** on a match opens its page; **hold OK** offers Follow, Remind me (once Find
+**Starting soon** (today's games; tomorrow's when today has none). Tables show the columns each sport
+uses — points for football, OTL for hockey, PCT and GB for basketball and baseball — and outside
+football the tabs read **Standings** and **Games**. College teams are found in **My teams**, labelled
+with their league. **OK** on a match opens its page; **hold OK** offers Follow, Remind me (once Find
 channels has found a channel), each side's team page and the match page.
 
 ### 📅 Calendar

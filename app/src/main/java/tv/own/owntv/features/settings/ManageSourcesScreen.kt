@@ -175,13 +175,14 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 initial = src,
                 initialAutoRefresh = playlistAutoRefresh[src.id] ?: PlaylistRefresh.OFF,
                 initialIsDefault = src.id == defaultId,
-                onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
+                onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls, catchupPreferHls ->
                     vm.updateSource(
                         src.id, n, server, u, p, ua, epg, autoRefresh, isDefault, httpReferer = ref,
                         syncLive = live != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         syncMovies = movies != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         syncSeries = series != tv.own.owntv.core.sync.SyncScopeChoice.Off,
                         preferHls = preferHls,
+                        catchupPreferHls = catchupPreferHls,
                     )
                     editingSource = null
                 },
@@ -223,8 +224,8 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         modifier = Modifier,
                     )
                     AddMode.MANUAL -> AddSourceScreen(
-                        onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls ->
-                            vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, httpReferer = ref)
+                        onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls, catchupPreferHls ->
+                            vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, catchupPreferHls, httpReferer = ref)
                         },
                         onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault, httpReferer = ref) },
                         onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series, login, password ->

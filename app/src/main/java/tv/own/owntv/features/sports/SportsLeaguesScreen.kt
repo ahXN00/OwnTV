@@ -96,9 +96,10 @@ private fun panesOf(league: League): List<LeaguePane> = when {
     else -> listOf(LeaguePane.FIXTURES, LeaguePane.RESULTS)
 }
 
-private val LeaguePane.label: Int get() = when (this) {
-    LeaguePane.TABLE -> R.string.sports_tab_table
-    LeaguePane.FIXTURES -> R.string.sports_tab_fixtures
+/** Football keeps "Table" and "Fixtures"; other sports say "Standings" and "Games". */
+private fun LeaguePane.label(sport: Sport): Int = when (this) {
+    LeaguePane.TABLE -> if (sport == Sport.SOCCER) R.string.sports_tab_table else R.string.sports_tab_standings
+    LeaguePane.FIXTURES -> if (sport == Sport.SOCCER) R.string.sports_tab_fixtures else R.string.sports_tab_games
     LeaguePane.RESULTS -> R.string.sports_tab_results
     LeaguePane.DRIVERS -> R.string.sports_tab_drivers
     LeaguePane.CONSTRUCTORS -> R.string.sports_tab_constructors
@@ -280,7 +281,8 @@ private fun LeagueCardView(card: LeagueCard, locale: Locale, top: tv.own.owntv.c
                 Text(stringResource(R.string.sports_next, what), style = stageText(16, 400), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.mpx))
             }
             mine?.let { row ->
-                Text("★ ${row.team.shortName}$sep#${row.rank}$sep${row.points} $pts", style = stageText(16, 700), color = StarYellow, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.mpx))
+                val figure = if (card.league.sport in LeagueCards.RECORD_SPORTS) "${row.won}–${row.lost}" else "${row.points} $pts"
+                Text("★ ${row.team.shortName}$sep#${row.rank}$sep$figure", style = stageText(16, 700), color = StarYellow, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.mpx))
             }
         }
     }
@@ -373,7 +375,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.LeaguePage(
         Row(Modifier.focusProperties { onEnter = { runCatching { paneFocus.requestFocus() } } }.focusGroup(), horizontalArrangement = Arrangement.spacedBy(8.mpx)) {
             panes.forEachIndexed { i, p ->
                 StageTab(
-                    label = stringResource(p.label), count = "", selected = p == pane, onClick = { vm.leagueTab.value = i },
+                    label = stringResource(p.label(league.sport)), count = "", selected = p == pane, onClick = { vm.leagueTab.value = i },
                     modifier = if (p == pane) Modifier.focusRequester(paneFocus) else Modifier,
                 )
             }
@@ -391,14 +393,14 @@ private fun androidx.compose.foundation.layout.ColumnScope.LeaguePage(
         when (pane) {
             LeaguePane.TABLE -> {
                 LazyColumn(left.focusRestorer().focusGroup(), contentPadding = PaddingValues(bottom = 24.mpx)) {
-                    item { StandingsHeader() }
+                    item { StandingsHeader(league.sport) }
                     val groups = view.board.standings[league.key]?.groups.orEmpty()
                     groups.forEach { g ->
                         if (groups.size > 1) item { Heading(g.name) }
                         items(g.rows, key = { "t:${g.name}:${it.team.id}" }) { r ->
                             val mine = r.team.id in myTeamIds
                             val ref = teamRefOf(league, r.team)
-                            StandingsLine(r, highlight = mine, star = mine, onClick = ref?.let { { onOpenTeam(it) } })
+                            StandingsLine(r, league.sport, highlight = mine, star = mine, onClick = ref?.let { { onOpenTeam(it) } })
                         }
                     }
                 }
@@ -431,7 +433,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.LeaguePage(
                 }
                 val rows = view.board.rankings[league.key]?.groups?.firstOrNull { it.kind == kind }?.rows.orEmpty()
                 LazyColumn(left.focusRestorer().focusGroup(), contentPadding = PaddingValues(bottom = 24.mpx)) {
-                    item { RankingHeader(stringResource(pane.label)) }
+                    item { RankingHeader(stringResource(pane.label(league.sport))) }
                     items(rows, key = { "r:${it.rank}:${it.team.id}" }) { r -> RankingLine(r, rows.first().points) }
                 }
                 if (league.sport == Sport.RACING) {

@@ -256,6 +256,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/search/SearchViewModel.kt	s${item.id}
 1	technical	app/src/main/java/tv/own/owntv/features/search/VoiceSearch.kt	\0
 1	regex	app/src/main/java/tv/own/owntv/features/search/VoiceSearch.kt	\\s+
+1	preference-key	app/src/main/java/tv/own/owntv/features/search/VoiceSearch.kt	voice_recognition_service
 1	empty	app/src/main/java/tv/own/owntv/features/series/SeriesScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/series/SeriesScreen.kt	,
 2	preference-key	app/src/main/java/tv/own/owntv/features/series/SeriesScreen.kt	delete_subtitles
@@ -844,6 +845,8 @@
 3	empty	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	$sep$it $pts
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${dm.format(first)} – ${dm.format(last)}
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${row.points} $pts
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${row.won}–${row.lost}
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${scoreText(m.sport, m.home?.score)} – ${scoreText(m.sport, m.away?.score)}
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${sportEmoji(card.league.sport)} ${sportLabel(card.league.sport)}
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	${top.won}–${top.lost}
@@ -864,7 +867,7 @@
 2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	▲
 2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	▶
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	★
-1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	★ ${row.team.shortName}$sep#${row.rank}$sep${row.points} $pts
+1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	★ ${row.team.shortName}$sep#${row.rank}$sep$figure
 2	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	🏆
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsLeaguesScreen.kt	🏆 $winner
 6	empty	app/src/main/java/tv/own/owntv/features/sports/SportsMatchScreen.kt	\0

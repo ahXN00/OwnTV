@@ -139,7 +139,7 @@ fun SportsHubScreen(
     val today = state.board.today.values.flatten().distinctBy { it.key }.filter { it.isLive || isToday(it.startMs) }
     val live = today.filter { it.isLive && it.passes() }
         .sortedWith(compareBy<Match>({ config.rankOf(it.sport, it.feed).first }, { config.rankOf(it.sport, it.feed).second }, { !it.isMine() }, { it.startMs }))
-    val soon = state.board.matches.filter { it.state == MatchState.PRE && it.startMs > now && it.passes() }
+    val soon = state.board.startingSoon(now) { it.passes() }
         .sortedWith(compareBy<Match>({ config.rankOf(it.sport, it.feed).first }, { config.rankOf(it.sport, it.feed).second }, { it.startMs })).take(12)
     val onNow = state.onNow.values.flatten().take(6)
 
@@ -683,7 +683,7 @@ internal fun MatchMenu(
                 }
                 if (!over) {
                     match.competitors.forEachIndexed { i, c ->
-                        val team = FollowedTeam(match.sport, c.team.id, c.team.name, c.team.abbreviation)
+                        val team = FollowedTeam(match.sport, c.team.id, c.team.name, c.team.abbreviation, tv.own.owntv.core.sports.model.League.keyOf(match.sport, match.leagueSlug))
                         val following = config.teams.any { it.key == team.key }
                         StageMenuItem(
                             text = c.team.name,

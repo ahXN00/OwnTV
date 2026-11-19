@@ -598,9 +598,9 @@
     "endonym": "Українська",
     "script": "Cyrl",
     "rtl": false,
-    "tier": 2,
-    "packaged": false,
-    "pickerVisible": false
+    "tier": 1,
+    "packaged": true,
+    "pickerVisible": true
   },
   {
     "id": "vi",
@@ -626,6 +626,20 @@
     "endonym": "Euskara",
     "script": "Latn",
     "rtl": false,
+    "tier": 1,
+    "packaged": true,
+    "pickerVisible": true
+  },
+  {
+    "id": "ckb",
+    "languageTag": "ckb",
+    "resourceQualifier": "ckb",
+    "resourceDirectory": "values-ckb",
+    "weblateCode": "ckb",
+    "englishName": "Central Kurdish",
+    "endonym": "کوردیی ناوەندی",
+    "script": "Arab",
+    "rtl": true,
     "tier": 1,
     "packaged": true,
     "pickerVisible": true
