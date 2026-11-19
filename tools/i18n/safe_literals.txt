@@ -91,9 +91,12 @@
 2	empty	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	\0
 1	technical	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	$channelId|
 1	technical	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	${channel.id}|$shift
-1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	EpgViewModel
+1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	Catch-up channels unreadable, assuming no retained guide ids
+3	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	EpgViewModel
+1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	Guide re-sync after a catch-up match failed
 1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	Stalker catch-up resolve failed channelId=${channel.id}
 1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	cache-reused
+1	technical	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	catchup_linked
 1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	first-load
 1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	guide_load channels=${channels.size} rawChannels=${rawChannels.size}
 1	log	app/src/main/java/tv/own/owntv/features/epg/EpgViewModel.kt	lookbackH=${lookbackMs / 3_600_000}
