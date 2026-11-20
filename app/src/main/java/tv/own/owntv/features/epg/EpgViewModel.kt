@@ -5,7 +5,9 @@ package tv.own.owntv.features.epg
 import tv.own.owntv.core.epg.displayLogoUrl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -122,6 +124,8 @@ class EpgViewModel(
     private val historyDao: tv.own.owntv.core.database.dao.HistoryDao,
     private val reminderManager: tv.own.owntv.core.reminder.ReminderManager,
     private val archiveGuide: tv.own.owntv.core.epg.ArchiveGuideFiller,
+    /** The same entry point Settings' "Re-sync" uses, so a match-triggered sync follows its rules. */
+    private val epgSyncScheduler: tv.own.owntv.core.sync.work.EpgSyncScheduler,
 ) : ViewModel() {
 
     /** The categories' search text, held here so it survives the player (see LiveViewModel). */
@@ -745,25 +749,104 @@ class EpgViewModel(
         customize.update(profileId, MediaType.LIVE) { it.copy(epgMatches = it.epgMatches + clean) }
     }
 
+    private fun normGuideId(id: String?): String? = id?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+
+    /**
+     * The guide ids core keeps past days for: every catch-up channel's own id and its resolved match.
+     * Read before a match is saved, because afterwards the channel resolves to the new id. A guide
+     * synced before a match has already dropped the past of any id outside this set, and only a new
+     * sync can bring it back. An unreadable channel list gives the empty set, which errs towards a sync.
+     */
+    private suspend fun retainedCatchupGuideIds(cust: SectionCustomizations): Set<String> {
+        val channels = runCatching { channelDao.allCatchupChannels() }
+            .onFailure { android.util.Log.w("EpgViewModel", "Catch-up channels unreadable, assuming no retained guide ids", it) }
+            .getOrDefault(emptyList())
+        return channels.flatMapTo(HashSet()) { listOfNotNull(normGuideId(it.epgChannelId), normGuideId(cust.epgMatchResolver.epgIdFor(it))) }
+    }
+
+    /** Whether linking [channel] to [epgId] gives a catch-up channel a guide id core was not keeping. */
+    private fun gainsCatchupGuide(channel: ChannelEntity, epgId: String, retained: Set<String>): Boolean =
+        channel.catchup && normGuideId(epgId)?.let { it !in retained } == true
+
+    private var resyncJob: kotlinx.coroutines.Job? = null
+    private var resyncPending = false
+
+    /**
+     * Re-download the guides once after a match gave catch-up channels a new guide id. Calls within
+     * [RESYNC_SETTLE_MS] of each other, such as accepting suggestions one after another, share one
+     * run; one that arrives during a run asks for one more after it.
+     */
+    private fun scheduleGuideResync() {
+        resyncPending = true
+        if (resyncJob?.isActive == true) return
+        resyncJob = viewModelScope.launch {
+            while (resyncPending) {
+                delay(RESYNC_SETTLE_MS)
+                resyncPending = false
+                try {
+                    resyncGuideFeeds()
+                } catch (c: CancellationException) {
+                    throw c
+                } catch (e: Exception) {
+                    android.util.Log.w("EpgViewModel", "Guide re-sync after a catch-up match failed", e)
+                }
+            }
+        }
+    }
+
+    /**
+     * Standalone EPG sources go through the scheduler Settings' "Re-sync" uses, where a sync already
+     * queued for a source is replaced. The playlists' own guides (M3U url-tvg, Xtream xmltv) are not
+     * EPG sources, so they take the refresh [refreshAllEpgFromNetwork] uses, shared in [refreshPlaylistGuides].
+     */
+    private suspend fun resyncGuideFeeds() {
+        epgSourceStore.getAll().forEach { source ->
+            val base = epgDao.countForSources(listOf(source.id))
+            epgSyncScheduler.enqueueSync(source.id, "catchup_linked", base)
+        }
+        refreshPlaylistGuides()
+    }
+
+    /**
+     * Which of a run's applied matches give a catch-up channel a guide id core was not keeping. The
+     * matches carry item keys rather than channels, so the channels are read back the way
+     * [applyEpgMatches] resolves them, by the key's remote id.
+     */
+    private suspend fun appliedGainCatchupGuide(
+        applied: List<Pair<String, String>>,
+        playlistIds: List<Long>,
+        retained: Set<String>,
+    ): Boolean {
+        val idByKey = applied.toMap()
+        val tails = idByKey.keys.mapNotNull { CustomizeKeys.tailOf(it).takeIf { r -> r.isNotEmpty() } }.distinct()
+        return tails.chunked(QUERY_CHUNK).any { chunk ->
+            channelDao.findByRemoteIds(playlistIds, chunk).any { ch ->
+                idByKey[CustomizeKeys.channel(ch)]?.let { gainsCatchupGuide(ch, it, retained) } == true
+            }
+        }
+    }
+
     /** Set/clear a channel's manual EPG match (null clears → auto-match), then reload the guide. */
     fun setEpgMatch(channel: ChannelEntity, epgChannelId: String?) {
         viewModelScope.launch {
             val pid = settings.activeProfileId.first()
+            val resync = epgChannelId != null && gainsCatchupGuide(channel, epgChannelId, retainedCatchupGuideIds(custom.value))
             customize.setEpgMatch(pid, MediaType.LIVE, CustomizeKeys.channel(channel), epgChannelId)
-            if (epgChannelId != null) fillMatchedInBackground(listOf(epgChannelId)) else load()
+            if (resync) scheduleGuideResync()
+            if (epgChannelId != null) fillMatchedInBackground(listOf(epgChannelId), networkFallback = !resync) else load()
         }
     }
 
     /** Fill in matched channels' programmes from the cached XMLTV (no network) and refresh the guide — in the
      *  BACKGROUND so the match action/spinner returns instantly and doesn't wait on a full cache re-parse. */
-    private fun fillMatchedInBackground(epgIds: Collection<String>) {
+    private fun fillMatchedInBackground(epgIds: Collection<String>, networkFallback: Boolean = true) {
         viewModelScope.launch {
             val ids = epgIds.map { it.trim().lowercase() }.filterTo(HashSet()) { it.isNotBlank() }
             if (ids.isEmpty()) return@launch
             // One cache pass for the whole set; only re-sync over the network if the cache is gone/stale
             // (returns false when it held none of the matched channels' programmes).
             val handled = runCatching { epgRepository.storeProgrammesForIdsFromCache(ids) }.getOrDefault(false)
-            if (!handled) runCatching { refreshAllEpgFromNetwork() }
+            if (!handled && networkFallback) runCatching { refreshAllEpgFromNetwork() }
             load()
             // Single-channel match (manual pick / review Accept / single auto-match): if the feed has no
             // current-or-upcoming programmes for it, its guide row will be empty even though the match
@@ -779,9 +862,14 @@ class EpgViewModel(
     }
 
 
-    private suspend fun refreshAllEpgFromNetwork() {
+    /** Re-download the active profile's playlist guides (those with a guide URL; others return at once). */
+    private suspend fun refreshPlaylistGuides() {
         val pid = settings.activeProfileId.first()
         if (pid >= 0) sourceRepository.observeSources(pid).first().forEach { runCatching { epgRepository.refresh(it) } }
+    }
+
+    private suspend fun refreshAllEpgFromNetwork() {
+        refreshPlaylistGuides()
         epgSourceStore.getAll().forEach { runCatching { epgRepository.refreshUrl(it.id, it.url, it.userAgent) } }
     }
 
@@ -864,7 +952,9 @@ class EpgViewModel(
                 if (!outcome.hadCandidates) { finishRun(EpgMatchSummary.NoData); return@launch }
 
                 // Persist the confident hits — in one write, see [saveEpgMatches].
+                val resync = outcome.applied.isNotEmpty() && appliedGainCatchupGuide(outcome.applied, playlistIds, retainedCatchupGuideIds(cust))
                 saveEpgMatches(pid, outcome.applied)
+                if (resync) scheduleGuideResync()
 
                 runApplied = outcome.applied.map { it.second }
                 openReview(outcome.review.map {
@@ -879,7 +969,7 @@ class EpgViewModel(
                         EpgMatchSummary.MatchedNoProgrammes
                     else -> EpgMatchSummary.AutoMatched(applied, outcome.review.size)
                 })
-                if (applied > 0) fillMatchedInBackground(outcome.applied.map { it.second }) // off the spinner
+                if (applied > 0) fillMatchedInBackground(outcome.applied.map { it.second }, networkFallback = !resync) // off the spinner
             } finally {
                 _matching.value = false
             }
@@ -918,10 +1008,12 @@ class EpgViewModel(
     fun acceptSuggestion(s: EpgMatchSuggestion) {
         viewModelScope.launch {
             val pid = settings.activeProfileId.first()
+            val resync = gainsCatchupGuide(s.channel, s.epgChannelId, retainedCatchupGuideIds(custom.value))
             customize.setEpgMatch(pid, MediaType.LIVE, CustomizeKeys.channel(s.channel), s.epgChannelId)
+            if (resync) scheduleGuideResync()
             _review.value = _review.value.filterNot { it.channel.id == s.channel.id }
             includeLogosIfTicked(listOf(s.epgChannelId))
-            fillMatchedInBackground(listOf(s.epgChannelId))
+            fillMatchedInBackground(listOf(s.epgChannelId), networkFallback = !resync)
         }
     }
 
@@ -936,10 +1028,13 @@ class EpgViewModel(
         if (all.isEmpty()) return
         viewModelScope.launch {
             val pid = settings.activeProfileId.first()
+            val retained = retainedCatchupGuideIds(custom.value)
+            val resync = all.any { gainsCatchupGuide(it.channel, it.epgChannelId, retained) }
             saveEpgMatches(pid, all.map { CustomizeKeys.channel(it.channel) to it.epgChannelId })
+            if (resync) scheduleGuideResync()
             _review.value = emptyList()
             includeLogosIfTicked(all.map { it.epgChannelId })
-            fillMatchedInBackground(all.map { it.epgChannelId })
+            fillMatchedInBackground(all.map { it.epgChannelId }, networkFallback = !resync)
         }
     }
 
@@ -1231,6 +1326,9 @@ class EpgViewModel(
         // measure before making it two screens; do not raise it on a hunch.
         private const val PREFETCH_AHEAD = 10
         private const val DAY_MS = 24L * 60 * 60 * 1000
+
+        /** Matches made this close together share one guide re-sync. */
+        private const val RESYNC_SETTLE_MS = 4_000L
         // How far back the Guide may extend for catch-up (must stay within EpgRepository's retention).
         private const val CATCHUP_LOOKBACK_CAP_MS = 7L * 24 * 60 * 60 * 1000
         // Generous safety bound only (rows load lazily, so this is about the channel list itself).
