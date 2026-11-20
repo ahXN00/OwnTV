@@ -1,5 +1,6 @@
 package tv.own.owntv.features.live
 
+import tv.own.owntv.features.epg.shouldFocusMiniPlayerOnOk
 import tv.own.owntv.ui.components.onDpadLeft
 import tv.own.owntv.core.epg.displayLogoUrl
 import androidx.activity.compose.BackHandler
@@ -97,6 +98,7 @@ fun LiveScreen(
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
     previewEnabled: Boolean = true,
+    isMiniPlayer: Boolean = false,
     restoreFocus: Boolean = false,
     onRestored: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -107,6 +109,7 @@ fun LiveScreen(
     lockedKey: LiveKey? = null,
     /** Guide view (Live TV tool row): opens the TV Guide until an in-place guide exists. */
     onOpenGuide: () -> Unit = {},
+    onFocusMiniPlayer: (() -> Unit)? = null,
 ) {
     val vm: LiveViewModel = koinViewModel()
     val lockVm: tv.own.owntv.features.categorylock.CategoryLockViewModel = koinViewModel()
@@ -848,11 +851,15 @@ fun LiveScreen(
                                         if (rememberLive) perCategoryChannelIds[selectedKey] = channel.id
                                     },
                                     onClick = {
-                                        when (okAction(previewOnOk, effectivePreview && previewShown, paneChannel?.id, channel.id)) {
-                                            OkAction.PREVIEW -> vm.playPreview(channel)
-                                            OkAction.WATCH -> {
-                                                vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
-                                                if (!externalPlayerOn) onFullscreen()
+                                        if (shouldFocusMiniPlayerOnOk(isMiniPlayer, onFocusMiniPlayer, channel.id, vm.playingChannel?.id)) {
+                                            onFocusMiniPlayer?.invoke()
+                                        } else {
+                                            when (okAction(previewOnOk, effectivePreview && previewShown, paneChannel?.id, channel.id)) {
+                                                OkAction.PREVIEW -> vm.playPreview(channel)
+                                                OkAction.WATCH -> {
+                                                    vm.watchFullscreen(channel, channels.itemSnapshotList.items.filterNotNull())
+                                                    if (!externalPlayerOn) onFullscreen()
+                                                }
                                             }
                                         }
                                     },

@@ -1366,11 +1366,13 @@ fun OwnTVShell(
                             onPlayCatchup = guidePlayCatchup,
                             onAddEpg = { openEpgAdd = true; onSelectSection(MainSection.SETTINGS) },
                             previewEnabled = playerMode == PlayerMode.NONE,
+                            isMiniPlayer = playerMode == PlayerMode.MINI,
                             liveMode = true,
                             onEntryHook = { guideEntry = it },
                             onListView = { liveVm.setLiveView(tv.own.owntv.core.settings.SettingsRepository.LiveView.LIST) },
                             restoreFocus = restoreFocus,
                             onRestored = { restoreFocus = false },
+                            onFocusMiniPlayer = { if (playerMode == PlayerMode.MINI) runCatching { miniEntryFocus.requestFocus() } },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }
@@ -1382,8 +1384,10 @@ fun OwnTVShell(
                             onOpenGuide = { liveVm.setLiveView(tv.own.owntv.core.settings.SettingsRepository.LiveView.GUIDE) },
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
                             previewEnabled = playerMode == PlayerMode.NONE,
+                            isMiniPlayer = playerMode == PlayerMode.MINI,
                             restoreFocus = restoreFocus,
                             onRestored = { restoreFocus = false },
+                            onFocusMiniPlayer = { if (playerMode == PlayerMode.MINI) runCatching { miniEntryFocus.requestFocus() } },
                             modifier = Modifier.fillMaxSize(),
                         )
 
@@ -1431,10 +1435,12 @@ fun OwnTVShell(
                             onPlayChannel = guidePlayChannel,
                             onPlayCatchup = guidePlayCatchup,
                             previewEnabled = playerMode == PlayerMode.NONE,
+                            isMiniPlayer = playerMode == PlayerMode.MINI,
                             onEntryHook = { guideEntry = it },
                             onAddEpg = { openEpgAdd = true; onSelectSection(MainSection.SETTINGS) },
                             restoreFocus = restoreFocus,
                             onRestored = { restoreFocus = false },
+                            onFocusMiniPlayer = { if (playerMode == PlayerMode.MINI) runCatching { miniEntryFocus.requestFocus() } },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .onFocusChanged { if (it.hasFocus) focusedLayer = ShellLayer.CONTENT }
@@ -2007,7 +2013,12 @@ fun OwnTVShell(
                     onCyclePosition = { scope.launch { settingsRepo.setMiniPlayerPosition(miniPos.next().name) } },
                     onAudioMode = toAudioMode,
                     entryFocusRequester = miniEntryFocus,
-                    onBack = { runCatching { shellContentFocus.requestFocus() } },
+                    onBack = {
+                        val restored = guideEntry?.invoke() == true
+                        if (!restored) {
+                            runCatching { contentAreaFocus.requestFocus() }
+                        }
+                    },
                     modifier = Modifier.fillMaxSize().onFocusChanged { miniHasFocus = it.hasFocus },
                 )
             }

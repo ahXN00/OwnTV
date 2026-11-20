@@ -170,6 +170,21 @@ private fun cursorStep(progs: List<EpgProgrammeEntity>, cursor: Long, dir: Int, 
 }
 
 /**
+ * Decides whether an OK press on a channel in the Guide / Live list should send D-pad focus to the
+ * mini-player instead of re-tuning the channel.
+ *
+ * When the mini-player is active and playing [channelId], a second OK press on that same channel
+ * (or pressing OK while focused on the channel currently playing in the mini-player) transfers
+ * D-pad focus to the mini-player controls so the user can easily expand or close it.
+ */
+internal fun shouldFocusMiniPlayerOnOk(
+    isMiniPlayer: Boolean,
+    onFocusMiniPlayer: (() -> Unit)?,
+    channelId: Long,
+    playingChannelId: Long?,
+): Boolean = isMiniPlayer && onFocusMiniPlayer != null && playingChannelId != null && channelId == playingChannelId
+
+/**
  * The TV Guide in the Stage design: the focused channel's preview and the focused programme
  * with its actions on top; one control line (Today · Now · Category · Order · Search · Auto-match EPG);
  * the ruler with the now-line; 8 slim rows of channel labels and programme cells.
@@ -198,10 +213,12 @@ fun EpgScreen(
     onPlayCatchup: (channel: ChannelEntity, programme: EpgProgrammeEntity) -> Unit,
     /** False while the full-screen or mini player owns the video surface. */
     previewEnabled: Boolean = true,
+    isMiniPlayer: Boolean = false,
     liveMode: Boolean = false,
     onListView: () -> Unit = {},
     /** How ▶ from the rail enters the guide: at the grid row focus was on (the rail's entry hook, as Home's). */
     onEntryHook: (((() -> Boolean)?) -> Unit)? = null,
+    onFocusMiniPlayer: (() -> Unit)? = null,
 ) {
     val vm: EpgViewModel = koinViewModel()
     // Live TV's view model: its preview player (no second decoder), its category list and playlist marks.
@@ -422,9 +439,14 @@ fun EpgScreen(
         }
     }
     // OK on a programme: watch — the archive for one that has been on and can be replayed, else the channel.
+    // If the mini-player is active and playing this channel, a second OK transfers focus to the mini-player.
     val onOk: (ChannelEntity, EpgProgrammeEntity?) -> Unit = { ch, p ->
-        val now = System.currentTimeMillis()
-        if (p != null && p.stopMs <= now && vm.canCatchup(ch, p, now)) playFromStart(ch, p) else watch(ch)
+        if (shouldFocusMiniPlayerOnOk(isMiniPlayer, onFocusMiniPlayer, ch.id, liveVm.playingChannel?.id)) {
+            onFocusMiniPlayer?.invoke()
+        } else {
+            val now = System.currentTimeMillis()
+            if (p != null && p.stopMs <= now && vm.canCatchup(ch, p, now)) playFromStart(ch, p) else watch(ch)
+        }
     }
 
     /** What [p] on [ch] can do right now — the programme menu, Record ▾ and the buttons on top share it. */
