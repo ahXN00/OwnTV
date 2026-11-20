@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -31,6 +32,7 @@ import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import org.koin.androidx.compose.koinViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import tv.own.owntv.core.database.DatabaseUpgrade
 import tv.own.owntv.core.util.Perf
 import tv.own.owntv.core.launcher.LauncherDeepLink
 import tv.own.owntv.features.profiles.ProfileGate
@@ -210,6 +212,8 @@ open class MainActivity : ComponentActivity() {
         var readyAt = 0L
         splash.setKeepOnScreenCondition {
             val now = SystemClock.uptimeMillis()
+            // A database migration can run for a minute or more; its own screen explains the wait.
+            if (DatabaseUpgrade.running.value) return@setKeepOnScreenCondition false
             if (!contentReady) return@setKeepOnScreenCondition now < splashDeadline
             if (readyAt == 0L) readyAt = now
             // Then until the shell is on the start-up screen, so Home does not flash first.
@@ -244,6 +248,14 @@ open class MainActivity : ComponentActivity() {
             // something else.
             @Suppress("RememberReturnType")
             remember { Perf.stamp("first-composition"); Unit }
+
+            // Only a migration still running after a second gets the screen, so a quick one does not flash it.
+            val migrating by DatabaseUpgrade.running.collectAsState()
+            val showMigration by produceState(false, migrating) { value = false; if (migrating) { kotlinx.coroutines.delay(1_000); value = true } }
+            if (migrating && showMigration) {
+                tv.own.owntv.features.recovery.DatabaseMigrationScreen()
+                return@setContent
+            }
 
             // Hold the screen on while video is actually playing, so the TV screensaver doesn't
             // start mid-channel/episode; released when paused/stopped (then the screensaver is fine).

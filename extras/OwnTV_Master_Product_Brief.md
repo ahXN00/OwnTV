@@ -123,6 +123,7 @@ Each engine is chosen automatically by content type, with fallback between them.
 | Text (SRT/ASS) | Drawn by the app on the direct render path |
 | Image (PGS/VOBSUB/DVB) | Handed to a second ExoPlayer layer, keeping video on the zero-copy/HDR path |
 | Closed captions (CEA-608/708) | Decoded from the video stream into a selectable track |
+| Local files | One file picked by hand, or **Find in folder**: a folder chosen once, best match first, optional automatic loading of the one exact match |
 
 Independent **font, scale, colour, position and background** across mpv, ExoPlayer and the app-drawn
 overlay; *Default* preserves authored styling. **Preferred audio/subtitle language** (per profile, 50

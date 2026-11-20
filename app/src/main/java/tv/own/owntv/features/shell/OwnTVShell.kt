@@ -231,9 +231,14 @@ fun OwnTVShell(
     var miniHasFocus by remember { mutableStateOf(false) }
     val subtitleController = koinInject<tv.own.owntv.core.subtitles.SubtitleController>()
     val subtitleContext by subtitleController.current.collectAsStateWithLifecycle()
+    val subtitleFolder by settingsRepo.subtitleFolder.collectAsStateWithLifecycle(null)
     var showSubtitleSearch by remember { mutableStateOf(false) }
     // Local subtitle-file picker — the same TV-safe in-app browser local M3U import uses.
     var showLocalSubPicker by remember { mutableStateOf(false) }
+    // "Find in folder": the folder's subtitle list, and the folder browser that chooses it (first use, or
+    // "Change folder"). Two separate windows — a popup opened inside another loses the popup theme.
+    var showFolderSubs by remember { mutableStateOf(false) }
+    var showSubFolderPicker by remember { mutableStateOf(false) }
     val localSubToast = tv.own.owntv.ui.components.rememberInAppToast()
     // Metadata allowance: tell the user ONCE per app start that their daily share of the shared
     // metadata service is gone, rather than letting posters and plots quietly stop appearing. Lives in
@@ -1714,7 +1719,7 @@ fun OwnTVShell(
                     onAudioMode = toAudioMode,
                     // The channel-list overlay draws ABOVE the HUD; while it's open the HUD goes inert so
                     // its hide/error focus grabs can't yank D-pad focus off the overlay.
-                    inert = showChannelList || showHistoryList || showCategoryBrowser || showSubtitleSearch || showLocalSubPicker || showOtherChannels,
+                    inert = showChannelList || showHistoryList || showCategoryBrowser || showSubtitleSearch || showLocalSubPicker || showFolderSubs || showSubFolderPicker || showOtherChannels,
                     onChannelUp = zap?.let { z -> { z(-1) } },
                     onChannelDown = zap?.let { z -> { z(1) } },
                     onOpenChannelList = if (isTunedLive && liveCanZap) { { showChannelList = true } } else null,
@@ -1781,6 +1786,10 @@ fun OwnTVShell(
                     // Local subtitle file: same movie/episode gating, no account needed.
                     onSelectLocalSubtitle = if (!isLiveStream && !isLiveChannel && subtitleContext != null) {
                         { showLocalSubPicker = true }
+                    } else null,
+                    // Subtitles from the chosen folder: the folder browser first while none is chosen.
+                    onFindSubtitleInFolder = if (!isLiveStream && !isLiveChannel && subtitleContext != null) {
+                        { if (subtitleFolder == null) showSubFolderPicker = true else showFolderSubs = true }
                     } else null,
                     // In-stream favorite toggle for the current channel/movie/series.
                     favorite = favActive,
@@ -1874,6 +1883,27 @@ fun OwnTVShell(
                             }
                         },
                         onDismiss = { showLocalSubPicker = false },
+                    )
+                }
+                if (showFolderSubs) {
+                    tv.own.owntv.features.subtitles.FolderSubtitleScreen(
+                        onChangeFolder = { showFolderSubs = false; showSubFolderPicker = true },
+                        onFailed = { localSubToast.show(subtitleLoadFailed) },
+                        onDismiss = { showFolderSubs = false },
+                    )
+                }
+                if (showSubFolderPicker) {
+                    tv.own.owntv.ui.components.StorageBrowser(
+                        title = stringResource(R.string.player_subtitle_folder_choose),
+                        mode = tv.own.owntv.ui.components.BrowseMode.FOLDER,
+                        onPick = { dir ->
+                            showSubFolderPicker = false
+                            scope.launch {
+                                settingsRepo.setSubtitleFolder(dir.absolutePath)
+                                showFolderSubs = true
+                            }
+                        },
+                        onDismiss = { showSubFolderPicker = false },
                     )
                 }
                 tv.own.owntv.ui.components.InAppToast(localSubToast)

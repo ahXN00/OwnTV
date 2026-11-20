@@ -190,6 +190,8 @@ fun PlayerHud(
     onSearchSubtitles: (() -> Unit)? = null,
     // Movie/episode only: pick a local subtitle file — no account needed, same gating.
     onSelectLocalSubtitle: (() -> Unit)? = null,
+    // Movie/episode only: the subtitle files in the chosen folder, same gating.
+    onFindSubtitleInFolder: (() -> Unit)? = null,
     // Favorite toggle for the CURRENT item (live channel / movie / series). Null hides the button
     // (no item context). [favorite] = current state — fills the star teal when true.
     favorite: Boolean = false,
@@ -936,6 +938,7 @@ fun PlayerHud(
                 onDismiss = { dialog = HudDialog.NONE },
                 onSearchSubtitles = onSearchSubtitles?.let { open -> { dialog = HudDialog.NONE; open() } },
                 onSelectLocalSubtitle = onSelectLocalSubtitle?.let { open -> { dialog = HudDialog.NONE; open() } },
+                onFindSubtitleInFolder = onFindSubtitleInFolder?.let { open -> { dialog = HudDialog.NONE; open() } },
                 // Subtitle timing: only when adjustment applies to the ACTIVE subtitle on the
                 // current engine (any mpv text sub; external side-loads on ExoPlayer).
                 subDelayMs = subDelay,

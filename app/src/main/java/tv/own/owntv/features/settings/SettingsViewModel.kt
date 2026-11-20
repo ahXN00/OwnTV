@@ -43,6 +43,7 @@ import tv.own.owntv.core.util.classifySyncFailure
 import tv.own.owntv.core.sync.work.CatalogSyncState
 import tv.own.owntv.core.sync.work.CatalogSyncScheduler
 import tv.own.owntv.core.database.dao.resolveExistingProfileId
+import tv.own.owntv.core.database.entity.nameKeyOf
 import tv.own.owntv.core.launcher.LauncherIntegrationRepository
 import tv.own.owntv.core.settings.ChNavLimits
 import tv.own.owntv.core.settings.EpgRefresh
@@ -672,7 +673,7 @@ class SettingsViewModel(
             customizations.hiddenCategories,
             isKids,
         )
-        return channelDao.searchList(query.trim(), sourceIds, 500)
+        return channelDao.searchList(nameKeyOf(query.trim()), sourceIds, 500)
             .asSequence()
             .filter { tv.own.owntv.core.customize.CustomizeKeys.channel(it) !in customizations.hiddenItems }
             .filter { it.categoryId == null || it.categoryId !in hiddenCategoryIds }

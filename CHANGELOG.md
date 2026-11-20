@@ -16,6 +16,10 @@
 - **🎓 Sports: college teams and games (#377)**
 - **📊 Sports: standings columns per sport, "Standings" and "Games" tabs outside football**
 - **🌍 Ukrainian and Central Kurdish**
+- **🔤 Search and A–Z ignore letter case in every alphabet (#375)**
+- **👤 Zoom, text size and recent searches per profile (#368)**
+- **📂 Subtitles: "Find in folder", with automatic loading of the matching file (#355)**
+- **⏳ "Performing database migration" screen on the first start after an update**
 
 ### 🐛 Fixes
 - **📼 Catch-up: no more stutter after a programme that failed to open (#357)**
@@ -27,6 +31,7 @@
 - **🗂️ Favorites and History show their sort as "Newest first", greyed out** (rebuilt from community PR #369 by @Quad-Plex)
 - **🏠 Live TV: Home or the screensaver while a channel opens no longer plays it behind the home screen; it comes back on return**
 - **🧭 Home: the channel or film you just watched is shown first in Keep watching, not hidden off-screen**
+- **🔤 Local subtitles: UTF-8 files no longer show Chinese characters**
 
 ## v5.2.2 — 2026-11-09
 

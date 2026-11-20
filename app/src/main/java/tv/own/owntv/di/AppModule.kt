@@ -42,6 +42,7 @@ import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.features.setup.DisplaySizeViewModel
 import tv.own.owntv.features.setup.SetupViewModel
 import tv.own.owntv.features.shell.ShellViewModel
+import tv.own.owntv.features.subtitles.FolderSubtitleViewModel
 import tv.own.owntv.features.subtitles.SubtitleSearchViewModel
 
 /**
@@ -168,6 +169,7 @@ val appModule = module {
     viewModelOf(::OpenSubtitlesViewModel)
     viewModelOf(::DeleteSubtitlesViewModel)
     viewModelOf(::SubtitleSearchViewModel)
+    viewModelOf(::FolderSubtitleViewModel)
     viewModelOf(::DownloadsViewModel)
     viewModelOf(::RecordingsViewModel)
     // 23 constructor parameters — past the highest arity viewModelOf generates (see LiveViewModel).

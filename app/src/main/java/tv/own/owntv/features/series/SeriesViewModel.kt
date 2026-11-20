@@ -79,6 +79,7 @@ import tv.own.owntv.features.customize.MoveTarget
 import tv.own.owntv.core.customize.CategoryRestorePlan
 import tv.own.owntv.core.customize.planCategoryRestore
 import tv.own.owntv.core.customize.restoreCategoryToDefault
+import tv.own.owntv.core.database.entity.nameKeyOf
 import tv.own.owntv.features.live.LiveRailItem
 import tv.own.owntv.core.repository.activeProfileSources
 import tv.own.owntv.core.settings.SettingsRepository
@@ -1384,14 +1385,14 @@ class SeriesViewModel(
             }
         } else when (key) {
             LiveKey.All, LiveKey.Catchup ->
-                if (dateAdded) seriesDao.searchAllDateAdded(query, ids)
-                else seriesDao.searchAll(query, ids)
-            LiveKey.Favorites -> seriesDao.searchFavorites(query, c.profileId, ids)
-            LiveKey.History -> seriesDao.searchHistory(query, c.profileId, ids)
-            is LiveKey.Custom -> customCategoryDao.searchSeries(query, c.profileId, key.id, ids)
+                if (dateAdded) seriesDao.searchAllDateAdded(nameKeyOf(query), ids)
+                else seriesDao.searchAll(nameKeyOf(query), ids)
+            LiveKey.Favorites -> seriesDao.searchFavorites(nameKeyOf(query), c.profileId, ids)
+            LiveKey.History -> seriesDao.searchHistory(nameKeyOf(query), c.profileId, ids)
+            is LiveKey.Custom -> customCategoryDao.searchSeries(nameKeyOf(query), c.profileId, key.id, ids)
             is LiveKey.Folder ->
-                if (dateAdded) seriesDao.searchInCategoryDateAdded(query, key.id)
-                else seriesDao.searchInCategory(query, key.id)
+                if (dateAdded) seriesDao.searchInCategoryDateAdded(nameKeyOf(query), key.id)
+                else seriesDao.searchInCategory(nameKeyOf(query), key.id)
         }
     }
 

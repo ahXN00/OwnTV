@@ -28,7 +28,7 @@ for that step shown in the corner.
 
 1. **Welcome** — the language picker is on this screen: one of 28, or keep **System default**.
    Press **Get started**.
-2. **Display** — step UI Zoom and Font size while a sample row resizes, so you judge it from your
+2. **Display** — step UI Zoom and Font size (each profile can change its own later) while a sample row resizes, so you judge it from your
    sofa, and pick the **App icon**. Changeable later in Settings → Appearance and Settings → App.
 3. **Disclaimer** — OwnTV is a player; you bring the sources.
 4. **Set up OwnTV** — three ways to begin: **New profile**, **Restore a backup**, or
@@ -699,7 +699,8 @@ results; a film or show shows its poster panel.
 — where play, download and every option live; **Back** returns to Search with your query kept.
 **TV Shows** lists programmes from the stored guide whose title matches, on now or within the next 12
 hours, with the channel and time; **OK** goes to that channel. With
-the box empty: **Jump to**, your recent searches, and Continue watching.
+the box empty: **Jump to**, your recent searches (each profile has its own), and Continue watching.
+Search and A–Z ignore letter case in every alphabet: "один" finds "Один".
 **Voice search:** the 🎤 button right of the box listens through your TV's speech recogniser and
 searches what you say. It only appears where the device has one (most Google TV and Android TV
 devices do; many Fire TV and generic boxes don't).
@@ -842,6 +843,13 @@ Needs a free [opensubtitles.com](https://www.opensubtitles.com) account. Sign in
 ### 📁 Use a file you already have
 **Where:** player → Subtitles → **Select local subtitle file**
 No account, no internet. Browses USB and internal storage.
+
+### 📂 Find in folder
+**Where:** player → Subtitles → **Find in folder**
+Choose a folder once (USB or internal storage); after that it lists the subtitle files there, best
+match for the film or episode first, with a search box. **Load matching subtitle automatically**
+loads the one file whose name matches a film or episode that has no subtitle yet — when two match
+(an English and a German one), it loads neither. **Change folder** picks another.
 
 ### ⏱️ Fix subtitle timing
 **Where:** player → Subtitles → the **Subtitle timing** row
