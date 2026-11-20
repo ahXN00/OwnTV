@@ -41,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -448,7 +449,7 @@ fun HomeScreen(
                                     headerGap = if (posterItem != null) 16.mpx else 0.dp,
                                     // Compose's one-line poster title is 10 px shorter than Chrome's (measured).
                                     bottomGap = if (posterItem != null) 10.mpx else 0.dp,
-                                    onItemFocused = { posterIndex = it },
+                                    onItemFocused = { index -> posterIndex = index; vm.navigateTrending(index) },
                                     title = row.displayTitle(),
                                     items = state.trendingItems,
                                     start = contentStart,
@@ -459,7 +460,6 @@ fun HomeScreen(
                                         }
                                     },
                                     onLongClick = { item -> contextTrendingItem = item },
-                                    onMenuKey = { item -> contextTrendingItem = item },
                                     onFocus = onNonHeroFocused,
                                     firstItemFocusRequester = firstItemFocusRequester ?: trendingPrimaryFocus,
                                     track = track,
@@ -715,6 +715,59 @@ fun HomeScreen(
                 runCatching { trendingDetailsFocus.requestFocus() }
             }
         })
+    }
+    contextTrendingItem?.let { ci ->
+        val isMovie = ci is TrendingHomeItem.Movie
+        val title = ci.snapshot.localizedTitle
+        val posterUrl = when (ci) {
+            is TrendingHomeItem.Movie -> ci.movie.posterUrl
+            is TrendingHomeItem.Series -> ci.series.posterUrl
+        }
+        val isFavorite = when (ci) {
+            is TrendingHomeItem.Movie -> ci.movie.id in favoriteMovies
+            is TrendingHomeItem.Series -> ci.series.id in favoriteSeries
+        }
+        val actions = buildList {
+            if (!ci.snapshot.trailerKey.isNullOrBlank()) {
+                add(MenuAction("play_trailer", stringResource(R.string.content_play_trailer), OwnTVIcon.PLAY_CIRCLE, group = VodGroupWatch) {
+                    trailerTitle = title
+                    trailerVideoKey = ci.snapshot.trailerKey
+                    contextTrendingItem = null
+                })
+            }
+            add(MenuAction("favourite", stringResource(if (isFavorite) R.string.content_remove_favourite else R.string.content_add_favourite), OwnTVIcon.FAVORITE, group = VodGroupLibrary) {
+                vm.toggleTrendingFavorite(ci)
+                contextTrendingItem = null
+            })
+            add(MenuAction("download", stringResource(R.string.content_download), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
+                when (ci) {
+                    is TrendingHomeItem.Movie -> movieVm.download(ci.movie)
+                    is TrendingHomeItem.Series -> seriesVm.askBulkDownload(ci.series, null)
+                }
+                contextTrendingItem = null
+            })
+            add(MenuAction("tmdb_details", stringResource(if (isMovie) R.string.content_movie_details else R.string.content_series_details), OwnTVIcon.INFO, group = VodGroupDetails) {
+                homeScope.launch {
+                    val current = vm.revalidateTrendingItem(ci)
+                    val resolved = current?.let { vm.resolveTrendingDetails(it) }
+                    if (resolved != null) detailsItem = current
+                }
+                contextTrendingItem = null
+            })
+        }
+        VodOptionsMenu(
+            title = title,
+            subtitle = null,
+            posterUrl = posterUrl,
+            x = 1300f,
+            menu = if (isMovie) ContentMenu.MOVIE else ContentMenu.SERIES,
+            actions = actions,
+            disabled = setOfNotNull(
+                "play_trailer".takeIf { ci.snapshot.trailerKey.isNullOrBlank() },
+            ),
+            onDismiss = { contextTrendingItem = null },
+            firstFocusKey = if (!ci.snapshot.trailerKey.isNullOrBlank()) "play_trailer" else "favourite",
+        )
     }
     InAppToast(trendingToast)
 }
@@ -1321,7 +1374,6 @@ private fun TrendingPosterRow(
     start: Dp,
     onItemClick: (TrendingHomeItem) -> Unit,
     onLongClick: (TrendingHomeItem) -> Unit,
-    onMenuKey: (TrendingHomeItem) -> Unit,
     onFocus: () -> Unit,
     firstItemFocusRequester: FocusRequester?,
     track: (FocusRequester) -> Unit,
@@ -1338,6 +1390,8 @@ private fun TrendingPosterRow(
             modifier = Modifier.focusRestorer().focusGroup(),
         ) {
             itemsIndexed(items, key = { _, item -> item.stableKey }) { index, item ->
+                var downAt by remember { mutableLongStateOf(0L) }
+                var handled by remember { mutableStateOf(false) }
                 StagePoster(
                     title = when (item) {
                         is TrendingHomeItem.Movie -> item.movie.name
@@ -1352,9 +1406,31 @@ private fun TrendingPosterRow(
                         .then(if (index == 0 && firstItemFocusRequester != null) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
                         .tracked(track = track)
                         .onPreviewKeyEvent { e ->
-                            if (e.type == KeyEventType.KeyDown && e.key == Key.Menu) {
-                                onMenuKey(item)
+                            val isOk = e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter
+                            if (e.key == Key.Menu && e.type == KeyEventType.KeyDown) {
+                                onLongClick(item)
                                 true
+                            } else if (isOk) {
+                                when (e.type) {
+                                    KeyEventType.KeyDown -> {
+                                        val now = System.currentTimeMillis()
+                                        if (downAt == 0L) {
+                                            downAt = now
+                                            handled = false
+                                        } else if (!handled && now - downAt >= 350L) {
+                                            handled = true
+                                            onLongClick(item)
+                                        }
+                                        handled
+                                    }
+                                    KeyEventType.KeyUp -> {
+                                        downAt = 0L
+                                        val wasHandled = handled
+                                        handled = false
+                                        wasHandled
+                                    }
+                                    else -> false
+                                }
                             } else false
                         }
                         .onFocusChanged {
