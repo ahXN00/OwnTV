@@ -91,6 +91,14 @@ import tv.own.owntv.core.model.HomeTrendingStyle
 import tv.own.owntv.core.trending.ProviderVariantParser
 import tv.own.owntv.features.shell.components.MediaDetailsScreen
 import tv.own.owntv.features.shell.components.MediaDetailsUi
+import tv.own.owntv.features.shell.components.VodOptionsMenu
+import tv.own.owntv.features.shell.components.VodGroupWatch
+import tv.own.owntv.features.shell.components.VodGroupLibrary
+import tv.own.owntv.features.shell.components.VodGroupDetails
+import tv.own.owntv.core.model.ContentMenu
+import tv.own.owntv.ui.components.MenuAction
+import tv.own.owntv.features.movies.MovieViewModel
+import tv.own.owntv.features.series.SeriesViewModel
 import tv.own.owntv.player.HeroPreviewEngine
 import tv.own.owntv.ui.components.BrandLockup
 import tv.own.owntv.ui.components.InAppToast
@@ -138,6 +146,9 @@ private val NoHeroTop = 110.mpx
 @Composable
 fun HomeScreen(
     vm: HomeViewModel,
+    /** The shell's own Movies and Series view models: the trending menu downloads through them. */
+    movieVm: MovieViewModel,
+    seriesVm: SeriesViewModel,
     onPlayMovie: (movieId: Long, positionMs: Long) -> Unit,
     onPlayEpisode: (seriesId: Long, episodeId: Long, positionMs: Long) -> Unit,
     onPlayChannel: (channelId: Long, zapChannels: List<ChannelEntity>) -> Unit,
@@ -188,6 +199,10 @@ fun HomeScreen(
     var trailerVideoKey by remember { mutableStateOf<String?>(null) }
     var trailerTitle by remember { mutableStateOf<String?>(null) }
     var detailsItem by remember { mutableStateOf<TrendingHomeItem?>(null) }
+    // A trending poster's long-press menu (OK held, or the Menu key).
+    var contextTrendingItem by remember { mutableStateOf<TrendingHomeItem?>(null) }
+    val movieDownloads by movieVm.downloadStates.collectAsStateWithLifecycle()
+    val alreadyDownloadedMessage = stringResource(R.string.content_already_downloaded)
     var detailsMetadata by remember { mutableStateOf<MetadataCacheEntity?>(null) }
     var detailsTmdbWins by remember { mutableStateOf(false) }
     // Focus is on the hero (its buttons or pager): the list must not scroll, and the hero stays unfolded.
@@ -447,6 +462,7 @@ fun HomeScreen(
                                             vm.refresh()
                                         }
                                     },
+                                    onLongClick = { item -> contextTrendingItem = item },
                                     onFocus = onNonHeroFocused,
                                     firstItemFocusRequester = firstItemFocusRequester ?: trendingPrimaryFocus,
                                     track = track,
@@ -702,6 +718,74 @@ fun HomeScreen(
                 runCatching { trendingDetailsFocus.requestFocus() }
             }
         })
+    }
+    contextTrendingItem?.let { ci ->
+        val isMovie = ci is TrendingHomeItem.Movie
+        val title = ci.snapshot.localizedTitle
+        val posterUrl = when (ci) {
+            is TrendingHomeItem.Movie -> ci.movie.posterUrl
+            is TrendingHomeItem.Series -> ci.series.posterUrl
+        }
+        val isFavorite = when (ci) {
+            is TrendingHomeItem.Movie -> ci.movie.id in favoriteMovies
+            is TrendingHomeItem.Series -> ci.series.id in favoriteSeries
+        }
+        val trailerKey = ci.snapshot.trailerKey?.takeIf { it.isNotBlank() }
+        // The same steps as the hero's own buttons, and the same Download as the Movies and Series menus.
+        val actions = buildList {
+            if (trailerKey != null) {
+                add(MenuAction("play_trailer", stringResource(R.string.content_play_trailer), OwnTVIcon.PLAY_CIRCLE, group = VodGroupWatch) {
+                    contextTrendingItem = null
+                    vm.stopPreview()
+                    trailerTitle = title
+                    trailerVideoKey = trailerKey
+                })
+            }
+            add(MenuAction("favourite", stringResource(if (isFavorite) R.string.content_remove_favourite else R.string.content_add_favourite), OwnTVIcon.FAVORITE, group = VodGroupLibrary) {
+                vm.toggleTrendingFavorite(ci)
+                contextTrendingItem = null
+            })
+            add(MenuAction("download", stringResource(if (isMovie) R.string.content_download else R.string.content_download_all_episodes), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
+                contextTrendingItem = null
+                when (ci) {
+                    is TrendingHomeItem.Movie ->
+                        if (movieDownloads[ci.movie.id] != null) trendingToast.show(alreadyDownloadedMessage) else movieVm.download(ci.movie)
+                    is TrendingHomeItem.Series -> seriesVm.askBulkDownload(ci.series, null)
+                }
+            })
+            add(MenuAction("tmdb_details", stringResource(if (isMovie) R.string.content_movie_details else R.string.content_series_details), OwnTVIcon.INFO, group = VodGroupDetails) {
+                contextTrendingItem = null
+                vm.stopPreview()
+                homeScope.launch {
+                    val current = vm.revalidateTrendingItem(ci) ?: return@launch trendingToast.show(trendingUnavailableMessage)
+                    val resolved = vm.resolveTrendingDetails(current)
+                    detailsMetadata = resolved.cache
+                    detailsTmdbWins = resolved.tmdbWins
+                    detailsItem = current
+                }
+            })
+        }
+        VodOptionsMenu(
+            title = title,
+            subtitle = null,
+            posterUrl = posterUrl,
+            x = 1300f,
+            menu = if (isMovie) ContentMenu.MOVIE else ContentMenu.SERIES,
+            actions = actions,
+            disabled = emptySet(),
+            onDismiss = { contextTrendingItem = null },
+            firstFocusKey = if (trailerKey != null) "play_trailer" else "favourite",
+        )
+    }
+    // "Download all episodes" from the trending menu asks first, as it does on the Series page.
+    seriesVm.bulkDownloadAsk.collectAsStateWithLifecycle().value?.let { ask ->
+        tv.own.owntv.features.settings.ConfirmDialog(
+            title = pluralStringResource(R.plurals.content_download_episodes_confirm, ask.episodes, ask.episodes),
+            message = stringResource(R.string.content_download_episodes_confirm_message),
+            onConfirm = { seriesVm.answerBulkDownload(true) },
+            onDismiss = { seriesVm.answerBulkDownload(false) },
+            confirmLabel = R.string.content_download,
+        )
     }
     InAppToast(trendingToast)
 }
@@ -1314,6 +1398,7 @@ private fun TrendingPosterRow(
     items: List<TrendingHomeItem>,
     start: Dp,
     onItemClick: (TrendingHomeItem) -> Unit,
+    onLongClick: (TrendingHomeItem) -> Unit,
     onFocus: () -> Unit,
     firstItemFocusRequester: FocusRequester?,
     track: (FocusRequester) -> Unit,
@@ -1336,12 +1421,17 @@ private fun TrendingPosterRow(
                         is TrendingHomeItem.Series -> item.series.name
                     },
                     onClick = { onItemClick(item) },
+                    onLongClick = { onLongClick(item) },
                     width = 196.mpx,
                     height = 294.mpx,
                     rating = item.snapshot.rating?.let(::ratingText),
                     modifier = Modifier
                         .then(if (index == 0 && firstItemFocusRequester != null) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
                         .tracked(track = track)
+                        // Held OK is StagePoster's own long click; the Menu key opens the same menu.
+                        .onPreviewKeyEvent { e ->
+                            (e.key == Key.Menu && e.type == KeyEventType.KeyDown).also { if (it) onLongClick(item) }
+                        }
                         .onFocusChanged {
                             if (it.hasFocus) {
                                 onItemFocused(index)
