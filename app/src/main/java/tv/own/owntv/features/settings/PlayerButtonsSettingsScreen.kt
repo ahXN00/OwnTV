@@ -60,7 +60,7 @@ private fun dpadUpDownLabel(action: PlayerDpadUpDownAction): String = stringReso
 
 /**
  * The PLAYER BUTTONS part of Settings › Remote shortcuts: what OK does while the player's controls
- * are hidden, which way the channel keys zap, and whether number keys tune. Every default is the
+ * are hidden, which way the channel keys zap, whether number keys tune, and what D-pad Up/Down do. Every default is the
  * player's behaviour from before these options existed.
  */
 @Composable

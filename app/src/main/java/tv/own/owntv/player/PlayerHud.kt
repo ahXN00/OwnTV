@@ -52,6 +52,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.R
 import tv.own.owntv.core.i18n.HorizontalDirection
 import tv.own.owntv.core.i18n.horizontalDirection
+import tv.own.owntv.core.settings.PlayerDpadUpDownAction
 import tv.own.owntv.core.settings.PlayerRemoteOptions
 import tv.own.owntv.core.settings.RemoteShortcutAction
 import tv.own.owntv.core.settings.RemoteShortcutPress
@@ -588,24 +589,19 @@ fun PlayerHud(
                 // intended: CH-/Down from the first channel lands on the last, and vice versa.
                 canZap && e.key == Key.MediaNext -> { zap(1); true }
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
+                //
+                // Player buttons can give D-pad Up/Down another job instead: Down shows the controls and
+                // Up opens the recently watched channels (the controls when there is no such list), or
+                // nothing at all. The CH keys above zap whatever the choice.
                 !controlsVisible && isLive && (e.key == Key.DirectionUp || e.key == Key.DirectionDown) -> {
+                    val up = e.key == Key.DirectionUp
                     when (remoteOptions.dpadUpDown) {
-                        tv.own.owntv.core.settings.PlayerDpadUpDownAction.ZAP -> {
-                            if (canZap) {
-                                zap(zapDirection(up = e.key == Key.DirectionUp, remoteOptions))
-                                true
-                            } else false
+                        PlayerDpadUpDownAction.ZAP -> { if (canZap) zap(zapDirection(up, remoteOptions)); canZap }
+                        PlayerDpadUpDownAction.CONTROLS_AND_HISTORY -> {
+                            if (up && onOpenHistoryList != null) onOpenHistoryList() else controlsVisible = true
+                            true
                         }
-                        tv.own.owntv.core.settings.PlayerDpadUpDownAction.CONTROLS_AND_HISTORY -> {
-                            if (e.key == Key.DirectionDown) {
-                                controlsVisible = true
-                                true
-                            } else {
-                                onOpenHistoryList?.invoke() ?: run { controlsVisible = true }
-                                true
-                            }
-                        }
-                        tv.own.owntv.core.settings.PlayerDpadUpDownAction.DISABLED -> true
+                        PlayerDpadUpDownAction.DISABLED -> true
                     }
                 }
                 // Left/Right with the controls hidden: reveal them on the timeline and take the first
