@@ -28,6 +28,7 @@
 - **📅 Guide: a channel matched by hand gets its programmes and past days even when the downloaded guide is old** (reported in PR #380 by @Sekator778)
 - **📼 Catch-up: a channel's past days fill in from the provider's archive when the downloaded guide stopped early**
 - **📼 Catch-up: a programme ExoPlayer could not start no longer puts later catch-up on mpv into software decoding**
+- **📼 Catch-up: switching a programme from mpv to ExoPlayer starts it at once, in hardware, instead of after 12 seconds in software**
 - **📅 Match EPG: ▶ jumps from the guide list straight to Clear match and Close**
 - **🎙️ Voice search no longer asks which app every time (#358)**
 - **🏒 Sports: "Starting soon" shows today's games after midnight**
