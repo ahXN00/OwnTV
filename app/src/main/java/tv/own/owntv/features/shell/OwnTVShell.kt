@@ -1254,6 +1254,8 @@ fun OwnTVShell(
 
                         selectedSection == MainSection.HOME -> HomeScreen(
                             vm = homeVm,
+                            movieVm = movieVm,
+                            seriesVm = seriesVm,
                             // Skip the fullscreen player when the global external-player toggle is on
                             // (mounting it spins up mpv even though playback went to the external app).
                             onPlayMovie = { id, pos -> scope.launch { if (movieVm.playByIdAsync(id, pos) && !movieVm.externalPlayerOn.value) openFullscreen(MainSection.MOVIES) } },

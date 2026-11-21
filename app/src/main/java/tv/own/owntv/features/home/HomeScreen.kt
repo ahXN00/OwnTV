@@ -41,7 +41,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -147,6 +146,9 @@ private val NoHeroTop = 110.mpx
 @Composable
 fun HomeScreen(
     vm: HomeViewModel,
+    /** The shell's own Movies and Series view models: the trending menu downloads through them. */
+    movieVm: MovieViewModel,
+    seriesVm: SeriesViewModel,
     onPlayMovie: (movieId: Long, positionMs: Long) -> Unit,
     onPlayEpisode: (seriesId: Long, episodeId: Long, positionMs: Long) -> Unit,
     onPlayChannel: (channelId: Long, zapChannels: List<ChannelEntity>) -> Unit,
@@ -197,9 +199,10 @@ fun HomeScreen(
     var trailerVideoKey by remember { mutableStateOf<String?>(null) }
     var trailerTitle by remember { mutableStateOf<String?>(null) }
     var detailsItem by remember { mutableStateOf<TrendingHomeItem?>(null) }
+    // A trending poster's long-press menu (OK held, or the Menu key).
     var contextTrendingItem by remember { mutableStateOf<TrendingHomeItem?>(null) }
-    val movieVm = org.koin.androidx.compose.koinViewModel<MovieViewModel>()
-    val seriesVm = org.koin.androidx.compose.koinViewModel<SeriesViewModel>()
+    val movieDownloads by movieVm.downloadStates.collectAsStateWithLifecycle()
+    val alreadyDownloadedMessage = stringResource(R.string.content_already_downloaded)
     var detailsMetadata by remember { mutableStateOf<MetadataCacheEntity?>(null) }
     var detailsTmdbWins by remember { mutableStateOf(false) }
     // Focus is on the hero (its buttons or pager): the list must not scroll, and the hero stays unfolded.
@@ -449,7 +452,7 @@ fun HomeScreen(
                                     headerGap = if (posterItem != null) 16.mpx else 0.dp,
                                     // Compose's one-line poster title is 10 px shorter than Chrome's (measured).
                                     bottomGap = if (posterItem != null) 10.mpx else 0.dp,
-                                    onItemFocused = { index -> posterIndex = index; vm.navigateTrending(index) },
+                                    onItemFocused = { posterIndex = it },
                                     title = row.displayTitle(),
                                     items = state.trendingItems,
                                     start = contentStart,
@@ -727,32 +730,39 @@ fun HomeScreen(
             is TrendingHomeItem.Movie -> ci.movie.id in favoriteMovies
             is TrendingHomeItem.Series -> ci.series.id in favoriteSeries
         }
+        val trailerKey = ci.snapshot.trailerKey?.takeIf { it.isNotBlank() }
+        // The same steps as the hero's own buttons, and the same Download as the Movies and Series menus.
         val actions = buildList {
-            if (!ci.snapshot.trailerKey.isNullOrBlank()) {
+            if (trailerKey != null) {
                 add(MenuAction("play_trailer", stringResource(R.string.content_play_trailer), OwnTVIcon.PLAY_CIRCLE, group = VodGroupWatch) {
-                    trailerTitle = title
-                    trailerVideoKey = ci.snapshot.trailerKey
                     contextTrendingItem = null
+                    vm.stopPreview()
+                    trailerTitle = title
+                    trailerVideoKey = trailerKey
                 })
             }
             add(MenuAction("favourite", stringResource(if (isFavorite) R.string.content_remove_favourite else R.string.content_add_favourite), OwnTVIcon.FAVORITE, group = VodGroupLibrary) {
                 vm.toggleTrendingFavorite(ci)
                 contextTrendingItem = null
             })
-            add(MenuAction("download", stringResource(R.string.content_download), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
+            add(MenuAction("download", stringResource(if (isMovie) R.string.content_download else R.string.content_download_all_episodes), OwnTVIcon.DOWNLOADS, group = VodGroupLibrary) {
+                contextTrendingItem = null
                 when (ci) {
-                    is TrendingHomeItem.Movie -> movieVm.download(ci.movie)
+                    is TrendingHomeItem.Movie ->
+                        if (movieDownloads[ci.movie.id] != null) trendingToast.show(alreadyDownloadedMessage) else movieVm.download(ci.movie)
                     is TrendingHomeItem.Series -> seriesVm.askBulkDownload(ci.series, null)
                 }
-                contextTrendingItem = null
             })
             add(MenuAction("tmdb_details", stringResource(if (isMovie) R.string.content_movie_details else R.string.content_series_details), OwnTVIcon.INFO, group = VodGroupDetails) {
-                homeScope.launch {
-                    val current = vm.revalidateTrendingItem(ci)
-                    val resolved = current?.let { vm.resolveTrendingDetails(it) }
-                    if (resolved != null) detailsItem = current
-                }
                 contextTrendingItem = null
+                vm.stopPreview()
+                homeScope.launch {
+                    val current = vm.revalidateTrendingItem(ci) ?: return@launch trendingToast.show(trendingUnavailableMessage)
+                    val resolved = vm.resolveTrendingDetails(current)
+                    detailsMetadata = resolved.cache
+                    detailsTmdbWins = resolved.tmdbWins
+                    detailsItem = current
+                }
             })
         }
         VodOptionsMenu(
@@ -762,11 +772,19 @@ fun HomeScreen(
             x = 1300f,
             menu = if (isMovie) ContentMenu.MOVIE else ContentMenu.SERIES,
             actions = actions,
-            disabled = setOfNotNull(
-                "play_trailer".takeIf { ci.snapshot.trailerKey.isNullOrBlank() },
-            ),
+            disabled = emptySet(),
             onDismiss = { contextTrendingItem = null },
-            firstFocusKey = if (!ci.snapshot.trailerKey.isNullOrBlank()) "play_trailer" else "favourite",
+            firstFocusKey = if (trailerKey != null) "play_trailer" else "favourite",
+        )
+    }
+    // "Download all episodes" from the trending menu asks first, as it does on the Series page.
+    seriesVm.bulkDownloadAsk.collectAsStateWithLifecycle().value?.let { ask ->
+        tv.own.owntv.features.settings.ConfirmDialog(
+            title = pluralStringResource(R.plurals.content_download_episodes_confirm, ask.episodes, ask.episodes),
+            message = stringResource(R.string.content_download_episodes_confirm_message),
+            onConfirm = { seriesVm.answerBulkDownload(true) },
+            onDismiss = { seriesVm.answerBulkDownload(false) },
+            confirmLabel = R.string.content_download,
         )
     }
     InAppToast(trendingToast)
@@ -1161,9 +1179,16 @@ private fun KeepWatchingRow(
 ) {
     val w = if (big) 384 else 336
     val h = if (big) 216 else 189
+    // A keyed row keeps its scroll on the first card it showed. When what was just watched moves to the
+    // front, that left the new first card off-screen to the left and focus on the second: the channel the
+    // user came back from looked gone from the row. A new first card brings the row back to its start.
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val firstKey = items.firstOrNull()?.heroKey()
+    LaunchedEffect(firstKey) { if (listState.firstVisibleItemIndex != 0) listState.scrollToItem(0) }
     Column(modifier) {
         HomeRowHeader(title, small = if (big) null else items.size.toString(), start = start, big = big)
         LazyRow(
+            state = listState,
             horizontalArrangement = Arrangement.spacedBy((if (big) 24 else 20).mpx),
             contentPadding = PaddingValues(start = start, end = 64.mpx),
             modifier = Modifier.focusRestorer().focusGroup(),
@@ -1390,8 +1415,6 @@ private fun TrendingPosterRow(
             modifier = Modifier.focusRestorer().focusGroup(),
         ) {
             itemsIndexed(items, key = { _, item -> item.stableKey }) { index, item ->
-                var downAt by remember { mutableLongStateOf(0L) }
-                var handled by remember { mutableStateOf(false) }
                 StagePoster(
                     title = when (item) {
                         is TrendingHomeItem.Movie -> item.movie.name
@@ -1405,33 +1428,9 @@ private fun TrendingPosterRow(
                     modifier = Modifier
                         .then(if (index == 0 && firstItemFocusRequester != null) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
                         .tracked(track = track)
+                        // Held OK is StagePoster's own long click; the Menu key opens the same menu.
                         .onPreviewKeyEvent { e ->
-                            val isOk = e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter
-                            if (e.key == Key.Menu && e.type == KeyEventType.KeyDown) {
-                                onLongClick(item)
-                                true
-                            } else if (isOk) {
-                                when (e.type) {
-                                    KeyEventType.KeyDown -> {
-                                        val now = System.currentTimeMillis()
-                                        if (downAt == 0L) {
-                                            downAt = now
-                                            handled = false
-                                        } else if (!handled && now - downAt >= 350L) {
-                                            handled = true
-                                            onLongClick(item)
-                                        }
-                                        handled
-                                    }
-                                    KeyEventType.KeyUp -> {
-                                        downAt = 0L
-                                        val wasHandled = handled
-                                        handled = false
-                                        wasHandled
-                                    }
-                                    else -> false
-                                }
-                            } else false
+                            (e.key == Key.Menu && e.type == KeyEventType.KeyDown).also { if (it) onLongClick(item) }
                         }
                         .onFocusChanged {
                             if (it.hasFocus) {
