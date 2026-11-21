@@ -52,6 +52,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.R
 import tv.own.owntv.core.i18n.HorizontalDirection
 import tv.own.owntv.core.i18n.horizontalDirection
+import tv.own.owntv.core.settings.PlayerDpadUpDownAction
 import tv.own.owntv.core.settings.PlayerRemoteOptions
 import tv.own.owntv.core.settings.RemoteShortcutAction
 import tv.own.owntv.core.settings.RemoteShortcutPress
@@ -588,8 +589,21 @@ fun PlayerHud(
                 // intended: CH-/Down from the first channel lands on the last, and vice versa.
                 canZap && e.key == Key.MediaNext -> { zap(1); true }
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(zapDirection(up = true, remoteOptions)); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(zapDirection(up = false, remoteOptions)); true }
+                //
+                // Player buttons can give D-pad Up/Down another job instead: Down shows the controls and
+                // Up opens the recently watched channels (the controls when there is no such list), or
+                // nothing at all. The CH keys above zap whatever the choice.
+                !controlsVisible && isLive && (e.key == Key.DirectionUp || e.key == Key.DirectionDown) -> {
+                    val up = e.key == Key.DirectionUp
+                    when (remoteOptions.dpadUpDown) {
+                        PlayerDpadUpDownAction.ZAP -> { if (canZap) zap(zapDirection(up, remoteOptions)); canZap }
+                        PlayerDpadUpDownAction.CONTROLS_AND_HISTORY -> {
+                            if (up && onOpenHistoryList != null) onOpenHistoryList() else controlsVisible = true
+                            true
+                        }
+                        PlayerDpadUpDownAction.DISABLED -> true
+                    }
+                }
                 // Left/Right with the controls hidden: reveal them on the timeline and take the first
                 // step, so the jump is seen and holding the key goes on scrubbing the bar itself. Physical
                 // keys, like the bars: left is back in time in every locale. A film always does this; a

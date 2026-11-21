@@ -15,17 +15,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
+import tv.own.owntv.core.settings.PlayerDpadUpDownAction
 import tv.own.owntv.core.settings.PlayerHoldOkAction
 import tv.own.owntv.core.settings.PlayerShortOkAction
 import tv.own.owntv.ui.components.OwnTVIcon
 import tv.own.owntv.ui.components.restoreAfterDialogClose
 
-private enum class PlayerButtonsDialog { NONE, HOLD_OK, SHORT_OK }
+private enum class PlayerButtonsDialog { NONE, HOLD_OK, SHORT_OK, DPAD_UP_DOWN }
 
 /** This group's rows as Settings search finds them, by their own titles. `SettingsSearchRowsTest` holds it to the rows below. */
 internal val PLAYER_BUTTONS_SEARCH_ROWS: List<Int> = listOf(
     R.string.settings_player_hold_ok, R.string.settings_player_short_ok,
     R.string.settings_player_swap_channel_keys, R.string.settings_player_number_keys_tune,
+    R.string.settings_player_dpad_up_down,
 )
 
 @Composable
@@ -47,9 +49,18 @@ private fun shortOkLabel(action: PlayerShortOkAction): String = stringResource(
     },
 )
 
+@Composable
+private fun dpadUpDownLabel(action: PlayerDpadUpDownAction): String = stringResource(
+    when (action) {
+        PlayerDpadUpDownAction.ZAP -> R.string.settings_player_dpad_zap
+        PlayerDpadUpDownAction.CONTROLS_AND_HISTORY -> R.string.settings_player_dpad_controls_history
+        PlayerDpadUpDownAction.DISABLED -> R.string.common_off
+    },
+)
+
 /**
  * The PLAYER BUTTONS part of Settings › Remote shortcuts: what OK does while the player's controls
- * are hidden, which way the channel keys zap, and whether number keys tune. Every default is the
+ * are hidden, which way the channel keys zap, whether number keys tune, and what D-pad Up/Down do. Every default is the
  * player's behaviour from before these options existed.
  */
 @Composable
@@ -57,6 +68,7 @@ internal fun PlayerButtonsSettingsRows(scrollState: ScrollState, vm: PlayerButto
     val options by vm.options.collectAsStateWithLifecycle()
     val holdFocus = remember { FocusRequester() }
     val shortFocus = remember { FocusRequester() }
+    val dpadFocus = remember { FocusRequester() }
     var dialog by remember { mutableStateOf(PlayerButtonsDialog.NONE) }
     var dialogReturn by remember { mutableStateOf<FocusRequester?>(null) }
 
@@ -70,7 +82,7 @@ internal fun PlayerButtonsSettingsRows(scrollState: ScrollState, vm: PlayerButto
         dialogReturn = null
     }
 
-    StageSettingsHeading(stringResource(R.string.settings_player_buttons), 4)
+    StageSettingsHeading(stringResource(R.string.settings_player_buttons), 5)
     KeyedSettingRow(
         icon = OwnTVIcon.CH_NAV,
         title = stringResource(R.string.settings_player_hold_ok),
@@ -105,6 +117,15 @@ internal fun PlayerButtonsSettingsRows(scrollState: ScrollState, vm: PlayerButto
         helpKey = "pb_number_keys",
         onClick = { vm.setNumberKeysTune(!options.numberKeysTune) },
     )
+    KeyedSettingRow(
+        icon = OwnTVIcon.CH_NAV,
+        title = stringResource(R.string.settings_player_dpad_up_down),
+        desc = stringResource(R.string.settings_player_dpad_up_down_description),
+        value = SettingValue.Choice(dpadUpDownLabel(options.dpadUpDown)),
+        helpKey = "pb_dpad_up_down",
+        onClick = { dialogReturn = dpadFocus; dialog = PlayerButtonsDialog.DPAD_UP_DOWN },
+        modifier = Modifier.focusRequester(dpadFocus),
+    )
 
     val close = { dialog = PlayerButtonsDialog.NONE }
     when (dialog) {
@@ -120,6 +141,13 @@ internal fun PlayerButtonsSettingsRows(scrollState: ScrollState, vm: PlayerButto
             options = PlayerShortOkAction.entries.map { it.name to shortOkLabel(it) },
             selected = options.shortOk.name,
             onSelect = { vm.setShortOk(PlayerShortOkAction.fromName(it)); close() },
+            onDismiss = close,
+        )
+        PlayerButtonsDialog.DPAD_UP_DOWN -> PickerDialog(
+            title = stringResource(R.string.settings_player_dpad_up_down),
+            options = PlayerDpadUpDownAction.entries.map { it.name to dpadUpDownLabel(it) },
+            selected = options.dpadUpDown.name,
+            onSelect = { vm.setDpadUpDown(PlayerDpadUpDownAction.fromName(it)); close() },
             onDismiss = close,
         )
         PlayerButtonsDialog.NONE -> Unit

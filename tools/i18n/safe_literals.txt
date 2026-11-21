@@ -429,6 +429,7 @@
 1	locale	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesAccountScreen.kt	zh-tw
 2	log	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesViewModel.kt	OpenSubtitles
 1	log	app/src/main/java/tv/own/owntv/features/settings/OpenSubtitlesViewModel.kt	user-info refresh failed: ${it.message}
+1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_dpad_up_down
 1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_hold_ok
 1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_number_keys
 1	technical	app/src/main/java/tv/own/owntv/features/settings/PlayerButtonsSettingsScreen.kt	pb_short_ok
@@ -455,6 +456,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	live_layout
 2	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	live_opens_in
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	navigation
+1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_dpad_up_down
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_hold_ok
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_number_keys
 1	technical	app/src/main/java/tv/own/owntv/features/settings/SettingsHelpTable.kt	pb_short_ok
