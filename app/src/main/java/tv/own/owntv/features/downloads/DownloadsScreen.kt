@@ -99,13 +99,13 @@ import kotlin.math.ceil
 
 /** Movies and Series hold downloads; Recordings is live TV saved by the recorder — a file of the user's all the same. */
 private enum class DownloadsTab(val labelRes: Int) {
+    RECORDINGS(R.string.recording_title),
     MOVIES(R.string.common_nav_movies),
     SERIES(R.string.common_nav_series),
-    RECORDINGS(R.string.recording_title),
 }
 
 /**
- * Downloads: title + storage crumb, the Movies · Series · Recordings tabs and the
+ * Downloads: title + storage crumb, the Recordings · Movies · Series tabs and the
  * Download folder tool, the list grouped DOWNLOADING / ON THIS TV, and the Recordings card on the right.
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -138,7 +138,7 @@ fun DownloadsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var tab by rememberSaveable { mutableStateOf(DownloadsTab.MOVIES) }
+    var tab by rememberSaveable { mutableStateOf(DownloadsTab.RECORDINGS) }
     // Which tab holds which kind is core's rule: an episode download is EPISODE, which files under Series.
     val movies = remember(downloads) { downloads.filter { MediaFolders.folderFor(it.mediaType) == MediaFolders.MOVIES } }
     val series = remember(downloads) { downloads.filter { MediaFolders.folderFor(it.mediaType) == MediaFolders.SERIES } }
@@ -279,7 +279,7 @@ fun DownloadsScreen(
             horizontalArrangement = Arrangement.spacedBy(22.mpx),
             verticalAlignment = Alignment.Bottom,
         ) {
-            listOf(DownloadsTab.MOVIES to movies.size, DownloadsTab.SERIES to series.size, DownloadsTab.RECORDINGS to recorded).forEach { (t, n) ->
+            listOf(DownloadsTab.RECORDINGS to recorded, DownloadsTab.MOVIES to movies.size, DownloadsTab.SERIES to series.size).forEach { (t, n) ->
                 StageTab(
                     label = stringResource(t.labelRes), count = n.toString(), selected = t == tab,
                     onClick = { tab = t; scope.launch { runCatching { listState.scrollToItem(0) } } },
