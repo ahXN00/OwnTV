@@ -112,13 +112,15 @@
 1	technical	app/src/main/java/tv/own/owntv/features/epg/GuideStage.kt	…
 1	technical	app/src/main/java/tv/own/owntv/features/epg/GuideStage.kt	→
 1	empty	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	\0
+1	log	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	Day read failed channelId=${channel.id}
+1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	EEEd
+1	log	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	ProgrammeDayPage
 1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	h$i
 1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	p${it.index}-${list[it.index].startMs}
 2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	·
-1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▲ ▼
-1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▶
-1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▼
-2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	◀ ▶
+2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▲ ▼
+2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▶
+1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	◀ ▶
 1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	✓
 1	technical	app/src/main/java/tv/own/owntv/features/home/HomeScreen.kt	%.1f
 1	technical	app/src/main/java/tv/own/owntv/features/home/HomeScreen.kt	,

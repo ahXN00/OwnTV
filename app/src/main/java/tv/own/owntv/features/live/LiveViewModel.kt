@@ -1956,6 +1956,20 @@ class LiveViewModel(
      *  whenever the picture is not a fixed catch-up programme. */
     private var playingCatchupProgramme: tv.own.owntv.core.database.entity.EpgProgrammeEntity? = null
 
+    /**
+     * Whether the guide holds any programme for [ch], through a manual match or its own guide id.
+     * One aggregate over that id's rows in the indexed table, so it is cheap enough to ask when a
+     * button is pressed. A channel with none keeps the "Go back to…" offsets, which need no guide.
+     */
+    suspend fun hasGuideData(ch: ChannelEntity): Boolean {
+        val key = (custom.value.epgMatchResolver.epgIdFor(ch) ?: ch.epgChannelId)
+            ?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
+        return runCatching { epgDao.coverageDays(key) != null }.getOrDefault(false)
+    }
+
+    /** Start of the archive programme on screen, so the Archive page can open on it; null while live. */
+    fun currentCatchupProgrammeStartMs(): Long? = if (_catchupActive.value) playingCatchupProgramme?.startMs else null
+
     /** Replay a past programme from the channel's archive (seekable, like the Guide's "Watch from start"). */
     fun playCatchupProgramme(ch: ChannelEntity, programme: tv.own.owntv.core.database.entity.EpgProgrammeEntity) {
         // The controller's one tune job: a live tune still resolving is cancelled rather than starting

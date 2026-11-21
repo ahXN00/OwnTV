@@ -356,6 +356,8 @@ internal fun BottomBar(
     player: PlaybackEngine, isLive: Boolean, position: () -> Long, duration: Long,
     volume: Int, audioCount: Int, subCount: Int, zoomMode: ZoomMode, speedLabel: String,
     onScrubLive: ((Int) -> Unit)?, timeshiftOffset: () -> Int?, onGoToLive: (() -> Unit)?, onOpenJumpBack: (() -> Unit)?,
+    // The catch-up button opens the channel's archive page rather than the "Go back to…" list, and says so.
+    jumpBackIsArchive: Boolean = false,
     liveProgrammes: List<LiveProgramme> = emptyList(),
     liveGaps: () -> List<LongRange> = { emptyList() },
     compatMode: Boolean?, onToggleCompatMode: (() -> Unit)?,
@@ -450,7 +452,7 @@ internal fun BottomBar(
                         // transport button beside it, and a plain clock would not say which of the
                         // two time controls this is.
                         PlayerControl.CATCH_UP -> if (onOpenJumpBack != null) {
-                            CtrlButton(OwnTVIcon.CATCHUP, label = stringResource(R.string.player_tool_catchup)) { onOpenJumpBack() }
+                            CtrlButton(OwnTVIcon.CATCHUP, label = stringResource(if (jumpBackIsArchive) R.string.content_channel_archive else R.string.player_tool_catchup)) { onOpenJumpBack() }
                         }
                         // Back to the channel watched before; present only once there is one.
                         PlayerControl.PREVIOUS_CHANNEL -> if (onPreviousChannel != null) {
