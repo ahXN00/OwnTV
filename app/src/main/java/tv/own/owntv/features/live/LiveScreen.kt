@@ -1438,6 +1438,9 @@ internal fun EpgMatchDialog(
     // One-shot, so later search-driven reloads don't steal focus from the field while typing.
     val firstItemFocus = remember { FocusRequester() }
     val searchFocus = remember { FocusRequester() }
+    // The buttons sit below a list of up to a few hundred guide channels, so ▶ on any row jumps to them:
+    // walking the whole list down was the only other way to reach Clear match.
+    val buttonsFocus = remember { FocusRequester() }
     var didInitialFocus by remember { mutableStateOf(false) }
     LaunchedEffect(results) {
         if (didInitialFocus || results == null) return@LaunchedEffect
@@ -1476,7 +1479,16 @@ internal fun EpgMatchDialog(
                         style = tv.own.owntv.ui.theme.stageText(18, 500), color = tv.own.owntv.ui.theme.StageColors.Muted,
                         modifier = Modifier.padding(horizontal = 14.mpx, vertical = 12.mpx),
                     )
-                    else -> LazyColumn(Modifier.fillMaxWidth().height(400.mpx)) {
+                    else -> LazyColumn(
+                        Modifier.fillMaxWidth().height(400.mpx).onPreviewKeyEvent { e ->
+                            if (e.key == Key.DirectionRight) {
+                                if (e.type == KeyEventType.KeyDown) runCatching { buttonsFocus.requestFocus() }
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    ) {
                         items(list, key = { it.epgChannelId }) { epg ->
                             tv.own.owntv.ui.stage.StageMenuItem(
                                 text = epg.displayName ?: epg.epgChannelId,
@@ -1492,8 +1504,13 @@ internal fun EpgMatchDialog(
                     Modifier.fillMaxWidth().padding(top = 14.mpx),
                     horizontalArrangement = Arrangement.spacedBy(12.mpx, Alignment.End),
                 ) {
-                    if (currentMatch != null) tv.own.owntv.ui.stage.StageButton(stringResource(R.string.content_clear_match), onClick = onClear, height = 56.mpx, textSize = 19)
-                    tv.own.owntv.ui.stage.StageButton(stringResource(R.string.content_close), onClick = onDismiss, height = 56.mpx, textSize = 19, tinted = true)
+                    if (currentMatch != null) {
+                        tv.own.owntv.ui.stage.StageButton(stringResource(R.string.content_clear_match), onClick = onClear, height = 56.mpx, textSize = 19, modifier = Modifier.focusRequester(buttonsFocus))
+                    }
+                    tv.own.owntv.ui.stage.StageButton(
+                        stringResource(R.string.content_close), onClick = onDismiss, height = 56.mpx, textSize = 19, tinted = true,
+                        modifier = if (currentMatch == null) Modifier.focusRequester(buttonsFocus) else Modifier,
+                    )
                 }
             }
         }

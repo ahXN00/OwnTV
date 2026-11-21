@@ -121,6 +121,12 @@ internal fun oldestDay(channel: ChannelEntity): Int {
 /** Local midnight of the day [offset] days from [today]; the noon step keeps a 23 or 25 hour day from slipping a date. */
 private fun dayStartAt(today: Long, offset: Int): Long = localMidnight(today + offset * DAY_MS + DAY_MS / 2)
 
+/** The time the page's days cover for [channel]: from the start of its oldest day to the end of tomorrow. */
+internal fun archivePageSpan(channel: ChannelEntity, nowMs: Long): LongRange {
+    val today = localMidnight(nowMs)
+    return dayStartAt(today, oldestDay(channel)) until dayStartAt(today, NEWEST_DAY + 1)
+}
+
 /** One line of the page's list: a group heading or a programme. */
 private sealed interface PageLine {
     data class Heading(val text: String) : PageLine

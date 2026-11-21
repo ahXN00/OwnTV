@@ -1957,14 +1957,16 @@ class LiveViewModel(
     private var playingCatchupProgramme: tv.own.owntv.core.database.entity.EpgProgrammeEntity? = null
 
     /**
-     * Whether the guide holds any programme for [ch], through a manual match or its own guide id.
-     * One aggregate over that id's rows in the indexed table, so it is cheap enough to ask when a
-     * button is pressed. A channel with none keeps the "Go back to…" offsets, which need no guide.
+     * Whether the guide holds any programme for [ch], through a manual match or its own guide id, in
+     * the days its Archive page shows. Rows only outside them — a feed that stopped weeks ago, or one
+     * that lists only days ahead — would open a page of empty days. One indexed lookup, cheap enough to
+     * ask when a button is pressed. A channel with none keeps the "Go back to…" offsets, which need no guide.
      */
     suspend fun hasGuideData(ch: ChannelEntity): Boolean {
         val key = (custom.value.epgMatchResolver.epgIdFor(ch) ?: ch.epgChannelId)
             ?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
-        return runCatching { epgDao.coverageDays(key) != null }.getOrDefault(false)
+        val span = tv.own.owntv.features.epg.archivePageSpan(ch, System.currentTimeMillis())
+        return runCatching { epgDao.hasProgrammesBetween(key, span.first, span.last) }.getOrDefault(false)
     }
 
     /** Start of the archive programme on screen, so the Archive page can open on it; null while live. */
