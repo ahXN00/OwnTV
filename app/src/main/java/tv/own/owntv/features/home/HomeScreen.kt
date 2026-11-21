@@ -1182,16 +1182,22 @@ private fun KeepWatchingRow(
     // A keyed row keeps its scroll on the first card it showed. When what was just watched moves to the
     // front, that left the new first card off-screen to the left and focus on the second: the channel the
     // user came back from looked gone from the row. A new first card brings the row back to its start.
+    // Focus goes with it: coming back from the player, Home focuses the first card before the row has
+    // reordered, so focus stayed on that card wherever the reorder moved it, not on what was just watched.
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val firstKey = items.firstOrNull()?.heroKey()
-    LaunchedEffect(firstKey) { if (listState.firstVisibleItemIndex != 0) listState.scrollToItem(0) }
+    var rowHasFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(firstKey) {
+        if (listState.firstVisibleItemIndex != 0) listState.scrollToItem(0)
+        if (rowHasFocus) runCatching { firstFocusRequester.requestFocus() }
+    }
     Column(modifier) {
         HomeRowHeader(title, small = if (big) null else items.size.toString(), start = start, big = big)
         LazyRow(
             state = listState,
             horizontalArrangement = Arrangement.spacedBy((if (big) 24 else 20).mpx),
             contentPadding = PaddingValues(start = start, end = 64.mpx),
-            modifier = Modifier.focusRestorer().focusGroup(),
+            modifier = Modifier.onFocusChanged { rowHasFocus = it.hasFocus }.focusRestorer().focusGroup(),
         ) {
             itemsIndexed(items, key = { _, item -> item.heroKey() }) { index, item ->
                 val meta = metadata[item.heroKey()]
