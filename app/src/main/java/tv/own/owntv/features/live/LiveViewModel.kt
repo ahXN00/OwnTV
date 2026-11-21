@@ -125,7 +125,7 @@ class LiveViewModel(
     private val contentOrderDao: ContentOrderDao,
     private val customCategoryDao: CustomCategoryDao,
     private val streamUrlResolver: tv.own.owntv.core.stalker.StreamUrlResolver,
-    private val epgRepository: tv.own.owntv.core.repository.EpgRepository,
+    private val guideMatches: tv.own.owntv.core.epg.GuideMatches,
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val recordings: tv.own.owntv.core.recording.RecordingManager,
     /** Keeps the preview pane off a one-stream playlist while a download is using it. */
@@ -741,12 +741,14 @@ class LiveViewModel(
     fun setEpgMatch(channel: ChannelEntity, epgChannelId: String?) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            customize.setEpgMatch(pid, MediaType.LIVE, CustomizeKeys.channel(channel), epgChannelId)
-            // The matched id may have no stored programmes yet (bulk sync only keeps ids in use) —
-            // top it up from the cached XMLTV, then drop the channel's stale now/next and re-fetch,
-            // so the details pane reflects the new match immediately instead of after a restart.
-            val id = epgChannelId?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
-            if (id != null) runCatching { epgRepository.storeProgrammesForIdsFromCache(setOf(id)) }
+            // The matched id may have no stored programmes yet (bulk sync only keeps ids in use) — core
+            // tops it up from the cached XMLTV, or queues a guide re-sync when that cannot. Then drop the
+            // channel's stale now/next and re-fetch, so the details pane reflects the new match at once.
+            if (!epgChannelId.isNullOrBlank()) {
+                runCatching { guideMatches.match(pid, mapOf(CustomizeKeys.channel(channel) to epgChannelId)) }
+            } else {
+                customize.setEpgMatch(pid, MediaType.LIVE, CustomizeKeys.channel(channel), null)
+            }
             epgReader.invalidate(channel.id)
             epgRefresh.value++
         }
