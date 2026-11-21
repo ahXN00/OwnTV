@@ -213,11 +213,13 @@ for the playlist chosen (or all of them).
 Ask the panel for HLS instead of MPEG-TS. Try it if live channels are unstable. **Test HLS support**
 just above it checks whether your provider really serves it.
 
-### 📼 Prefer HLS for catch-up (Xtream only)
-**Where:** Add/Edit playlist, under Prefer HLS for Live TV
+### 📼 Prefer HLS for catch-up (Xtream and M3U)
+**Where:** Add/Edit playlist (Xtream: under Prefer HLS for Live TV)
 Ask for catch-up programmes as HLS instead of MPEG-TS. Off by default: many providers only serve
 catch-up as MPEG-TS. A programme that will not open as HLS is asked for as MPEG-TS by itself, and a
 long programme can take a few seconds more to start, because the provider builds its HLS list first.
+On an M3U playlist it changes only Flussonic catch-up channels: a finished programme then shows its
+full length and can be sought.
 
 ### 📡 Stalker portals
 **Where:** Add source → Stalker (MAC)

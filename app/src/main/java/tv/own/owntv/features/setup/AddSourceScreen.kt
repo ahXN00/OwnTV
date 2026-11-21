@@ -88,7 +88,7 @@ fun AddSourceScreen(
         preferHls: Boolean,
         catchupPreferHls: Boolean,
     ) -> Unit,
-    onStartM3u: (name: String, url: String, userAgent: String, referer: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean) -> Unit,
+    onStartM3u: (name: String, url: String, userAgent: String, referer: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean, catchupPreferHls: Boolean) -> Unit,
     // The last submission from the Remote companion screen, retained as a StateFlow so it survives the
     // Remote → Manual hand-off (this screen mounts after the remote browser posted). When present, the matching
     // type is selected and the fields pre-filled; the user then presses Start Import. Consumed once via
@@ -440,7 +440,7 @@ fun AddSourceScreen(
     val submit = {
         when (kind) {
             SourceKind.XTREAM -> onStartXtream(name, server, username, password, userAgent, referer, epgUrl, autoRefresh, syncLive, syncMovies, syncSeries, isDefault, preferHls, catchupPreferHls)
-            SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, referer, epgUrl, autoRefresh, isDefault)
+            SourceKind.M3U -> onStartM3u(name, m3uUrl, userAgent, referer, epgUrl, autoRefresh, isDefault, catchupPreferHls)
             SourceKind.STALKER -> onStartStalker?.invoke(
                 name, portalUrl, mac, stalkerSerialNumber, stalkerDeviceId, stalkerDeviceId2,
                 stalkerSignature, userAgent, referer, autoRefresh, isDefault, syncLive, syncMovies, syncSeries,
@@ -663,6 +663,10 @@ fun AddSourceScreen(
                 modifier = toSubmit,
                 help = help(preferTitle, preferDesc, switchKeys),
             )
+        }
+        // Xtream and M3U: on an M3U playlist it changes only Flussonic catch-up, whose finished
+        // programmes it opens as a seekable HLS playlist.
+        if (kind == SourceKind.XTREAM || kind == SourceKind.M3U) {
             val catchupTitle = stringResource(R.string.setup_prefer_hls_catchup)
             val catchupDesc = stringResource(R.string.setup_prefer_hls_catchup_description)
             StageSettingRow(
