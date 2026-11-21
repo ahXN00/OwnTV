@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -161,6 +162,13 @@ fun SearchScreen(
     vm: SearchViewModel = koinViewModel(),
     returnToHomeOnBack: Boolean = false,
     onReturnToHome: () -> Unit = {},
+    /**
+     * Take focus on opening: the field, or the row a "Go to" left from. False when picked on the rail,
+     * which keeps focus like every other section; Right then enters through [onEntryHook].
+     */
+    focusOnOpen: Boolean = true,
+    /** Hands the shell Search's way in from the rail: the field. Null on leaving. */
+    onEntryHook: (((() -> Boolean)?) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val query by vm.query.collectAsStateWithLifecycle()
@@ -231,8 +239,13 @@ fun SearchScreen(
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    DisposableEffect(onEntryHook) {
+        onEntryHook?.invoke { runCatching { fieldFocus.requestFocus() }.getOrDefault(false) }
+        onDispose { onEntryHook?.invoke(null) }
+    }
     // Back from a "Go to" lands on the row it left from; otherwise the field.
     LaunchedEffect(Unit) {
+        if (!focusOnOpen) return@LaunchedEffect
         val back = vm.lastFocusKey
         if (back != null) {
             repeat(30) {

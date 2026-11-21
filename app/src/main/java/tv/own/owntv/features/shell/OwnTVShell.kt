@@ -220,6 +220,10 @@ fun OwnTVShell(
     var guideEntry by remember { mutableStateOf<(() -> Boolean)?>(null) }
     var vodEntry by remember { mutableStateOf<(() -> Boolean)?>(null) }
     var downloadsEntry by remember { mutableStateOf<(() -> Boolean)?>(null) }
+    var searchEntry by remember { mutableStateOf<(() -> Boolean)?>(null) }
+    // Search opened from the rail leaves focus there, like every section; the remote's Search key,
+    // Home's trending search and the way back from a "Go to" go straight into it.
+    var searchTakesFocus by remember { mutableStateOf(true) }
     var moreEntry by remember { mutableStateOf<(() -> Boolean)?>(null) }
     var sportsEntry by remember { mutableStateOf<(() -> Boolean)?>(null) }
     // Home's Live sports row opens a match page through the same request the player's Match button uses.
@@ -808,12 +812,13 @@ fun OwnTVShell(
             searchVm.setQuery("")
             trendingSearchActive = false
             restoreTrendingSearchFocus = false
+            searchTakesFocus = true
         }
         onSelectSection(section)
         // A shortcut may be fired by a control inside the destination being replaced (most notably
         // Settings). Once that screen leaves composition its focused node disappears, so hand focus
-        // to the persistent sidebar after the new destination has rendered.
-        scope.launch {
+        // to the persistent sidebar after the new destination has rendered. Search takes it itself.
+        if (section != MainSection.SEARCH) scope.launch {
             withFrameNanos { }
             focusRail()
         }
@@ -932,6 +937,7 @@ fun OwnTVShell(
     // so for a series the return follows the show closing.
     fun returnToSearch() {
         searchReturn = null
+        searchTakesFocus = true
         onSelectSection(MainSection.SEARCH)
     }
     LaunchedEffect(selectedSection) {
@@ -1107,6 +1113,7 @@ fun OwnTVShell(
                   trendingSearchActive = false
                   restoreTrendingSearchFocus = false
               }
+              if (section == MainSection.SEARCH) searchTakesFocus = false
               onSelectSection(section)
           }
           // Audio Mode: the now-playing bar — in the top bar left of the weather chip, or in the Stage
@@ -1292,6 +1299,7 @@ fun OwnTVShell(
                                 searchVm.setQuery(query)
                                 trendingSearchActive = true
                                 restoreTrendingSearchFocus = false
+                                searchTakesFocus = true
                                 onSelectSection(MainSection.SEARCH)
                             },
                             onChildFocused = { focusedLayer = ShellLayer.CONTENT },
@@ -1348,6 +1356,8 @@ fun OwnTVShell(
                                 restoreFocus = false
                                 onSelectSection(MainSection.HOME)
                             },
+                            focusOnOpen = searchTakesFocus,
+                            onEntryHook = { searchEntry = it },
                             modifier = Modifier.fillMaxSize(),
                         )
 
@@ -1490,6 +1500,7 @@ fun OwnTVShell(
                     MainSection.EPG, MainSection.LIVE_TV -> guideEntry
                     MainSection.MOVIES, MainSection.SERIES -> vodEntry
                     MainSection.DOWNLOADS -> downloadsEntry
+                    MainSection.SEARCH -> searchEntry
                     MainSection.MORE -> moreEntry
                     MainSection.SPORTS -> sportsEntry
                     else -> null
