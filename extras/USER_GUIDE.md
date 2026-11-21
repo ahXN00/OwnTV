@@ -92,7 +92,8 @@ Enter the app immediately. A status pill at the bottom shows progress.
 Search, Home, Live TV, TV Guide, Movies, Series, Downloads and **⋯ More**, with the logo at the top and
 your avatar at the bottom. **Left** from anything reaches it; **Right** always goes back to exactly the
 control you left. While something plays in the mini-player or in Audio mode, a **Now playing** item
-appears under the logo.
+appears under the logo. With the mini-player open, **hold Back** from anywhere to jump into its
+controls, and hold it again to go back.
 
 **How it looks is yours to choose:** Settings → Layout → **Navigation** (see
 [Navigation](#-navigation--the-rail-your-way)).
@@ -133,6 +134,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 | **Back** | category list with a search typed | Clears the search and jumps to the search box. The search stays while you watch a channel |
 | **Left** | anywhere in a screen, nothing further left | Back to the rail |
 | **Back** | full-screen player | Leaves full screen (there is no exit button) |
+| **Hold Back** | mini-player open, anywhere | Into the mini-player's controls; hold again to go back to where you were |
 | **OK** | full-screen player | Shows / hides the controls |
 
 **Want different keys?** **Settings → Layout → Remote shortcuts** maps spare colour, number, channel
@@ -828,7 +830,9 @@ profile with a PIN asks for it again.
 - **Remote transport keys** work — play/pause, next, previous, from the remote, a headset or a voice
   assistant.
 - **A notification won't pause your film** — the sound dips and comes back.
-- **Mini-player** — subtitles show in it too. Get back to it from any screen via **Now Playing**. Browsing Live TV or the Guide behind it does not change it: expanded, the player, its guide card, Record and CH± are still about the channel playing.
+- **Mini-player** — subtitles show in it too. Get back to it from any screen via **Now Playing**, or
+  **hold Back** to move straight into its controls; hold Back again to return to where you were. Every
+  remote has Back, Fire TV's included. Browsing Live TV or the Guide behind it does not change it: expanded, the player, its guide card, Record and CH± are still about the channel playing.
 - **Picture-in-picture** — with Settings → Watching & recording → **Picture-in-picture when leaving
   the app** on (off by default), pressing **Home** while a video plays full screen or in the mini-player
   keeps it playing in a small window. Open OwnTV again for full screen; close the window to stop. Not
