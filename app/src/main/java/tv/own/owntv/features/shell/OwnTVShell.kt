@@ -1757,7 +1757,6 @@ fun OwnTVShell(
                     // bar and the buttons, and must not show a catch-up control on a channel without catch-up.
                     jumpBackOptions = if (isTunedLive && previewChannel?.catchup == true) liveVm::currentJumpOptions else null,
                     onJumpBack = if (isTunedLive && previewChannel?.catchup == true) liveVm::jumpBackTo else null,
-                    archiveSeekStepMs = if (isLiveChannel && catchupActive) ARCHIVE_SEEK_STEP_MS else null,
                     // False when the channel has no guide: the HUD then opens "Go back to…" as before.
                     onOpenArchive = if ((isTunedLive || catchupActive) && previewChannel?.catchup == true) {
                         {
@@ -2175,9 +2174,6 @@ fun OwnTVShell(
 
 /** A goal toast stays this long. */
 private const val GOAL_TOAST_MS = 8_000L
-
-/** One Left/Right press winds a programme replayed from the archive by a minute: the films there run an hour or more. */
-private const val ARCHIVE_SEEK_STEP_MS = 60_000L
 
 /** Long enough to read "Auto-matched 12 channels. 40 channels need review." from the sofa. */
 private const val EPG_MATCH_TOAST_MS = 6_000L

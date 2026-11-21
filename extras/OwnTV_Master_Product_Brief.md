@@ -356,8 +356,11 @@ again on every wake.
   screen including the player, or switches, or only notifies.
 - The grid reloads only once a guide sync finishes, instead of rebuilding every ~25 s during one.
 - **Catch-up TV** — replay programmes that already aired, up to 7 days, seekable. **Live rewind**
-  scrubs the live stream on archive-capable channels. **Go back to…** jumps straight to a time, with
-  an exact day/hour/minute picker clamped to the archive window — and works with **no guide at all**.
+  scrubs the live stream on archive-capable channels. A channel's **Archive** (channel menu, or the
+  player's catch-up button) is its Program details page with a days panel reaching as far back as the
+  archive, each past programme playable from its start. On a channel with **no guide at all** the same
+  entries open **Go back to…**, which jumps straight to a time, with an exact day/hour/minute picker
+  clamped to the archive window.
   A **Catch-up category** in Live TV lists every channel that advertises an archive.
 - **Pause and rewind live TV** (local timeshift, opt-in) — a channel without catch-up is saved on the
   device while it is watched full screen (15–60 min, always ≥ 1 GB free) and played from that copy, so it

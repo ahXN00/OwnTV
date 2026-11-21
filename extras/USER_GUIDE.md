@@ -254,8 +254,9 @@ A full page with the channel's day: every programme on one line, grouped **Earli
 Later**, the one under the cursor opened with its times, facts, categories and whole description.
 **▲▼** move through the programmes; **Right** or **OK** goes to the opened programme's buttons —
 **Watch channel**, **Watch from start**, **Record**, **Record every showing**, **Remind me**,
-**Record from catch-up**, whichever fit it — **Left/Right** between them, **OK** runs one. **Up**
-from the first programme reaches **Yesterday · Today · Tomorrow**. **Back** closes. The next and
+**Record from catch-up**, whichever fit it — **Left/Right** between them, **OK** runs one. **Left**
+reaches the days on the left — **Tomorrow**, **Today**, **Yesterday** and, on a catch-up channel, every
+older day its archive keeps; **▲▼** change the day, **Right** or **OK** go into its programmes. **Back** closes. The next and
 later lines under the preview are for reading only.
 
 ### 🗓️ List or guide
@@ -266,7 +267,7 @@ opens in** chooses which one you start in.
 ### ⭐ Favourite, rename, hide
 **Where:** long-press **OK** (or **Menu**) on a channel
 The channel menu is grouped **Watch · Channel · Guide data · Organise** and also holds **Match EPG**,
-**Catch-up**, **Record**, **Move**, **Add to Multiview**, **Remove from this category** (inside a
+**Archive** (**Catch-up** on a channel without a guide), **Record**, **Move**, **Add to Multiview**, **Remove from this category** (inside a
 custom category) and **Play in external player**.
 
 ### ↕️ Move
@@ -393,11 +394,16 @@ For a provider publishing its guide in another time zone. A re-sync never undoes
 
 ### ▶️ Replay a past programme
 **Where:** Guide → a past programme → **Watch from start**
-Or long-press a channel → **Catch-up** and pick from the list. Up to 7 days, limited by what your
-provider actually keeps.
+Up to 7 days, limited by what your provider actually keeps.
+
+### 🗄️ Archive
+**Where:** long-press a channel → **Archive**, or the catch-up button in the full-screen player
+The channel's Program details page, opened on **Yesterday** (during a replay, on the programme you are
+watching), with its days on the left as far back as the archive goes. Pick a day, then a programme →
+**Watch from start**. A channel with no guide has **Catch-up** there instead, which opens **Go back to…**.
 
 ### 🕐 Go back to a time
-**Where:** full-screen player → **Go back to…**
+**Where:** full-screen player → **Go back to…** (the catch-up button, on a channel with no guide)
 Offers times counted back from now — `21:30`, `19:00`, `Sun 20:00`. The last row opens a
 day/hour/minute picker. **This works even on channels with no guide at all.** When the guide knows what
 is on, the first row is **Start of “…”** — back to the beginning of the programme on air.

@@ -2214,9 +2214,6 @@ class LiveViewModel(
         live.stop() // both engines, every watcher and the give-up alarm, and the reconnect link
         _previewChannel.value = null
         _paneChannel.value = null
-        // An archive replay ends with the picture: left set, the next film would wind in archive steps.
-        _catchupActive.value = false
-        playingCatchupProgramme = null
     }
 
     /**

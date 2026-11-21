@@ -315,10 +315,8 @@ internal fun CenterControls(
     player: PlaybackEngine, nav: NavState, isPlaying: Boolean, isLive: Boolean,
     onRewindLive: (() -> Unit)?, onForwardLive: (() -> Unit)?, timeshiftOffset: () -> Int?,
     playFocus: FocusRequester, modifier: Modifier = Modifier,
-    archiveSeekStepMs: Long? = null,
 ) {
-    val settingsStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
-    val seekStep = archiveSeekStepMs ?: settingsStep
+    val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
     val rewindMode = onRewindLive != null // this is a catch-up-capable Live channel
     // Read here, not in the HUD root: it ticks every second while rewound.
     val timeshiftOffsetSec = timeshiftOffset()
@@ -360,7 +358,6 @@ internal fun BottomBar(
     onScrubLive: ((Int) -> Unit)?, timeshiftOffset: () -> Int?, onGoToLive: (() -> Unit)?, onOpenJumpBack: (() -> Unit)?,
     // The catch-up button opens the channel's archive page rather than the "Go back to…" list, and says so.
     jumpBackIsArchive: Boolean = false,
-    archiveSeekStepMs: Long? = null,
     liveProgrammes: List<LiveProgramme> = emptyList(),
     liveGaps: () -> List<LongRange> = { emptyList() },
     compatMode: Boolean?, onToggleCompatMode: (() -> Unit)?,
@@ -406,7 +403,7 @@ internal fun BottomBar(
                 Spacer(Modifier.height(10.dp))
             }
             !isLive && duration > 0 -> {
-                VodTimeline(player, position, duration, seekFocus, archiveSeekStepMs)
+                VodTimeline(player, position, duration, seekFocus)
                 Spacer(Modifier.height(10.dp))
             }
             // A live channel with no archive has no timeline to scrub, but it still has a state to
@@ -589,9 +586,8 @@ private fun volumeIcon(volume: Int): OwnTVIcon = when {
 /** A film's seek bar and its two time caps — the only part of the dock that needs the position, so the
  *  only part that recomposes as it ticks. */
 @Composable
-private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long, seekFocus: FocusRequester?, archiveSeekStepMs: Long? = null) {
-    val settingsStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
-    val seekStep = archiveSeekStepMs ?: settingsStep
+private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long, seekFocus: FocusRequester?) {
+    val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
     val buffered by player.bufferedMs.collectAsStateWithLifecycle()
     val pos = position()
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

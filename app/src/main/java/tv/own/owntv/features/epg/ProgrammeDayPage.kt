@@ -250,11 +250,7 @@ internal fun ProgrammeDayPage(
                         }
                         isOk -> when {
                             onDays -> if (list.isNotEmpty()) onDays = false
-                            // A past programme's first button is Watch from start: OK plays it without a second press.
-                            // A button the channel cannot run (dimmed) falls back to entering the row's buttons.
-                            !inActions -> if (list.isNotEmpty() && actionCount > 0) {
-                                if (programmeTime(list[index], now) != ProgrammeTime.PAST || !runAction(0)) { inActions = true; action = 0 }
-                            }
+                            !inActions -> if (list.isNotEmpty() && actionCount > 0) { inActions = true; action = 0 }
                             else -> runAction(action)
                         }
                         e.key == Key.DirectionUp -> when {
