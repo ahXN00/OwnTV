@@ -140,7 +140,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 **Want different keys?** **Settings → Layout → Remote shortcuts** maps spare colour, number, channel
 and media keys to 26 actions — **Previous channel** among them. D-pad, Back, OK, volume, Home and power stay protected.
 
-**Player buttons**, on the same page, change four player keys. Every default is the behaviour above:
+**Player buttons**, on the same page, change five player keys. Every default is the behaviour above:
 
 | Option | Choices | Default |
 |---|---|---|
@@ -148,6 +148,7 @@ and media keys to 26 actions — **Previous channel** among them. D-pad, Back, O
 | **OK when the controls are hidden** | Show controls, Channel list, Guide (live channels only; films keep Show controls) | Show controls |
 | **Swap channel up/down** | CH+ and Up go to the previous channel, CH− and Down to the next | Off |
 | **Number keys tune channels** | Off stops 0–9 from typing a channel number in the player | On |
+| **D-pad Up/Down** | What Up and Down do in the full-screen live player with the controls hidden: **Change channel**; **Controls and recently watched** (Down shows the controls, Up opens Recently watched); **Off** (both do nothing). CH+/CH− always change channel | Change channel |
 
 ---
 
@@ -662,7 +663,8 @@ its rank, **IN YOUR PLAYLIST**, title (its title art when TMDB has it), year, ge
 episodes**), **Trailer**, **All versions** (when your playlist has several copies), details and
 favourite. **Down** reaches the pager under the buttons; **◀ ▶** there change the title. Moving into
 the rows folds the hero small; **Up** from the first row opens it again. **Posters only** shows the
-trending titles as the first poster row instead.
+trending titles as the first poster row instead; **hold OK** or press **Menu** on a poster for its menu —
+**Play trailer**, **Add to Favorites**, **Download** (a series: **Download all episodes**, asked first) and details.
 
 While a large playlist is still loading after setup, Home says **Loading your library** with the
 number of titles stored so far, and that Now Trending appears as the library fills in.
@@ -702,7 +704,7 @@ switch channel rows between **Cards** and **On now** (an inline mini-guide).
 ## 🔎 Search · 🕐 History · 📥 Downloads
 
 ### 🔎 Search
-**Where:** the rail → Search
+**Where:** the rail → Search (focus stays on the rail; **▶** enters the search box) · the remote's Search shortcut goes straight into the box
 Searches Live, Movies and Series together. Four filter buttons — **Live TV / TV Shows / Movies /
 Series**, each with its count — narrow the results: **OK** turns one on, **OK** again turns it off,
 several can be on, and none on shows everything. Every match is listed, up to 500 of each kind. Words match from their start, and a dash or other mark
@@ -729,7 +731,7 @@ history**.
 
 ### 📥 Downloads
 **Where:** the rail → Downloads
-Tabs **Movies / Series / Recordings** with counts; the title shows the storage's name and free space,
+Tabs **Recordings / Movies / Series** with counts, opening on Recordings; the title shows the storage's name and free space,
 and the folder the tab saves to sits under **Download folder**. Rows are grouped **Downloading** and
 **On this TV**, each with picture, details, its file path and "64% · 12.4 MB/s · 3 min left" — or
 Queued, Paused, Failed, Ready to watch. **Pause / Resume / Retry / External / Delete** appear on the
