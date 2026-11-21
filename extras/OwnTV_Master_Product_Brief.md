@@ -371,6 +371,8 @@ again on every wake.
 - **Auto-match EPG** links channels to guide data when `tvg-id` is missing or wrong, scanning only the
   playlist(s) the guide is showing (a 400-channel playlist in about 3 s); confident matches
   apply automatically and the rest go to a review list. Matches are per profile and survive re-syncs.
+  Every match (Live TV, the Guide, Auto-match, review) goes through core's `GuideMatches`: it fills from the
+  cached guide and re-syncs only the feeds that list the id when that cannot.
   A **guide time offset** corrects a feed published in another time zone, globally or per channel.
 - **Several XMLTV feeds:** the order in EPG Sources is the guide priority — where two feeds list one
   channel, the higher one is drawn and a lower one only fills its gaps.
