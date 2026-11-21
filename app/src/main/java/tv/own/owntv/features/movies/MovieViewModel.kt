@@ -72,6 +72,7 @@ import tv.own.owntv.features.customize.MoveTarget
 import tv.own.owntv.core.customize.CategoryRestorePlan
 import tv.own.owntv.core.customize.planCategoryRestore
 import tv.own.owntv.core.customize.restoreCategoryToDefault
+import tv.own.owntv.core.database.entity.nameKeyOf
 import tv.own.owntv.features.live.LiveRailItem
 import tv.own.owntv.core.download.DownloadManager
 import tv.own.owntv.core.storage.StorageAccess
@@ -1045,14 +1046,14 @@ class MovieViewModel(
             }
         } else when (key) {
             LiveKey.All, LiveKey.Catchup ->
-                if (dateAdded) movieDao.searchAllDateAdded(query, ids)
-                else movieDao.searchAll(query, ids)
-            LiveKey.Favorites -> movieDao.searchFavorites(query, c.profileId, ids)
-            LiveKey.History -> movieDao.searchHistory(query, c.profileId, ids)
-            is LiveKey.Custom -> customCategoryDao.searchMovies(query, c.profileId, key.id, ids)
+                if (dateAdded) movieDao.searchAllDateAdded(nameKeyOf(query), ids)
+                else movieDao.searchAll(nameKeyOf(query), ids)
+            LiveKey.Favorites -> movieDao.searchFavorites(nameKeyOf(query), c.profileId, ids)
+            LiveKey.History -> movieDao.searchHistory(nameKeyOf(query), c.profileId, ids)
+            is LiveKey.Custom -> customCategoryDao.searchMovies(nameKeyOf(query), c.profileId, key.id, ids)
             is LiveKey.Folder ->
-                if (dateAdded) movieDao.searchInCategoryDateAdded(query, key.id)
-                else movieDao.searchInCategory(query, key.id)
+                if (dateAdded) movieDao.searchInCategoryDateAdded(nameKeyOf(query), key.id)
+                else movieDao.searchInCategory(nameKeyOf(query), key.id)
         }
     }
 

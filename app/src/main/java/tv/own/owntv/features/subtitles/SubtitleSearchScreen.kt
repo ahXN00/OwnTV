@@ -188,7 +188,7 @@ private fun ResultsList(
 
 /** The popup's buttons, bottom right as every Stage popup has them. */
 @Composable
-private fun ButtonRow(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+internal fun ButtonRow(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 24.mpx), horizontalArrangement = Arrangement.spacedBy(14.mpx, Alignment.End), content = content)
 }
 
@@ -214,7 +214,7 @@ private fun EditSearchField(initial: String, onSubmit: (String) -> Unit, onCance
 }
 
 @Composable
-private fun Message(
+internal fun Message(
     text: String,
     primary: String,
     onPrimary: () -> Unit,
@@ -236,7 +236,7 @@ private fun Message(
 }
 
 @Composable
-private fun Centered(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+internal fun Centered(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 24.mpx),
         horizontalAlignment = Alignment.CenterHorizontally,

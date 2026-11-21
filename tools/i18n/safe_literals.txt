@@ -112,13 +112,15 @@
 1	technical	app/src/main/java/tv/own/owntv/features/epg/GuideStage.kt	…
 1	technical	app/src/main/java/tv/own/owntv/features/epg/GuideStage.kt	→
 1	empty	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	\0
+1	log	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	Day read failed channelId=${channel.id}
+1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	EEEd
+1	log	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	ProgrammeDayPage
 1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	h$i
 1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	p${it.index}-${list[it.index].startMs}
 2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	·
-1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▲ ▼
-1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▶
-1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▼
-2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	◀ ▶
+2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▲ ▼
+2	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	▶
+1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	◀ ▶
 1	technical	app/src/main/java/tv/own/owntv/features/epg/ProgrammeDayPage.kt	✓
 1	technical	app/src/main/java/tv/own/owntv/features/home/HomeScreen.kt	%.1f
 1	technical	app/src/main/java/tv/own/owntv/features/home/HomeScreen.kt	,
@@ -959,6 +961,7 @@
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	• – •
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsTeamScreen.kt	⌂
 1	technical	app/src/main/java/tv/own/owntv/features/sports/SportsViewModel.kt	$startMs|$title
+2	empty	app/src/main/java/tv/own/owntv/features/subtitles/FolderSubtitleViewModel.kt	\0
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	ai_translated
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	attributes
 1	json	app/src/main/java/tv/own/owntv/features/subtitles/SubtitleSearchViewModel.kt	data

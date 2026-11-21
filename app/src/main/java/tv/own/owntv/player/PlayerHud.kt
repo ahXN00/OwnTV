@@ -160,6 +160,11 @@ fun PlayerHud(
     // computed against the moment the user asked, not the moment the HUD was composed.
     jumpBackOptions: (() -> List<Int>)? = null,
     onJumpBack: ((Int) -> Unit)? = null,
+    // When set, the catch-up button tries the channel's archive page (days and programmes) first; it returns
+    // false when the channel has no guide, and the button then opens the "Go back to…" list.
+    onOpenArchive: (suspend () -> Boolean)? = null,
+    // Whether the catch-up button is labelled and acts as the Archive page.
+    catchupOpensArchive: Boolean = false,
     // Back to the channel watched before this one. Null hides the button (no previous channel yet).
     onPreviousChannel: (() -> Unit)? = null,
     // Archive depth of the current channel, for the exact-time picker's day/HH:MM bounds.
@@ -190,6 +195,8 @@ fun PlayerHud(
     onSearchSubtitles: (() -> Unit)? = null,
     // Movie/episode only: pick a local subtitle file — no account needed, same gating.
     onSelectLocalSubtitle: (() -> Unit)? = null,
+    // Movie/episode only: the subtitle files in the chosen folder, same gating.
+    onFindSubtitleInFolder: (() -> Unit)? = null,
     // Favorite toggle for the CURRENT item (live channel / movie / series). Null hides the button
     // (no item context). [favorite] = current state — fills the star teal when true.
     favorite: Boolean = false,
@@ -736,7 +743,8 @@ fun PlayerHud(
                     onScrubLive = onScrubLive, timeshiftOffset = timeshiftOffset, onGoToLive = onGoToLive,
                     liveProgrammes = liveProgrammes,
                     liveGaps = liveGaps,
-                    onOpenJumpBack = if (onJumpBack != null) { { dialog = HudDialog.JUMP_BACK } } else null,
+                    onOpenJumpBack = if (onJumpBack != null || onOpenArchive != null) { { hudScope.launch { if (onOpenArchive?.invoke() != true) dialog = HudDialog.JUMP_BACK } } } else null,
+                    jumpBackIsArchive = catchupOpensArchive,
                     onPreviousChannel = onPreviousChannel,
                     onOtherChannels = onOtherChannels, otherChannelsCount = otherChannelsCount,
                     hasSources = sources != null,
@@ -954,6 +962,7 @@ fun PlayerHud(
                 onDismiss = { dialog = HudDialog.NONE },
                 onSearchSubtitles = onSearchSubtitles?.let { open -> { dialog = HudDialog.NONE; open() } },
                 onSelectLocalSubtitle = onSelectLocalSubtitle?.let { open -> { dialog = HudDialog.NONE; open() } },
+                onFindSubtitleInFolder = onFindSubtitleInFolder?.let { open -> { dialog = HudDialog.NONE; open() } },
                 // Subtitle timing: only when adjustment applies to the ACTIVE subtitle on the
                 // current engine (any mpv text sub; external side-loads on ExoPlayer).
                 subDelayMs = subDelay,

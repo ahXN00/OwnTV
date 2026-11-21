@@ -28,7 +28,7 @@ for that step shown in the corner.
 
 1. **Welcome** — the language picker is on this screen: one of 28, or keep **System default**.
    Press **Get started**.
-2. **Display** — step UI Zoom and Font size while a sample row resizes, so you judge it from your
+2. **Display** — step UI Zoom and Font size (each profile can change its own later) while a sample row resizes, so you judge it from your
    sofa, and pick the **App icon**. Changeable later in Settings → Appearance and Settings → App.
 3. **Disclaimer** — OwnTV is a player; you bring the sources.
 4. **Set up OwnTV** — three ways to begin: **New profile**, **Restore a backup**, or
@@ -213,11 +213,13 @@ for the playlist chosen (or all of them).
 Ask the panel for HLS instead of MPEG-TS. Try it if live channels are unstable. **Test HLS support**
 just above it checks whether your provider really serves it.
 
-### 📼 Prefer HLS for catch-up (Xtream only)
-**Where:** Add/Edit playlist, under Prefer HLS for Live TV
+### 📼 Prefer HLS for catch-up (Xtream and M3U)
+**Where:** Add/Edit playlist (Xtream: under Prefer HLS for Live TV)
 Ask for catch-up programmes as HLS instead of MPEG-TS. Off by default: many providers only serve
 catch-up as MPEG-TS. A programme that will not open as HLS is asked for as MPEG-TS by itself, and a
 long programme can take a few seconds more to start, because the provider builds its HLS list first.
+On an M3U playlist it changes only Flussonic catch-up channels: a finished programme then shows its
+full length and can be sought.
 
 ### 📡 Stalker portals
 **Where:** Add source → Stalker (MAC)
@@ -254,8 +256,9 @@ A full page with the channel's day: every programme on one line, grouped **Earli
 Later**, the one under the cursor opened with its times, facts, categories and whole description.
 **▲▼** move through the programmes; **Right** or **OK** goes to the opened programme's buttons —
 **Watch channel**, **Watch from start**, **Record**, **Record every showing**, **Remind me**,
-**Record from catch-up**, whichever fit it — **Left/Right** between them, **OK** runs one. **Up**
-from the first programme reaches **Yesterday · Today · Tomorrow**. **Back** closes. The next and
+**Record from catch-up**, whichever fit it — **Left/Right** between them, **OK** runs one. **Left**
+reaches the days on the left — **Tomorrow**, **Today**, **Yesterday** and, on a catch-up channel, every
+older day its archive keeps; **▲▼** change the day, **Right** or **OK** go into its programmes. **Back** closes. The next and
 later lines under the preview are for reading only.
 
 ### 🗓️ List or guide
@@ -266,7 +269,7 @@ opens in** chooses which one you start in.
 ### ⭐ Favourite, rename, hide
 **Where:** long-press **OK** (or **Menu**) on a channel
 The channel menu is grouped **Watch · Channel · Guide data · Organise** and also holds **Match EPG**,
-**Catch-up**, **Record**, **Move**, **Add to Multiview**, **Remove from this category** (inside a
+**Archive** (**Catch-up** on a channel without a guide), **Record**, **Move**, **Add to Multiview**, **Remove from this category** (inside a
 custom category) and **Play in external player**.
 
 ### ↕️ Move
@@ -368,6 +371,9 @@ Auto-match does the bulk — only for the playlist(s) the guide is showing, so i
 **Logos** in the review window and every matched channel also takes the logo of the guide channel it
 is matched to. Auto-match keeps going if you leave the Guide: a message says how it went when it
 finishes, and the review window is waiting when you come back.
+A channel matched to a guide channel the downloaded guide does not hold yet gets its programmes — past days
+included on catch-up channels — from one quick download of only the guide that lists it. In the picker,
+**Right** jumps from the list to **Clear match** and **Close**.
 
 ### 📅 Guide days to keep
 **Where:** Settings → Sources & guide → **Guide days to keep**
@@ -393,11 +399,16 @@ For a provider publishing its guide in another time zone. A re-sync never undoes
 
 ### ▶️ Replay a past programme
 **Where:** Guide → a past programme → **Watch from start**
-Or long-press a channel → **Catch-up** and pick from the list. Up to 7 days, limited by what your
-provider actually keeps.
+Up to 7 days, limited by what your provider actually keeps.
+
+### 🗄️ Archive
+**Where:** long-press a channel → **Archive**, or the catch-up button in the full-screen player
+The channel's Program details page, opened on **Yesterday** (during a replay, on the programme you are
+watching), with its days on the left as far back as the archive goes. Pick a day, then a programme →
+**Watch from start**. A channel with no guide has **Catch-up** there instead, which opens **Go back to…**.
 
 ### 🕐 Go back to a time
-**Where:** full-screen player → **Go back to…**
+**Where:** full-screen player → **Go back to…** (the catch-up button, on a channel with no guide)
 Offers times counted back from now — `21:30`, `19:00`, `Sun 20:00`. The last row opens a
 day/hour/minute picker. **This works even on channels with no guide at all.** When the guide knows what
 is on, the first row is **Start of “…”** — back to the beginning of the programme on air.
@@ -699,7 +710,8 @@ results; a film or show shows its poster panel.
 — where play, download and every option live; **Back** returns to Search with your query kept.
 **TV Shows** lists programmes from the stored guide whose title matches, on now or within the next 12
 hours, with the channel and time; **OK** goes to that channel. With
-the box empty: **Jump to**, your recent searches, and Continue watching.
+the box empty: **Jump to**, your recent searches (each profile has its own), and Continue watching.
+Search and A–Z ignore letter case in every alphabet: "один" finds "Один".
 **Voice search:** the 🎤 button right of the box listens through your TV's speech recogniser and
 searches what you say. It only appears where the device has one (most Google TV and Android TV
 devices do; many Fire TV and generic boxes don't).
@@ -842,6 +854,13 @@ Needs a free [opensubtitles.com](https://www.opensubtitles.com) account. Sign in
 ### 📁 Use a file you already have
 **Where:** player → Subtitles → **Select local subtitle file**
 No account, no internet. Browses USB and internal storage.
+
+### 📂 Find in folder
+**Where:** player → Subtitles → **Find in folder**
+Choose a folder once (USB or internal storage); after that it lists the subtitle files there, best
+match for the film or episode first, with a search box. **Load matching subtitle automatically**
+loads the one file whose name matches a film or episode that has no subtitle yet — when two match
+(an English and a German one), it loads neither. **Change folder** picks another.
 
 ### ⏱️ Fix subtitle timing
 **Where:** player → Subtitles → the **Subtitle timing** row

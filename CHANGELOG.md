@@ -16,9 +16,20 @@
 - **🎓 Sports: college teams and games (#377)**
 - **📊 Sports: standings columns per sport, "Standings" and "Games" tabs outside football**
 - **🌍 Ukrainian and Central Kurdish**
+- **🔤 Search and A–Z ignore letter case in every alphabet (#375)**
+- **👤 Zoom, text size and recent searches per profile (#368)**
+- **📂 Subtitles: "Find in folder", with automatic loading of the matching file (#355)**
+- **⏳ "Performing database migration" screen on the first start after an update**
+- **🗄️ Archive: a catch-up channel's past days and their programmes on one page** (community PR #379 by @Sekator778)
+- **📼 "Prefer HLS for catch-up" on M3U playlists too: Flussonic catch-up shows its full length and can be sought** (community PR #93 by @Sekator778)
 
 ### 🐛 Fixes
 - **📼 Catch-up: no more stutter after a programme that failed to open (#357)**
+- **📅 Guide: a channel matched by hand gets its programmes and past days even when the downloaded guide is old** (reported in PR #380 by @Sekator778)
+- **📼 Catch-up: a channel's past days fill in from the provider's archive when the downloaded guide stopped early**
+- **📼 Catch-up: a programme ExoPlayer could not start no longer puts later catch-up on mpv into software decoding**
+- **📼 Catch-up: switching a programme from mpv to ExoPlayer starts it at once, in hardware, instead of after 12 seconds in software**
+- **📅 Match EPG: ▶ jumps from the guide list straight to Clear match and Close**
 - **🎙️ Voice search no longer asks which app every time (#358)**
 - **🏒 Sports: "Starting soon" shows today's games after midnight**
 - **🏈 Sports: US team pages list their games, college tables show the real record**
@@ -27,6 +38,7 @@
 - **🗂️ Favorites and History show their sort as "Newest first", greyed out** (rebuilt from community PR #369 by @Quad-Plex)
 - **🏠 Live TV: Home or the screensaver while a channel opens no longer plays it behind the home screen; it comes back on return**
 - **🧭 Home: the channel or film you just watched is shown first in Keep watching, not hidden off-screen**
+- **🔤 Local subtitles: UTF-8 files no longer show Chinese characters**
 
 ## v5.2.2 — 2026-11-09
 

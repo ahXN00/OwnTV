@@ -76,6 +76,8 @@ internal fun TrackDialog(
     onSearchSubtitles: (() -> Unit)? = null,
     // Non-null on the Subtitles dialog for a movie/episode → "Select local subtitle file".
     onSelectLocalSubtitle: (() -> Unit)? = null,
+    // Non-null on the Subtitles dialog for a movie/episode → "Find in folder".
+    onFindSubtitleInFolder: (() -> Unit)? = null,
     // Non-null on the Subtitles dialog when timing adjustment applies to the active track →
     // an "ADJUST" section with a "Subtitle timing" row: ◀ ▶ nudge it, OK sets it back to zero.
     subDelayMs: Int = 0,
@@ -131,13 +133,16 @@ internal fun TrackDialog(
             )
         }
         // ADD SUBTITLES (subtitles dialog, movie/episode only) — OpenSubtitles search + local file.
-        if (onSearchSubtitles != null || onSelectLocalSubtitle != null) {
+        if (onSearchSubtitles != null || onSelectLocalSubtitle != null || onFindSubtitleInFolder != null) {
             item { tv.own.owntv.ui.stage.StagePopupLabel(stringResource(R.string.player_add_subtitles), Modifier.padding(top = 12.mpx)) }
             if (onSearchSubtitles != null) {
                 item { ActionRow(stringResource(R.string.player_search_subtitles), OwnTVIcon.SEARCH, onSearchSubtitles) }
             }
             if (onSelectLocalSubtitle != null) {
                 item { ActionRow(stringResource(R.string.player_select_local_subtitle), OwnTVIcon.FOLDER, onSelectLocalSubtitle) }
+            }
+            if (onFindSubtitleInFolder != null) {
+                item { ActionRow(stringResource(R.string.player_subtitle_find_in_folder), OwnTVIcon.FOLDER, onFindSubtitleInFolder) }
             }
         }
         // ADJUST (subtitles dialog): timing panel for the active subtitle.
