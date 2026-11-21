@@ -177,9 +177,9 @@ fun Onboarding(firstRun: Boolean, onDone: (Long?) -> Unit, onCancel: () -> Unit,
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING
                 },
-                onStartM3u = { name, url, ua, ref, epg, refresh, _ ->
+                onStartM3u = { name, url, ua, ref, epg, refresh, _, catchupPreferHls ->
                     importName = name.ifBlank { defaultPlaylistName }
-                    vm.startM3u(importName!!, url, ua, epg, refresh, httpReferer = ref)
+                    vm.startM3u(importName!!, url, ua, epg, refresh, httpReferer = ref, catchupPreferHls = catchupPreferHls)
                     importOrigin = Step.ADD_SOURCE
                     step = Step.IMPORTING
                 },

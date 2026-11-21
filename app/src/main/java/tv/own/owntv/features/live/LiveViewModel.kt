@@ -125,7 +125,7 @@ class LiveViewModel(
     private val contentOrderDao: ContentOrderDao,
     private val customCategoryDao: CustomCategoryDao,
     private val streamUrlResolver: tv.own.owntv.core.stalker.StreamUrlResolver,
-    private val epgRepository: tv.own.owntv.core.repository.EpgRepository,
+    private val guideMatches: tv.own.owntv.core.epg.GuideMatches,
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val recordings: tv.own.owntv.core.recording.RecordingManager,
     /** Keeps the preview pane off a one-stream playlist while a download is using it. */
@@ -741,12 +741,14 @@ class LiveViewModel(
     fun setEpgMatch(channel: ChannelEntity, epgChannelId: String?) {
         viewModelScope.launch {
             val pid = currentProfileId() ?: return@launch
-            customize.setEpgMatch(pid, MediaType.LIVE, CustomizeKeys.channel(channel), epgChannelId)
-            // The matched id may have no stored programmes yet (bulk sync only keeps ids in use) —
-            // top it up from the cached XMLTV, then drop the channel's stale now/next and re-fetch,
-            // so the details pane reflects the new match immediately instead of after a restart.
-            val id = epgChannelId?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
-            if (id != null) runCatching { epgRepository.storeProgrammesForIdsFromCache(setOf(id)) }
+            // The matched id may have no stored programmes yet (bulk sync only keeps ids in use) — core
+            // tops it up from the cached XMLTV, or queues a guide re-sync when that cannot. Then drop the
+            // channel's stale now/next and re-fetch, so the details pane reflects the new match at once.
+            if (!epgChannelId.isNullOrBlank()) {
+                runCatching { guideMatches.match(pid, mapOf(CustomizeKeys.channel(channel) to epgChannelId)) }
+            } else {
+                customize.setEpgMatch(pid, MediaType.LIVE, CustomizeKeys.channel(channel), null)
+            }
             epgReader.invalidate(channel.id)
             epgRefresh.value++
         }
@@ -1953,6 +1955,22 @@ class LiveViewModel(
     /** The archive programme on screen, for [continueAfterCatchup] to find the one after it. Null
      *  whenever the picture is not a fixed catch-up programme. */
     private var playingCatchupProgramme: tv.own.owntv.core.database.entity.EpgProgrammeEntity? = null
+
+    /**
+     * Whether the guide holds any programme for [ch], through a manual match or its own guide id, in
+     * the days its Archive page shows. Rows only outside them — a feed that stopped weeks ago, or one
+     * that lists only days ahead — would open a page of empty days. One indexed lookup, cheap enough to
+     * ask when a button is pressed. A channel with none keeps the "Go back to…" offsets, which need no guide.
+     */
+    suspend fun hasGuideData(ch: ChannelEntity): Boolean {
+        val key = (custom.value.epgMatchResolver.epgIdFor(ch) ?: ch.epgChannelId)
+            ?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
+        val span = tv.own.owntv.features.epg.archivePageSpan(ch, System.currentTimeMillis())
+        return runCatching { epgDao.hasProgrammesBetween(key, span.first, span.last) }.getOrDefault(false)
+    }
+
+    /** Start of the archive programme on screen, so the Archive page can open on it; null while live. */
+    fun currentCatchupProgrammeStartMs(): Long? = if (_catchupActive.value) playingCatchupProgramme?.startMs else null
 
     /** Replay a past programme from the channel's archive (seekable, like the Guide's "Watch from start"). */
     fun playCatchupProgramme(ch: ChannelEntity, programme: tv.own.owntv.core.database.entity.EpgProgrammeEntity) {

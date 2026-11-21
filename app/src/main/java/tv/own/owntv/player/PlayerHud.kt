@@ -52,6 +52,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import tv.own.owntv.R
 import tv.own.owntv.core.i18n.HorizontalDirection
 import tv.own.owntv.core.i18n.horizontalDirection
+import tv.own.owntv.core.settings.PlayerDpadUpDownAction
 import tv.own.owntv.core.settings.PlayerRemoteOptions
 import tv.own.owntv.core.settings.RemoteShortcutAction
 import tv.own.owntv.core.settings.RemoteShortcutPress
@@ -160,6 +161,11 @@ fun PlayerHud(
     // computed against the moment the user asked, not the moment the HUD was composed.
     jumpBackOptions: (() -> List<Int>)? = null,
     onJumpBack: ((Int) -> Unit)? = null,
+    // When set, the catch-up button tries the channel's archive page (days and programmes) first; it returns
+    // false when the channel has no guide, and the button then opens the "Go back to…" list.
+    onOpenArchive: (suspend () -> Boolean)? = null,
+    // Whether the catch-up button is labelled and acts as the Archive page.
+    catchupOpensArchive: Boolean = false,
     // Back to the channel watched before this one. Null hides the button (no previous channel yet).
     onPreviousChannel: (() -> Unit)? = null,
     // Archive depth of the current channel, for the exact-time picker's day/HH:MM bounds.
@@ -583,8 +589,21 @@ fun PlayerHud(
                 // intended: CH-/Down from the first channel lands on the last, and vice versa.
                 canZap && e.key == Key.MediaNext -> { zap(1); true }
                 canZap && e.key == Key.MediaPrevious -> { zap(-1); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionUp -> { zap(zapDirection(up = true, remoteOptions)); true }
-                canZap && isLive && !controlsVisible && e.key == Key.DirectionDown -> { zap(zapDirection(up = false, remoteOptions)); true }
+                //
+                // Player buttons can give D-pad Up/Down another job instead: Down shows the controls and
+                // Up opens the recently watched channels (the controls when there is no such list), or
+                // nothing at all. The CH keys above zap whatever the choice.
+                !controlsVisible && isLive && (e.key == Key.DirectionUp || e.key == Key.DirectionDown) -> {
+                    val up = e.key == Key.DirectionUp
+                    when (remoteOptions.dpadUpDown) {
+                        PlayerDpadUpDownAction.ZAP -> { if (canZap) zap(zapDirection(up, remoteOptions)); canZap }
+                        PlayerDpadUpDownAction.CONTROLS_AND_HISTORY -> {
+                            if (up && onOpenHistoryList != null) onOpenHistoryList() else controlsVisible = true
+                            true
+                        }
+                        PlayerDpadUpDownAction.DISABLED -> true
+                    }
+                }
                 // Left/Right with the controls hidden: reveal them on the timeline and take the first
                 // step, so the jump is seen and holding the key goes on scrubbing the bar itself. Physical
                 // keys, like the bars: left is back in time in every locale. A film always does this; a
@@ -720,7 +739,8 @@ fun PlayerHud(
                     onScrubLive = onScrubLive, timeshiftOffset = timeshiftOffset, onGoToLive = onGoToLive,
                     liveProgrammes = liveProgrammes,
                     liveGaps = liveGaps,
-                    onOpenJumpBack = if (onJumpBack != null) { { dialog = HudDialog.JUMP_BACK } } else null,
+                    onOpenJumpBack = if (onJumpBack != null || onOpenArchive != null) { { hudScope.launch { if (onOpenArchive?.invoke() != true) dialog = HudDialog.JUMP_BACK } } } else null,
+                    jumpBackIsArchive = catchupOpensArchive,
                     onPreviousChannel = onPreviousChannel,
                     onOtherChannels = onOtherChannels, otherChannelsCount = otherChannelsCount,
                     hasSources = sources != null,

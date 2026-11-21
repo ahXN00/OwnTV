@@ -1693,6 +1693,13 @@ fun OwnTVShell(
                 val sportsConfig by settingsRepo.activeSportsConfig.collectAsStateWithLifecycle(tv.own.owntv.core.sports.SportsConfig())
                 val matchSession = sportsSession?.takeIf { s -> isTunedLive && s.options.any { it.channel.id == previewChannel?.id } }
                 var showOtherChannels by remember { mutableStateOf(false) }
+                // Names the catch-up button; the press asks again.
+                val archiveHasGuide by produceState(false, previewChannel?.id, catchupActive) {
+                    value = catchupActive || previewChannel?.takeIf { it.catchup }?.let { liveVm.hasGuideData(it) } == true
+                }
+                var archiveFor by remember { mutableStateOf<tv.own.owntv.core.database.entity.ChannelEntity?>(null) }
+                // The programme on screen when the page was opened from an archive replay; null opens on yesterday.
+                var archiveFocusMs by remember { mutableStateOf<Long?>(null) }
                 var goalToast by remember { mutableStateOf<tv.own.owntv.core.sports.MatchAlert?>(null) }
                 LaunchedEffect(isTunedLive) { if (isTunedLive) sportsPlayback.goals().collect { goalToast = it } }
                 LaunchedEffect(goalToast) { if (goalToast != null) { kotlinx.coroutines.delay(GOAL_TOAST_MS); goalToast = null } }
@@ -1719,7 +1726,7 @@ fun OwnTVShell(
                     onAudioMode = toAudioMode,
                     // The channel-list overlay draws ABOVE the HUD; while it's open the HUD goes inert so
                     // its hide/error focus grabs can't yank D-pad focus off the overlay.
-                    inert = showChannelList || showHistoryList || showCategoryBrowser || showSubtitleSearch || showLocalSubPicker || showFolderSubs || showSubFolderPicker || showOtherChannels,
+                    inert = showChannelList || showHistoryList || showCategoryBrowser || showSubtitleSearch || showLocalSubPicker || showFolderSubs || showSubFolderPicker || showOtherChannels || archiveFor != null,
                     onChannelUp = zap?.let { z -> { z(-1) } },
                     onChannelDown = zap?.let { z -> { z(1) } },
                     onOpenChannelList = if (isTunedLive && liveCanZap) { { showChannelList = true } } else null,
@@ -1750,6 +1757,16 @@ fun OwnTVShell(
                     // bar and the buttons, and must not show a catch-up control on a channel without catch-up.
                     jumpBackOptions = if (isTunedLive && previewChannel?.catchup == true) liveVm::currentJumpOptions else null,
                     onJumpBack = if (isTunedLive && previewChannel?.catchup == true) liveVm::jumpBackTo else null,
+                    // False when the channel has no guide: the HUD then opens "Go back to…" as before.
+                    onOpenArchive = if ((isTunedLive || catchupActive) && previewChannel?.catchup == true) {
+                        {
+                            val ch = previewChannel
+                            if (ch != null && (catchupActive || liveVm.hasGuideData(ch))) {
+                                archiveFocusMs = liveVm.currentCatchupProgrammeStartMs(); archiveFor = ch; true
+                            } else false
+                        }
+                    } else null,
+                    catchupOpensArchive = archiveHasGuide,
                     onPreviousChannel = if (isTunedLive && previousLiveChannel != null) liveVm::previousChannel else null,
                     jumpBackWindowSec = if (isTunedLive && previewChannel?.catchup == true) liveVm::currentCatchupWindowSec else null,
                     jumpBackProgrammeStart = if (isTunedLive && previewChannel?.catchup == true) liveVm::currentProgrammeStart else null,
@@ -1846,6 +1863,17 @@ fun OwnTVShell(
                 )
                 goalToast?.let { a ->
                     tv.own.owntv.features.sports.GoalToast(a, Modifier.align(androidx.compose.ui.Alignment.TopEnd).padding(top = 45.mpx, end = 60.mpx))
+                }
+                archiveFor?.let { ch ->
+                    tv.own.owntv.features.epg.ProgrammeDayPage(
+                        vm = epgVm,
+                        channel = ch,
+                        focusStartMs = archiveFocusMs,
+                        startDay = -1,
+                        onWatch = { if (timeshifted || catchupActive) liveVm.goToLive() },
+                        onPlayFromStart = { p -> liveVm.playCatchupProgramme(ch, p) },
+                        onDismiss = { archiveFor = null },
+                    )
                 }
                 if (showOtherChannels) {
                     val s = matchSession

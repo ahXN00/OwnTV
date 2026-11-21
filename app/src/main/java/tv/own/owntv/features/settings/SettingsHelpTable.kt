@@ -186,6 +186,7 @@ internal val SETTING_HELP: Map<String, Int> = mapOf(
     "pb_short_ok" to R.string.settings_help_player_short_ok,
     "pb_swap_ch" to R.string.settings_help_player_swap_channel_keys,
     "pb_number_keys" to R.string.settings_help_player_number_keys_tune,
+    "pb_dpad_up_down" to R.string.settings_help_player_dpad_up_down,
     "vp_pip" to R.string.settings_help_pip,
 )
 

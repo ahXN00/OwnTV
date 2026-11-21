@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -48,11 +49,15 @@ import tv.own.owntv.R
 import tv.own.owntv.core.database.entity.ChannelEntity
 import tv.own.owntv.core.database.entity.EpgProgrammeEntity
 import tv.own.owntv.core.epg.displayLogoUrl
+import tv.own.owntv.core.live.CatchupJumps
+import tv.own.owntv.core.live.DEFAULT_CATCHUP_DAYS
+import tv.own.owntv.core.live.MAX_CATCHUP_DAYS
 import tv.own.owntv.core.live.ProviderTags
 import tv.own.owntv.core.parser.EpgDetails
 import tv.own.owntv.features.live.LivePlate
 import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.ui.components.chNavPaging
+import tv.own.owntv.ui.format.rememberBestDateFormatter
 import tv.own.owntv.ui.format.rememberSystemTimeFormatter
 import tv.own.owntv.ui.stage.StageProgress
 import tv.own.owntv.ui.stage.StageTag
@@ -98,6 +103,30 @@ internal fun pageActions(time: ProgrammeTime): List<PageAction> = when (time) {
 
 private const val DAY_MS = 24L * 60 * 60 * 1000
 
+/** The guide never runs further ahead than tomorrow on this page. */
+private const val NEWEST_DAY = 1
+
+/**
+ * The oldest day the page offers, as an offset from today (0 or less). A catch-up channel goes back as far
+ * as its archive does; one without keeps yesterday, which is what its stored guide still shows. The depth
+ * is the one Live TV's rewind clamps to ([tv.own.owntv.core.live.LiveTimeshift.windowSec] for a provider
+ * archive), so a day listed here is a day the channel can play.
+ */
+internal fun oldestDay(channel: ChannelEntity): Int {
+    if (!channel.catchup) return -1
+    val windowSec = (channel.catchupDays.takeIf { it > 0 } ?: DEFAULT_CATCHUP_DAYS).coerceAtMost(MAX_CATCHUP_DAYS) * 24 * 3600
+    return -(CatchupJumps.selectableDays(windowSec) - 1)
+}
+
+/** Local midnight of the day [offset] days from [today]; the noon step keeps a 23 or 25 hour day from slipping a date. */
+private fun dayStartAt(today: Long, offset: Int): Long = localMidnight(today + offset * DAY_MS + DAY_MS / 2)
+
+/** The time the page's days cover for [channel]: from the start of its oldest day to the end of tomorrow. */
+internal fun archivePageSpan(channel: ChannelEntity, nowMs: Long): LongRange {
+    val today = localMidnight(nowMs)
+    return dayStartAt(today, oldestDay(channel)) until dayStartAt(today, NEWEST_DAY + 1)
+}
+
 /** One line of the page's list: a group heading or a programme. */
 private sealed interface PageLine {
     data class Heading(val text: String) : PageLine
@@ -106,12 +135,13 @@ private sealed interface PageLine {
 
 /**
  * Program details as a full page: one channel's day, every programme one line, the one under the cursor
- * opened in place with its facts, categories, whole description and what it can do. Yesterday, Today and
- * Tomorrow at the top; today is grouped Earlier · On now · Later.
+ * opened in place with its facts, categories, whole description and what it can do. The days stand in a
+ * panel at the left, tomorrow on top, then today and back as far as the channel's archive goes (see [oldestDay]);
+ * today is grouped Earlier · On now · Later.
  *
  * The page owns the remote, as the film details page does, and draws its own highlight: ▲▼ programmes,
- * ▶ or OK into the open programme's buttons, ◀▶ between them, OK runs one, ▲▼ or Back leave them; ▲ from
- * the first programme reaches the days, where ◀▶ change the day. Back closes. Keys act on release so the
+ * ▶ or OK into the open programme's buttons, ◀▶ between them, OK runs one, ▲▼ or Back leave them; ◀ from
+ * the programmes reaches the days panel, where ▲▼ change the day and ▶ or OK go into its programmes. Back closes. Keys act on release so the
  * release of a press that closes the page cannot land on the screen behind it.
  */
 @Composable
@@ -120,6 +150,8 @@ internal fun ProgrammeDayPage(
     channel: ChannelEntity,
     /** Open on this programme (its start time, on the user's clock); null opens on the one on now. */
     focusStartMs: Long?,
+    /** The day to open on when no programme is asked for: 0 today, -1 yesterday. */
+    startDay: Int = 0,
     onWatch: () -> Unit,
     onPlayFromStart: (EpgProgrammeEntity) -> Unit,
     onDismiss: () -> Unit,
@@ -127,16 +159,43 @@ internal fun ProgrammeDayPage(
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
     val today = remember { localMidnight(System.currentTimeMillis()) }
-    var day by remember { mutableIntStateOf(focusStartMs?.let { (((localMidnight(it) - today) / DAY_MS).toInt()).coerceIn(-1, 1) } ?: 0) }
+    val oldest = remember(channel.id) { oldestDay(channel) }
+    var day by remember {
+        mutableIntStateOf(
+            focusStartMs?.let { Math.round((localMidnight(it) - today).toDouble() / DAY_MS).toInt() }?.coerceIn(oldest, NEWEST_DAY)
+                ?: startDay.coerceIn(oldest, NEWEST_DAY),
+        )
+    }
     var wanted by remember { mutableStateOf(focusStartMs) }
-    val dayStart = today + day * DAY_MS
-    val loaded by produceState<List<EpgProgrammeEntity>?>(null, dayStart) { value = null; value = vm.dayProgrammes(channel, dayStart) }
+    val dayStart = dayStartAt(today, day)
+    // The day ends at the next local midnight, so a 23 or 25 hour day neither loses nor doubles an hour.
+    val dayEnd = dayStartAt(today, day + 1)
+    // Bumped when the provider's archive adds past days of this channel, so the shown day is read again.
+    var archiveRevision by remember { mutableIntStateOf(0) }
+    val loaded by produceState<List<EpgProgrammeEntity>?>(null, dayStart, archiveRevision) {
+        value = null
+        value = try {
+            vm.dayProgrammes(channel, dayStart, dayEnd)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            android.util.Log.w("ProgrammeDayPage", "Day read failed channelId=${channel.id}", e)
+            emptyList()
+        }
+    }
     val list = loaded.orEmpty()
+    // The stored guide lacks the provider's past days: ask for them once, as the Guide's rows do.
+    LaunchedEffect(channel.id) {
+        if (channel.catchup) vm.requestArchiveGuide(channel)
+        vm.archiveGuideAdded.collect { id -> if (id == channel.id) archiveRevision++ }
+    }
 
     var index by remember { mutableIntStateOf(0) }
     var inActions by remember { mutableStateOf(false) }
     var action by remember { mutableIntStateOf(0) }
-    var onDays by remember { mutableStateOf(false) }
+    // The days panel holds the remote when the page opens on a day rather than on a programme.
+    var onDays by remember { mutableStateOf(focusStartMs == null && startDay != 0) }
+    val dayOrder = remember(oldest) { dayPanelOrder(oldest) }
     LaunchedEffect(loaded) {
         if (loaded == null) return@LaunchedEffect
         index = openingIndex(list, wanted, now); wanted = null; inActions = false
@@ -193,34 +252,32 @@ internal fun ProgrammeDayPage(
                     when {
                         e.key == Key.Back -> when {
                             inActions -> inActions = false
-                            onDays -> onDays = false
                             else -> onDismiss()
                         }
                         isOk -> when {
-                            onDays -> onDays = false
+                            onDays -> if (list.isNotEmpty()) onDays = false
                             !inActions -> if (list.isNotEmpty() && actionCount > 0) { inActions = true; action = 0 }
                             else -> runAction(action)
                         }
                         e.key == Key.DirectionUp -> when {
                             inActions -> inActions = false
-                            onDays -> Unit
-                            index == 0 || list.isEmpty() -> onDays = true
-                            else -> index--
+                            onDays -> dayOrder.getOrNull(dayOrder.indexOf(day) - 1)?.let { day = it }
+                            else -> index = (index - 1).coerceAtLeast(0)
                         }
                         e.key == Key.DirectionDown -> when {
                             inActions -> inActions = false
-                            onDays -> onDays = false
+                            onDays -> dayOrder.getOrNull(dayOrder.indexOf(day) + 1)?.let { day = it }
                             else -> index = (index + 1).coerceAtMost((list.size - 1).coerceAtLeast(0))
                         }
-                        // Physical keys, as the guide's timeline: the days run left to right in every language.
+                        // Physical keys, as the guide's timeline: the days panel is always on the left, the programmes on the right.
                         e.key == Key.DirectionRight -> when {
-                            onDays -> if (day < 1) day++
+                            onDays -> if (list.isNotEmpty()) onDays = false
                             !inActions -> if (list.isNotEmpty() && actionCount > 0) { inActions = true; action = 0 }
                             else -> action = (action + 1).coerceAtMost(actionCount - 1)
                         }
                         e.key == Key.DirectionLeft -> when {
-                            onDays -> if (day > -1) day--
                             inActions -> if (action == 0) inActions = false else action--
+                            !onDays -> onDays = true
                         }
                         else -> return@onPreviewKeyEvent false
                     }
@@ -240,8 +297,10 @@ internal fun ProgrammeDayPage(
                 .focusable(),
         ) {
             Column(Modifier.fillMaxSize().padding(start = 120.mpx, end = 120.mpx, top = 56.mpx, bottom = 40.mpx)) {
-                PageHeader(channel, day, onDays)
-                Box(Modifier.weight(1f).fillMaxWidth().padding(top = 24.mpx)) {
+                PageHeader(channel)
+                Row(Modifier.weight(1f).fillMaxWidth().padding(top = 24.mpx), horizontalArrangement = Arrangement.spacedBy(32.mpx)) {
+                DayPanel(dayOrder, day, today, onDays, Modifier.width(280.mpx).fillMaxHeight())
+                Box(Modifier.weight(1f).fillMaxHeight()) {
                     when {
                         loaded == null -> tv.own.owntv.ui.components.OwnTVSpinner(sizeDp = 28, modifier = Modifier.align(Alignment.Center))
                         list.isEmpty() -> Text(
@@ -276,6 +335,7 @@ internal fun ProgrammeDayPage(
                         }
                     }
                 }
+                }
                 PageHints(inActions, onDays)
             }
         }
@@ -283,8 +343,7 @@ internal fun ProgrammeDayPage(
 }
 
 @Composable
-private fun PageHeader(channel: ChannelEntity, day: Int, onDays: Boolean) {
-    val a = stageAccent
+private fun PageHeader(channel: ChannelEntity) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.mpx)) {
         LivePlate(channel.displayLogoUrl, 84.mpx, 60.mpx)
         Column(Modifier.weight(1f)) {
@@ -294,21 +353,46 @@ private fun PageHeader(channel: ChannelEntity, day: Int, onDays: Boolean) {
             )
             Text(stringResource(R.string.content_programme_details), style = stageText(17, 500), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        listOf(-1 to R.string.content_epg_yesterday, 0 to R.string.content_epg_today, 1 to R.string.content_epg_tomorrow).forEach { (d, res) ->
+    }
+}
+
+/** The panel's days top to bottom, newest first: tomorrow, today, then back to the oldest the archive holds. */
+internal fun dayPanelOrder(oldest: Int): List<Int> = listOf(NEWEST_DAY) + (0 downTo oldest)
+
+/** The days of the archive, one per line; the chosen one stays in view and lights up while the panel holds the remote. */
+@Composable
+private fun DayPanel(days: List<Int>, day: Int, today: Long, focused: Boolean, modifier: Modifier) {
+    val a = stageAccent
+    val todayLabel = stringResource(R.string.content_epg_today)
+    val yesterdayLabel = stringResource(R.string.content_epg_yesterday)
+    val tomorrowLabel = stringResource(R.string.content_epg_tomorrow)
+    // Weekday and date in the system's own pattern, so an older day needs no translated string.
+    val weekdayDate = rememberBestDateFormatter("EEEd")
+    val state = rememberLazyListState()
+    LaunchedEffect(day, days) { runCatching { state.animateScrollToItem((days.indexOf(day) - 3).coerceAtLeast(0)) } }
+    LazyColumn(state = state, modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.mpx), contentPadding = PaddingValues(bottom = 80.mpx)) {
+        items(days.size, key = { days[it] }) { i ->
+            val d = days[i]
             val chosen = d == day
             val bg = when {
-                chosen && onDays -> a.accent
+                chosen && focused -> a.accent
                 chosen -> Color(0xFF1D2A1D)
                 else -> Color(0xFF141D21)
             }
             val fg = when {
-                chosen && onDays -> a.onAccent
+                chosen && focused -> a.onAccent
                 chosen -> a.accent
                 else -> StageColors.Muted
             }
             Text(
-                stringResource(res), style = stageText(16, 700), color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.background(bg, RoundedCornerShape(50)).padding(horizontal = 18.mpx, vertical = 9.mpx),
+                when (d) {
+                    0 -> todayLabel
+                    -1 -> yesterdayLabel
+                    NEWEST_DAY -> tomorrowLabel
+                    else -> weekdayDate(dayStartAt(today, d) + DAY_MS / 2)
+                },
+                style = stageText(18, 700), color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().background(bg, RoundedCornerShape(14.mpx)).padding(horizontal = 20.mpx, vertical = 12.mpx),
             )
         }
     }
@@ -439,7 +523,7 @@ private fun OpenProgramme(
 private fun PageHints(inActions: Boolean, onDays: Boolean) {
     val hints = when {
         inActions -> listOf("◀ ▶" to stringResource(R.string.settings_key_actions), stringResource(R.string.common_back) to stringResource(R.string.content_key_programmes))
-        onDays -> listOf("◀ ▶" to stringResource(R.string.content_epg_today), "▼" to stringResource(R.string.content_key_programmes), stringResource(R.string.common_back) to stringResource(R.string.content_close))
+        onDays -> listOf("▲ ▼" to stringResource(R.string.content_key_browse), "▶" to stringResource(R.string.content_key_programmes), stringResource(R.string.common_back) to stringResource(R.string.content_close))
         else -> listOf("▲ ▼" to stringResource(R.string.content_key_programmes), "▶" to stringResource(R.string.settings_key_actions), stringResource(R.string.common_back) to stringResource(R.string.content_close))
     }
     tv.own.owntv.ui.stage.StageKeyHints(hints, textSize = 16, modifier = Modifier.padding(top = 14.mpx))

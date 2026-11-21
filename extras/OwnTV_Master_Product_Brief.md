@@ -356,8 +356,11 @@ again on every wake.
   screen including the player, or switches, or only notifies.
 - The grid reloads only once a guide sync finishes, instead of rebuilding every ~25 s during one.
 - **Catch-up TV** — replay programmes that already aired, up to 7 days, seekable. **Live rewind**
-  scrubs the live stream on archive-capable channels. **Go back to…** jumps straight to a time, with
-  an exact day/hour/minute picker clamped to the archive window — and works with **no guide at all**.
+  scrubs the live stream on archive-capable channels. A channel's **Archive** (channel menu, or the
+  player's catch-up button) is its Program details page with a days panel reaching as far back as the
+  archive, each past programme playable from its start. On a channel with **no guide at all** the same
+  entries open **Go back to…**, which jumps straight to a time, with an exact day/hour/minute picker
+  clamped to the archive window.
   A **Catch-up category** in Live TV lists every channel that advertises an archive.
 - **Pause and rewind live TV** (local timeshift, opt-in) — a channel without catch-up is saved on the
   device while it is watched full screen (15–60 min, always ≥ 1 GB free) and played from that copy, so it
@@ -368,6 +371,8 @@ again on every wake.
 - **Auto-match EPG** links channels to guide data when `tvg-id` is missing or wrong, scanning only the
   playlist(s) the guide is showing (a 400-channel playlist in about 3 s); confident matches
   apply automatically and the rest go to a review list. Matches are per profile and survive re-syncs.
+  Every match (Live TV, the Guide, Auto-match, review) goes through core's `GuideMatches`: it fills from the
+  cached guide and re-syncs only the feeds that list the id when that cannot.
   A **guide time offset** corrects a feed published in another time zone, globally or per channel.
 - **Several XMLTV feeds:** the order in EPG Sources is the guide priority — where two feeds list one
   channel, the higher one is drawn and a lower one only fills its gaps.

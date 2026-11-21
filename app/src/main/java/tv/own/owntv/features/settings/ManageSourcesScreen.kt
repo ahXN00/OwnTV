@@ -186,7 +186,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                     )
                     editingSource = null
                 },
-                onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.updateSource(src.id, n, url, "", "", ua, epg, autoRefresh, isDefault, httpReferer = ref); editingSource = null },
+                onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault, catchupPreferHls -> vm.updateSource(src.id, n, url, "", "", ua, epg, autoRefresh, isDefault, catchupPreferHls = catchupPreferHls, httpReferer = ref); editingSource = null },
                 onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series, login, password ->
                     vm.updateSource(
                         src.id, n, url, login, password, ua, "", autoRefresh, isDefault, mac = mac, httpReferer = ref,
@@ -227,7 +227,7 @@ fun ManageSourcesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                         onStartXtream = { n, server, u, p, ua, ref, epg, autoRefresh, live, movies, series, isDefault, preferHls, catchupPreferHls ->
                             vm.addXtream(n.ifBlank { defaultIptvName }, server, u, p, ua, epg, autoRefresh, live, movies, series, isDefault, preferHls, catchupPreferHls, httpReferer = ref)
                         },
-                        onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault, httpReferer = ref) },
+                        onStartM3u = { n, url, ua, ref, epg, autoRefresh, isDefault, catchupPreferHls -> vm.addM3u(n.ifBlank { defaultPlaylistName }, url, ua, epg, autoRefresh, isDefault, httpReferer = ref, catchupPreferHls = catchupPreferHls) },
                         onStartStalker = { n, url, mac, serialNumber, deviceId, deviceId2, signature, ua, ref, autoRefresh, isDefault, live, movies, series, login, password ->
                             vm.addStalker(
                                 n.ifBlank { defaultPortalName }, url, mac, serialNumber, deviceId,

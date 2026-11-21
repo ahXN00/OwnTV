@@ -1352,8 +1352,8 @@ class SettingsViewModel(
         )
     }
 
-    fun addM3u(name: String, url: String, userAgent: String = "", epgUrl: String = "", autoRefresh: PlaylistRefresh = PlaylistRefresh.OFF, isDefault: Boolean = false, httpReferer: String = "") = runImport {
-        importer.m3u(name, url, userAgent, epgUrl, autoRefresh, makeDefault = isDefault, httpReferer = httpReferer)
+    fun addM3u(name: String, url: String, userAgent: String = "", epgUrl: String = "", autoRefresh: PlaylistRefresh = PlaylistRefresh.OFF, isDefault: Boolean = false, httpReferer: String = "", catchupPreferHls: Boolean = false) = runImport {
+        importer.m3u(name, url, userAgent, epgUrl, autoRefresh, makeDefault = isDefault, httpReferer = httpReferer, catchupPreferHls = catchupPreferHls)
     }
 
     /**
