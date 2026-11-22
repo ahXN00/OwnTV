@@ -220,7 +220,8 @@ Live TV* (Browsing & lists, off by default) gives the TV Guide Live TV's remembe
 Library / Organise / Details). A **series page** carries the backdrop, Resume/Play, Favourite,
 **Download season** (it asks first with the episode count; gone for a profile with downloads off) and series options, season tabs with counts (Specials last and uncounted; an
 unstarted show plays from Season 1 Episode 1 and auto-play reaches the Specials after the finale),
-Grid | List and an Episode order menu (oldest/newest, hide watched); episode titles are cleaned of
+Grid | List and an Episode order menu (oldest/newest, hide watched); episode pictures are TMDB's still, else the
+provider's own picture of that episode (database v57), else the show's backdrop; episode titles are cleaned of
 "Show – S01E03 –" prefixes, with TMDB's title filling a gap. Page and hero headlines drop a leading
 provider tag such as "|MULTI|"; poster labels keep the provider's spelling. **Trailers** play in an in-app player
 (OK pauses, ◀ ▶ skip 10 s) that tries the next stored trailer when one is blocked, then offers to open

@@ -363,7 +363,8 @@ When two feeds list the same channel, the one higher on the list is used. Open a
 leaves empty.
 
 If a feed syncs but none of its channels match your playlist's, the feed says so; open the TV
-Guide, which then offers **Auto-match EPG** to pair them by name.
+Guide, which then offers **Auto-match EPG** to pair them by name. A channel still without a guide after
+that gets **Match EPG** from its own menu.
 
 > **Playlist has no channel logos?** Turn on **Use this guide's channel logos** on the feed. Logos
 > then come from the XMLTV guide instead; channels the feed has no logo for keep the playlist's one.
@@ -589,7 +590,8 @@ the categories (a sheet in Cinematic, a column in Separate panels).
 **Where:** OK on a series
 The show's backdrop, title, details and synopsis, then **Resume / Play**, **Favourite**, **Download
 season** and **⋯** (series options). Below: season tabs with episode counts (**Specials** last, when
-the show has them), **Grid | List**, and **Episode order**. Each episode shows its picture, date,
+the show has them), **Grid | List**, and **Episode order**. Each episode shows its picture (TMDB's, else the
+provider's own picture of that episode, else the show's backdrop), date,
 runtime, plot and progress; hold OK on one for its own menu.
 
 ### ▶️ Resume

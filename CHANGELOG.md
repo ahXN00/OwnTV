@@ -25,9 +25,12 @@
 - **🎮 D-pad Up/Down in the live player: change channel, controls and recently watched, or nothing** (community PR #382 by @Pax24fr)
 - **🎬 Home: hold OK or press Menu on a trending poster for its menu** (community PR #386 by @Pax24fr)
 - **⏺️ Downloads opens on Recordings (#384)**
+- **🖼️ Episode tiles show the provider's own picture of each episode (#367)**
 
 ### 🐛 Fixes
 - **🔍 Search picked on the rail keeps focus on the rail, like every other section**
+- **🏆 Sports: the floating menu no longer opens over a match page while you move between its tabs (#387)**
+- **📅 Guide: the "ids don't match" notice says to use Auto-match EPG, then Match EPG**
 - **🧭 Home: focus follows the channel or film you just watched to the front of Keep watching**
 - **📼 Catch-up: no more stutter after a programme that failed to open (#357)**
 - **📅 Guide: a channel matched by hand gets its programmes and past days even when the downloaded guide is old** (reported in PR #380 by @Sekator778)
