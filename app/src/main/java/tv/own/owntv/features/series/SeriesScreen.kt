@@ -1213,6 +1213,7 @@ private fun buildEpisodeDetails(
     tmdbWins: Boolean,
 ): tv.own.owntv.features.shell.components.MediaDetailsUi {
     val still = tv.own.owntv.core.metadata.MetadataImages.backdrop(meta?.backdropPath ?: meta?.posterPath)
+        ?: ep.imageUrl?.takeIf { it.isNotBlank() }
     val title = if (tmdbWins) meta?.title?.takeIf { it.isNotBlank() } ?: episodeDisplayTitle(ep) else episodeDisplayTitle(ep)
     val plot = if (tmdbWins) meta?.overview ?: ep.plot else ep.plot?.takeIf { it.isNotBlank() } ?: meta?.overview
     val metaLine = listOfNotNull(
@@ -1635,7 +1636,7 @@ private fun EpisodeView(
                                 onLongClick = { openMenu(ep) },
                                 width = tileW, height = tileW * (189f / 336f),
                                 modifier = epModifierFor(index, ep),
-                            ) { filter -> EpisodeStill(episodeStillUrl(meta, series, "w780"), filter) }
+                            ) { filter -> EpisodeStill(episodeStillUrl(ep, meta, series, "w780"), filter) }
                         }
                     }
                 }
@@ -1662,7 +1663,7 @@ private fun EpisodeView(
                                 modifier = epModifierFor(index, ep).fillMaxWidth(),
                             ) { focused ->
                                 Box(Modifier.size(224.mpx, 126.mpx).clip(RoundedCornerShape(14.mpx))) {
-                                    EpisodeStill(episodeStillUrl(meta, series, "w300"), null)
+                                    EpisodeStill(episodeStillUrl(ep, meta, series, "w300"), null)
                                 }
                                 Column(Modifier.weight(1f)) {
                                     Text(
@@ -1755,7 +1756,7 @@ private fun EpisodeView(
         VodOptionsMenu(
             title = stringResource(R.string.content_episode_numbered, localizedInteger(ep.episodeNumber, grouping = false), title),
             subtitle = series.name + " · " + if (ep.seasonNumber == 0) stringResource(R.string.content_season_specials) else stringResource(R.string.content_season, ep.seasonNumber),
-            posterUrl = episodeStillUrl(seasonMeta[ep.id], series, "w300"),
+            posterUrl = episodeStillUrl(ep, seasonMeta[ep.id], series, "w300"),
             x = 1290f,
             menu = ContentMenu.EPISODE,
             actions = actions,
@@ -1975,14 +1976,16 @@ private fun EpisodesBackdrop(url: String?, modifier: Modifier = Modifier) {
 }
 
 /**
- * An episode's picture: TMDB's still, else the show's backdrop (16:9 like the still), else its poster.
- * The provider stores no episode image, so the show's art only stands in for a missing still.
+ * An episode's picture: TMDB's still, else the provider's own picture of the episode, else the show's
+ * backdrop (16:9 like the still), else its poster. The show's art only stands in for a missing still.
  */
 private fun episodeStillUrl(
+    ep: EpisodeEntity,
     meta: tv.own.owntv.core.database.entity.MetadataCacheEntity?,
     series: SeriesEntity,
     size: String,
 ): String? = tv.own.owntv.core.metadata.MetadataImages.backdrop(meta?.backdropPath, size = size)
+    ?: ep.imageUrl?.takeIf { it.isNotBlank() }
     ?: series.backdropUrl?.takeIf { it.isNotBlank() } ?: series.posterUrl?.takeIf { it.isNotBlank() }
 
 @Composable
