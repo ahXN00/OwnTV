@@ -115,6 +115,10 @@ fun SportsScreen(
         }
     }
 
+    // A match or team page tells the shell when focus is on it, as every tab does. Without it, focus that
+    // passed through the menu once (a page swap, or ◀ into the menu and back) left the shell believing
+    // the menu still held it, and the next ◀ / ▶ inside the page opened the menu over the page.
+    val pageModifier = modifier.onFocusChanged { if (it.hasFocus) onChildFocused() }
     when (val page = stack.lastOrNull()) {
         is SportsPage.MatchPage -> {
             SportsMatchScreen(
@@ -133,7 +137,7 @@ fun SportsScreen(
                 },
                 active = active,
                 contentStart = contentStart,
-                modifier = modifier,
+                modifier = pageModifier,
             )
             val state = vm.matchPage.collectAsStateWithLifecycle().value
             if (filters && state != null && state.hasPlaylist) {
@@ -148,7 +152,7 @@ fun SportsScreen(
             onBack = back,
             active = active,
             contentStart = contentStart,
-            modifier = modifier,
+            modifier = pageModifier,
         )
         null -> when (tab) {
             SportsTab.SCORES -> SportsHubScreen(
