@@ -2,6 +2,4 @@
 <resources>
     <!-- Launch-window background. Matches DarkBackground (#040E0B) so cold start is seamless. -->
     <color name="owntv_window_bg">#040e0b</color>
-    <!-- Adaptive launcher icon background. -->
-    <color name="owntv_icon_bg">#050914</color>
 </resources>

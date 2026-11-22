@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.core.graphics.get
 import coil3.BitmapImage
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
@@ -148,7 +149,7 @@ private fun Bitmap.measureInk(): Int {
     while (y < height) {
         var x = 0
         while (x < width) {
-            val pixel = getPixel(x, y)
+            val pixel = this[x, y]
             val alpha = (pixel ushr 24) and 0xFF
             samples++
             if (alpha > 240) opaque++

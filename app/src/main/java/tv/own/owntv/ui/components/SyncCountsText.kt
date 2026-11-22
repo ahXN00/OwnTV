@@ -2,7 +2,7 @@ package tv.own.owntv.ui.components
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import tv.own.owntv.core.sync.SyncContentTypes
 import tv.own.owntv.core.sync.SyncCounts
 import tv.own.owntv.core.sync.SyncProgressCounts
@@ -25,28 +25,28 @@ import tv.own.owntv.core.sync.warningText
 
 @Composable
 fun SyncCounts.breakdownText(includeEpg: Boolean = false): String =
-    breakdownText(LocalContext.current.resources, includeEpg)
+    breakdownText(LocalResources.current, includeEpg)
 
 @Composable
 fun SyncCounts.summaryText(includeEpg: Boolean = false): String =
-    summaryText(LocalContext.current.resources, includeEpg)
+    summaryText(LocalResources.current, includeEpg)
 
 @Composable
-fun SyncProgressCounts.displayText(): String = displayText(LocalContext.current.resources)
+fun SyncProgressCounts.displayText(): String = displayText(LocalResources.current)
 
 internal fun compactCount(context: Context, value: Int): String = compactCount(context.resources, value)
 
 @Composable
-fun SyncProgressDisplay.primaryText(): String = primaryText(LocalContext.current.resources)
+fun SyncProgressDisplay.primaryText(): String = primaryText(LocalResources.current)
 
 @Composable
-fun SyncProgressDisplay.detailText(): String = detailText(LocalContext.current.resources)
+fun SyncProgressDisplay.detailText(): String = detailText(LocalResources.current)
 
 @Composable
-fun SyncWarning.labelText(): String = labelText(LocalContext.current.resources)
+fun SyncWarning.labelText(): String = labelText(LocalResources.current)
 
 @Composable
-fun List<SyncWarning>.warningText(): String? = warningText(LocalContext.current.resources)
+fun List<SyncWarning>.warningText(): String? = warningText(LocalResources.current)
 
 @Composable
-fun SyncContentTypes.remainderText(): String? = remainderText(LocalContext.current.resources)
+fun SyncContentTypes.remainderText(): String? = remainderText(LocalResources.current)

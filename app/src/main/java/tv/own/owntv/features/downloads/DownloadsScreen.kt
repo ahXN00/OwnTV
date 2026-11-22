@@ -114,12 +114,12 @@ fun DownloadsScreen(
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
     onOpenGuide: () -> Unit,
+    modifier: Modifier = Modifier,
     restoreFocus: Boolean = false,
     onRestored: () -> Unit = {},
     onEntryHook: (((() -> Boolean)?) -> Unit)? = null,
     /** The content's left edge: beside the resting capsule (150), or 64 inside a docked rail's reserve. */
     contentStart: Dp = 150.mpx,
-    modifier: Modifier = Modifier,
 ) {
     val vm: DownloadsViewModel = koinViewModel()
     val recVm: RecordingsViewModel = koinViewModel()
@@ -506,7 +506,7 @@ private fun downloadLine(d: DownloadEntity, info: DownloadDetails?): String = bu
 private fun DownloadStatusText(d: DownloadEntity, live: DownloadActivityTracker.ActiveDownload?, queue: List<DownloadEntity>) {
     val sep = stringResource(R.string.content_epg_bits_separator)
     // Why it failed, waits or was paused: core's wording, the same on the phone.
-    val reason = tv.own.owntv.core.download.DownloadReasons.displayTextOf(d, androidx.compose.ui.platform.LocalContext.current.resources)
+    val reason = tv.own.owntv.core.download.DownloadReasons.displayTextOf(d, androidx.compose.ui.platform.LocalResources.current)
     when (d.status) {
         DownloadStatus.COMPLETED -> StageReady()
         DownloadStatus.FAILED -> StatusLine(

@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tv.own.owntv.ui.theme.BlurredBackdrop
@@ -92,7 +94,7 @@ internal suspend fun produceBlurredBackdrop(
                 ).apply {
                     postConcat(android.graphics.ColorMatrix().apply { setSaturation(1.06f) })
                 }
-                val scaled = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+                val scaled = createBitmap(targetW, targetH)
                 android.graphics.Canvas(scaled).apply {
                     val paint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG).apply {
                         colorFilter = android.graphics.ColorMatrixColorFilter(diffuse)
@@ -128,7 +130,7 @@ private fun buildFrostMipPyramid(base: Bitmap): List<androidx.compose.ui.graphic
         result += current.asImageBitmap()
         if (level < dimensions.lastIndex) {
             val (nextW, nextH) = dimensions[level + 1]
-            val next = Bitmap.createScaledBitmap(current, nextW, nextH, true)
+            val next = current.scale(nextW, nextH)
             current = stackBlur(next, radius = 2)
         }
     }

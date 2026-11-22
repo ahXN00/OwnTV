@@ -59,6 +59,7 @@ fun MiniPlayer(
     player: PlaybackEngine,
     onExpand: () -> Unit,
     onClose: () -> Unit,
+    modifier: Modifier = Modifier,
     onCycleSize: () -> Unit = {},
     onCyclePosition: () -> Unit = {},
     onAudioMode: () -> Unit = {},
@@ -66,7 +67,6 @@ fun MiniPlayer(
     entryFocusRequester: FocusRequester? = null,
     /** Back while the mini player holds focus — the shell returns focus to wherever it came from. */
     onBack: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     val isPlaying by player.isPlaying.collectAsStateWithLifecycle()
     val meta by player.currentMeta.collectAsStateWithLifecycle()
@@ -195,9 +195,9 @@ private fun PillSeparator() {
 @Composable
 private fun MiniBtn(
     icon: OwnTVIcon,
+    modifier: Modifier = Modifier,
     lead: Boolean = false,
     active: Boolean = false,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val accent = hudAccent

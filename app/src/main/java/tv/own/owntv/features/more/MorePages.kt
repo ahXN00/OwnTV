@@ -134,11 +134,11 @@ internal fun StageActionRow(
     leading: @Composable (focused: Boolean) -> Unit,
     title: String,
     line: String?,
+    modifier: Modifier = Modifier,
     actions: List<RowAction> = emptyList(),
     titleSize: Int = 24,
     trailing: (@Composable () -> Unit)? = null,
     extra: @Composable (focused: Boolean) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     var hasFocus by remember { mutableStateOf(false) }
     Box(

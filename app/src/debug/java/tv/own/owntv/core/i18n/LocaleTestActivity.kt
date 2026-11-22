@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
 
 /** Debug-only host used to verify that Compose LocalContext preserves Activity semantics. */
 class LocaleTestActivity : ComponentActivity() {
@@ -15,7 +16,7 @@ class LocaleTestActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val prefs = getSharedPreferences("localized_context_test", MODE_PRIVATE)
-        prefs.edit().putString("ui_language", "en-US").commit()
+        prefs.edit { putString("ui_language", "en-US") }
         val store = LocaleStore.overPreferences(prefs)
         setContent {
             LocalizedContent(store) {

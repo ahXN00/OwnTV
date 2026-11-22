@@ -118,7 +118,7 @@ object FrameRateController {
      * most of that drift; this collapses whatever is left into one switch.
      */
     fun apply(activity: Activity, fps: Float, videoSize: Pair<Int, Int>? = null, matchResolution: Boolean = false) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || fps <= 0f) return
+        if (fps <= 0f) return
         cancelPendingApply()
         runCatching {
             // The pending reset is cancelled only once a mode is actually going to be requested. Cancelling
@@ -331,7 +331,6 @@ object FrameRateController {
      * a moment later.
      */
     fun reset(activity: Activity) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
         cancelPendingReset()
         // A deferred switch must not outlive the playback that asked for it — otherwise stopping during
         // the cooldown still blanks the panel a moment later, for a stream that is already gone.
@@ -366,7 +365,7 @@ object FrameRateController {
      * with only a 60 Hz mode, 25 fps judder cannot be fixed by AFR and the app must not pretend it can.
      */
     fun betterRefreshRateFor(activity: Activity, fps: Float): Float? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || fps <= 0f) return null
+        if (fps <= 0f) return null
         return runCatching {
             val display: Display = displayOf(activity) ?: return null
             val current = display.mode ?: return null

@@ -117,6 +117,7 @@ fun OwnTVShell(
     onSetFontCustomization: (tv.own.owntv.core.theme.FontCustomization) -> Unit,
     avatarId: Int,
     onSetAvatar: (Int) -> Unit,
+    modifier: Modifier = Modifier,
     // The active profile's own picture, and the two things that can be done to it. Blank = none.
     avatarPath: String = "",
     onSetCustomAvatar: (java.io.File) -> Unit = {},
@@ -134,7 +135,6 @@ fun OwnTVShell(
     isOffline: Boolean = false,
     onExitApp: () -> Unit,
     onSwitchProfile: () -> Unit,
-    modifier: Modifier = Modifier,
     // Called once the profile's start-up choice has been applied; the splash waits for it.
     onStartupSettled: () -> Unit = {},
 ) {

@@ -57,7 +57,7 @@ internal fun StandingsHeader(sport: Sport?) {
  * of My teams. With [onClick] the row takes focus and OK opens the team's page.
  */
 @Composable
-internal fun StandingsLine(row: StandingsRow, sport: Sport?, highlight: Boolean, star: Boolean = false, onClick: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+internal fun StandingsLine(row: StandingsRow, sport: Sport?, highlight: Boolean, modifier: Modifier = Modifier, star: Boolean = false, onClick: (() -> Unit)? = null) {
     if (onClick == null) {
         StandingsCells(row, sport, highlight, star, focused = false)
         return

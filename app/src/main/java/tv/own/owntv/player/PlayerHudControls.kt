@@ -94,7 +94,7 @@ internal fun mmss(sec: Int): String = tv.own.owntv.ui.components.formatTimestamp
 internal fun hudFocus(ring: Color) = tv.own.owntv.ui.theme.StageAccent(hudAccent, hudOnAccent, ring)
 
 @Composable
-internal fun CircleButton(icon: OwnTVIcon, size: Int, primary: Boolean = false, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun CircleButton(icon: OwnTVIcon, size: Int, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
     // Focus fills the button with the accent and rings it in a white hairline. The glyph takes
     // onAccentOnVideo rather than a fixed dark, so a deep custom accent still gets a readable icon —
     // that role is already derived from the seed's luminance, which is the check this needs.

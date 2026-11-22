@@ -159,6 +159,7 @@ fun SearchScreen(
     liveVm: LiveViewModel,
     /** False while the fullscreen or mini player owns the picture. */
     previewEnabled: Boolean,
+    modifier: Modifier = Modifier,
     vm: SearchViewModel = koinViewModel(),
     returnToHomeOnBack: Boolean = false,
     onReturnToHome: () -> Unit = {},
@@ -169,7 +170,6 @@ fun SearchScreen(
     focusOnOpen: Boolean = true,
     /** Hands the shell Search's way in from the rail: the field. Null on leaving. */
     onEntryHook: (((() -> Boolean)?) -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     val query by vm.query.collectAsStateWithLifecycle()
     val results by vm.results.collectAsStateWithLifecycle()

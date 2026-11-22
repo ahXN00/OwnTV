@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Lint findings that are deliberate, each scoped to the files it was checked against, so a new
+     occurrence anywhere else still warns. Dependency-version warnings are not here on purpose: they
+     are reminders to update, not mistakes. -->
+<lint>
+    <!-- Raising targetSdk changes platform behaviour (background limits, permissions, edge-to-edge),
+         so it is a change of its own, tested on the TV, never a lint clean-up. -->
+    <issue id="OldTargetApi">
+        <ignore path="build.gradle.kts" />
+    </issue>
+
+    <!-- The "standard" flavor is ARM only because every Android TV box it ships to is ARM. x86_64 is
+         not missing: it is built as its own "x86_64" flavor and APK, so neither download carries the
+         other's native libraries. -->
+    <issue id="ChromeOsAbiSupport">
+        <ignore path="build.gradle.kts" />
+    </issue>
+
+    <!-- Created only from code, with the player it draws, and never inflated from XML, so the
+         tool constructors lint asks for could never be called. -->
+    <issue id="ViewConstructor">
+        <ignore path="src/main/java/tv/own/owntv/player/MpvVideoSurface.kt" />
+    </issue>
+
+    <!-- Sizes the image disk cache as a share of free space, once at start-up; nothing is written
+         against the figure. getAllocatableBytes would count clearable cache, this cache included,
+         and costs a binder call on the launch path. -->
+    <issue id="UsableSpace">
+        <ignore path="src/main/java/tv/own/owntv/OwnTVApp.kt" />
+    </issue>
+
+    <!-- A debug-only host activity for instrumentation tests; it builds the store over its own test
+         preferences through the test-only factory on purpose. -->
+    <issue id="VisibleForTests">
+        <ignore path="src/debug/java/tv/own/owntv/core/i18n/LocaleTestActivity.kt" />
+    </issue>
+</lint>

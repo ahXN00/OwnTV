@@ -474,7 +474,7 @@ private fun ProfileStep(onCreate: (name: String, avatarId: Int, isKids: Boolean,
         next = WizardAction(stringResource(R.string.setup_create_profile), { if (valid) onCreate(name, avatarId, isKids, pin.takeIf { it.isNotBlank() }, picture) }, enabled = valid),
     ) {
         StageFieldRow(
-            OwnTVIcon.PENCIL, nameLabel, name, { name = it }, SettingHelp(nameLabel, fieldHelp),
+            OwnTVIcon.PENCIL, nameLabel, name, { name = it }, help = SettingHelp(nameLabel, fieldHelp),
             placeholder = stringResource(R.string.profiles_name_hint), modifier = Modifier.focusRequester(nameFocus),
         )
         val ids = (-1 until OwnTVAvatars.COUNT).toList()
@@ -502,7 +502,7 @@ private fun ProfileStep(onCreate: (name: String, avatarId: Int, isKids: Boolean,
             onClick = { isKids = !isKids },
         )
         StageFieldRow(
-            OwnTVIcon.PENCIL, pinLabel, pin, { if (it.length <= 6 && it.all(Char::isDigit)) pin = it }, SettingHelp(pinLabel, fieldHelp),
+            OwnTVIcon.PENCIL, pinLabel, pin, { if (it.length <= 6 && it.all(Char::isDigit)) pin = it }, help = SettingHelp(pinLabel, fieldHelp),
             placeholder = stringResource(R.string.profiles_pin_digits), password = true, keyboardType = KeyboardType.NumberPassword,
         )
     }
@@ -626,7 +626,7 @@ private fun ImportBackupStep(
                 extraLeft = if (state.sealed) emptyList() else listOf(WizardAction(stringResource(R.string.setup_skip_no_passwords), { onPassword(state.file, null) })),
             ) {
                 StageFieldRow(
-                    OwnTVIcon.PENCIL, label, password, { password = it }, SettingHelp(label, ""),
+                    OwnTVIcon.PENCIL, label, password, { password = it }, help = SettingHelp(label, ""),
                     password = true, modifier = Modifier.focusRequester(first),
                 )
             }

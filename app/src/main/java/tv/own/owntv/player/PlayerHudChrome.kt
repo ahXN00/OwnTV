@@ -250,7 +250,7 @@ internal fun ChannelCard(player: PlaybackEngine, modifier: Modifier = Modifier, 
  *  accepting digits" and the bar along the bottom drains over the auto-submit window, so the wait is
  *  visible instead of mysterious. [error] turns it into the failure readout for the same number. */
 @Composable
-internal fun ChannelNumberCard(digits: String, error: String? = null, modifier: Modifier = Modifier) {
+internal fun ChannelNumberCard(digits: String, modifier: Modifier = Modifier, error: String? = null) {
     // Animations Off: a steady caret, with no infinite transition started (never a 0 ms one).
     val caretAlpha = if (!animationsOn) 1f else {
         val caret = rememberInfiniteTransition(label = "tuneCaret")
@@ -356,6 +356,7 @@ internal fun BottomBar(
     player: PlaybackEngine, isLive: Boolean, position: () -> Long, duration: Long,
     volume: Int, audioCount: Int, subCount: Int, zoomMode: ZoomMode, speedLabel: String,
     onScrubLive: ((Int) -> Unit)?, timeshiftOffset: () -> Int?, onGoToLive: (() -> Unit)?, onOpenJumpBack: (() -> Unit)?,
+    modifier: Modifier = Modifier,
     // The catch-up button opens the channel's archive page rather than the "Go back to…" list, and says so.
     jumpBackIsArchive: Boolean = false,
     liveProgrammes: List<LiveProgramme> = emptyList(),
@@ -371,7 +372,7 @@ internal fun BottomBar(
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
     /** Given to whichever timeline is drawn, so Left/Right with the controls hidden can land on it. */
     seekFocus: FocusRequester? = null,
-    onBack: () -> Unit, modifier: Modifier = Modifier,
+    onBack: () -> Unit,
 ) {
     // Changes only while rewound into the archive. The film position is read lower still, by
     // [VodTimeline], so the tool buttons do not redraw every second.

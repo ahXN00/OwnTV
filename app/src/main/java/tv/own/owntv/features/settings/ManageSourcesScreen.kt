@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
@@ -549,13 +549,13 @@ internal fun ConfirmDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     /**
      * What the confirming button says. Defaults to Delete because every caller was a deletion when
      * this was written — which is exactly how the connection-measurement confirmation ended up
      * offering "Delete", a word with nothing to do with what it would have done.
      */
     @StringRes confirmLabel: Int = R.string.common_delete,
-    modifier: Modifier = Modifier,
 ) {
     // Focus starts on Cancel: a mis-press must not delete anything.
     tv.own.owntv.ui.stage.StageConfirm(
@@ -648,7 +648,7 @@ internal fun SourceTestDialog(
 
 @Composable
 private fun SourceTestReport(result: SourceTestResult, limit: tv.own.owntv.core.live.ConnectionLimit?) {
-    val res = LocalContext.current.resources
+    val res = LocalResources.current
     Column(verticalArrangement = Arrangement.spacedBy(8.mpx)) {
         Text(
             result.headline(res), style = tv.own.owntv.ui.theme.stageText(20, 700),

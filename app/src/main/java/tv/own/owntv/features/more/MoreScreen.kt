@@ -97,11 +97,11 @@ fun MoreScreen(
     onPlayEpisode: (seriesId: Long, episodeId: Long, positionMs: Long) -> Unit,
     onOpenSeries: (Long) -> Unit,
     onChildFocused: () -> Unit,
+    modifier: Modifier = Modifier,
     onEntryHook: (((() -> Boolean)?) -> Unit)? = null,
     /** Back from Settings: land on the Settings page's first card instead of the rail. */
     restoreFocus: Boolean = false,
     onRestored: () -> Unit = {},
-    modifier: Modifier = Modifier,
     vm: MoreCountsViewModel = koinViewModel(),
     settingsVm: SettingsViewModel = koinViewModel(),
     pinVm: SettingsPinViewModel = koinViewModel(),

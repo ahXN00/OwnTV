@@ -96,8 +96,8 @@ import tv.own.owntv.ui.theme.stageText
  */
 @Composable
 fun LocalSyncScreen(
-    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     /** More › Local sync: what OK / ▶ on the sheet focuses. Settings passes none and gets focus on open. */
     entry: FocusRequester? = null,
 ) {
@@ -376,7 +376,7 @@ fun SetupLocalSyncScreen(onRestored: () -> Unit, onBack: () -> Unit, modifier: M
                 val addressLabel = stringResource(R.string.local_sync_manual_address_label)
                 StageFieldRow(
                     OwnTVIcon.PENCIL, addressLabel, manual, { manual = it },
-                    SettingHelp(addressLabel, stringResource(R.string.settings_form_field_help)),
+                    help = SettingHelp(addressLabel, stringResource(R.string.settings_form_field_help)),
                     placeholder = stringResource(R.string.setup_device_address_hint),
                 )
             }

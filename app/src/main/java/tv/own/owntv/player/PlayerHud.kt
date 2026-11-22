@@ -74,7 +74,7 @@ private fun PlaybackFailure.displayText(): String {
     // Resolved through the same [describe] mapping the toast renderer uses. LocalConfiguration is read
     // so a language change still recomposes this, exactly as stringResource would.
     androidx.compose.ui.platform.LocalConfiguration.current
-    val resources = androidx.compose.ui.platform.LocalContext.current.resources
+    val resources = androidx.compose.ui.platform.LocalResources.current
     return describe { id, args -> resources.getString(id, *args.toTypedArray()) }
 }
 
@@ -122,6 +122,7 @@ private sealed interface TuneOsd {
 fun PlayerHud(
     player: PlaybackEngine,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     onPip: (() -> Unit)? = null,
     // Switch to audio-only mode (stops video decode, surfaces the top-bar now-playing bar). Null hides it.
     onAudioMode: (() -> Unit)? = null,
@@ -231,7 +232,6 @@ fun PlayerHud(
     onToastOk: (() -> Unit)? = null,
     // Live only: the Sources button and its list. Null hides the button.
     sources: HudSources? = null,
-    modifier: Modifier = Modifier,
 ) {
     // Nothing that ticks is read in this root scope: with the controls hidden it used to recompose
     // the whole HUD once a second for a position nobody could see. The offset, the archive clock and the
@@ -292,6 +292,7 @@ fun PlayerHud(
     var showInfo by remember { mutableStateOf(false) } // stream technical-info overlay
     // Used only by "Report this stream", which writes the current readout into the playback log.
     val reportContext = androidx.compose.ui.platform.LocalContext.current
+    val reportResources = androidx.compose.ui.platform.LocalResources.current
     var wakeTick by remember { mutableIntStateOf(0) }
     val forceShow = error != null || dialog != HudDialog.NONE
     // First Back hides the controls (instead of leaving the channel); with the controls already hidden
@@ -753,7 +754,7 @@ fun PlayerHud(
                         // written from a coroutine. The confirmation still flashes immediately — the user
                         // pressed a button and must see it acknowledged.
                         // Read at the press, not per tick.
-                        val reportPosition = tv.own.owntv.ui.components.formatTimestamp(reportContext.resources, position.value)
+                        val reportPosition = tv.own.owntv.ui.components.formatTimestamp(reportResources, position.value)
                         hudScope.launch {
                             val snapshot = buildString {
                                 appendLine(player.streamInfo().joinToString("\n") { (k, v) -> "  $k: $v" })

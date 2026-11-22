@@ -2,7 +2,6 @@ package tv.own.owntv.ui.components
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -24,6 +23,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.core.net.toUri
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -346,8 +346,8 @@ private fun TrailerBlockedDialog(onOpen: () -> Unit, onCancel: () -> Unit) {
 
 /** External fallback: YouTube app if installed, else any browser. Never throws. */
 private fun openInYouTube(context: Context, videoKey: String) {
-    val app = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$videoKey"))
-    val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$videoKey"))
+    val app = Intent(Intent.ACTION_VIEW, "vnd.youtube:$videoKey".toUri())
+    val web = Intent(Intent.ACTION_VIEW, "https://www.youtube.com/watch?v=$videoKey".toUri())
     runCatching { context.startActivity(app) }
         .recoverCatching { context.startActivity(web) }
 }

@@ -1169,7 +1169,6 @@ class LiveViewModel(
 
     override fun onCleared() {
         if (engines.liveTuner === live) engines.liveTuner = null
-        super.onCleared()
     }
 
     // True while the in-pane preview is suppressed because the provider allows one stream at a time and

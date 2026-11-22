@@ -86,16 +86,16 @@ fun NetworkSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             help = settingHelp(null, useTitle, about, useValue, pinnable = false).copy(extra = notes),
         )
         val hostLabel = stringResource(R.string.settings_host)
-        StageFieldRow(OwnTVIcon.PENCIL, hostLabel, host, { host = it }, fieldHelp(hostLabel), placeholder = stringResource(R.string.settings_proxy_host_hint), onDone = save)
+        StageFieldRow(OwnTVIcon.PENCIL, hostLabel, host, { host = it }, help = fieldHelp(hostLabel), placeholder = stringResource(R.string.settings_proxy_host_hint), onDone = save)
         val portLabel = stringResource(R.string.settings_port)
         StageFieldRow(
-            OwnTVIcon.PENCIL, portLabel, port, { port = it.filter { c -> c.isDigit() }.take(5) }, fieldHelp(portLabel),
+            OwnTVIcon.PENCIL, portLabel, port, { port = it.filter { c -> c.isDigit() }.take(5) }, help = fieldHelp(portLabel),
             placeholder = stringResource(R.string.settings_proxy_port_hint), keyboardType = KeyboardType.Number, onDone = save,
         )
         val userLabel = stringResource(R.string.settings_username_optional)
-        StageFieldRow(OwnTVIcon.PENCIL, userLabel, user, { user = it }, fieldHelp(userLabel), onDone = save)
+        StageFieldRow(OwnTVIcon.PENCIL, userLabel, user, { user = it }, help = fieldHelp(userLabel), onDone = save)
         val passLabel = stringResource(R.string.settings_password_optional)
-        StageFieldRow(OwnTVIcon.PENCIL, passLabel, pass, { pass = it }, fieldHelp(passLabel), password = true, onDone = save)
+        StageFieldRow(OwnTVIcon.PENCIL, passLabel, pass, { pass = it }, help = fieldHelp(passLabel), password = true, onDone = save)
         val testTitle = stringResource(if (testState is SettingsViewModel.ProxyTestState.Testing) R.string.settings_testing else R.string.settings_test_proxy)
         StageSettingRow(
             icon = OwnTVIcon.REFRESH,

@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import tv.own.owntv.R
@@ -151,7 +151,7 @@ private fun RecordingStatusText(r: RecordingEntity) {
         RecordingStatus.SCHEDULED -> StatusLine(recordingWhen(r.programmeStartMs))
         RecordingStatus.COMPLETED -> StageReady()
         RecordingStatus.FAILED, RecordingStatus.MISSED -> StatusLine(
-            RecordingRules.displayTextOf(r.failure, LocalContext.current.resources) ?: stringResource(R.string.recording_failed_unknown),
+            RecordingRules.displayTextOf(r.failure, LocalResources.current) ?: stringResource(R.string.recording_failed_unknown),
             Color(0xFFEF4444),
         )
         RecordingStatus.CANCELLED -> Unit

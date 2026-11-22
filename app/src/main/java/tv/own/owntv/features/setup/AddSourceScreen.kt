@@ -12,7 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.key.type
@@ -89,6 +89,7 @@ fun AddSourceScreen(
         catchupPreferHls: Boolean,
     ) -> Unit,
     onStartM3u: (name: String, url: String, userAgent: String, referer: String, epgUrl: String, autoRefresh: PlaylistRefresh, isDefault: Boolean, catchupPreferHls: Boolean) -> Unit,
+    modifier: Modifier = Modifier,
     // The last submission from the Remote companion screen, retained as a StateFlow so it survives the
     // Remote → Manual hand-off (this screen mounts after the remote browser posted). When present, the matching
     // type is selected and the fields pre-filled; the user then presses Start Import. Consumed once via
@@ -96,7 +97,6 @@ fun AddSourceScreen(
     remotePayload: kotlinx.coroutines.flow.StateFlow<CompanionPayload?>? = null,
     onRemotePayloadConsumed: () -> Unit = {},
     onBack: () -> Unit,
-    modifier: Modifier = Modifier,
     initial: SourceEntity? = null,
     initialAutoRefresh: PlaylistRefresh = PlaylistRefresh.OFF,
     initialIsDefault: Boolean = false,
@@ -632,7 +632,7 @@ fun AddSourceScreen(
         if (kind == SourceKind.XTREAM) {
             val hlsTitle = stringResource(if (hlsTest is HlsTestUi.Testing) R.string.setup_hls_testing else R.string.setup_hls_test_support)
             val hlsLine = when (val t = hlsTest) {
-                is HlsTestUi.Complete -> t.test.displayText(LocalContext.current.resources)
+                is HlsTestUi.Complete -> t.test.displayText(LocalResources.current)
                 is HlsTestUi.Failed -> stringResource(R.string.setup_hls_test_failed, t.rawMessage)
                 else -> null
             }

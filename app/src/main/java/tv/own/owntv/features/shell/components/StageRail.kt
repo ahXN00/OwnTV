@@ -141,6 +141,7 @@ fun StageRail(
     profileLine: String,
     onSwitchProfile: () -> Unit,
     onPickAvatar: () -> Unit,
+    modifier: Modifier = Modifier,
     /** The profile's drawn avatar (-1 = none) and its own picture (blank = none). */
     avatarId: Int = -1,
     avatarPath: String = "",
@@ -151,7 +152,6 @@ fun StageRail(
     onFocused: () -> Unit,
     nowPlaying: NowPlayingRail?,
     onNowPlaying: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val open = (state == RailState.OPEN || state == RailState.PINNED) && size != NavSize.COMPACT
     val counts = size >= NavSize.WIDE

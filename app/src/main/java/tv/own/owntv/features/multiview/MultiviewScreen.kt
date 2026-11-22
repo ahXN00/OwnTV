@@ -35,7 +35,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -257,7 +257,7 @@ private fun Tile(
             )
             refusal != null -> {
                 // The honest reason, in the tile, with the rest of the grid still playing.
-                val text = refusal.displayText(LocalContext.current.resources)
+                val text = refusal.displayText(LocalResources.current)
                 Text(
                     text = text,
                     style = tv.own.owntv.ui.theme.stageText(25, 400),
@@ -302,7 +302,7 @@ private fun tileFailureText(failure: PlaybackFailure?): String = when {
     failure == PlaybackFailure.DecoderExhausted -> stringResource(R.string.multiview_decoder_exhausted)
     failure != null -> {
         LocalConfiguration.current // so a language change recomposes this, as stringResource would
-        val resources = LocalContext.current.resources
+        val resources = LocalResources.current
         failure.describe { id, args -> resources.getString(id, *args.toTypedArray()) }
     }
     else -> stringResource(R.string.player_error_channel)

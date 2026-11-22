@@ -101,10 +101,10 @@ import tv.own.owntv.core.live.ProviderTags
 fun LiveScreen(
     onFullscreen: () -> Unit,
     onChildFocused: () -> Unit,
+    modifier: Modifier = Modifier,
     previewEnabled: Boolean = true,
     restoreFocus: Boolean = false,
     onRestored: () -> Unit = {},
-    modifier: Modifier = Modifier,
     /**
      * Pins the list to one folder and takes the category rail away — how More → Favourites and
      * More → History show channels without a second copy of this list existing.
@@ -251,7 +251,7 @@ fun LiveScreen(
     val multiviewToast = tv.own.owntv.ui.components.rememberInAppToast()
     val recordingChannelIds by vm.recordingChannelIds.collectAsStateWithLifecycle()
     // Resolved through resources rather than stringResource: the count is only known inside the click.
-    val multiviewRes = androidx.compose.ui.platform.LocalContext.current.resources
+    val multiviewRes = androidx.compose.ui.platform.LocalResources.current
     var contextCategory by remember { mutableStateOf<LiveRailItem?>(null) }
     // The rail row a category menu was opened from, kept after the menu closes so the cursor can go
     // back to that exact row. Held as a key, not an index: a Move changes the row's position.

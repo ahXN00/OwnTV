@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.ViewCompat
+import androidx.core.content.edit
 import androidx.core.view.WindowInsetsCompat
 import kotlin.math.roundToInt
 
@@ -124,7 +125,7 @@ internal class TvImeWatcher(private val hostView: View) {
             else -> null
         }
         if (measured != null) {
-            prefs.edit().putInt(KEY_CALIBRATED_HEIGHT, measured.first).apply()
+            prefs.edit { putInt(KEY_CALIBRATED_HEIGHT, measured.first) }
         }
 
         val obstruction = measured?.first ?: if (imeRequested) {

@@ -110,12 +110,12 @@ fun AudioNowPlayingBar(
     onExpand: () -> Unit,
     onClose: () -> Unit,
     focusable: Boolean,
+    modifier: Modifier = Modifier,
     /** Focus target for "enter the audio session" from the sidebar's Now Playing item. Lands on stage 1. */
     entryFocusRequester: FocusRequester? = null,
     /** The favourite state of whatever is playing — the same channel/movie/series the fullscreen HUD toggles. */
     favorite: Boolean = false,
     onToggleFavorite: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
 ) {
     val accent = stageAccent
     val layoutDirection = LocalLayoutDirection.current

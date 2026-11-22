@@ -133,7 +133,7 @@ fun DnsSettingsScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             val serverLabel = stringResource(R.string.settings_dns_server)
             StageFieldRow(
                 OwnTVIcon.PENCIL, serverLabel, server, { server = it },
-                SettingHelp(serverLabel, explanation, extra = notes),
+                help = SettingHelp(serverLabel, explanation, extra = notes),
                 placeholder = stringResource(R.string.settings_dns_server_hint),
                 onDone = { applySave() },
             )

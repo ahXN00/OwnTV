@@ -63,8 +63,8 @@ import tv.own.owntv.ui.theme.stageText
  */
 @Composable
 fun BackupScreen(
-    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null,
     /** More › Backup & Restore: what OK / ▶ on the sheet focuses. Settings passes none and gets focus on open. */
     entry: FocusRequester? = null,
 ) {

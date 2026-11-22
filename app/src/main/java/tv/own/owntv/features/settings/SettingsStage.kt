@@ -903,9 +903,9 @@ fun StageFieldRow(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
     /** The panel text while focused; null in a popup, which has no panel. */
     help: SettingHelp? = null,
-    modifier: Modifier = Modifier,
     placeholder: String = "",
     password: Boolean = false,
     keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,

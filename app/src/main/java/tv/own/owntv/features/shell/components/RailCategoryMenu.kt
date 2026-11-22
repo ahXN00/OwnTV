@@ -3,7 +3,7 @@ package tv.own.owntv.features.shell.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import tv.own.owntv.R
 import tv.own.owntv.core.customize.CategoryRestorePlan
@@ -48,7 +48,7 @@ internal fun RailCategoryMenu(
         onMove = { if (item.sealed) guarded(SealedCategoryAction.MOVE, onMove) else onMove(item.key) },
         // Always offered: the plan is read in the background and only fills in the confirmation.
         resetLabel = stringResource(if (item.key is LiveKey.Custom) R.string.content_category_restore_custom else R.string.content_category_restore_playlist),
-        resetLines = plan?.let { categoryRestoreSummary(it, LocalContext.current.resources) },
+        resetLines = plan?.let { categoryRestoreSummary(it, LocalResources.current) },
         onReset = { guarded(SealedCategoryAction.RESTORE, onRestore) },
         onDismiss = onClose,
         locked = when (item.key) {

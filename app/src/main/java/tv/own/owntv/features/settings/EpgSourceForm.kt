@@ -88,13 +88,13 @@ internal fun EpgSourceForm(
         val nameLabel = stringResource(R.string.settings_epg_sources_name)
         StageFieldRow(
             OwnTVIcon.PENCIL, nameLabel, name, { name = it },
-            SettingHelp(nameLabel, stringResource(R.string.settings_help_epg_name) + " " + fieldHelp, extra = submitButton),
+            help = SettingHelp(nameLabel, stringResource(R.string.settings_help_epg_name) + " " + fieldHelp, extra = submitButton),
             placeholder = stringResource(R.string.settings_epg_sources_name_hint), backLabel = parent, submitHint = submitHint, modifier = toSubmit,
         )
         val urlLabel = stringResource(R.string.settings_epg_sources_url)
         StageFieldRow(
             OwnTVIcon.PENCIL, urlLabel, url, { url = it },
-            SettingHelp(urlLabel, fieldHelp, extra = submitButton),
+            help = SettingHelp(urlLabel, fieldHelp, extra = submitButton),
             placeholder = stringResource(R.string.settings_epg_sources_url_hint), keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
             backLabel = parent, submitHint = submitHint, modifier = toSubmit,
         )
@@ -112,7 +112,7 @@ internal fun EpgSourceForm(
         val uaLabel = stringResource(R.string.settings_epg_sources_user_agent)
         StageFieldRow(
             OwnTVIcon.PENCIL, uaLabel, ua, { ua = it },
-            SettingHelp(uaLabel, fieldHelp, extra = submitButton),
+            help = SettingHelp(uaLabel, fieldHelp, extra = submitButton),
             placeholder = stringResource(R.string.settings_epg_sources_user_agent_hint), backLabel = parent, submitHint = submitHint, modifier = toSubmit,
         )
         val refreshTitle = stringResource(R.string.settings_epg_sources_auto_refresh_title)

@@ -63,8 +63,7 @@
         android:roundIcon="@mipmap/owntv_icon_eggshell"
         android:supportsRtl="true"
         android:theme="@style/Theme.OwnTV"
-        android:usesCleartextTraffic="true"
-        tools:targetApi="26">
+        android:usesCleartextTraffic="true">
 
         <!-- Exposes the downloaded update APK to the system installer. -->
         <provider
@@ -121,12 +120,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -151,12 +147,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -181,12 +174,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -211,12 +201,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -241,12 +228,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -271,12 +255,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -301,12 +282,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -331,12 +309,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
@@ -362,12 +337,9 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:host="play"
-                    android:scheme="owntv" />
-                <data
-                    android:host="open"
-                    android:scheme="owntv" />
+                <data android:scheme="owntv" />
+                <data android:host="play" />
+                <data android:host="open" />
             </intent-filter>
         </activity>
 
