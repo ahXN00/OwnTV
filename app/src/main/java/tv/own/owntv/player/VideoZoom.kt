@@ -73,11 +73,7 @@ fun Modifier.videoZoom(
         }
         else -> {
             // Target box aspect for the view; the surface stretches to fill it.
-            val targetAspect = when (zoom) {
-                ZoomMode.FORCE_16_9 -> 16f / 9f
-                ZoomMode.FORCE_4_3 -> 4f / 3f
-                else -> aspect // FIT keeps the video aspect
-            }
+            val targetAspect = zoom.forcedAspect ?: aspect // FIT keeps the video aspect
             // contain: largest box of targetAspect fitting inside the container.
             val widthDriven = targetAspect >= containerAspect
             if (widthDriven) {

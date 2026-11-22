@@ -26,8 +26,13 @@
 - **🎬 Home: hold OK or press Menu on a trending poster for its menu** (community PR #386 by @Pax24fr)
 - **⏺️ Downloads opens on Recordings (#384)**
 - **🖼️ Episode tiles show the provider's own picture of each episode (#367)**
+- **🖥️ Player zoom: Force 20:9 (#378)**
+- **🔄 Playlist menu: Re-sync first (#385)**
+- **🗑️ Customize: Delete in the side panel of a category you created**
 
 ### 🐛 Fixes
+- **⌨️ Text fields in popups open the keyboard with focus every time**
+- **🔒 A Merge restore or a sync with the phone no longer removes a category lock**
 - **🔍 Search picked on the rail keeps focus on the rail, like every other section**
 - **🏆 Sports: the floating menu no longer opens over a match page while you move between its tabs (#387)**
 - **📅 Guide: the "ids don't match" notice says to use Auto-match EPG, then Match EPG**

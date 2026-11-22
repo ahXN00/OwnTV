@@ -190,7 +190,7 @@ Per section: **Now** (import first), **Later** (background), **Off** (never fetc
 defaults to Live now, Movies/Series later, because Stalker VOD has no bulk endpoint.
 
 ### 🔄 Re-sync
-**Where:** Settings → Sources & guide → Playlists → the playlist
+**Where:** Settings → Sources & guide → Playlists → the playlist, first in its menu
 **Resync now** adds and updates. **Resync and remove missing titles** also drops what the provider
 has stopped listing. Neither touches your favourites, history, resume points or manual order.
 
@@ -823,7 +823,7 @@ profile with a PIN asks for it again.
 | Engine pill **⇄ MPV/EXO** | control bar |
 | **Go back to…** | control bar, catch-up channels |
 | **Sources** | control bar, live channels — the same channel in another quality, category or playlist; pick one to switch. Locked and hidden channels are left out |
-| **Aspect** | control bar — a press steps to the next mode (Fit, Fill, Stretch, Original, 16:9, 4:3) and names it; **hold OK** for the list |
+| **Aspect** | control bar — a press steps to the next mode (Fit, Fill, Stretch, Original, 16:9, 4:3, 20:9) and names it; **hold OK** for the list |
 | ⓘ **Stream info** | right-most button — codec, resolution, HDR, bitrate, decoder, audio, buffer; on mpv also **Interlacing** (none, deinterlaced by the player or by the TV, or not deinterlaced) |
 | **Record** | control bar, live channels, once enabled |
 | **Multiview** | control bar, once enabled |

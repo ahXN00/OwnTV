@@ -137,7 +137,7 @@ External subtitles come from **OpenSubtitles** (own account, remote sign-in by Q
 ### 2.5 Player HUD
 
 Scrubbable seek bar · previous/next through the episode queue · play/pause · audio, subtitle and
-speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3 — a press steps to the next, hold OK for the list) · **Sources** (the same channel in another quality, category or playlist, from core) · volume
+speed pickers · zoom and aspect (Fit · Fill · Stretch · Original · Force 16:9 · Force 4:3 · Force 20:9 — a press steps to the next, hold OK for the list) · **Sources** (the same channel in another quality, category or playlist, from core) · volume
 with mute · favourite the current item · **stream info overlay** (codec, resolution, fps, bit depth,
 HDR type, interlacing on mpv, bitrate, decoder, audio, buffer, dropped frames, masked source URL) · a **clock** in every
 mode, becoming *Programme time* + *Current time* during a replay · auto-hiding controls, with **Back**

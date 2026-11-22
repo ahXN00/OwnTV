@@ -339,6 +339,9 @@ fun CustomizeScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                                 }
                             },
                             onOpenItems = { itemsReturnKey = row.key; vm.openItems(row) },
+                            onDelete = if (row.categoryId == null) {
+                                { dialogReturn = rowFocusers[row.key]; deletingCategory = row }
+                            } else null,
                         )
                     }
                 }
@@ -605,6 +608,8 @@ private fun CategoryRow(
     onHideLongPress: () -> Unit,
     onPickRangeEnd: () -> Unit,
     onOpenItems: () -> Unit,
+    /** Set only for a custom category: a provider's own category cannot be deleted. */
+    onDelete: (() -> Unit)?,
 ) {
     val meta = listOfNotNull(
         row.hidden.takeIf { it }?.let { stringResource(R.string.settings_customize_hidden) },
@@ -624,6 +629,8 @@ private fun CategoryRow(
             { if (inRangeMode) onPickRangeEnd() else onToggleHidden() },
             onHideLongPress,
         ),
+    ) + listOfNotNull(
+        onDelete?.let { StageAction(OwnTVIcon.TRASH, stringResource(R.string.common_delete), it, danger = true) },
     )
     StageSettingRow(
         icon = OwnTVIcon.FOLDER,

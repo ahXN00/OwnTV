@@ -935,6 +935,11 @@ fun StageFieldRow(
         if (editing) {
             imeWatcher?.onImeRequested()
             runCatching { fieldFocus.requestFocus() }
+            // The field's input session starts on the frame after it takes focus. Asked for in the same
+            // frame, the keyboard inside a popup's own window either never opened or opened without
+            // focus, greyed out behind the D-pad.
+            androidx.compose.runtime.withFrameNanos { }
+            kotlinx.coroutines.delay(50)
             keyboard?.show()
             kotlinx.coroutines.delay(120)
             runCatching { bring.bringIntoView() }
