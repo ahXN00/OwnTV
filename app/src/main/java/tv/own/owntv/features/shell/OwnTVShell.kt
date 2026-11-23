@@ -71,6 +71,7 @@ import tv.own.owntv.features.search.SearchViewModel
 import tv.own.owntv.core.home.TrendingHomeItem
 import tv.own.owntv.features.series.SeriesScreen
 import tv.own.owntv.features.series.SeriesViewModel
+import tv.own.owntv.core.live.displayText
 import tv.own.owntv.core.settings.RemoteShortcutAction
 import tv.own.owntv.core.settings.RemoteShortcutBindings
 import tv.own.owntv.player.MiniPlayer
@@ -250,6 +251,13 @@ fun OwnTVShell(
         }
     }
     val mpvEngine = remember(player) { tv.own.owntv.player.MpvPlaybackEngine(player) }
+    val resources = androidx.compose.ui.platform.LocalContext.current.resources
+    val addedLabel = stringResource(R.string.settings_favorite_added)
+    val removedLabel = stringResource(R.string.settings_favorite_removed)
+    val recordingStartedLabel = stringResource(R.string.settings_recording_started)
+    val recordingStoppedLabel = stringResource(R.string.settings_recording_stopped)
+    val downloadStartedLabel = stringResource(R.string.settings_download_started)
+    val toastTemplate = stringResource(R.string.settings_favorite_toast_message)
     // Audio focus + MediaSession. This is the only place that knows which engine currently owns
     // the speaker, so it hands that engine over and takes it back when the player closes.
     val playbackSession = koinInject<tv.own.owntv.player.PlaybackSession>()
@@ -418,6 +426,7 @@ fun OwnTVShell(
     val overlayPlaylistMarks by liveVm.playlistMarks.collectAsStateWithLifecycle()
     // Favorite state for the player HUD's in-stream favorite toggle (live channel / movie / series).
     val liveFavoriteIds by liveVm.favoriteIds.collectAsStateWithLifecycle()
+    val recordingChannelIds by liveVm.recordingChannelIds.collectAsStateWithLifecycle()
     val playingMovie by movieVm.playingMovie.collectAsStateWithLifecycle()
     val movieFavoriteIds by movieVm.favoriteIds.collectAsStateWithLifecycle()
     val playingSeries by seriesVm.playingSeries.collectAsStateWithLifecycle()
@@ -856,7 +865,128 @@ fun OwnTVShell(
             RemoteShortcutAction.PLAY_PAUSE -> if (playerMode != PlayerMode.NONE) dockedEngine.togglePlayPause()
             RemoteShortcutAction.RETURN_TO_LIVE -> if (playerMode != PlayerMode.NONE && zapSource == MainSection.LIVE_TV && timeshifted) liveVm.goToLive()
             RemoteShortcutAction.PREVIOUS_CHANNEL -> if (playerMode != PlayerMode.NONE && zapSource == MainSection.LIVE_TV) liveVm.previousChannel()
-            RemoteShortcutAction.TOGGLE_FAVORITE -> favToggle?.invoke()
+            RemoteShortcutAction.TOGGLE_FAVORITE -> {
+                val actionText = { added: Boolean -> if (added) addedLabel else removedLabel }
+                if (playerMode != PlayerMode.NONE) {
+                    when (zapSource) {
+                        MainSection.LIVE_TV -> previewChannel?.let { ch ->
+                            val isFav = liveFavoriteIds.contains(ch.id)
+                            liveVm.toggleFavorite(ch)
+                            val added = !isFav
+                            localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), ch.name))
+                        }
+                        MainSection.MOVIES -> playingMovie?.let { m ->
+                            val isFav = movieFavoriteIds.contains(m.id)
+                            movieVm.toggleFavorite(m)
+                            val added = !isFav
+                            localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), m.name))
+                        }
+                        MainSection.SERIES -> playingSeries?.let { s ->
+                            val isFav = seriesFavoriteIds.contains(s.id)
+                            seriesVm.toggleFavorite(s)
+                            val added = !isFav
+                            localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), s.name))
+                        }
+                        else -> {}
+                    }
+                } else {
+                    when (selectedSection) {
+                        MainSection.HOME -> homeVm.uiState.value.let { state ->
+                            state.trendingItems.getOrNull(state.activeTrendingIndex)?.let { item ->
+                                val title = when (item) {
+                                    is tv.own.owntv.core.home.TrendingHomeItem.Movie -> item.movie.name
+                                    is tv.own.owntv.core.home.TrendingHomeItem.Series -> item.series.name
+                                }
+                                val isFav = when (item) {
+                                    is tv.own.owntv.core.home.TrendingHomeItem.Movie -> movieFavoriteIds.contains(item.movie.id)
+                                    is tv.own.owntv.core.home.TrendingHomeItem.Series -> seriesFavoriteIds.contains(item.series.id)
+                                }
+                                homeVm.toggleTrendingFavorite(item)
+                                val added = !isFav
+                                localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), title))
+                            }
+                        }
+                        MainSection.LIVE_TV, MainSection.EPG -> previewChannel?.let { ch ->
+                            val isFav = liveFavoriteIds.contains(ch.id)
+                            liveVm.toggleFavorite(ch)
+                            val added = !isFav
+                            localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), ch.name))
+                        }
+                        MainSection.MOVIES -> movieVm.selectedMovie.value?.let { m ->
+                            val isFav = movieFavoriteIds.contains(m.id)
+                            movieVm.toggleFavorite(m)
+                            val added = !isFav
+                            localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), m.name))
+                        }
+                        MainSection.SERIES -> seriesVm.selectedSeries.value?.let { s ->
+                            val isFav = seriesFavoriteIds.contains(s.id)
+                            seriesVm.toggleFavorite(s)
+                            val added = !isFav
+                            localSubToast.show(java.lang.String.format(toastTemplate, actionText(added), s.name))
+                        }
+                        else -> {}
+                    }
+                }
+            }
+            RemoteShortcutAction.INSTANT_RECORD_DOWNLOAD -> {
+                val recordChannel: (tv.own.owntv.core.database.entity.ChannelEntity) -> Unit = { ch ->
+                    if (recordingChannelIds.contains(ch.id)) {
+                        liveVm.stopRecordingOn(ch)
+                        localSubToast.show(java.lang.String.format(toastTemplate, recordingStoppedLabel, ch.name))
+                    } else {
+                        scope.launch {
+                            val grant = liveVm.canRecordOn(ch)
+                            if (grant is tv.own.owntv.core.live.StreamGrant.Refused) {
+                                localSubToast.show(grant.displayText(resources))
+                            } else {
+                                liveVm.recordNow(ch)
+                                localSubToast.show(java.lang.String.format(toastTemplate, recordingStartedLabel, ch.name))
+                            }
+                        }
+                    }
+                }
+                if (playerMode != PlayerMode.NONE) {
+                    when (zapSource) {
+                        MainSection.LIVE_TV -> previewChannel?.let { recordChannel(it) }
+                        MainSection.MOVIES -> playingMovie?.let { m ->
+                            movieVm.download(m)
+                            localSubToast.show(java.lang.String.format(toastTemplate, downloadStartedLabel, m.name))
+                        }
+                        MainSection.SERIES -> playingSeries?.let { s ->
+                            seriesVm.askBulkDownload(s, null)
+                            localSubToast.show(java.lang.String.format(toastTemplate, downloadStartedLabel, s.name))
+                        }
+                        else -> {}
+                    }
+                } else {
+                    when (selectedSection) {
+                        MainSection.HOME -> homeVm.uiState.value.let { state ->
+                            state.trendingItems.getOrNull(state.activeTrendingIndex)?.let { item ->
+                                when (item) {
+                                    is tv.own.owntv.core.home.TrendingHomeItem.Movie -> {
+                                        movieVm.download(item.movie)
+                                        localSubToast.show(java.lang.String.format(toastTemplate, downloadStartedLabel, item.movie.name))
+                                    }
+                                    is tv.own.owntv.core.home.TrendingHomeItem.Series -> {
+                                        seriesVm.askBulkDownload(item.series, null)
+                                        localSubToast.show(java.lang.String.format(toastTemplate, downloadStartedLabel, item.series.name))
+                                    }
+                                }
+                            }
+                        }
+                        MainSection.LIVE_TV, MainSection.EPG -> previewChannel?.let { recordChannel(it) }
+                        MainSection.MOVIES -> movieVm.selectedMovie.value?.let { m ->
+                            movieVm.download(m)
+                            localSubToast.show(java.lang.String.format(toastTemplate, downloadStartedLabel, m.name))
+                        }
+                        MainSection.SERIES -> seriesVm.selectedSeries.value?.let { s ->
+                            seriesVm.askBulkDownload(s, null)
+                            localSubToast.show(java.lang.String.format(toastTemplate, downloadStartedLabel, s.name))
+                        }
+                        else -> {}
+                    }
+                }
+            }
             RemoteShortcutAction.PAGE_TOWARD_FIRST,
             RemoteShortcutAction.PAGE_TOWARD_LAST,
             RemoteShortcutAction.JUMP_TO_FIRST,
@@ -2074,6 +2204,7 @@ fun OwnTVShell(
         }
     }
     tv.own.owntv.ui.components.InAppToast(epgMatchToast)
+    tv.own.owntv.ui.components.InAppToast(localSubToast)
 
     // Automatic update check (GitHub Releases) shortly after launch, once per session: a small
         // top-right status card shows "Checking… / up to date" (auto-hides) or stays with

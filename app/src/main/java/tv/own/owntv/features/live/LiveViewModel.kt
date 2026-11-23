@@ -206,6 +206,10 @@ class LiveViewModel(
         }
     }
 
+    /** Check whether recording on this channel's playlist is allowed right now under the connection budget. */
+    suspend fun canRecordOn(channel: ChannelEntity): tv.own.owntv.core.live.StreamGrant =
+        recordings.canRecordOn(channel.sourceId)
+
     /** What already claims this channel's playlist over the window — the clash the dialog warns about. */
     suspend fun recordingClashes(channel: ChannelEntity, startMs: Long, stopMs: Long): List<tv.own.owntv.core.database.entity.RecordingEntity> {
         val window = RecordingSchedule.manualWindow(startMs, stopMs, System.currentTimeMillis()) ?: return emptyList()

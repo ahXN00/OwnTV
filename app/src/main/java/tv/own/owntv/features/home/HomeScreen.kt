@@ -437,7 +437,7 @@ fun HomeScreen(
                                     headerGap = if (posterItem != null) 16.mpx else 0.dp,
                                     // Compose's one-line poster title is 10 px shorter than Chrome's (measured).
                                     bottomGap = if (posterItem != null) 10.mpx else 0.dp,
-                                    onItemFocused = { posterIndex = it },
+                                    onItemFocused = { index -> posterIndex = index; vm.navigateTrending(index) },
                                     title = row.displayTitle(),
                                     items = state.trendingItems,
                                     start = contentStart,
