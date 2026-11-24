@@ -109,6 +109,8 @@ class MovieViewModel(
     private val externalPlayerLauncher: tv.own.owntv.core.player.ExternalPlayerLauncher,
     private val streamUrlResolver: tv.own.owntv.core.stalker.StreamUrlResolver,
     private val subtitleController: tv.own.owntv.core.subtitles.SubtitleController,
+    /** Leaving during the end credits saves the film as finished. */
+    private val skip: tv.own.owntv.player.SkipSegmentController,
 ) : ViewModel() {
 
     /** The categories' search text, held here so it survives the player (see LiveViewModel). */
@@ -928,8 +930,8 @@ class MovieViewModel(
         val ref = playingRef ?: return
         val m = ref.movie
         if (player.isLiveContent || !playerIsOn(ref)) return
-        val pos = player.position.value
         val dur = player.duration.value
+        val pos = skip.savedPosition(player.position.value, dur)
         if (pos > 0 && dur > 0) {
             viewModelScope.launch {
                 // The position belongs to the profile that started playback. If the user switched

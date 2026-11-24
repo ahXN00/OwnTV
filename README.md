@@ -61,6 +61,7 @@ Questions, ideas, bug reports — **join the OwnTV Telegram group:**
 - **Two engines** — mpv for compatibility, ExoPlayer for instant Live TV, with automatic fallback and a per-channel override
 - **4K HDR** direct rendering, optional auto frame-rate matching, surround sound with a stereo safety net, 150% volume boost
 - **Subtitles** — text, image and closed captions, plus OpenSubtitles search and local files
+- **Skip intro, recap, end credits and preview** in films and series — a button or automatically, from [TheIntroDB](https://theintrodb.org/)
 - Resume, next-episode auto-play, mini-player/PiP, picture-in-picture when you press Home, audio-only mode, live stream-info overlay
 - Media-session transport keys and proper audio focus — it behaves like a TV app
 - An **error log you can export** for any stream that misbehaves
@@ -256,6 +257,12 @@ Movie & series metadata and trailers are provided by [TMDB](https://www.themovie
 Subtitle search & download is powered by [OpenSubtitles.com](https://www.opensubtitles.com/).
 **This product uses the OpenSubtitles API but is not endorsed or certified by OpenSubtitles.** You sign
 in with your own OpenSubtitles account and are subject to their terms and download quotas.
+
+<img src="extras/partner-logos/theintrodb_logo.svg" alt="TheIntroDB" height="120">
+
+Skip times for intros, recaps, end credits and previews come from [TheIntroDB](https://theintrodb.org/),
+a free database built by its community — anyone can add the times a title is still missing there. The
+TheIntroDB logo is the project's own artwork, used unchanged under CC BY-SA 4.0.
 
 ### 🎨 Brand
 

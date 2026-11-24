@@ -945,6 +945,9 @@ fun MoviesScreen(
                     contextMovie = null; setTmdbNameMovie = m
                 })
             }
+            add(MenuAction(tv.own.owntv.core.menu.CHECK_THEINTRODB_ACTION, stringResource(R.string.content_check_theintrodb), OwnTVIcon.SKIP_NEXT, group = VodGroupDetails) {
+                contextMovie = null; tv.own.owntv.features.settings.TheIntroDbCheckRequests.movie(m)
+            })
             add(MenuAction("delete_subtitles", stringResource(R.string.content_delete_subtitles), OwnTVIcon.SUBTITLE, group = VodGroupDetails) {
                 if (contextMovieSubs.isNotEmpty()) showDeleteSubs = true
             })

@@ -372,6 +372,8 @@ internal fun BottomBar(
     onMultiview: (() -> Unit)? = null, onRecordThis: (() -> Unit)? = null, recordingThis: Boolean = false,
     /** Given to whichever timeline is drawn, so Left/Right with the controls hidden can land on it. */
     seekFocus: FocusRequester? = null,
+    /** The skip button, while it shows: Up from a film's timeline goes to it. */
+    seekUpFocus: FocusRequester? = null,
     onBack: () -> Unit,
 ) {
     // Changes only while rewound into the archive. The film position is read lower still, by
@@ -404,7 +406,7 @@ internal fun BottomBar(
                 Spacer(Modifier.height(10.dp))
             }
             !isLive && duration > 0 -> {
-                VodTimeline(player, position, duration, seekFocus)
+                VodTimeline(player, position, duration, seekFocus, seekUpFocus)
                 Spacer(Modifier.height(10.dp))
             }
             // A live channel with no archive has no timeline to scrub, but it still has a state to
@@ -587,7 +589,7 @@ private fun volumeIcon(volume: Int): OwnTVIcon = when {
 /** A film's seek bar and its two time caps — the only part of the dock that needs the position, so the
  *  only part that recomposes as it ticks. */
 @Composable
-private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long, seekFocus: FocusRequester?) {
+private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: Long, seekFocus: FocusRequester?, upFocus: FocusRequester?) {
     val seekStep by player.seekStepMs.collectAsStateWithLifecycle() // Settings -> Seek step
     val buffered by player.bufferedMs.collectAsStateWithLifecycle()
     val pos = position()
@@ -595,7 +597,7 @@ private fun VodTimeline(player: PlaybackEngine, position: () -> Long, duration: 
         TimeCap(formatTime(pos), Alignment.Start)
         Spacer(Modifier.width(12.dp))
         Box(Modifier.weight(1f)) {
-            SeekBar(positionMs = pos, durationMs = duration, bufferedMs = buffered, stepMs = seekStep, onSeek = { player.seekBy(it) }, focusRequester = seekFocus)
+            SeekBar(positionMs = pos, durationMs = duration, bufferedMs = buffered, stepMs = seekStep, onSeek = { player.seekBy(it) }, focusRequester = seekFocus, upFocus = upFocus)
         }
         Spacer(Modifier.width(12.dp))
         TimeCap(stringResource(R.string.player_time_remaining, formatTime((duration - pos).coerceAtLeast(0))), Alignment.End)
@@ -613,6 +615,8 @@ internal fun NextEpisodeCard(
     onPlayNow: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    /** At the start of the end credits, staying means watching them: "Watch credits" instead of Cancel. */
+    atCredits: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -645,10 +649,66 @@ internal fun NextEpisodeCard(
                 tinted = true,
             )
             tv.own.owntv.ui.stage.StageButton(
-                stringResource(R.string.common_cancel),
+                stringResource(if (atCredits) R.string.player_watch_credits else R.string.common_cancel),
                 onClick = onCancel,
                 icon = OwnTVIcon.CLOSE,
             )
         }
+    }
+}
+
+/** The skip button: "Skip intro", "Skip credits", "Next episode"… — one press does what it says. */
+@Composable
+internal fun SkipPill(
+    action: tv.own.owntv.player.SkipAction,
+    focus: FocusRequester,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    tv.own.owntv.ui.stage.StageButton(
+        stringResource(
+            when (action) {
+                tv.own.owntv.player.SkipAction.SKIP_INTRO -> R.string.player_skip_intro
+                tv.own.owntv.player.SkipAction.SKIP_RECAP -> R.string.player_skip_recap
+                tv.own.owntv.player.SkipAction.SKIP_CREDITS -> R.string.player_skip_credits
+                tv.own.owntv.player.SkipAction.SKIP_PREVIEW -> R.string.player_skip_preview
+                tv.own.owntv.player.SkipAction.NEXT_EPISODE -> R.string.content_action_next_episode
+            },
+        ),
+        onClick = onSkip,
+        modifier = modifier.focusRequester(focus),
+        icon = OwnTVIcon.SKIP_NEXT,
+        tinted = true,
+    )
+}
+
+/** The 3-second notice at the end credits when they are skipped automatically: any key stays on them. */
+@Composable
+internal fun NextEpisodeNotice(title: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .widthIn(max = 360.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(hudShade(0.82f))
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Text(
+            stringResource(R.string.content_action_next_episode),
+            style = tv.own.owntv.ui.theme.stageText(25, 600),
+            color = hudAccent,
+            fontWeight = FontWeight.Bold,
+        )
+        if (title.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                title,
+                style = tv.own.owntv.ui.theme.stageText(25, 500),
+                color = hudInk,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.player_keep_credits), style = tv.own.owntv.ui.theme.stageText(20, 500), color = hudInk)
     }
 }

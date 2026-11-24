@@ -94,6 +94,7 @@ class SettingsViewModel(
     // Adding a playlist is core's sequence, not a copy of it — see [importState].
     private val importer: SourceImporter,
     private val sourceEditor: SourceEditor,
+    private val theIntroDb: tv.own.owntv.core.skip.TheIntroDbAccount,
 ) : ViewModel() {
     companion object {
         private const val TAG = "OwnTVHome"
@@ -127,6 +128,8 @@ class SettingsViewModel(
     val remoteOpenSubtitlesConfigs get() = companion.openSubtitlesConfigs
 
     fun startRemoteTmdbConfigListener(port: Int) = companion.startForTmdbConfig(port)
+    val remoteTheIntroDbConfigs get() = companion.theIntroDbConfigs
+    fun startRemoteTheIntroDbConfigListener(port: Int) = companion.startForTheIntroDbConfig(port)
     fun startRemoteOpenSubtitlesConfigListener(port: Int) = companion.startForOpenSubtitlesConfig(port)
 
     // Semi-auto EPG: after a playlist import, if the playlist has a guide URL we offer to sync the EPG now
@@ -1641,6 +1644,41 @@ class SettingsViewModel(
     val tmdbApiKey: StateFlow<String> =
         settings.tmdbApiKey.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
     fun setTmdbApiKey(key: String) { viewModelScope.launch { settings.setTmdbApiKey(key) } }
+
+    // ---- Skip intro & credits (TheIntroDB) ----
+    val skipChoices: StateFlow<tv.own.owntv.core.skip.SkipChoices> =
+        settings.skipChoices.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), tv.own.owntv.core.skip.SkipChoices())
+    fun setSkipMode(kind: tv.own.owntv.core.skip.SkipKind, mode: tv.own.owntv.core.skip.SkipMode) {
+        viewModelScope.launch { settings.setSkipMode(kind, mode) }
+    }
+    fun setSkipButtonShow(show: tv.own.owntv.core.skip.SkipButtonShow) {
+        viewModelScope.launch { settings.setSkipButtonShow(show) }
+    }
+    val theIntroDbApiKey: StateFlow<String> =
+        settings.theIntroDbApiKey.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+    /** The allowance the last lookup or check reported, so the row shows it without a call. */
+    val theIntroDbQuota get() = theIntroDb.quota
+    private val _theIntroDbStatus = MutableStateFlow<tv.own.owntv.core.skip.TheIntroDbAccount.Status?>(null)
+    /** The last Check result; null until one ran on this screen. */
+    val theIntroDbStatus: StateFlow<tv.own.owntv.core.skip.TheIntroDbAccount.Status?> = _theIntroDbStatus.asStateFlow()
+    private val _theIntroDbChecking = MutableStateFlow(false)
+    val theIntroDbChecking: StateFlow<Boolean> = _theIntroDbChecking.asStateFlow()
+
+    /** Saves [key] (blank = keyless) and checks it straight away. */
+    fun saveTheIntroDbKey(key: String) {
+        viewModelScope.launch {
+            settings.setTheIntroDbApiKey(key)
+            checkTheIntroDbNow()
+        }
+    }
+
+    fun checkTheIntroDb() { viewModelScope.launch { checkTheIntroDbNow() } }
+
+    private suspend fun checkTheIntroDbNow() {
+        _theIntroDbChecking.value = true
+        _theIntroDbStatus.value = runCatching { theIntroDb.check() }.getOrNull()
+        _theIntroDbChecking.value = false
+    }
 
     val metadataServerUrl: StateFlow<String> =
         settings.metadataServerUrl.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")

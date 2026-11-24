@@ -10,6 +10,10 @@
 ## v5.2.3 — unreleased
 
 ### ✨ New features
+- **⏭️ Skip intro, recap, end credits and preview, from TheIntroDB**
+- **🎬 Next-episode countdown starts with the end credits**
+- **🔑 Settings › Content & metadata › TheIntroDB, with an optional API key**
+- **🔍 "Check TheIntroDB" in the long-press menu of films, series and episodes**
 - **📅 TV Guide keeps the category you left, and CH+/CH− step through its list after you pick a channel** (community PR #370 by @Quad-Plex)
 - **⏭️ CH+/CH− page the programme list and the catch-up list (#373)**
 - **📼 "Prefer HLS for catch-up" on each Xtream playlist (#364)**

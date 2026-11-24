@@ -2072,6 +2072,8 @@ fun OwnTVShell(
 
     // The Settings PIN before a long-press change, when the Settings lock asks for it.
     tv.own.owntv.features.settings.lock.MenuChangeGateHost()
+    // "Check TheIntroDB" from any film, series or episode long-press menu.
+    tv.own.owntv.features.settings.TheIntroDbCheckHost()
     if (showExit) {
         ExitDialog(onConfirm = onExitApp, onDismiss = { showExit = false })
     }

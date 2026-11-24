@@ -106,7 +106,7 @@ import tv.own.owntv.ui.theme.primary
 
 internal enum class TileTone { PRIMARY, SECONDARY, TERTIARY }
 
-private enum class SettingsTab { ROOT, LANGUAGE, SOURCES, EPG, BACKUP, LOCAL_SYNC, CUSTOMIZE, HOME, NETWORK, DNS, METADATA, OPEN_SUBTITLES, WEATHER, CH_NAV, PANEL_WIDTH, GUIDE_WIDTH, GLASS_EFFECT, CONTENT_MENUS, FONTS, BROWSING, SUBTITLE_STYLE, SPORTS }
+private enum class SettingsTab { ROOT, LANGUAGE, SOURCES, EPG, BACKUP, LOCAL_SYNC, CUSTOMIZE, HOME, NETWORK, DNS, METADATA, THEINTRODB, OPEN_SUBTITLES, WEATHER, CH_NAV, PANEL_WIDTH, GUIDE_WIDTH, GLASS_EFFECT, CONTENT_MENUS, FONTS, BROWSING, SUBTITLE_STYLE, SPORTS }
 
 @Composable
 private fun epgShiftLabel(minutes: Int): String {
@@ -415,6 +415,7 @@ fun SettingsScreen(
         SettingsTab.NETWORK -> { tv.own.owntv.features.settings.NetworkSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
         SettingsTab.DNS -> { tv.own.owntv.features.settings.DnsSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
         SettingsTab.METADATA -> { tv.own.owntv.features.settings.MetadataSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
+        SettingsTab.THEINTRODB -> { tv.own.owntv.features.settings.TheIntroDbSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
         SettingsTab.OPEN_SUBTITLES -> { tv.own.owntv.features.settings.OpenSubtitlesAccountScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
         SettingsTab.WEATHER -> { tv.own.owntv.features.settings.WeatherSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
         SettingsTab.CH_NAV -> { tv.own.owntv.features.settings.ChNavSettingsScreen(onBack = { tab = SettingsTab.ROOT }, modifier = modifier) }
@@ -707,13 +708,23 @@ fun SettingsScreen(
         ),
         RootRow(
             tabRowKey(SettingsTab.METADATA), TileTone.PRIMARY, OwnTVIcon.IMAGE,
-            title = stringResource(R.string.settings_metadata), desc = stringResource(R.string.settings_metadata_root_description),
+            title = stringResource(R.string.settings_tmdb), desc = stringResource(R.string.settings_metadata_root_description),
             focus = rowFocus.getValue(SettingsTab.METADATA),
             onClick = { open(SettingsTab.METADATA) },
+            // Two services feed the library's details: TMDB (posters, plots, cast) and TheIntroDB (skip
+            // times). Each has its own screen under one heading.
+            heading = stringResource(R.string.settings_heading_metadata),
+        ),
+        RootRow(
+            tabRowKey(SettingsTab.THEINTRODB), TileTone.PRIMARY, OwnTVIcon.SKIP_NEXT,
+            title = stringResource(R.string.settings_theintrodb), desc = stringResource(R.string.settings_theintrodb_root_description),
+            focus = rowFocus.getValue(SettingsTab.THEINTRODB),
+            onClick = { open(SettingsTab.THEINTRODB) },
         ),
         RootRow(
             tabRowKey(SettingsTab.OPEN_SUBTITLES), TileTone.PRIMARY, OwnTVIcon.SUBTITLE,
             title = stringResource(R.string.settings_open_subtitles), desc = stringResource(R.string.settings_open_subtitles_description),
+            heading = stringResource(R.string.player_subtitles),
             focus = rowFocus.getValue(SettingsTab.OPEN_SUBTITLES),
             onClick = { open(SettingsTab.OPEN_SUBTITLES) },
         ),
@@ -977,6 +988,8 @@ fun SettingsScreen(
         SettingsSearchEntry(stringResource(R.string.settings_group_layout), stringResource(R.string.settings_browsing_lists), stringResource(R.string.settings_search_keywords_browsing), OwnTVIcon.LIST_GRID, TileTone.PRIMARY) { open(SettingsTab.BROWSING) },
             SettingsSearchEntry(stringResource(R.string.settings_group_layout), stringResource(R.string.settings_home_root), stringResource(R.string.settings_search_keywords_home), OwnTVIcon.HOME, TileTone.SECONDARY) { open(SettingsTab.HOME) },
             SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_metadata), stringResource(R.string.settings_search_keywords_metadata), OwnTVIcon.IMAGE, TileTone.PRIMARY) { open(SettingsTab.METADATA) },
+            SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_tmdb), stringResource(R.string.settings_search_keywords_metadata), OwnTVIcon.IMAGE, TileTone.PRIMARY) { open(SettingsTab.METADATA) },
+            SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_theintrodb), stringResource(R.string.settings_theintrodb_root_description), OwnTVIcon.SKIP_NEXT, TileTone.PRIMARY) { open(SettingsTab.THEINTRODB) },
             // No entries for the download folder, Backup, Local sync or Clear history. They
             // are not in Settings any more, and a result for something that is not here is a lie
             // about where it lives. The no-results state deliberately says nothing else either.
@@ -2436,6 +2449,9 @@ private fun subScreenSearchEntries(open: (SettingsTab) -> Unit): List<SettingsSe
         SettingsSearchEntry(stringResource(R.string.settings_group_appearance), stringResource(R.string.settings_custom_location), stringResource(R.string.settings_search_keywords_weather), OwnTVIcon.WEATHER, TileTone.SECONDARY) { open(SettingsTab.WEATHER) },
         SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_metadata_source), stringResource(R.string.settings_search_keywords_metadata), OwnTVIcon.IMAGE, TileTone.SECONDARY) { open(SettingsTab.METADATA) },
         SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_metadata_language), stringResource(R.string.settings_search_keywords_metadata), OwnTVIcon.IMAGE, TileTone.SECONDARY) { open(SettingsTab.METADATA) },
+        SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_skip_group), stringResource(R.string.settings_skip_part_description), OwnTVIcon.SKIP_NEXT, TileTone.SECONDARY) { open(SettingsTab.THEINTRODB) },
+        SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_skip_button_show), stringResource(R.string.settings_skip_group), OwnTVIcon.SKIP_NEXT, TileTone.SECONDARY) { open(SettingsTab.THEINTRODB) },
+        SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.settings_theintrodb_account), stringResource(R.string.settings_skip_group), OwnTVIcon.PERSON, TileTone.SECONDARY) { open(SettingsTab.THEINTRODB) },
         SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.player_subtitles_search_language), stringResource(R.string.settings_search_keywords_subtitle_appearance), OwnTVIcon.SUBTITLE, TileTone.SECONDARY) { open(SettingsTab.OPEN_SUBTITLES) },
         SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.player_subtitles_filter_title), stringResource(R.string.settings_search_keywords_subtitle_appearance), OwnTVIcon.SUBTITLE, TileTone.SECONDARY) { open(SettingsTab.OPEN_SUBTITLES) },
         SettingsSearchEntry(stringResource(R.string.settings_group_content_metadata), stringResource(R.string.player_subtitles_stay_signed_in), stringResource(R.string.settings_search_keywords_subtitle_appearance), OwnTVIcon.SUBTITLE, TileTone.SECONDARY) { open(SettingsTab.OPEN_SUBTITLES) },

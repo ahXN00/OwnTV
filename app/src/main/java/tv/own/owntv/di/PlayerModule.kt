@@ -53,4 +53,7 @@ val playerModule = module {
     // Bridges the playing item to the OpenSubtitles search. Bound here rather than with the rest of
     // the subtitle stack because it takes the player; it follows the engine to :player-core.
     single { tv.own.owntv.core.subtitles.SubtitleController(get(), get(), get(), get()) }
+    // Skip intro & credits: reads the playing title from the subtitle context above (player, subtitles,
+    // TheIntroDB repository, settings).
+    single { tv.own.owntv.player.SkipSegmentController(get(), get(), get(), get()) }
 }

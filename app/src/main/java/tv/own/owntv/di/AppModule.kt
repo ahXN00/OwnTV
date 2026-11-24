@@ -116,7 +116,19 @@ val appModule = module {
     viewModelOf(::SportsViewModel)
     viewModelOf(::SportsSettingsViewModel)
     viewModelOf(::PlayerButtonsSettingsViewModel)
-    viewModelOf(::SeriesViewModel)
+    // 23 constructor parameters — one past the highest arity Koin's `*Of` DSL generates; named
+    // arguments for the same reason as the binding below.
+    viewModel {
+        SeriesViewModel(
+            seriesDao = get(), catalogPriority = get(), categoryDao = get(), favoriteDao = get(),
+            historyDao = get(), userDataWriter = get(), progressDao = get(), profileDao = get(),
+            sourceDao = get(), seriesRepository = get(), settings = get(), customize = get(),
+            player = get(), downloadManager = get(), launcherIntegrationRepository = get(),
+            contentOrderDao = get(), customCategoryDao = get(), seriesSortOrderDao = get(),
+            metadata = get(), externalPlayerLauncher = get(), streamUrlResolver = get(),
+            subtitleController = get(), skip = get(),
+        )
+    }
     viewModelOf(::SearchViewModel)
     viewModelOf(::ProfilesViewModel)
     // Activity-scoped session state for the profile gate (configuration-only retention, no saved
@@ -160,6 +172,7 @@ val appModule = module {
             enginePool = get(),
             importer = get(),
             sourceEditor = get(),
+            theIntroDb = get(),
         )
     }
     viewModelOf(::LocalSyncViewModel)

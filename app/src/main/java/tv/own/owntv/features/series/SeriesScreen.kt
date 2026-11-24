@@ -983,6 +983,9 @@ private fun SeriesGrid(
                     contextSeries = null; setTmdbNameSeries = s
                 })
             }
+            add(MenuAction(tv.own.owntv.core.menu.CHECK_THEINTRODB_ACTION, stringResource(R.string.content_check_theintrodb), OwnTVIcon.SKIP_NEXT, group = VodGroupDetails) {
+                contextSeries = null; tv.own.owntv.features.settings.TheIntroDbCheckRequests.series(s)
+            })
         }
         VodOptionsMenu(
             title = s.name,
@@ -1748,6 +1751,9 @@ private fun EpisodeView(
                     vm.refetchEpisodeMeta(series, ep)
                 })
             }
+            add(MenuAction(tv.own.owntv.core.menu.CHECK_THEINTRODB_ACTION, stringResource(R.string.content_check_theintrodb), OwnTVIcon.SKIP_NEXT, group = VodGroupDetails) {
+                contextEpisode = null; tv.own.owntv.features.settings.TheIntroDbCheckRequests.series(series, ep)
+            })
             add(MenuAction("delete_subtitles", stringResource(R.string.content_delete_subtitles), OwnTVIcon.SUBTITLE, group = VodGroupDetails) {
                 if (contextEpisodeSubs.isNotEmpty()) showEpisodeDeleteSubs = true
             })
@@ -1824,6 +1830,9 @@ private fun EpisodeView(
                     openWindow(); setTmdbName = true
                 })
             }
+            add(MenuAction(tv.own.owntv.core.menu.CHECK_THEINTRODB_ACTION, stringResource(R.string.content_check_theintrodb), OwnTVIcon.SKIP_NEXT, group = VodGroupDetails) {
+                close(); tv.own.owntv.features.settings.TheIntroDbCheckRequests.series(series)
+            })
         }
         VodOptionsMenu(
             title = series.name,

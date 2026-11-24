@@ -69,6 +69,7 @@ import tv.own.owntv.ui.stage.StageSurface
 import tv.own.owntv.ui.components.OwnTVIcon
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import tv.own.owntv.ui.theme.animationsOn
 import tv.own.owntv.ui.theme.ownTvTween
 import tv.own.owntv.ui.format.localizedDecimal
@@ -397,7 +398,11 @@ private fun BoxScope.Playhead(frac: Float) {
 }
 
 @Composable
-internal fun SeekBar(positionMs: Long, durationMs: Long, bufferedMs: Long, stepMs: Long, onSeek: (Long) -> Unit, focusRequester: FocusRequester? = null) {
+internal fun SeekBar(
+    positionMs: Long, durationMs: Long, bufferedMs: Long, stepMs: Long, onSeek: (Long) -> Unit, focusRequester: FocusRequester? = null,
+    /** Where Up goes from the bar: the skip button sits above its right end, out of the way of focus search. */
+    upFocus: FocusRequester? = null,
+) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val frac = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
@@ -408,6 +413,7 @@ internal fun SeekBar(positionMs: Long, durationMs: Long, bufferedMs: Long, stepM
     Box(
         modifier = Modifier.fillMaxWidth().height(24.dp)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .then(if (upFocus != null) Modifier.focusProperties { up = upFocus } else Modifier)
             .onKeyEvent { e ->
                 // Physical by design: left rewinds and right advances media time in every locale.
                 if (e.type == KeyEventType.KeyDown) when (e.key) {

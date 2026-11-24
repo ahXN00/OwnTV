@@ -411,7 +411,7 @@ private fun MetadataTestLabel(state: SettingsViewModel.MetadataTestState) {
 }
 
 /** Show only the tail of a secret: enough to tell two keys apart, useless to a shoulder-surfer. */
-private fun maskSecret(secret: String): String {
+internal fun maskSecret(secret: String): String {
     val trimmed = secret.trim()
     if (trimmed.length <= 4) return "\u2022".repeat(4)
     return "\u2022".repeat(8) + trimmed.takeLast(4)
