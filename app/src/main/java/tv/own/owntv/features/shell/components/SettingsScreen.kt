@@ -2723,6 +2723,11 @@ private fun serviceRowExtras(vm: SettingsViewModel): Map<String, RowExtra> {
     LaunchedEffect(tier) { if (tier == tv.own.owntv.core.metadata.MetadataConfig.Tier.DEFAULT_WORKER) vm.refreshMetadataBudget() }
     val osVm: tv.own.owntv.features.settings.OpenSubtitlesViewModel = org.koin.androidx.compose.koinViewModel()
     val os by osVm.state.collectAsStateWithLifecycle()
+    val introKey by vm.theIntroDbApiKey.collectAsStateWithLifecycle()
+    val introStatus by vm.theIntroDbStatus.collectAsStateWithLifecycle()
+    val introQuota by vm.theIntroDbQuota.collectAsStateWithLifecycle()
+    // The allowance is only known once the service has answered; ask once if nothing has this session.
+    LaunchedEffect(Unit) { if (vm.theIntroDbQuota.value == null && vm.theIntroDbStatus.value == null) vm.checkTheIntroDb() }
     val proxy by vm.proxyConfig.collectAsStateWithLifecycle()
     val dns by vm.dnsConfig.collectAsStateWithLifecycle()
     val on = stringResource(R.string.common_on)
@@ -2769,10 +2774,21 @@ private fun serviceRowExtras(vm: SettingsViewModel): Map<String, RowExtra> {
                         tv.own.owntv.core.metadata.MetadataConfig.Tier.OWN_KEY -> R.string.settings_tier_key
                         tv.own.owntv.core.metadata.MetadataConfig.Tier.SELF_HOST -> R.string.settings_tier_self_host
                     }))
-                    // The shared service has a daily allowance; an own key or self-host has none to show.
-                    if (tier == tv.own.owntv.core.metadata.MetadataConfig.Tier.DEFAULT_WORKER && b != null) {
-                        line(stringResource(R.string.settings_allowance_day), pluralStringResource(R.plurals.settings_allowance_value, b.remainingDay, b.remainingDay, b.limitDay))
+                    // The shared service has a daily allowance. An own key or self-host has none from OwnTV,
+                    // and TMDB publishes no usage figure for a personal key, so that is what it says.
+                    if (tier == tv.own.owntv.core.metadata.MetadataConfig.Tier.DEFAULT_WORKER) {
+                        if (b != null) line(stringResource(R.string.settings_allowance_day), pluralStringResource(R.plurals.settings_allowance_value, b.remainingDay, b.remainingDay, b.limitDay))
+                    } else {
+                        line(stringResource(R.string.settings_allowance_day), stringResource(R.string.settings_allowance_unlimited))
                     }
+                }
+            },
+        ),
+        "tab_THEINTRODB" to RowExtra(
+            SettingValue.Opens(if (introKey.isBlank()) stringResource(R.string.settings_shared) else tv.own.owntv.features.settings.maskSecret(introKey)),
+            extra = {
+                Column(Modifier.padding(top = 8.mpx)) {
+                    tv.own.owntv.features.settings.TheIntroDbStatusLines(introStatus, introKey, introQuota)
                 }
             },
         ),

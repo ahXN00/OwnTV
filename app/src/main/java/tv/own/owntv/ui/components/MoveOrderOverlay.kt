@@ -23,11 +23,14 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 import tv.own.owntv.R
+import tv.own.owntv.core.i18n.HorizontalDirection
+import tv.own.owntv.core.i18n.horizontalDirection
 import tv.own.owntv.features.settings.SettingsViewModel
 import tv.own.owntv.ui.stage.StageButton
 import tv.own.owntv.ui.stage.StagePopup
@@ -65,6 +68,9 @@ fun MoveOrderOverlay(
     // ▲ ▼ carry the row only from the list; from Cancel/Save they move the focus as usual.
     var listFocused by remember { mutableStateOf(false) }
     val rowFocus = remember { FocusRequester() }
+    val cancelFocus = remember { FocusRequester() }
+    val saveFocus = remember { FocusRequester() }
+    val layoutDirection = LocalLayoutDirection.current
     // The popup focuses its first row as it opens; until the row asked for is focused, that must not move [focusPos].
     var opened by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -104,8 +110,15 @@ fun MoveOrderOverlay(
                 onJumpToIndex = ::goTo,
             )
             .onPreviewKeyEvent { e ->
-                val carried = picked?.takeIf { listFocused } ?: return@onPreviewKeyEvent false
-                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (!listFocused || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // ◀ ▶ from the list reach Cancel and Save, which sit under it: a long list would
+                // otherwise have to be walked to its end first. Mirrored in right-to-left layouts.
+                when (e.key.horizontalDirection(layoutDirection)) {
+                    HorizontalDirection.START -> return@onPreviewKeyEvent runCatching { cancelFocus.requestFocus() }.isSuccess
+                    HorizontalDirection.END -> return@onPreviewKeyEvent runCatching { saveFocus.requestFocus() }.isSuccess
+                    null -> Unit
+                }
+                val carried = picked ?: return@onPreviewKeyEvent false
                 when (e.key) {
                     Key.DirectionUp -> { goTo(carried - 1); true }
                     Key.DirectionDown -> { goTo(carried + 1); true }
@@ -113,8 +126,8 @@ fun MoveOrderOverlay(
                 }
             },
         buttons = {
-            StageButton(stringResource(R.string.common_cancel), onClick = onCancel, height = 56.mpx, textSize = 19)
-            StageButton(stringResource(R.string.common_save), onClick = onCommit, height = 56.mpx, textSize = 19, tinted = true)
+            StageButton(stringResource(R.string.common_cancel), onClick = onCancel, modifier = Modifier.focusRequester(cancelFocus), height = 56.mpx, textSize = 19)
+            StageButton(stringResource(R.string.common_save), onClick = onCommit, modifier = Modifier.focusRequester(saveFocus), height = 56.mpx, textSize = 19, tinted = true)
         },
     ) {
         val accent = stageAccent.accent

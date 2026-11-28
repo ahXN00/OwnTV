@@ -198,6 +198,34 @@ class LiveViewModel(
         .map { rows -> rows.mapTo(HashSet()) { it.channelId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    /** What the remote's Record shortcut did, so it can say so. */
+    sealed interface RecordToggle {
+        data object Started : RecordToggle
+        data object Stopped : RecordToggle
+        /** The playlist has no connection to spare; [grant] says what holds them. */
+        data class Refused(val grant: StreamGrant.Refused) : RecordToggle
+        data object Failed : RecordToggle
+    }
+
+    /**
+     * The remote's Record shortcut: stop this channel's recording if one runs, else record it from now
+     * as [recordNow] does — but answering what happened, because a key press has no menu to show it.
+     */
+    suspend fun toggleRecordingNow(channel: ChannelEntity): RecordToggle {
+        val running = recordings.observeRunning().first().filter { it.channelId == channel.id }
+        if (running.isNotEmpty()) {
+            running.forEach { row ->
+                recordings.stop(row)
+                if (_playerRecording.value?.id == row.id) _playerRecording.value = null
+            }
+            return RecordToggle.Stopped
+        }
+        (recordings.canRecordOn(channel.sourceId) as? StreamGrant.Refused)?.let { return RecordToggle.Refused(it) }
+        val pid = currentProfileId() ?: return RecordToggle.Failed
+        val programme = epgReader.nowNext(channel, custom.value, epgOffset.value)?.now
+        return if (startRecordingNow(channel, pid, programme) != null) RecordToggle.Started else RecordToggle.Failed
+    }
+
     /** Stop the running recording(s) of this channel, keeping what was captured. */
     fun stopRecordingOn(channel: ChannelEntity) {
         viewModelScope.launch {
@@ -2287,7 +2315,10 @@ class LiveViewModel(
     fun ensureNowPlaying(loaded: List<ChannelEntity>) {
         if (loaded.isEmpty()) return
         val known = cachedNowPlaying()
-        val missing = loaded.filter { it.id !in known }
+        val nowMs = System.currentTimeMillis()
+        // A programme that has ended counts as missing: otherwise a list kept open (the in-player
+        // channel list) shows it for good. A channel with no guide stays remembered as null.
+        val missing = loaded.filter { ch -> ch.id !in known || known[ch.id]?.let { it.stopMs <= nowMs } == true }
         if (missing.isEmpty()) return
         nowPlayingJob?.cancel()
         nowPlayingJob = viewModelScope.launch {

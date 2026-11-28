@@ -241,7 +241,7 @@ private fun skipButtonShowLabel(show: SkipButtonShow): String = stringResource(
  * lookups, "Day · 4994 / 5000 left · Refills 18:40", once the service has reported them.
  */
 @Composable
-private fun TheIntroDbStatusLines(status: TheIntroDbAccount.Status?, storedKey: String, quota: TheIntroDbClient.Quota?) {
+internal fun TheIntroDbStatusLines(status: TheIntroDbAccount.Status?, storedKey: String, quota: TheIntroDbClient.Quota?) {
     val context = LocalContext.current
     val keyLine = when (val k = status?.key) {
         is TheIntroDbClient.KeyCheck.Valid -> stringResource(R.string.settings_theintrodb_connected, k.submissions)

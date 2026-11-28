@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -191,6 +192,29 @@ class HomeViewModel(
         // the rows may show. drop(1): the shell asks for the first load.
         viewModelScope.launch {
             customize.sealedCategoryKeys(settings.activeProfileId).drop(1).collect { reloadRequests.emit(null) }
+        }
+        // A film or show gaining or losing a resume point — one watched on another device and brought
+        // over by a local sync above all — changes Continue Watching while Home may be on screen. Keyed
+        // on which titles have one, not on positions: playback saves a position every few seconds. A
+        // profile switch is not news here (the shell asks for that load), so only a change within one
+        // profile reloads.
+        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        viewModelScope.launch {
+            var lastProfile: Long? = null
+            settings.activeProfileId
+                .flatMapLatest { pid ->
+                    if (pid < 0) flowOf(null)
+                    else combine(
+                        progressDao.observeMovieProgress(pid).map { rows -> rows.mapTo(HashSet()) { it.itemId } },
+                        progressDao.observeLatestEpisodeProgressPerSeries(pid).map { rows -> rows.mapTo(HashSet()) { it.seriesId } },
+                    ) { films, shows -> Triple(pid, films, shows) }
+                }
+                .distinctUntilChanged()
+                .collect { titles ->
+                    val pid = titles?.first
+                    if (pid != null && pid == lastProfile) reloadRequests.emit(pid)
+                    lastProfile = pid
+                }
         }
     }
 

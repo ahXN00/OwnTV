@@ -138,7 +138,7 @@ and shows its page beside the list; **Right** enters that page; **Back** returns
 | **OK** | full-screen player | Shows / hides the controls |
 
 **Want different keys?** **Settings → Layout → Remote shortcuts** maps spare colour, number, channel
-and media keys to 26 actions — **Previous channel** among them. D-pad, Back, OK, volume, Home and power stay protected.
+and media keys to 28 actions — **Previous channel**, **Add or remove favorite** and **Record or download** among them. The last two act on the picture in full screen, else on the channel, film or show under the cursor; a whole show asks first. D-pad, Back, OK, volume, Home and power stay protected.
 
 **Player buttons**, on the same page, change five player keys. Every default is the behaviour above:
 
@@ -280,7 +280,7 @@ custom category) and **Play in external player**.
 ⋯ More → Favourites → hold OK → **Move**
 The Move window opens with that item picked up. **▲ ▼** carry it a row, **CH+ / CH−** a page, and a
 **long press** of them to the first or last place. **OK** puts it down or picks up another, so several
-can move in one go. **Save** keeps the new order; **Cancel** or **Back** leaves it as it was.
+can move in one go. **◀** jumps to **Cancel** and **▶** to **Save**, however long the list. **Save** keeps the new order; **Cancel** or **Back** leaves it as it was.
 What you moved keeps its place in **A–Z** and **Provider** alike; everything you never moved follows
 the sort around it. **Restore to playlist default** on a category clears its moved items. Favorites and
 History always keep their own order (moved items, then newest first): their sort button reads
@@ -313,7 +313,7 @@ wait.
 
 ### 🔒 Protected (DRM) channels
 Widevine and ClearKey channels play with nothing to set up — your TV does the unlocking. That
-includes ClearKey channels whose playlist writes the key itself (`license_key=kid:key`); a playlist
+includes ClearKey channels whose playlist writes the key itself (`license_key=kid:key`), and playlists written the newer Kodi way (`inputstream.adaptive.drm` / `drm_legacy`); a playlist
 added before this update needs one refresh to pick the key up. They always
 use ExoPlayer, so the engine toggle is hidden for them. Some cheaper boxes only allow standard
 definition; that is the device's decision, not OwnTV's. Apple FairPlay channels cannot play on any
@@ -692,7 +692,7 @@ Live TV and catch-up are never skipped.
 
 ### 🔑 Your own key — optional
 Without a key, lookups use TheIntroDB's free daily allowance for your network. A key of your own
-gives you more lookups, counted for your account.
+gives you more lookups, counted for your account. Focusing **TheIntroDB** in Settings → Content & metadata shows today's allowance beside the row; **TMDB** there shows the shared service's allowance, or **No daily limit** with your own key.
 1. Open **theintrodb.org** on a phone or computer and **sign in** — this creates your account.
 2. Open **Docs** on the site. Your key is shown there as **Your API Key**; copy it. It starts with
    `theintrodb:`.

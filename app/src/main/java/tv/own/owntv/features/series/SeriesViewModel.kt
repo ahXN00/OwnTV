@@ -382,6 +382,9 @@ class SeriesViewModel(
 
     private var playingEpisodeRef: PlayingEpisodeRef? = null
 
+    /** The episode in the player, for the remote's Download shortcut. */
+    fun playingEpisode(): EpisodeEntity? = playingEpisodeRef?.episode
+
     init {
         listOf(_selectedSeries, _openedSeries).forEach { viewModelScope.clearWhenSealed(it, sealedCategoryIds) { s -> s.categoryId } }
         // Periodically persist the playing episode's resume position (same cadence as movies).

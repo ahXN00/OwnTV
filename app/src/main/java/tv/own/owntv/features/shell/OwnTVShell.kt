@@ -92,6 +92,7 @@ import tv.own.owntv.ui.components.RemoteShortcutEnvironment
 import tv.own.owntv.ui.theme.LocalGlass
 import tv.own.owntv.core.theme.ThemeMode
 import tv.own.owntv.core.live.LiveKey
+import tv.own.owntv.core.live.displayText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -823,6 +824,67 @@ fun OwnTVShell(
             focusRail()
         }
     }
+    // The remote's Favorite and Record keys act on what the user is looking at: the picture when the
+    // player is full screen, else the row under the cursor (the Live list's preview follows it, and the
+    // film and show lists keep theirs). Each says what it did, since a key press has no menu to show it.
+    val shortcutRes = androidx.compose.ui.platform.LocalContext.current.resources
+    val shortcutSection = if (playerMode == PlayerMode.FULLSCREEN) zapSource else selectedSection
+    val favoriteByShortcut: () -> Unit = {
+        val full = playerMode == PlayerMode.FULLSCREEN
+        val target: Triple<String, Boolean, () -> Unit>? = when (shortcutSection) {
+            MainSection.LIVE_TV -> previewChannel?.let { ch -> Triple(ch.name, ch.id in liveFavoriteIds) { liveVm.toggleFavorite(ch) } }
+            MainSection.MOVIES -> (if (full) playingMovie else movieVm.selectedMovie.value)
+                ?.let { m -> Triple(m.name, m.id in movieFavoriteIds) { movieVm.toggleFavorite(m) } }
+            MainSection.SERIES -> (if (full) playingSeries else seriesVm.selectedSeries.value)
+                ?.let { s -> Triple(s.name, s.id in seriesFavoriteIds) { seriesVm.toggleFavorite(s) } }
+            else -> null
+        }
+        target?.let { (name, wasFavorite, toggle) ->
+            toggle()
+            val said = if (wasFavorite) R.string.content_favourite_removed_named else R.string.content_favourite_added_named
+            localSubToast.show(shortcutRes.getString(said, tv.own.owntv.core.live.ProviderTags.parse(name).name))
+        }
+    }
+    val recordOrDownloadByShortcut: () -> Unit = {
+        val full = playerMode == PlayerMode.FULLSCREEN
+        when (shortcutSection) {
+            MainSection.LIVE_TV -> previewChannel?.let { ch ->
+                scope.launch {
+                    val name = tv.own.owntv.core.live.ProviderTags.parse(ch.name).name
+                    when (val r = liveVm.toggleRecordingNow(ch)) {
+                        tv.own.owntv.features.live.LiveViewModel.RecordToggle.Started ->
+                            localSubToast.show(shortcutRes.getString(R.string.recording_pill_line, name))
+                        tv.own.owntv.features.live.LiveViewModel.RecordToggle.Stopped ->
+                            localSubToast.show(shortcutRes.getString(R.string.recording_stopped_named, name))
+                        is tv.own.owntv.features.live.LiveViewModel.RecordToggle.Refused ->
+                            localSubToast.show(r.grant.displayText(shortcutRes))
+                        tv.own.owntv.features.live.LiveViewModel.RecordToggle.Failed -> Unit
+                    }
+                }
+            }
+            MainSection.MOVIES -> (if (full) playingMovie else movieVm.selectedMovie.value)?.let { m ->
+                scope.launch {
+                    if (!resumeSettings.activeDownloadsAllowed.first()) return@launch
+                    movieVm.download(m)
+                    localSubToast.show(shortcutRes.getString(R.string.sync_status_download, m.name))
+                }
+            }
+            // In the player, the episode on screen; in the list, the show — which asks first, saying how
+            // many files that is, as its own Download all does.
+            MainSection.SERIES -> scope.launch {
+                if (!resumeSettings.activeDownloadsAllowed.first()) return@launch
+                if (full) {
+                    seriesVm.playingEpisode()?.let { ep ->
+                        seriesVm.downloadEpisode(ep)
+                        localSubToast.show(shortcutRes.getString(R.string.sync_status_download, ep.name.ifBlank { playingSeries?.name.orEmpty() }))
+                    }
+                } else {
+                    seriesVm.selectedSeries.value?.let { seriesVm.askBulkDownload(it, null) }
+                }
+            }
+            else -> Unit
+        }
+    }
     val dispatchRemoteShortcut: (RemoteShortcutAction) -> Unit = { action ->
         when (action) {
             RemoteShortcutAction.OPEN_HOME -> openShortcutSection(MainSection.HOME)
@@ -849,6 +911,8 @@ fun OwnTVShell(
             RemoteShortcutAction.PLAY_PAUSE -> if (playerMode != PlayerMode.NONE) dockedEngine.togglePlayPause()
             RemoteShortcutAction.RETURN_TO_LIVE -> if (playerMode != PlayerMode.NONE && zapSource == MainSection.LIVE_TV && timeshifted) liveVm.goToLive()
             RemoteShortcutAction.PREVIOUS_CHANNEL -> if (playerMode != PlayerMode.NONE && zapSource == MainSection.LIVE_TV) liveVm.previousChannel()
+            RemoteShortcutAction.TOGGLE_FAVORITE -> favoriteByShortcut()
+            RemoteShortcutAction.RECORD_OR_DOWNLOAD -> recordOrDownloadByShortcut()
             RemoteShortcutAction.PAGE_TOWARD_FIRST,
             RemoteShortcutAction.PAGE_TOWARD_LAST,
             RemoteShortcutAction.JUMP_TO_FIRST,
@@ -1585,6 +1649,7 @@ fun OwnTVShell(
                       title = zapOverlayTitle,
                       showNumbers = directTuneEnabled,
                       nowProgrammes = overlayProgrammes,
+                      onMinute = liveVm::refreshNowPlaying,
                       favoriteIds = overlayFavoriteIds,
                       playlistMarks = overlayPlaylistMarks,
                       alignEnd = true,
@@ -1947,7 +2012,6 @@ fun OwnTVShell(
                         onDismiss = { showSubFolderPicker = false },
                     )
                 }
-                tv.own.owntv.ui.components.InAppToast(localSubToast)
                 // Programme reminders: when one comes up, ask to switch, switch, or only say so (the
                 // Programme reminders setting) — over whatever is on screen, the player included.
                 val reminderManager = koinInject<tv.own.owntv.core.reminder.ReminderManager>()
@@ -1978,13 +2042,6 @@ fun OwnTVShell(
                         onDismiss = { scope.launch { reminderManager.dismiss(dueReminder.id) } },
                     )
                 }
-                // A catch-up pick that could not be resolved. Raised from Live TV wherever an archive
-                // URL comes back null — "Watch from start", "Go back to…" and the external hand-off —
-                // all of which used to fail in complete silence.
-                val catchupUnavailable = stringResource(R.string.content_epg_catchup_unavailable)
-                LaunchedEffect(liveVm) {
-                    liveVm.catchupUnavailable.collect { localSubToast.show(catchupUnavailable) }
-                }
                 // Back on a channel whose saved copy was kept: continue from there, or stay live.
                 val timeshiftResumeAt by liveVm.timeshiftResumeAt.collectAsStateWithLifecycle()
                 if (isFull && timeshiftResumeAt != null) {
@@ -2012,6 +2069,7 @@ fun OwnTVShell(
                             onDismiss = { liveVm.hideCategoryBrowser(); showChannelList = false },
                             nowPlaying = overlayNowPlaying,
                             nowProgrammes = overlayProgrammes,
+                            onMinute = liveVm::refreshNowPlaying,
                             favoriteIds = overlayFavoriteIds,
                             playlistMarks = overlayPlaylistMarks,
                             showNumbers = directTuneEnabled,
@@ -2025,6 +2083,7 @@ fun OwnTVShell(
                             currentId = previewChannel?.id,
                             nowPlaying = overlayNowPlaying,
                             nowProgrammes = overlayProgrammes,
+                            onMinute = liveVm::refreshNowPlaying,
                             favoriteIds = overlayFavoriteIds,
                             playlistMarks = overlayPlaylistMarks,
                             title = zapOverlayTitle,
@@ -2043,6 +2102,7 @@ fun OwnTVShell(
                         currentId = previewChannel?.id,
                         nowPlaying = historyNowPlaying,
                         nowProgrammes = overlayProgrammes,
+                        onMinute = liveVm::refreshNowPlaying,
                         favoriteIds = overlayFavoriteIds,
                         playlistMarks = overlayPlaylistMarks,
                         watchedAt = historyWatchedAt,
@@ -2132,6 +2192,22 @@ fun OwnTVShell(
     }
     tv.own.owntv.ui.components.InAppToast(epgMatchToast)
 
+    // The shell's own notices — subtitle loads, a refused recording, the remote's Favorite and Record
+    // keys, a film or catch-up that could not be opened — on this layer, which is on screen everywhere,
+    // the player included. Drawn inside the full-screen player, they were lost on every other screen.
+    // A catch-up pick that could not be resolved. Raised from Live TV wherever an archive URL comes
+    // back null — "Watch from start", "Go back to…" and the external hand-off.
+    val catchupUnavailable = stringResource(R.string.content_epg_catchup_unavailable)
+    LaunchedEffect(liveVm) {
+        liveVm.catchupUnavailable.collect { localSubToast.show(catchupUnavailable) }
+    }
+    // A film whose playable link the portal would not give: said, not a silent no-op.
+    val filmOpenFailed = stringResource(R.string.player_external_could_not_open)
+    LaunchedEffect(movieVm) {
+        movieVm.openFailed.collect { localSubToast.show(filmOpenFailed) }
+    }
+    tv.own.owntv.ui.components.InAppToast(localSubToast)
+
     // Automatic update check (GitHub Releases) shortly after launch, once per session: a small
         // top-right status card shows "Checking… / up to date" (auto-hides) or stays with
         // Update now / Later when a release is newer. Hidden while in Settings (its manual
@@ -2139,12 +2215,13 @@ fun OwnTVShell(
         // Interrupted restore: the marker outlives the process, so if it's still set at launch
         // the last restore didn't complete. Acknowledging clears it.
         val restoreSettings = koinInject<tv.own.owntv.core.settings.SettingsRepository>()
-    val incompleteRestore by restoreSettings.restoreInProgress.collectAsStateWithLifecycle(initialValue = null)
+    // The marker as this launch found it, not live: every local auto-sync import sets and clears it too.
+    val incompleteRestore by produceState<String?>(null) { value = restoreSettings.restoreMarkerAtLaunch() }
     var restoreNoticeDismissed by remember { mutableStateOf(false) }
     incompleteRestore?.takeIf { !restoreNoticeDismissed }?.let { description ->
         val dismissRestoreNotice: () -> Unit = {
             restoreNoticeDismissed = true
-            scope.launch { restoreSettings.clearRestoreMarker() }
+            scope.launch { restoreSettings.dismissLaunchRestoreMarker() }
         }
         IncompleteRestoreDialog(
                 description = description,

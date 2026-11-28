@@ -650,15 +650,22 @@ class MovieViewModel(
     val externalPlayerOn: StateFlow<Boolean> = settings.externalPlayerMovies
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    private val _openFailed = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    /** A film whose playable link could not be made (a Stalker portal that would not answer). */
+    val openFailed: kotlinx.coroutines.flow.SharedFlow<Unit> = _openFailed
+
     /** Stalker movies resolve to a real URL at play time; anything else returns streamUrl as-is.
-     *  Null = resolve failed (portal/auth error) — the caller should not start playback. */
+     *  Null = resolve failed (portal/auth error), already reported — the caller should not start playback. */
     private suspend fun resolvedUrlOrNull(movie: MovieEntity): String? {
         val source = sourceDao.getById(movie.sourceId)
         if (!streamUrlResolver.needsResolve(source)) return movie.streamUrl
         return try {
-            streamUrlResolver.resolve(source!!, movie.streamUrl, vod = true)
+            streamUrlResolver.resolve(source!!, movie.streamUrl, vod = true, movieId = movie.remoteId)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "stalker resolve failed movieId=${movie.id}", e)
+            _openFailed.tryEmit(Unit)
             null
         }
     }
@@ -719,16 +726,7 @@ class MovieViewModel(
             val sourceUa = source?.userAgent
             // Stalker: mint the playable URL right before playback (create_link, type=vod). The stored
             // streamUrl stays the cmd — it's the item's identity (engine pins, downloads, history).
-            val playUrl = if (streamUrlResolver.needsResolve(source)) {
-                try {
-                    streamUrlResolver.resolve(source!!, movie.streamUrl, vod = true)
-                } catch (e: Exception) {
-                    Log.w(TAG, "stalker resolve failed movieId=${movie.id}", e)
-                    return@launch
-                }
-            } else {
-                movie.streamUrl
-            }
+            val playUrl = resolvedUrlOrNull(movie) ?: return@launch
             Log.d(TAG, "play movieId=${movie.id} profile=$pid startPositionMs=$startPositionMs")
             val pinKey = tv.own.owntv.core.player.enginePinKey(movie.sourceId, "MOVIE", movie.remoteId)
             player.play(
@@ -749,7 +747,7 @@ class MovieViewModel(
                 // clears any provider the previous item left on the player.
                 reconnectProvider = if (streamUrlResolver.needsResolve(source)) {
                     tv.own.owntv.core.stalker.ReconnectUrlProvider {
-                        runCatching { streamUrlResolver.resolve(source!!, movie.streamUrl, vod = true) }
+                        runCatching { streamUrlResolver.resolve(source!!, movie.streamUrl, vod = true, movieId = movie.remoteId) }
                             .onFailure { Log.w(TAG, "stalker VOD reconnect resolve failed movieId=${movie.id}", it) }
                             .getOrNull()
                     }

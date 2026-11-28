@@ -34,7 +34,19 @@
 - **🔄 Playlist menu: Re-sync first (#385)**
 - **🗑️ Customize: Delete in the side panel of a category you created**
 
+- **❤️ Remote shortcuts "Add or remove favorite" and "Record or download"** (rebuilt from community PR #389 by @Pax24fr)
+- **⬅️ Move window: ◀ goes to Cancel, ▶ to Save**
+- **📊 Settings: TheIntroDB's daily allowance beside its row; TMDB with your own key says "No daily limit"**
+- **🔐 DRM: the newer Kodi `drm` and `drm_legacy` playlist lines (#393)**
+
 ### 🐛 Fixes
+- **📺 Channel list over the player keeps "now playing" and progress up to date**
+- **📏 Player top bar: "Live next" is readable instead of cut to a few letters**
+- **🎬 Stalker films play on portals that need the film's file first, and say so when a film cannot open (#390)**
+- **🔄 Local sync: synced episodes and films show in Continue Watching straight away (#394)**
+- **🛟 No "restore did not finish" flash during a local sync (#394)**
+- **💬 Short notices show on every screen, not only in the player**
+- **🌐 Update check asks again when GitHub briefly fails**
 - **⌨️ Text fields in popups open the keyboard with focus every time**
 - **🔒 A Merge restore or a sync with the phone no longer removes a category lock**
 - **🔍 Search picked on the rail keeps focus on the rail, like every other section**

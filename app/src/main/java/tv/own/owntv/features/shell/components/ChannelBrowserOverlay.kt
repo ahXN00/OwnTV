@@ -78,6 +78,7 @@ fun ChannelBrowserOverlay(
     favoriteIds: Set<Long> = emptySet(),
     playlistMarks: Map<Long, PlaylistMark> = emptyMap(),
     showNumbers: Boolean = true,
+    onMinute: (List<ChannelEntity>) -> Unit = {},
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val (entries, groupsHeading) = liveCategoryEntries(railItems, railCounts)
@@ -168,6 +169,7 @@ fun ChannelBrowserOverlay(
                 focusTarget = channelFocus,
                 autoFocus = false,
                 onFocusChannel = onFocusChannel,
+                onMinute = onMinute,
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .widthIn(min = 560.mpx, max = 720.mpx)

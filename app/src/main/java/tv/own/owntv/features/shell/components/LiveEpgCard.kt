@@ -74,8 +74,11 @@ fun LiveEpgCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        // The card gets only the right half of the top bar. Weighted, "now" is measured after "next" and
+        // takes what is left; measured first, its synopsis took nearly all of it and squeezed "next" to a
+        // few letters ("Praç…", "11:45 A…").
         epg.now?.let { entry ->
-            Column(Modifier.widthIn(max = 300.dp)) {
+            Column(Modifier.weight(1f, fill = false).widthIn(max = 300.dp)) {
                 SlotLabel(stringResource(if (archive) R.string.content_archive_playing else R.string.content_live_now), tv.own.owntv.ui.theme.stageAccent.accent)
                 Text(
                     entry.title,
@@ -143,7 +146,8 @@ fun LiveEpgCard(
             Box(Modifier.height(34.dp).widthIn(min = 1.dp, max = 1.dp).background(hudInk.copy(alpha = 0.18f)))
         }
         epg.next?.let { entry ->
-            Column(Modifier.widthIn(max = 240.dp)) {
+            // Wide enough for a 12-hour "11:45 AM – 12:30 PM" and a readable title.
+            Column(Modifier.widthIn(min = 130.dp, max = 200.dp)) {
                 SlotLabel(stringResource(if (archive) R.string.content_archive_then else R.string.content_live_next), hudInk.copy(alpha = 0.45f))
                 Text(
                     entry.title,
@@ -223,6 +227,9 @@ private fun SlotLabel(text: String, color: Color) {
         style = tv.own.owntv.ui.theme.stageText(20, 500).copy(letterSpacing = 1.2.sp),
         color = color,
         fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(bottom = 1.dp),
     )
 }

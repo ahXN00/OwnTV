@@ -88,6 +88,7 @@ fun ChannelListOverlay(
     /** History only: channel id → when it was last watched, shown at the row's end. */
     watchedAt: Map<Long, Long>? = null,
     onOpenCategories: (() -> Unit)? = null,
+    onMinute: (List<ChannelEntity>) -> Unit = {},
 ) {
     val history = watchedAt != null
     val playingIndex = remember(channels, currentId) { channels.indexOfFirst { it.id == currentId } }
@@ -122,6 +123,7 @@ fun ChannelListOverlay(
             title = title,
             showNumbers = showNumbers,
             watchedAt = watchedAt,
+            onMinute = onMinute,
             outward = if (alignEnd) HorizontalDirection.END else HorizontalDirection.START,
             // Pushing outward from the Start panel opens categories when they are wired; pushing outward
             // from the End panel closes it. Back always closes.
@@ -168,6 +170,8 @@ internal fun ChannelListPanel(
     focusTarget: FocusRequester = remember { FocusRequester() },
     autoFocus: Boolean = true,
     onFocusChannel: (ChannelEntity) -> Unit = {},
+    /** Each minute, the channels whose rows are on screen, so their programmes can be read again. */
+    onMinute: (List<ChannelEntity>) -> Unit = {},
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val history = watchedAt != null
@@ -178,6 +182,16 @@ internal fun ChannelListPanel(
     var focusedIndex by remember(channels, entryIndex) { mutableIntStateOf(entryIndex) }
     var listFocused by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    // Time left, progress and "watched 5 min ago" move with the clock while the list stays open.
+    val nowMs = tv.own.owntv.features.live.rememberMinuteClock()
+    // Only the rows on screen: an "All channels" list can hold tens of thousands, and a channel whose
+    // guide had nothing on when the list opened must still show what starts while it stays open.
+    val openedAt = remember { nowMs }
+    LaunchedEffect(nowMs) {
+        if (nowMs == openedAt) return@LaunchedEffect
+        val onScreen = listState.layoutInfo.visibleItemsInfo.mapNotNull { channels.getOrNull(it.index) }
+        if (onScreen.isNotEmpty()) onMinute(onScreen)
+    }
     val settingsVm: SettingsViewModel = koinViewModel()
     val chNavEnabled by settingsVm.chNavEnabled.collectAsStateWithLifecycle()
     val chNavUpSkip by settingsVm.chNavUpSkip.collectAsStateWithLifecycle()
@@ -262,8 +276,8 @@ internal fun ChannelListPanel(
         ) {
             itemsIndexed(channels, key = { _, ch -> ch.id }) { index, ch ->
                 val isPlaying = index == playingIndex
-                val nowMs = remember { System.currentTimeMillis() }
                 LiveStageRow(
+                    nowMs = nowMs,
                     channel = ch,
                     name = ProviderTags.parse(ch.name),
                     now = nowProgrammes[ch.id],

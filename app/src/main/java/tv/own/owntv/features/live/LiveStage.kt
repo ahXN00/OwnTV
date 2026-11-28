@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -144,6 +145,7 @@ internal fun LiveStageRow(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    nowMs: Long = System.currentTimeMillis(),
     trailing: (@Composable () -> Unit)? = null,
 ) {
     StageRow(
@@ -166,7 +168,7 @@ internal fun LiveStageRow(
             Text(name.name, style = stageText(22, 700), color = if (focused) StageColors.FxText else StageColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val title = now?.title ?: nowTitle
             if (title != null) {
-                val left = now?.let { timeLeftText(minutesLeft(it)) }
+                val left = now?.let { timeLeftText(minutesLeft(it, nowMs)) }
                 Spacer(Modifier.height(2.mpx))
                 Text(
                     buildAnnotatedString {
@@ -179,7 +181,7 @@ internal fun LiveStageRow(
             }
             if (now != null) {
                 Spacer(Modifier.height(8.mpx))
-                StageProgress(progressOf(now), Modifier.width(300.mpx), flat = true)
+                StageProgress(progressOf(now, nowMs), Modifier.width(300.mpx), flat = true)
             }
         }
         if (trailing != null) trailing()
@@ -211,11 +213,29 @@ internal fun LivePlate(
     }
 }
 
-internal fun minutesLeft(p: XtEpgEntry): Long = ((p.stopMs - System.currentTimeMillis()).coerceAtLeast(0) + 59_999) / 60_000
+internal fun minutesLeft(p: XtEpgEntry, nowMs: Long = System.currentTimeMillis()): Long =
+    ((p.stopMs - nowMs).coerceAtLeast(0) + 59_999) / 60_000
 
-internal fun progressOf(p: XtEpgEntry): Float {
+internal fun progressOf(p: XtEpgEntry, nowMs: Long = System.currentTimeMillis()): Float {
     val span = (p.stopMs - p.startMs).coerceAtLeast(1)
-    return ((System.currentTimeMillis() - p.startMs).toFloat() / span).coerceIn(0f, 1f)
+    return ((nowMs - p.startMs).toFloat() / span).coerceIn(0f, 1f)
+}
+
+/**
+ * The wall clock, ticking on each minute boundary. A row's time left and progress read the clock only
+ * when it recomposes, and a row whose programme has not changed is skipped — so without a ticking
+ * input they freeze at the moment the list was drawn.
+ */
+@Composable
+internal fun rememberMinuteClock(): Long {
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000 - (System.currentTimeMillis() % 60_000))
+            nowMs = System.currentTimeMillis()
+        }
+    }
+    return nowMs
 }
 
 /** "18:45 – 20:30 · Horror · 2026 · FSK 16": the time range, then only the details the feed carries. */
@@ -307,6 +327,7 @@ internal fun LiveStagePane(
             }
         }
         val now = nowNext?.now
+        val clockMs = rememberMinuteClock()
         Column(Modifier.fillMaxWidth().padding(start = 4.mpx, end = 4.mpx, top = 34.mpx)) {
             if (now != null) {
                 Text(now.title, style = stageText(42, 800, (-0.5).mpxSp), color = StageColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -316,8 +337,8 @@ internal fun LiveStagePane(
                     modifier = Modifier.padding(top = 8.mpx, bottom = 16.mpx),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.mpx)) {
-                    StageProgress(progressOf(now), Modifier.weight(1f))
-                    Text(timeLeftText(minutesLeft(now)), style = stageText(17, 400).copy(fontFeatureSettings = Tabular), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    StageProgress(progressOf(now, clockMs), Modifier.weight(1f))
+                    Text(timeLeftText(minutesLeft(now, clockMs)), style = stageText(17, 400).copy(fontFeatureSettings = Tabular), color = StageColors.Muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 now.description?.takeIf { it.isNotBlank() }?.let {
                     Text(

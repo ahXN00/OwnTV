@@ -172,6 +172,7 @@ fun LiveScreen(
             vm.refreshNowPlaying(channels.itemSnapshotList.items.filterNotNull())
         }
     }
+    val rowClockMs = rememberMinuteClock()
     // Preview runs only when the player isn't busy (previewEnabled) AND the user hasn't turned it off.
     val effectivePreview = previewEnabled && livePreviewSetting
 
@@ -823,6 +824,7 @@ fun LiveScreen(
                                 }
                                 val parsed = remember(channel.name) { ProviderTags.parse(channel.name) }
                                 LiveStageRow(
+                                    nowMs = rowClockMs,
                                     channel = channel,
                                     name = parsed,
                                     // The channel under the cursor answers from the preview itself, so the row
